@@ -49,7 +49,7 @@
 
 - 제목은 커밋 컨벤션과 동일: `<type>(<scope>): <요약> (Sx)`
 - 본문은 이슈 템플릿(무엇을·왜 / 완료 기준 / 추적·의존 / 분류 근거)을 채운다.
-- 모든 이슈에 **타입 라벨 1개 + 상태 라벨 1개 + 마일스톤 1개**를 붙인다.
+- 모든 이슈에 **타입 1개 + 스코프 1개 + 영역(area) 1개 + 상태 1개 라벨 + 마일스톤 1개**를 붙인다.
 
 ---
 
@@ -58,6 +58,8 @@
 | 그룹 | 라벨 |
 |------|------|
 | **타입** | `type: feat` `type: fix` `type: docs` `type: refactor` `type: chore` |
+| **스코프** | `scope: app` (Next.js 앱) `scope: server` (Spring Boot 서버) |
+| **영역** | `area: INFRA` `area: S0 로그인` ~ `area: S8 마이페이지` `area: SYS 시스템` |
 | **상태** | `status: todo` `status: in-progress` `status: review` `status: blocked` |
 | **기타** | `good first issue` `help wanted` `question` |
 
