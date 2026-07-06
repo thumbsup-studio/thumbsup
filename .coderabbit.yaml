@@ -1,0 +1,53 @@
+language: 'ko-KR'
+
+reviews:
+  profile: 'chill'
+  request_changes_workflow: true
+  high_level_summary: true
+  review_status: true
+  review_details: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_instructions:
+    - path: 'frontend/**'
+      instructions: |
+        이 경로는 React/Next.js/TypeScript 프론트엔드입니다.
+        다음을 우선적으로 리뷰하세요:
+        - 타입 안정성
+        - React 렌더링 성능
+        - 상태 관리와 비동기 처리
+        - 접근성
+        - 불필요한 클라이언트 컴포넌트 사용
+        - API 응답 에러 처리
+
+        다음은 과하게 지적하지 마세요:
+        - 단순 취향 차이의 네이밍
+        - 이미 일관된 스타일의 사소한 리팩터링
+
+    - path: 'backend/**'
+      instructions: |
+        이 경로는 백엔드 서버 코드입니다.
+        다음을 우선적으로 리뷰하세요:
+        - 인증/인가 누락
+        - 입력값 검증
+        - 에러 처리
+        - DB 쿼리 안정성
+        - 트랜잭션 처리
+        - 민감정보 노출
+        - API 응답 형식 일관성
+
+path_filters:
+  - '!frontend/.next/**'
+  - '!frontend/dist/**'
+  - '!frontend/build/**'
+  - '!frontend/coverage/**'
+  - '!backend/dist/**'
+  - '!backend/build/**'
+  - '!backend/coverage/**'
+  - '!**/node_modules/**'
+  - '!**/package-lock.json'
+  - '!**/pnpm-lock.yaml'
+  - '!**/yarn.lock'
