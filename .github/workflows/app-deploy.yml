@@ -18,16 +18,15 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
       url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     defaults:
       run:
         working-directory: app
@@ -59,9 +58,9 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then FLAG="--prod"; ENV_NAME="production"; else FLAG=""; ENV_NAME="preview"; fi
-          npx vercel@latest pull --yes --environment=$ENV_NAME --token="$VERCEL_TOKEN"
-          npx vercel@latest build $FLAG --token="$VERCEL_TOKEN"
-          URL=$(npx vercel@latest deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
+          npx vercel@54 pull --yes --environment=$ENV_NAME --token="$VERCEL_TOKEN"
+          npx vercel@54 build $FLAG --token="$VERCEL_TOKEN"
+          URL=$(npx vercel@54 deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "배포 완료: $URL"
 
