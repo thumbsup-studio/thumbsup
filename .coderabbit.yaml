@@ -47,6 +47,7 @@ reviews:
     - '!server/dist/**'
     - '!server/build/**'
     - '!server/coverage/**'
+    - '!.claude/skills/next-best-practices/**'
     - '!**/node_modules/**'
     - '!**/package-lock.json'
     - '!**/pnpm-lock.yaml'
