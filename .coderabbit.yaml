@@ -39,15 +39,15 @@ reviews:
         - 민감정보 노출
         - API 응답 형식 일관성
 
-path_filters:
-  - '!frontend/.next/**'
-  - '!frontend/dist/**'
-  - '!frontend/build/**'
-  - '!frontend/coverage/**'
-  - '!backend/dist/**'
-  - '!backend/build/**'
-  - '!backend/coverage/**'
-  - '!**/node_modules/**'
-  - '!**/package-lock.json'
-  - '!**/pnpm-lock.yaml'
-  - '!**/yarn.lock'
+  path_filters:
+    - '!frontend/.next/**'
+    - '!frontend/dist/**'
+    - '!frontend/build/**'
+    - '!frontend/coverage/**'
+    - '!backend/dist/**'
+    - '!backend/build/**'
+    - '!backend/coverage/**'
+    - '!**/node_modules/**'
+    - '!**/package-lock.json'
+    - '!**/pnpm-lock.yaml'
+    - '!**/yarn.lock'
