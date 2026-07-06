@@ -9,6 +9,13 @@
 - Claude Code는 `.claude/skills/`를 읽는다.
 - Codex는 `.codex/skills/` 심볼릭 링크를 통해 같은 스킬 집합을 읽는다.
 
+CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
+- 설정 파일: 루트 `.coderabbit.yaml`
+- 기본 목적: 프론트엔드/백엔드 변경을 PR 단계에서 자동 점검
+- 리뷰 확인 위치: GitHub PR 코멘트, 리뷰 요약, Checks
+- 리뷰 대응 원칙: 지적이 맞으면 같은 브랜치에 수정 커밋을 추가하고, 설정/정책 이슈면 `.coderabbit.yaml`과 문서를 함께 갱신
+- 범위 조정: 리뷰 대상 제외/포함이나 경로별 지침은 `.coderabbit.yaml`의 `reviews.path_filters`, `reviews.path_instructions`에서 관리
+
 ---
 
 ## 1. 커밋 컨벤션
