@@ -5,6 +5,10 @@
 
 레포 구성(예정): `app/` (클라이언트) · `server/` (백엔드) · `shared/` (공용).
 
+에이전트 스킬 진입점은 Claude/Codex 공용으로 유지한다.
+- Claude Code는 `.claude/skills/`를 읽는다.
+- Codex는 `.codex/skills/` 심볼릭 링크를 통해 같은 스킬 집합을 읽는다.
+
 ---
 
 ## 1. 커밋 컨벤션
