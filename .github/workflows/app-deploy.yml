@@ -1,0 +1,124 @@
+name: App Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-deploy.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-deploy.yml'
+
+concurrency:
+  group: app-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - name: 시크릿 가드 (fork PR·미등록 시 스킵)
+        id: guard
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::VERCEL_TOKEN 미설정 — 배포를 건너뜁니다"
+          fi
+      - uses: pnpm/action-setup@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Vercel 배포
+        id: deploy
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then FLAG="--prod"; ENV_NAME="production"; else FLAG=""; ENV_NAME="preview"; fi
+          npx vercel@latest pull --yes --environment=$ENV_NAME --token="$VERCEL_TOKEN"
+          npx vercel@latest build $FLAG --token="$VERCEL_TOKEN"
+          URL=$(npx vercel@latest deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "배포 완료: $URL"
+
+  preview-comment:
+    needs: deploy
+    if: github.event_name == 'pull_request' && needs.deploy.outputs.url != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview
+          message: |
+            🔍 **프리뷰 배포**: ${{ needs.deploy.outputs.url }}
+
+            `app/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.
+
+  visual-qa:
+    needs: deploy
+    if: github.event_name == 'pull_request' && needs.deploy.outputs.url != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: 시각 QA 실행
+        env:
+          QA_TARGET_URL: ${{ needs.deploy.outputs.url }}
+          ELICE_API_KEY: ${{ secrets.ELICE_API_KEY }}
+          ELICE_BASE_URL: ${{ vars.ELICE_BASE_URL }}
+          ELICE_QA_MODEL: ${{ vars.ELICE_QA_MODEL }}
+        run: pnpm qa:visual
+      - name: QA 리포트 코멘트
+        if: hashFiles('app/e2e/qa-report.md') != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: visual-qa
+          path: app/e2e/qa-report.md
+      - name: 스크린샷 아티팩트 업로드
+        if: always() && hashFiles('app/e2e/screenshots/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-screenshots
+          path: app/e2e/screenshots
