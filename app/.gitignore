@@ -40,9 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# vercel
-.vercel
-
 # visual QA 산출물
 /e2e/screenshots
 /e2e/qa-report.md
