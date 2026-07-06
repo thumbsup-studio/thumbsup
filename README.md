@@ -5,6 +5,18 @@ AI agent skills are shared across clients:
 - Claude Code: `.claude/skills/`
 - Codex: `.codex/skills/` -> `.claude/skills/` symlink
 
+## 로컬 개발 (app)
+
+사전 요구사항: Node 22 (`.nvmrc`, `nvm use`), pnpm 10 (`corepack enable`)
+
+```bash
+cd app
+pnpm install
+pnpm dev   # http://localhost:3000
+```
+
+품질 게이트(머지 전 필수): `pnpm typecheck && pnpm lint && pnpm build`
+
 ## CodeRabbit 리뷰
 
 이 저장소는 CodeRabbit를 사용해 Pull Request 단위의 자동 코드 리뷰를 수행한다.
