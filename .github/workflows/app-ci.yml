@@ -4,12 +4,17 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - '.nvmrc'
       - '.github/workflows/app-ci.yml'
   push:
     branches: [main]
     paths:
       - 'app/**'
+      - '.nvmrc'
       - '.github/workflows/app-ci.yml'
+
+permissions:
+  contents: read
 
 concurrency:
   group: app-ci-${{ github.ref }}
@@ -22,6 +27,7 @@ defaults:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
