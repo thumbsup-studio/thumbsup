@@ -17,6 +17,27 @@ pnpm dev   # http://localhost:3000
 
 품질 게이트(머지 전 필수): `pnpm typecheck && pnpm lint && pnpm build`
 
+## 배포 (app)
+
+Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Git 연동 아님).
+
+- **main 머지** → 프로덕션 자동 배포
+- **PR (app/** 변경)** → 프리뷰 배포 + PR에 프리뷰 URL 코멘트 자동 게시
+- **AI 시각 QA** → 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR 코멘트 (soft — 머지를 막지 않음). 검사 라우트는 `app/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고
+
+### 환경변수·시크릿
+
+| 이름 | 위치 | 용도 |
+|------|------|------|
+| `VERCEL_TOKEN` | GitHub Secrets | CLI 배포 인증 |
+| `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` | GitHub Secrets | 대상 프로젝트 식별 |
+| `ELICE_API_KEY` | GitHub Secrets | 시각 QA 모델 호출 (미등록 시 QA 자동 스킵) |
+| `ELICE_BASE_URL` | GitHub Variables | 엘리스 OpenAI 호환 엔드포인트 (`/v1`까지) |
+| `ELICE_QA_MODEL` | GitHub Variables | QA 모델 ID (기본 `gpt-5.2`) |
+| `CLAUDE_CODE_OAUTH_TOKEN` | GitHub Secrets | `@claude` 봇 인증 |
+
+앱 런타임 환경변수(추후 `NEXT_PUBLIC_API_URL` 등)는 Vercel 프로젝트 → Settings → Environment Variables에서 관리하고 이 표에 추가한다.
+
 ## CodeRabbit 리뷰
 
 이 저장소는 CodeRabbit를 사용해 Pull Request 단위의 자동 코드 리뷰를 수행한다.
