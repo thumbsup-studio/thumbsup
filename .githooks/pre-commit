@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# 시크릿 커밋 차단 (gitleaks)
+# 활성화(1회): git config core.hooksPath .githooks
+# 설치: brew install gitleaks
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "[pre-commit] gitleaks 미설치 — 시크릿 스캔 건너뜀 (설치: brew install gitleaks)" >&2
+    exit 0
+fi
+
+# gitleaks 8.19+ 는 `git --pre-commit`, 구버전은 `protect` 명령을 쓴다
+if gitleaks git --help >/dev/null 2>&1; then
+    exec gitleaks git --pre-commit --staged --redact
+else
+    exec gitleaks protect --staged --redact
+fi

@@ -1,0 +1,21 @@
+# 의존성 버전 단일 관리 (충돌 방지: 버전 변경은 이 파일에서만)
+[versions]
+# Spring Boot 3.5.x = OSS EOL(2026-06-30) 라인이지만 스프린트 범위로 의식적 수용.
+# 실서비스 승격 시 4.x 재검토 (근거: server/docs/, 결정 로그)
+spring-boot = "3.5.16"
+spring-dependency-management = "1.1.7"
+spring-cloud-aws = "3.4.2"
+springdoc = "2.8.17"
+archunit = "1.4.2"
+spotless = "8.8.0"
+checkstyle = "10.26.1"
+
+[libraries]
+spring-cloud-aws-dependencies = { module = "io.awspring.cloud:spring-cloud-aws-dependencies", version.ref = "spring-cloud-aws" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
