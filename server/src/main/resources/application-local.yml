@@ -4,3 +4,9 @@ spring:
     url: jdbc:mysql://localhost:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
     username: thumbsup
     password: thumbsup-local
+  cloud:
+    aws:
+      parameterstore:
+        # 로컬에선 SSM 통합 완전 비활성 — 켜두면 SsmClient 생성 시 AWS region을
+        # 요구해 (호스트 ~/.aws가 없는) 깨끗한 환경·CI에서 부팅이 실패한다
+        enabled: false
