@@ -12,7 +12,7 @@ reviews:
     drafts: false
 
   path_instructions:
-    - path: 'frontend/**'
+    - path: 'app/**'
       instructions: |
         이 경로는 React/Next.js/TypeScript 프론트엔드입니다.
         다음을 우선적으로 리뷰하세요:
@@ -27,7 +27,7 @@ reviews:
         - 단순 취향 차이의 네이밍
         - 이미 일관된 스타일의 사소한 리팩터링
 
-    - path: 'backend/**'
+    - path: 'server/**'
       instructions: |
         이 경로는 백엔드 서버 코드입니다.
         다음을 우선적으로 리뷰하세요:
@@ -40,13 +40,14 @@ reviews:
         - API 응답 형식 일관성
 
   path_filters:
-    - '!frontend/.next/**'
-    - '!frontend/dist/**'
-    - '!frontend/build/**'
-    - '!frontend/coverage/**'
-    - '!backend/dist/**'
-    - '!backend/build/**'
-    - '!backend/coverage/**'
+    - '!app/.next/**'
+    - '!app/dist/**'
+    - '!app/build/**'
+    - '!app/coverage/**'
+    - '!server/dist/**'
+    - '!server/build/**'
+    - '!server/coverage/**'
+    - '!.claude/skills/next-best-practices/**'
     - '!**/node_modules/**'
     - '!**/package-lock.json'
     - '!**/pnpm-lock.yaml'

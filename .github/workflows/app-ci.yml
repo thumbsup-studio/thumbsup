@@ -1,0 +1,46 @@
+name: App CI
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.nvmrc'
+      - '.github/workflows/app-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.nvmrc'
+      - '.github/workflows/app-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint:ci
+      - run: pnpm build
