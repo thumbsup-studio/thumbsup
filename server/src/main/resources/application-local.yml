@@ -15,5 +15,5 @@ thumbsup:
   jwt:
     secret: thumbsup-local-dev-only-secret-never-use-in-prod-32bytes # 로컬 전용 (시크릿 아님)
   cors:
-    allowed-origins:
+    allowed-origin-patterns:
       - http://localhost:3000 # Next.js 개발 서버 — docs/api-standard.md §9

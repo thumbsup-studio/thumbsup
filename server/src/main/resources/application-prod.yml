@@ -19,4 +19,5 @@ thumbsup:
   jwt:
     secret: ${JWT_SECRET} # SSM SecureString
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS} # 콤마 구분 목록 — 프론트 배포 도메인 확정 시 SSM에 등록
+    # 콤마 구분 목록 — 예: https://thumbsup-app.vercel.app,https://*-thumbsup.vercel.app
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}

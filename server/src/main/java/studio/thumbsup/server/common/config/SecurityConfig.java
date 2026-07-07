@@ -72,11 +72,12 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /** CORS 계약: docs/api-standard.md §9 — 허용 origin은 프로파일별 thumbsup.cors.allowed-origins */
+    /** CORS 계약: docs/api-standard.md §9 — 허용 origin pattern은 프로파일별 thumbsup.cors.allowed-origin-patterns */
     @Bean
     public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(corsProperties.allowedOrigins());
+        config.setAllowedOriginPatterns(corsProperties.allowedOriginPatterns());
+        config.setAllowCredentials(true);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(
                 List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE, RequestIdFilter.HEADER_NAME));
