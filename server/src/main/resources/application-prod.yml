@@ -1,0 +1,23 @@
+# 운영 — 설정·시크릿은 부팅 시 SSM Parameter Store에서 주입 (server/docs/env-guide.md)
+# 시크릿 프로퍼티에 default 값 금지 (fail-fast): 없으면 부팅 실패가 안전하다
+spring:
+  config:
+    import: "aws-parameterstore:/thumbsup/prod/"
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+# 운영에서는 API 스펙 비공개 (Swagger는 로컬 개발용)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+thumbsup:
+  jwt:
+    secret: ${JWT_SECRET} # SSM SecureString
+  cors:
+    # 콤마 구분 목록 — 예: https://thumbsup-app.vercel.app,https://*-thumbsup.vercel.app
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
