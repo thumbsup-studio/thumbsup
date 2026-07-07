@@ -11,11 +11,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ParameterNameProvider;
 import jakarta.validation.Valid;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.executable.ExecutableValidator;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,10 +70,17 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 파라미터_검증_실패도_fieldErrors로_변환된다() {
-        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
-            Set<ConstraintViolation<StubRequest>> violations =
-                    factory.getValidator().validateValue(StubRequest.class, "name", "");
+    void 파라미터_검증_실패도_메서드명_접두사를_제거해_fieldErrors로_변환된다() throws Exception {
+        var configuration = Validation.byDefaultProvider().configure();
+        ParameterNameProvider defaultNameProvider = configuration.getDefaultParameterNameProvider();
+        try (ValidatorFactory factory = configuration
+                .parameterNameProvider(new StubParameterNameProvider(defaultNameProvider))
+                .buildValidatorFactory()) {
+            ParameterStub target = new ParameterStub();
+            Method method = ParameterStub.class.getDeclaredMethod("search", String.class);
+            ExecutableValidator validator = factory.getValidator().forExecutables();
+            Set<ConstraintViolation<ParameterStub>> violations =
+                    validator.validateParameters(target, method, new Object[] {""});
 
             ResponseEntity<ApiResponse<ValidationErrorData>> response = new GlobalExceptionHandler()
                     .handleConstraintViolation(new ConstraintViolationException(violations));
@@ -78,7 +90,7 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody().code()).isEqualTo("INVALID_INPUT");
             assertThat(response.getBody().data().fieldErrors())
                     .extracting(FieldErrorDetail::field)
-                    .containsExactly("name");
+                    .containsExactly("keyword");
         }
     }
 
@@ -125,4 +137,26 @@ class GlobalExceptionHandlerTest {
     }
 
     record StubRequest(@NotBlank String name, @Email String email) {}
+
+    static class ParameterStub {
+
+        void search(@NotBlank String keyword) {}
+    }
+
+    record StubParameterNameProvider(ParameterNameProvider delegate) implements ParameterNameProvider {
+
+        @Override
+        public List<String> getParameterNames(Constructor<?> constructor) {
+            return delegate.getParameterNames(constructor);
+        }
+
+        @Override
+        public List<String> getParameterNames(Method method) {
+            if (method.getDeclaringClass().equals(ParameterStub.class)
+                    && method.getName().equals("search")) {
+                return List.of("keyword");
+            }
+            return delegate.getParameterNames(method);
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package studio.thumbsup.server.common.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.servlet.ServletException;
 import java.io.IOException;
@@ -40,6 +41,22 @@ class RequestIdFilterTest {
 
         assertThat(response.getHeader(RequestIdFilter.HEADER_NAME)).matches(UUID_PATTERN);
         assertThat(response.getHeader(RequestIdFilter.HEADER_NAME)).isNotEqualTo("unsafe request id");
+        assertThat(MDC.get(RequestIdFilter.MDC_KEY)).isNull();
+    }
+
+    @Test
+    void 응답_헤더_설정이_실패해도_MDC를_정리한다() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader(RequestIdFilter.HEADER_NAME, "web-req-123");
+        MockHttpServletResponse response = new MockHttpServletResponse() {
+            @Override
+            public void setHeader(String name, String value) {
+                throw new IllegalArgumentException("header failure");
+            }
+        };
+
+        assertThatThrownBy(() -> filter.doFilter(request, response, new MockFilterChain()))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThat(MDC.get(RequestIdFilter.MDC_KEY)).isNull();
     }
 }

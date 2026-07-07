@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
         log.warn("파라미터 검증 실패: {}", e.getMessage());
         List<FieldErrorDetail> fieldErrors = e.getConstraintViolations().stream()
                 .map(violation -> new FieldErrorDetail(
-                        lastPathSegment(violation.getPropertyPath().toString()), violation.getMessage()))
+                        removeMethodPrefix(violation.getPropertyPath().toString()), violation.getMessage()))
                 .toList();
         return validationErrorResponse(fieldErrors);
     }
@@ -83,27 +83,23 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {
         log.warn("잘못된 요청: {}", e.getMessage());
-        return ResponseEntity.status(CommonErrorType.INVALID_INPUT.getStatus())
-                .body(ApiResponse.error(CommonErrorType.INVALID_INPUT));
+        return errorResponse(CommonErrorType.INVALID_INPUT);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
-        return ResponseEntity.status(CommonErrorType.METHOD_NOT_ALLOWED.getStatus())
-                .body(ApiResponse.error(CommonErrorType.METHOD_NOT_ALLOWED));
+        return errorResponse(CommonErrorType.METHOD_NOT_ALLOWED);
     }
 
     /** 지원하지 않는 Content-Type — 클라이언트 실수가 500으로 위장되지 않게 별도 처리 */
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException e) {
-        return ResponseEntity.status(CommonErrorType.UNSUPPORTED_MEDIA_TYPE.getStatus())
-                .body(ApiResponse.error(CommonErrorType.UNSUPPORTED_MEDIA_TYPE));
+        return errorResponse(CommonErrorType.UNSUPPORTED_MEDIA_TYPE);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(NoResourceFoundException e) {
-        return ResponseEntity.status(CommonErrorType.NOT_FOUND.getStatus())
-                .body(ApiResponse.error(CommonErrorType.NOT_FOUND));
+        return errorResponse(CommonErrorType.NOT_FOUND);
     }
 
     /** 미분류 예외의 최종 fallback — 내부 정보는 응답에 담지 않는다 (로그에만) */
@@ -112,6 +108,10 @@ public class GlobalExceptionHandler {
         log.error("처리되지 않은 예외", e);
         return ResponseEntity.status(CommonErrorType.INTERNAL_ERROR.getStatus())
                 .body(ApiResponse.error(CommonErrorType.INTERNAL_ERROR));
+    }
+
+    private ResponseEntity<ApiResponse<Void>> errorResponse(CommonErrorType errorType) {
+        return ResponseEntity.status(errorType.getStatus()).body(ApiResponse.error(errorType));
     }
 
     private ResponseEntity<ApiResponse<ValidationErrorData>> validationErrorResponse(
@@ -142,8 +142,8 @@ public class GlobalExceptionHandler {
         return Optional.ofNullable(error.getDefaultMessage()).orElse("입력값이 올바르지 않습니다.");
     }
 
-    private String lastPathSegment(String path) {
-        int index = path.lastIndexOf('.');
+    private String removeMethodPrefix(String path) {
+        int index = path.indexOf('.');
         if (index < 0 || index == path.length() - 1) {
             return path;
         }

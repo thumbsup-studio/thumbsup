@@ -30,9 +30,9 @@ public class RequestIdFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String requestId = resolveRequestId(request);
-        MDC.put(MDC_KEY, requestId);
-        response.setHeader(HEADER_NAME, requestId);
         try {
+            MDC.put(MDC_KEY, requestId);
+            response.setHeader(HEADER_NAME, requestId);
             filterChain.doFilter(request, response);
         } finally {
             MDC.remove(MDC_KEY);
