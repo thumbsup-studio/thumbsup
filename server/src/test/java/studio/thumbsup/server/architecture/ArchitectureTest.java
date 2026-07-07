@@ -14,7 +14,6 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import jakarta.persistence.Entity;
-import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.Repository;
 import org.springframework.stereotype.Service;
@@ -28,10 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @AnalyzeClasses(packages = "studio.thumbsup.server", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
 
-    private static final Set<String> BANNED_EXCEPTION_TYPES = Set.of(
-            IllegalArgumentException.class.getName(),
-            IllegalStateException.class.getName(),
-            RuntimeException.class.getName());
+    // ⚠️ ArchUnit 한계: 메서드 레퍼런스(IllegalArgumentException::new)는 탐지 불가 — 코드리뷰/CodeRabbit이 커버
 
     @ArchTest
     static final ArchRule 필드_주입_금지 =
@@ -41,17 +37,18 @@ class ArchitectureTest {
     static final ArchRule 표준_예외_생성_금지 = noClasses()
             .should()
             .callConstructorWhere(
-                    new DescribedPredicate<JavaConstructorCall>(
-                            "IllegalArgumentException/IllegalStateException/RuntimeException 생성") {
+                    new DescribedPredicate<JavaConstructorCall>("JDK 표준 런타임 예외(java.*의 RuntimeException 계열) 생성") {
                         @Override
                         public boolean test(JavaConstructorCall call) {
-                            String targetType = call.getTarget().getOwner().getFullName();
-                            if (!BANNED_EXCEPTION_TYPES.contains(targetType)) {
+                            JavaClass target = call.getTarget().getOwner();
+                            boolean jdkRuntimeException = target.isAssignableTo(RuntimeException.class)
+                                    && target.getPackageName().startsWith("java.");
+                            if (!jdkRuntimeException) {
                                 return false;
                             }
                             // 서브클래스 생성자의 super(...) 호출은 허용
                             // (예: BusinessException extends RuntimeException)
-                            return !call.getOriginOwner().isAssignableTo(targetType);
+                            return !call.getOriginOwner().isAssignableTo(target.getFullName());
                         }
                     })
             .because("비즈니스 예외는 BusinessException(ErrorType)으로만 던진다 — docs/error-spec.md");

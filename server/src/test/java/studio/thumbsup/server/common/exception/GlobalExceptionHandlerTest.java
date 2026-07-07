@@ -71,6 +71,13 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
     }
 
+    @Test
+    void 지원하지_않는_ContentType은_UNSUPPORTED_MEDIA_TYPE으로_변환된다() throws Exception {
+        mockMvc.perform(post("/stub/validate").contentType(MediaType.TEXT_PLAIN).content("plain"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
+
     @RestController
     static class StubController {
 

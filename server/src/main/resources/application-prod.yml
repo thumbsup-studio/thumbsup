@@ -8,6 +8,13 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+# 운영에서는 API 스펙 비공개 (Swagger는 로컬 개발용)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 thumbsup:
   jwt:
     secret: ${JWT_SECRET} # SSM SecureString
