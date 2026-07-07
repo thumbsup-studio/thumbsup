@@ -28,14 +28,17 @@ cd app && pnpm typecheck && pnpm lint && pnpm build   # 품질 게이트
 
 ## 배포 인프라 현황 (server/AWS, #47)
 
-- **EC2**: Amazon Linux 2023, `ap-northeast-2`(서울). 탄력적 IP `54.116.111.87` 연결(고정 IP).
-- **RDS**: MySQL, 식별자 `thumbs-db`, `ap-northeast-2`. 엔드포인트 `thumbs-db.c7ue4yacm746.ap-northeast-2.rds.amazonaws.com`. 퍼블릭 액세스 비활성화 — EC2 보안그룹에서 오는 3306 트래픽만 허용.
-- **리버스 프록시**: Nginx가 80번 포트에서 받아 `127.0.0.1:8080`(Spring Boot 앱)으로 프록시. 설정: `/etc/nginx/conf.d/thumbsup.conf`.
-- **프로세스 관리**: systemd `thumbsup.service` (`ExecStart=/usr/bin/java -jar /home/ec2-user/app/app.jar`). 앱 JAR을 해당 경로에 올리면 `sudo systemctl start thumbsup`.
+스펙 원본: [server/docs/ci-requirements.md](./server/docs/ci-requirements.md), [server/docs/env-guide.md](./server/docs/env-guide.md)
+
+- **EC2**: Amazon Linux 2023, `ap-northeast-2`(서울). 탄력적 IP `54.116.111.87` 연결(고정 IP). Docker 설치됨.
+- **RDS**: MySQL 8.4.8, 식별자 `thumbs-db`, `ap-northeast-2`. 엔드포인트 `thumbs-db.c7ue4yacm746.ap-northeast-2.rds.amazonaws.com`. 퍼블릭 액세스 비활성화 — EC2 보안그룹에서 오는 3306 트래픽만 허용. DB `thumbsup` 생성 완료 (`docker-compose.yml`의 MySQL 8.4와 버전 일치).
+- **ECR**: `819743217770.dkr.ecr.ap-northeast-2.amazonaws.com/thumbsup-server`.
+- **컨테이너 배포**: `main` 머지 시 GitHub Actions가 `server/Dockerfile`로 이미지 빌드 → ECR 푸시 → EC2에서 pull 후 `docker run --network host`로 기동(포트 8080, 기존 systemd `thumbsup.service`는 폐기·삭제됨).
+- **AWS 인증(CI)**: 장기 액세스 키 없이 **OIDC**로 IAM Role 임시 위임. 역할 `arn:aws:iam::819743217770:role/thumbsup-github-actions-role` (신뢰정책: `repo:thumbsup-studio/thumbsup:ref:refs/heads/main`만 허용, 정책 `thumbsup-ecr-push`).
+- **EC2 IAM 역할**: `thumbsup-ec2-role` — `thumbsup-parameter-store-read`(SSM Get* + kms:Decrypt, `/thumbsup/*` 한정), `thumbsup-ecr-pull`(ECR 이미지 pull) 정책 연결. 앱이 부팅 시 이 역할로 SSM에서 직접 설정을 읽음(파이프라인은 시크릿을 다루지 않음).
+- **리버스 프록시**: Nginx가 80번 포트에서 받아 `127.0.0.1:8080`(컨테이너, host 네트워크)으로 프록시. 설정: `/etc/nginx/conf.d/thumbsup.conf`.
 - **API 베이스 URL**: `http://54.116.111.87/` (도메인 확보 전까지 HTTP만 지원. 도메인 생기면 Let's Encrypt로 HTTPS 추가 예정).
-- **CORS**: 프론트 도메인 확정됨. 허용할 origin:
-  - `http://localhost:3000` (로컬 개발)
-  - `https://thumbsup-app.vercel.app` (프로덕션, main 머지 시)
-  - `https://*-thumbsup.vercel.app` (PR 프리뷰 전부 — 팀 slug `-thumbsup`으로 끝나 다른 팀 배포와 충돌 없음)
-  - 세션/토큰 인증(#44) 사용 예정이라 `allowedOrigins`에 와일드카드 사용 불가 → Spring에서 **`allowedOriginPatterns` + `allowCredentials(true)`** 조합으로 설정할 것(`allowedOrigins`+`*` 조합 금지). `server/` 코드 작성 시 반영 필요.
-- **배포 파이프라인**: GitHub Actions → SSH(SCP)로 JAR 전송 → systemd 재시작 방식. GitHub Secrets `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` 등록 완료. 워크플로우 초안 `.github/workflows/server-deploy.yml` (Gradle 기준) 작성 완료 — `server/` 프로젝트 실제 구조 나오면 경로·빌드 명령 검증 필요.
+- **SSM 파라미터** (`/thumbsup/prod/*`): `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`(SecureString), `JWT_SECRET`(SecureString), `CORS_ALLOWED_ORIGIN_PATTERNS` 등록 완료.
+- **CORS**: `SecurityConfig.java`가 `allowedOriginPatterns`+`allowCredentials(true)`로 구현됨(PR #84). 허용 패턴: `https://thumbsup-app.vercel.app`, `https://*-thumbsup.vercel.app` (prod), `http://localhost:3000`(local 프로파일 전용).
+- **PR 체크** (`server/**` 변경 시, `.github/workflows/server-ci.yml`): `build-and-test`(Java 21, `./gradlew build`), `gitleaks`. 두 체크 모두 브랜치 보호 규칙에 필수로 등록됨. ⚠️ `on.pull_request.paths`로 필터링하면 서버를 안 건드리는 PR에서 체크가 영원히 대기 상태로 남아 머지가 막히므로, 워크플로우는 모든 PR에서 트리거하고 `dorny/paths-filter`로 job 내부에서 스킵하는 방식 사용.
+- **브랜치 보호(main)**: 상태 체크 2개(`build-and-test`, `gitleaks`) 필수, admin 포함 강제 적용. **사람 리뷰 필수 아님** — `ci-requirements.md`엔 "사람 1명 필수"로 문서화되어 있으나 실제 설정과 다름(2026-07-08, 팀 결정으로 미적용). 문서 갱신은 보류 중.
