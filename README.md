@@ -36,6 +36,8 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Gi
 | `ELICE_QA_MODEL` | GitHub Variables | QA 모델 ID (기본 `gpt-5.2`) |
 | `CLAUDE_CODE_OAUTH_TOKEN` | GitHub Secrets | `@claude` 봇 인증 |
 
+> `QA_TARGET_URL`(시각 QA 대상 주소)은 위 표에 없다 — CI가 배포 잡의 프리뷰 URL을 자동으로 주입한다. 로컬에서 QA를 직접 돌릴 때만 `QA_TARGET_URL=http://localhost:3000` 형태로 지정하며, 자세한 사용법은 `visual-qa` 스킬을 참고한다.
+
 앱 런타임 환경변수(추후 `NEXT_PUBLIC_API_URL` 등)는 Vercel 프로젝트 → Settings → Environment Variables에서 관리하고 이 표에 추가한다.
 
 ## CodeRabbit 리뷰
