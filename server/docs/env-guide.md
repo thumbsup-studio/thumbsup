@@ -98,3 +98,16 @@ aws sts get-caller-identity
 
 - **gitleaks**를 pre-commit 훅 + CI에 걸어 하드코딩 시크릿 커밋을 원천 차단한다 (AI 코드 생성 환경에서 특히 중요).
 - `.env`, `.envrc`는 **루트 `.gitignore`에 반드시 포함해 커밋을 차단한다** (Phase 0 레포 정리 PR에 반영 — 머지 전이라면 로컬에서 커밋하지 않도록 주의). `.env.example`(키 이름만, 값 없음)로 필요한 키 목록을 공유한다.
+
+## 6. CORS origin pattern
+
+운영 CORS는 프론트 배포 origin을 SSM 파라미터 `CORS_ALLOWED_ORIGIN_PATTERNS`로 주입한다.
+Vercel PR preview는 배포마다 하위 도메인이 달라지므로 exact origin 목록이 아니라 Spring `allowedOriginPatterns`를 쓴다.
+
+```text
+/thumbsup/prod/CORS_ALLOWED_ORIGIN_PATTERNS=https://thumbsup-app.vercel.app,https://*-thumbsup.vercel.app
+```
+
+- `https://thumbsup-app.vercel.app`: main 머지 시 프로덕션 FE
+- `https://*-thumbsup.vercel.app`: 팀 slug로 끝나는 Vercel PR preview
+- 세션/쿠키 인증 호환을 위해 서버는 `allowCredentials(true)`를 사용하므로 `*` 단독 origin은 금지한다.
