@@ -1,0 +1,7 @@
+# 도커 빌드 컨텍스트 제외 — 전송 속도·캐시 오염 방지
+build/
+.gradle/
+out/
+.omc/
+.idea/
+*.iml
