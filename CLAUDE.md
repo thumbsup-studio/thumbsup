@@ -34,4 +34,4 @@ cd app && pnpm typecheck && pnpm lint && pnpm build   # 품질 게이트
 - **프로세스 관리**: systemd `thumbsup.service` (`ExecStart=/usr/bin/java -jar /home/ec2-user/app/app.jar`). 앱 JAR을 해당 경로에 올리면 `sudo systemctl start thumbsup`.
 - **API 베이스 URL**: `http://54.116.111.87/` (도메인 확보 전까지 HTTP만 지원. 도메인 생기면 Let's Encrypt로 HTTPS 추가 예정).
 - **CORS**: 프론트 도메인 미확정으로 아직 미설정 — 확정되는 대로 반영 필요.
-- **배포 파이프라인**: GitHub Actions → SSH(SCP)로 JAR 전송 → systemd 재시작 방식. GitHub Secrets `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` 등록 완료. 실제 워크플로우 YAML은 `server/` 코드(빌드 도구) 확정 후 작성.
+- **배포 파이프라인**: GitHub Actions → SSH(SCP)로 JAR 전송 → systemd 재시작 방식. GitHub Secrets `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` 등록 완료. 워크플로우 초안 `.github/workflows/server-deploy.yml` (Gradle 기준) 작성 완료 — `server/` 프로젝트 실제 구조 나오면 경로·빌드 명령 검증 필요.
