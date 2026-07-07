@@ -25,3 +25,13 @@ cd app && pnpm typecheck && pnpm lint && pnpm build   # 품질 게이트
 - 이슈·라벨·마일스톤 규약: CONTRIBUTING.md §4~6
 - PR 자동 리뷰: CodeRabbit (`.coderabbit.yaml`) — `app/**`·`server/**` 경로별 지침
 - 사양 문서: `docs/superpowers/specs/`
+
+## 배포 인프라 현황 (server/AWS, #47)
+
+- **EC2**: Amazon Linux 2023, `ap-southeast-2`. 탄력적 IP `3.105.46.117` 연결(고정 IP).
+- **RDS**: MySQL, 식별자 `thumbsup-db`, `ap-southeast-2`. 퍼블릭 액세스 비활성화 — EC2 보안그룹에서 오는 3306 트래픽만 허용.
+- **리버스 프록시**: Nginx가 80번 포트에서 받아 `127.0.0.1:8080`(Spring Boot 앱)으로 프록시. 설정: `/etc/nginx/conf.d/thumbsup.conf`.
+- **프로세스 관리**: systemd `thumbsup.service` (`ExecStart=/usr/bin/java -jar /home/ec2-user/app/app.jar`). 앱 JAR을 해당 경로에 올리면 `sudo systemctl start thumbsup`.
+- **API 베이스 URL**: `http://3.105.46.117/` (도메인 확보 전까지 HTTP만 지원. 도메인 생기면 Let's Encrypt로 HTTPS 추가 예정).
+- **CORS**: 프론트 도메인 미확정으로 아직 미설정 — 확정되는 대로 반영 필요.
+- **배포 파이프라인**: GitHub Actions → SSH(SCP)로 JAR 전송 → systemd 재시작 방식. GitHub Secrets `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` 등록 완료. 실제 워크플로우 YAML은 `server/` 코드(빌드 도구) 확정 후 작성.
