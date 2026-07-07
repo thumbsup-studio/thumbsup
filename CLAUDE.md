@@ -33,5 +33,9 @@ cd app && pnpm typecheck && pnpm lint && pnpm build   # 품질 게이트
 - **리버스 프록시**: Nginx가 80번 포트에서 받아 `127.0.0.1:8080`(Spring Boot 앱)으로 프록시. 설정: `/etc/nginx/conf.d/thumbsup.conf`.
 - **프로세스 관리**: systemd `thumbsup.service` (`ExecStart=/usr/bin/java -jar /home/ec2-user/app/app.jar`). 앱 JAR을 해당 경로에 올리면 `sudo systemctl start thumbsup`.
 - **API 베이스 URL**: `http://54.116.111.87/` (도메인 확보 전까지 HTTP만 지원. 도메인 생기면 Let's Encrypt로 HTTPS 추가 예정).
-- **CORS**: 프론트 도메인 미확정으로 아직 미설정 — 확정되는 대로 반영 필요.
+- **CORS**: 프론트 도메인 확정됨. 허용할 origin:
+  - `http://localhost:3000` (로컬 개발)
+  - `https://thumbsup-app.vercel.app` (프로덕션, main 머지 시)
+  - `https://*-thumbsup.vercel.app` (PR 프리뷰 전부 — 팀 slug `-thumbsup`으로 끝나 다른 팀 배포와 충돌 없음)
+  - 세션/토큰 인증(#44) 사용 예정이라 `allowedOrigins`에 와일드카드 사용 불가 → Spring에서 **`allowedOriginPatterns` + `allowCredentials(true)`** 조합으로 설정할 것(`allowedOrigins`+`*` 조합 금지). `server/` 코드 작성 시 반영 필요.
 - **배포 파이프라인**: GitHub Actions → SSH(SCP)로 JAR 전송 → systemd 재시작 방식. GitHub Secrets `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` 등록 완료. 워크플로우 초안 `.github/workflows/server-deploy.yml` (Gradle 기준) 작성 완료 — `server/` 프로젝트 실제 구조 나오면 경로·빌드 명령 검증 필요.
