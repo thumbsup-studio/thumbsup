@@ -1,0 +1,34 @@
+# === Java / Gradle (server) ===
+build/
+.gradle/
+out/
+*.class
+
+# === Node / Next.js (app) ===
+node_modules/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+
+# === 환경변수 / 시크릿 ===
+.env
+.env.*
+!.env.example
+.envrc
+
+# === IDE ===
+.idea/
+*.iml
+.vscode/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === 로그 ===
+*.log
+
+# === AI 에이전트 로컬 상태 ===
+.omc/
