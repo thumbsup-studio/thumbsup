@@ -29,15 +29,24 @@ reviews:
 
     - path: 'server/**'
       instructions: |
-        이 경로는 백엔드 서버 코드입니다.
+        이 경로는 Java 21 + Spring Boot 백엔드 서버입니다 (Gradle, JPA, MySQL).
         다음을 우선적으로 리뷰하세요:
-        - 인증/인가 누락
-        - 입력값 검증
-        - 에러 처리
-        - DB 쿼리 안정성
-        - 트랜잭션 처리
-        - 민감정보 노출
-        - API 응답 형식 일관성
+        - 인증/인가 누락 (유저 식별은 JWT에서 추출 — request body/param의 userId 신뢰 금지)
+        - 입력값 검증 (Bean Validation)
+        - 에러 처리: IllegalArgumentException 등 표준 예외 직접 생성 금지 — 커스텀 예외 + ErrorType 사용
+        - JPA 엔티티를 API 응답으로 직접 노출 금지 — 항상 API별 DTO(record) 사용
+        - 도메인 경계를 넘는 JPA 연관관계 금지 — 다른 도메인 참조는 ID 값으로만
+        - 필드 주입(@Autowired) 금지 — 생성자 주입만
+        - @Transactional은 Service 계층에만
+        - DB 쿼리 안정성 (N+1, 트랜잭션 처리)
+        - 민감정보 노출, 시크릿 하드코딩
+        - API 응답 형식 일관성 (ApiResponse envelope)
+        - SOLID 원칙 위반: 비대한 Service/Controller(SRP), 구현이 1개뿐인 불필요한 인터페이스,
+          확장에 닫힌 분기 남발(OCP), 치환 불가능한 상속(LSP)
+
+        다음은 과하게 지적하지 마세요:
+        - 단순 취향 차이의 네이밍
+        - 이미 일관된 스타일의 사소한 리팩터링
 
   path_filters:
     - '!app/.next/**'
@@ -47,7 +56,9 @@ reviews:
     - '!server/dist/**'
     - '!server/build/**'
     - '!server/coverage/**'
+    - '!server/.gradle/**'
     - '!.claude/skills/next-best-practices/**'
+    - '!**/gradle-wrapper.jar'
     - '!**/node_modules/**'
     - '!**/package-lock.json'
     - '!**/pnpm-lock.yaml'
