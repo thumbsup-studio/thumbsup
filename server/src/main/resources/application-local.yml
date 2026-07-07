@@ -1,0 +1,6 @@
+# 로컬 개발 전용 — 값은 docker-compose.yml의 MySQL과 한 쌍 (시크릿 아님)
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
+    username: thumbsup
+    password: thumbsup-local

@@ -1,0 +1,9 @@
+# 운영 — 설정·시크릿은 부팅 시 SSM Parameter Store에서 주입 (server/docs/env-guide.md)
+# 시크릿 프로퍼티에 default 값 금지 (fail-fast): 없으면 부팅 실패가 안전하다
+spring:
+  config:
+    import: "aws-parameterstore:/thumbsup/prod/"
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
