@@ -1,0 +1,63 @@
+package studio.thumbsup.server.common.security;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.junit.jupiter.api.Test;
+
+/**
+ * 시간 의존 로직을 고정 Clock으로 결정적으로 검증한다 — sleep 없이 만료를 테스트한다.
+ */
+class JwtTokenProviderTest {
+
+    private static final String SECRET = "test-secret-key-for-jwt-hmac-sha-256-minimum-32-bytes";
+    private static final Instant BASE_TIME = Instant.parse("2026-07-07T00:00:00Z");
+    private static final Duration VALIDITY = Duration.ofMinutes(30);
+
+    private JwtTokenProvider providerAt(Instant instant) {
+        return new JwtTokenProvider(new JwtProperties(SECRET, VALIDITY), Clock.fixed(instant, ZoneOffset.UTC));
+    }
+
+    @Test
+    void 발급한_토큰에서_userId를_복원한다() {
+        JwtTokenProvider provider = providerAt(BASE_TIME);
+
+        String token = provider.createAccessToken(42L);
+
+        assertThat(provider.parseUserId(token)).isEqualTo(42L);
+    }
+
+    @Test
+    void 유효기간_내에서는_시간이_지나도_검증된다() {
+        String token = providerAt(BASE_TIME).createAccessToken(42L);
+
+        JwtTokenProvider after29Minutes = providerAt(BASE_TIME.plus(Duration.ofMinutes(29)));
+
+        assertThat(after29Minutes.parseUserId(token)).isEqualTo(42L);
+    }
+
+    @Test
+    void 유효기간이_지난_토큰은_ExpiredJwtException을_던진다() {
+        String token = providerAt(BASE_TIME).createAccessToken(42L);
+
+        JwtTokenProvider after31Minutes = providerAt(BASE_TIME.plus(Duration.ofMinutes(31)));
+
+        assertThatThrownBy(() -> after31Minutes.parseUserId(token)).isInstanceOf(ExpiredJwtException.class);
+    }
+
+    @Test
+    void 서명이_다른_토큰은_JwtException을_던진다() {
+        JwtTokenProvider otherKeyProvider = new JwtTokenProvider(
+                new JwtProperties("another-secret-key-for-jwt-hmac-sha-256-32bytes!!", VALIDITY),
+                Clock.fixed(BASE_TIME, ZoneOffset.UTC));
+        String token = otherKeyProvider.createAccessToken(42L);
+
+        assertThatThrownBy(() -> providerAt(BASE_TIME).parseUserId(token)).isInstanceOf(JwtException.class);
+    }
+}
