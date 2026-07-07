@@ -14,9 +14,17 @@ spring:
         jdbc:
           time_zone: UTC # DB 저장은 UTC, API 직렬화만 KST(+09:00) — docs/api-standard.md
 
+thumbsup:
+  jwt:
+    access-token-validity: 30m # 계약: docs/api-standard.md §8 (secret은 환경별 — 여기 두지 않는다)
+
 server:
   port: 8080
   shutdown: graceful
+
+logging:
+  pattern:
+    level: "%5p [rid:%X{requestId:-}]" # RequestIdFilter가 채우는 요청 추적 ID
 
 management:
   endpoints:
