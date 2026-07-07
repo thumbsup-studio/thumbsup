@@ -91,3 +91,10 @@ CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
 - **M2** — 있으면 좋은 저비용 항목.
 - **M3** — 중요하지만 시간이 드는 것.
 - **M4** — 후순위.
+
+---
+
+## 7. 배포 · 릴리즈
+
+- **배포는 `app/**` 변경에만 반응한다.** `.github/workflows/app-deploy.yml`이 main push(`app/**`)를 프로덕션에, PR(`app/**`)을 프리뷰에 배포한다. **server 작업은 Vercel 배포 대상이 아니다** — 서버 배포는 #47에서 별도로 다룬다. 상세는 `deploying` 스킬.
+- **릴리즈는 release-please가 자동화한다.** main 머지 시 Release PR이 생성되고, 이를 머지하면 통합 버전 태그(`vX.Y.Z`)와 GitHub Release가 만들어진다. 버전은 Conventional Commits 타입으로 결정된다(`feat`→minor, `fix`→patch). 상세는 `releasing` 스킬.
