@@ -2,10 +2,16 @@ package studio.thumbsup.server.common.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -44,17 +50,36 @@ public class GlobalExceptionHandler {
         List<FieldErrorDetail> fieldErrors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> new FieldErrorDetail(error.getField(), error.getDefaultMessage()))
                 .toList();
-        return ResponseEntity.status(CommonErrorType.INVALID_INPUT.getStatus())
-                .body(ApiResponse.error(CommonErrorType.INVALID_INPUT, new ValidationErrorData(fieldErrors)));
+        return validationErrorResponse(fieldErrors);
     }
 
-    /** body 파싱 실패·타입 불일치·필수 파라미터 누락·쿼리 파라미터 검증 실패 → INVALID_INPUT */
+    /** 쿼리/경로 파라미터 검증 실패 → INVALID_INPUT + fieldErrors */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<ValidationErrorData>> handleConstraintViolation(ConstraintViolationException e) {
+        log.warn("파라미터 검증 실패: {}", e.getMessage());
+        List<FieldErrorDetail> fieldErrors = e.getConstraintViolations().stream()
+                .map(violation -> new FieldErrorDetail(
+                        lastPathSegment(violation.getPropertyPath().toString()), violation.getMessage()))
+                .toList();
+        return validationErrorResponse(fieldErrors);
+    }
+
+    /** 쿼리/경로 파라미터 검증 실패(Spring MVC method validation) → INVALID_INPUT + fieldErrors */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiResponse<ValidationErrorData>> handleHandlerMethodValidation(
+            HandlerMethodValidationException e) {
+        log.warn("파라미터 검증 실패: {}", e.getMessage());
+        List<FieldErrorDetail> fieldErrors = e.getParameterValidationResults().stream()
+                .flatMap(this::toFieldErrors)
+                .toList();
+        return validationErrorResponse(fieldErrors);
+    }
+
+    /** body 파싱 실패·타입 불일치·필수 파라미터 누락 → INVALID_INPUT */
     @ExceptionHandler({
         HttpMessageNotReadableException.class,
         MethodArgumentTypeMismatchException.class,
-        MissingServletRequestParameterException.class,
-        ConstraintViolationException.class,
-        HandlerMethodValidationException.class
+        MissingServletRequestParameterException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {
         log.warn("잘못된 요청: {}", e.getMessage());
@@ -87,5 +112,41 @@ public class GlobalExceptionHandler {
         log.error("처리되지 않은 예외", e);
         return ResponseEntity.status(CommonErrorType.INTERNAL_ERROR.getStatus())
                 .body(ApiResponse.error(CommonErrorType.INTERNAL_ERROR));
+    }
+
+    private ResponseEntity<ApiResponse<ValidationErrorData>> validationErrorResponse(
+            List<FieldErrorDetail> fieldErrors) {
+        return ResponseEntity.status(CommonErrorType.INVALID_INPUT.getStatus())
+                .body(ApiResponse.error(CommonErrorType.INVALID_INPUT, new ValidationErrorData(fieldErrors)));
+    }
+
+    private Stream<FieldErrorDetail> toFieldErrors(ParameterValidationResult result) {
+        String parameterName = Optional.ofNullable(result.getMethodParameter().getParameterName())
+                .orElse("arg" + result.getMethodParameter().getParameterIndex());
+        if (result instanceof ParameterErrors parameterErrors && parameterErrors.hasFieldErrors()) {
+            return parameterErrors.getFieldErrors().stream()
+                    .map(error -> new FieldErrorDetail(fieldName(parameterName, error), error.getDefaultMessage()));
+        }
+        return result.getResolvableErrors().stream()
+                .map(error -> new FieldErrorDetail(parameterName, defaultMessage(error)));
+    }
+
+    private String fieldName(String parameterName, FieldError error) {
+        if (parameterName.equals(error.getField())) {
+            return parameterName;
+        }
+        return parameterName + "." + error.getField();
+    }
+
+    private String defaultMessage(MessageSourceResolvable error) {
+        return Optional.ofNullable(error.getDefaultMessage()).orElse("입력값이 올바르지 않습니다.");
+    }
+
+    private String lastPathSegment(String path) {
+        int index = path.lastIndexOf('.');
+        if (index < 0 || index == path.length() - 1) {
+            return path;
+        }
+        return path.substring(index + 1);
     }
 }

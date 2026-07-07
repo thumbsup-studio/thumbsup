@@ -1,5 +1,6 @@
 package studio.thumbsup.server.common.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
@@ -8,12 +9,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,6 +62,24 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
                 .andExpect(jsonPath("$.data.fieldErrors", hasSize(2)))
                 .andExpect(jsonPath("$.data.fieldErrors[*].field", containsInAnyOrder("name", "email")));
+    }
+
+    @Test
+    void 파라미터_검증_실패도_fieldErrors로_변환된다() {
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            Set<ConstraintViolation<StubRequest>> violations =
+                    factory.getValidator().validateValue(StubRequest.class, "name", "");
+
+            ResponseEntity<ApiResponse<ValidationErrorData>> response = new GlobalExceptionHandler()
+                    .handleConstraintViolation(new ConstraintViolationException(violations));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().code()).isEqualTo("INVALID_INPUT");
+            assertThat(response.getBody().data().fieldErrors())
+                    .extracting(FieldErrorDetail::field)
+                    .containsExactly("name");
+        }
     }
 
     @Test

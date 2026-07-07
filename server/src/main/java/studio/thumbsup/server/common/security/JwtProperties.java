@@ -1,7 +1,10 @@
 package studio.thumbsup.server.common.security;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * JWT 설정 — application.yml의 {@code thumbsup.jwt.*}.
@@ -10,4 +13,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * default 값을 두지 않는다 (fail-fast — server/docs/env-guide.md).
  */
 @ConfigurationProperties(prefix = "thumbsup.jwt")
-public record JwtProperties(String secret, Duration accessTokenValidity) {}
+@Validated
+public record JwtProperties(
+        @NotBlank String secret, @NotNull Duration accessTokenValidity) {}
