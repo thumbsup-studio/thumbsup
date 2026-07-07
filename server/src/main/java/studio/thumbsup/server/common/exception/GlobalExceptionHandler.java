@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import studio.thumbsup.server.common.response.ApiResponse;
@@ -52,7 +53,8 @@ public class GlobalExceptionHandler {
         HttpMessageNotReadableException.class,
         MethodArgumentTypeMismatchException.class,
         MissingServletRequestParameterException.class,
-        ConstraintViolationException.class
+        ConstraintViolationException.class,
+        HandlerMethodValidationException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {
         log.warn("잘못된 요청: {}", e.getMessage());
