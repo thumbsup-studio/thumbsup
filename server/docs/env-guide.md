@@ -3,106 +3,111 @@
 서버(`server/`)의 설정·시크릿을 어디에 두고 어떻게 읽는지 정의한다.
 **코드와 깃에는 시크릿이 단 한 줄도 들어가지 않는다** — 이 원칙이 전부다.
 
-## 1. 프로파일 구조 (local / prod 2개)
+## 1. 프로파일 구조
 
-사이드프로젝트 특성상 dev 환경은 없다.
+`local`과 `prod` 2개만 유지한다. 별도 `dev` 서버/profile은 만들지 않는다.
 
 | 프로파일 | 용도 | 설정 소스 |
 |----------|------|-----------|
-| `local` | 각자 개발 머신 | `application-local.yml` + docker-compose MySQL. **AWS 불필요** |
-| `prod` | AWS 운영 | 환경변수 + **SSM Parameter Store** 런타임 주입 |
+| `local` (기본) | 서버 개발자 로컬 머신 | `application-local.yml` + docker-compose MySQL + SSM `/thumbsup/local/` |
+| `prod` | AWS 운영 | `application-prod.yml` + SSM `/thumbsup/prod/` |
+| `test` | Gradle 테스트 | `src/test/resources/application-test.yml` fixture 값 + Testcontainers |
 
-- `application.yml` = 전 환경 공통 설정만 (envelope, JPA 공통 옵션 등)
-- ⚠️ **SSM `spring.config.import`는 반드시 `application-prod.yml`에만 넣는다.**
-  공통 `application.yml`에 넣으면 로컬 부팅이 AWS 자격증명을 요구하며 실패한다.
+- `application.yml` = 전 환경 공통 설정만 둔다.
+- `application-local.yml` = 로컬 DB 고정값 + `/thumbsup/local/` SSM import.
+- `application-prod.yml` = 운영 DB/CORS/시크릿을 `/thumbsup/prod/` SSM에서 주입.
+- `test` profile은 AWS SSM을 읽지 않는다. 회귀 테스트는 Docker/Testcontainers만 필요해야 한다.
 
-## 2. AWS SSM Parameter Store
+## 2. Parameter Store 정책
 
-### 왜 SSM인가
-Standard tier(4KB 이하) 무료, 파라미터별 버전 히스토리(잘못 바꿔도 롤백 확인 가능), aws cli로 전체 라이프사이클 관리. Secrets Manager는 자동 로테이션이 필요해질 때 해당 값만 승격한다.
+Spring Cloud AWS의 `spring.config.import=aws-parameterstore:/path/`로 SSM 값을 런타임에 읽는다.
+경로가 없거나 권한이 없으면 부팅에 실패한다. 이 fail-fast 동작이 의도다.
 
-### 네이밍
+| 환경 | import 경로 | 원칙 |
+|------|-------------|------|
+| local | `/thumbsup/local/` | 서버 개발자가 공유하는 로컬 전용 secret/config만 둔다. prod 값 금지. |
+| prod | `/thumbsup/prod/` | 운영 DB/JWT/CORS/Swagger 값을 둔다. local 값 금지. |
 
-```text
-/thumbsup/prod/{KEY}     예) /thumbsup/prod/DB_PASSWORD
-```
+로컬 DB 접속정보는 SSM으로 빼지 않는다. `docker-compose.yml`과 `application-local.yml`의 고정값을 유지해
+로컬 실행 절차를 단순하게 둔다.
 
-- 시크릿(비밀번호, JWT 키 등) = **SecureString** / 일반 설정 = String
+## 3. 필수 SSM 키
 
-### 등록/수정 (cli)
+| 경로 | 타입 | 용도 |
+|------|------|------|
+| `/thumbsup/local/JWT_SECRET` | SecureString | local JWT 서명 키 |
+| `/thumbsup/local/SWAGGER_USERNAME` | String | local Swagger Basic Auth username |
+| `/thumbsup/local/SWAGGER_PASSWORD` | SecureString | local Swagger Basic Auth password |
+| `/thumbsup/prod/DB_URL` | String | prod JDBC URL |
+| `/thumbsup/prod/DB_USERNAME` | SecureString | prod DB username |
+| `/thumbsup/prod/DB_PASSWORD` | SecureString | prod DB password |
+| `/thumbsup/prod/JWT_SECRET` | SecureString | prod JWT 서명 키 |
+| `/thumbsup/prod/CORS_ALLOWED_ORIGIN_PATTERNS` | String | prod CORS origin patterns |
+| `/thumbsup/prod/SWAGGER_USERNAME` | String | prod Swagger Basic Auth username |
+| `/thumbsup/prod/SWAGGER_PASSWORD` | SecureString | prod Swagger Basic Auth password |
 
-```bash
-# 등록 (시크릿)
-aws ssm put-parameter --profile thumbsup \
-  --name "/thumbsup/prod/DB_PASSWORD" --value "..." --type SecureString
+`/thumbsup/local/*`과 `/thumbsup/prod/*`는 서로 복사하지 않는다. local은 로컬 전용 값, prod는 운영값이다.
 
-# 수정 (--overwrite 필수)
-aws ssm put-parameter --profile thumbsup \
-  --name "/thumbsup/prod/DB_PASSWORD" --value "..." --type SecureString --overwrite
+## 4. 서버 개발자 AWS 설정
 
-# 일괄 조회
-aws ssm get-parameters-by-path --profile thumbsup \
-  --path "/thumbsup/prod/" --with-decryption
-```
-
-> 주의: 명령의 평문 값이 셸 히스토리에 남는다. 민감값 등록 시 명령 앞에 공백을 넣거나(HISTCONTROL), 등록 후 히스토리를 정리한다.
-
-### Spring 연동 (런타임 주입)
-
-- 의존성: `io.awspring.cloud:spring-cloud-aws-starter-parameter-store` (+ BOM `spring-cloud-aws-dependencies`, Boot 3.5 호환 버전)
-- `application-prod.yml`:
-  ```yaml
-  spring:
-    config:
-      import: "aws-parameterstore:/thumbsup/prod/"
-  ```
-- 앱 코드는 `${DB_PASSWORD}` 참조만 하면 부팅 시 SSM에서 자동 주입된다.
-- **CI에서 파라미터를 `.env`로 굽는 빌드타임 조회 금지** — 아티팩트/로그로 시크릿이 샌다.
-
-### Fail-fast 원칙
-
-시크릿 프로퍼티에 **default 값을 주지 않는다.**
-
-```java
-@Value("${JWT_SECRET}")        // ✅ 없으면 부팅 실패 — 안전
-@Value("${JWT_SECRET:dev123}") // ❌ 금지 — 조용히 잘못된 값으로 뜸
-```
-
-## 3. 권한 (IAM) — 쓰기/읽기 분리
-
-| 주체 | 권한 |
-|------|------|
-| 파라미터 등록 담당 1명 | `ssm:PutParameter` (SSO/IAM 사용자) |
-| 앱 실행 Role (ECS Task 등) | **읽기 전용**: `ssm:GetParameters`/`GetParametersByPath` + `kms:Decrypt`, 리소스는 `/thumbsup/prod/*` 한정. PutParameter 없음 |
-| GitHub Actions | 장기 키 저장 금지 — 필요 시 **OIDC로 IAM Role 임시 위임** |
-
-## 4. 로컬 온보딩 (팀원 5명)
-
-이미 다른 AWS 계정이 설정된 머신에서도 named profile로 공존 가능하다.
+FE 개발자는 서버를 로컬에서 실행하지 않으므로 AWS 설정 대상이 아니다.
+서버 개발자는 로컬 실행 전에 AWS 권한과 profile을 준비한다.
 
 ```bash
-# 1) thumbsup 프로필 추가 (기존 default는 그대로)
-aws configure --profile thumbsup     # Access Key / Secret / region: ap-northeast-2 (서울 — 가정값, 인프라 담당과 확인)
+# 예시: named profile 생성. SSO를 쓰는 팀이면 aws configure sso --profile thumbsup 를 사용한다.
+aws configure --profile thumbsup
 
-# 2) 프로젝트 폴더에서 자동 전환 — direnv
-echo 'export AWS_PROFILE=thumbsup' > .envrc   # 커밋 금지 — 루트 .gitignore 무시 대상
-direnv allow
+# 작업 셸에서 사용할 profile 지정
+export AWS_PROFILE=thumbsup
+export AWS_REGION=ap-northeast-2
 
-# 3) 작업 전 계정 확인 습관
+# 권한 확인
 aws sts get-caller-identity
+
+# local SSM 조회 확인
+aws ssm get-parameters-by-path \
+  --path "/thumbsup/local/" \
+  --with-decryption
 ```
 
-> 안 먹으면: 셸에 `AWS_ACCESS_KEY_ID`가 export되어 있으면 프로필보다 우선한다 — `env | grep AWS`로 확인.
+이미 셸에 `AWS_ACCESS_KEY_ID`가 export되어 있으면 profile보다 우선할 수 있다.
+프로필이 먹지 않으면 `env | grep AWS`로 확인한다.
 
-## 5. 유출 방지
+## 5. 등록/수정 명령
 
-- **gitleaks**를 pre-commit 훅 + CI에 걸어 하드코딩 시크릿 커밋을 원천 차단한다 (AI 코드 생성 환경에서 특히 중요).
-- `.env`, `.envrc`는 **루트 `.gitignore`에 반드시 포함해 커밋을 차단한다** (Phase 0 레포 정리 PR에 반영 — 머지 전이라면 로컬에서 커밋하지 않도록 주의). `.env.example`(키 이름만, 값 없음)로 필요한 키 목록을 공유한다.
+```bash
+# 등록
+aws ssm put-parameter --profile thumbsup \
+  --name "/thumbsup/local/JWT_SECRET" \
+  --value "..." \
+  --type SecureString
 
-## 6. CORS origin pattern
+# 수정
+aws ssm put-parameter --profile thumbsup \
+  --name "/thumbsup/local/JWT_SECRET" \
+  --value "..." \
+  --type SecureString \
+  --overwrite
+```
 
-운영 CORS는 프론트 배포 origin을 SSM 파라미터 `CORS_ALLOWED_ORIGIN_PATTERNS`로 주입한다.
-Vercel PR preview는 배포마다 하위 도메인이 달라지므로 exact origin 목록이 아니라 Spring `allowedOriginPatterns`를 쓴다.
+민감값을 CLI 인자로 넣으면 셸 히스토리에 남을 수 있다. 등록 담당자는 히스토리 정책을 확인하고,
+가능하면 AWS Console 또는 안전한 입력 경로를 사용한다.
+
+## 6. Fail-fast 원칙
+
+시크릿 프로퍼티에는 default 값을 두지 않는다.
+
+허용 예시는 `${KEY}`처럼 값이 없으면 부팅에 실패하는 형태다.
+금지 예시는 `${KEY:...}`처럼 default를 넣어 잘못된 값으로 조용히 기동하는 형태다.
+
+새 설정은 가능하면 `@ConfigurationProperties` + Bean Validation으로 선언한다.
+예: `JwtProperties`, `CorsProperties`, `SwaggerBasicAuthProperties`.
+
+## 7. CORS origin pattern
+
+운영 CORS는 `CORS_ALLOWED_ORIGIN_PATTERNS`로 주입한다.
+Vercel PR preview는 배포마다 하위 도메인이 달라지므로 exact origin 목록이 아니라 Spring
+`allowedOriginPatterns`를 쓴다.
 
 ```text
 /thumbsup/prod/CORS_ALLOWED_ORIGIN_PATTERNS=https://thumbsup-app.vercel.app,https://*-thumbsup.vercel.app
@@ -110,4 +115,10 @@ Vercel PR preview는 배포마다 하위 도메인이 달라지므로 exact orig
 
 - `https://thumbsup-app.vercel.app`: main 머지 시 프로덕션 FE
 - `https://*-thumbsup.vercel.app`: 팀 slug로 끝나는 Vercel PR preview
-- 세션/쿠키 인증 호환을 위해 서버는 `allowCredentials(true)`를 사용하므로 `*` 단독 origin은 금지한다.
+- 서버는 `allowCredentials(true)`를 사용하므로 `*` 단독 origin은 금지한다.
+
+## 8. 유출 방지
+
+- gitleaks를 pre-commit 훅과 CI에 걸어 하드코딩 시크릿 커밋을 차단한다.
+- `.env`, `.envrc`, AWS credential 파일은 커밋하지 않는다.
+- PR 전 `git diff --cached`로 `JWT_SECRET`, `SWAGGER_PASSWORD`, `DB_PASSWORD`, access key가 섞이지 않았는지 확인한다.

@@ -3,12 +3,18 @@ package studio.thumbsup.server.common.config;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -30,9 +36,11 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private static final String[] PUBLIC_PATHS = {
-        "/actuator/health", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/api/v1/auth/**",
+    private static final String SWAGGER_ROLE = "SWAGGER";
+    private static final String[] SWAGGER_PATHS = {
+        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml",
     };
+    private static final String[] PUBLIC_PATHS = {"/actuator/health", "/api/v1/auth/**"};
 
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
@@ -48,6 +56,23 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(1)
+    public SecurityFilterChain swaggerFilterChain(
+            HttpSecurity http, AuthenticationProvider swaggerAuthenticationProvider) throws Exception {
+        http.securityMatcher(SWAGGER_PATHS)
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(basic -> basic.realmName("Thumbs Up Swagger"))
+                .logout(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(swaggerAuthenticationProvider)
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(SWAGGER_ROLE));
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
@@ -64,6 +89,31 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationProvider swaggerAuthenticationProvider(
+            SwaggerBasicAuthProperties properties, PasswordEncoder passwordEncoder) {
+        String encodedPassword = passwordEncoder.encode(properties.password());
+        return new AuthenticationProvider() {
+            @Override
+            public Authentication authenticate(Authentication authentication) {
+                String password = authentication.getCredentials() == null
+                        ? ""
+                        : authentication.getCredentials().toString();
+                if (!properties.username().equals(authentication.getName())
+                        || !passwordEncoder.matches(password, encodedPassword)) {
+                    throw new BadCredentialsException("Invalid Swagger credentials");
+                }
+                return UsernamePasswordAuthenticationToken.authenticated(
+                        authentication.getName(), null, AuthorityUtils.createAuthorityList("ROLE_" + SWAGGER_ROLE));
+            }
+
+            @Override
+            public boolean supports(Class<?> authentication) {
+                return UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication);
+            }
+        };
     }
 
     /** 자체 로그인(auth feature)의 비밀번호 해시용 */

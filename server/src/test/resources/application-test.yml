@@ -1,0 +1,16 @@
+spring:
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+
+thumbsup:
+  jwt:
+    secret: test-secret-key-for-jwt-hmac-sha-256-minimum-32-bytes
+  cors:
+    allowed-origin-patterns:
+      - http://localhost:3000
+  swagger:
+    basic-auth:
+      username: swagger-test
+      password: swagger-test-password

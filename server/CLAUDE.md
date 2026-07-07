@@ -10,9 +10,13 @@
 
 ## 서버 구현 규칙 (정본)
 
+- [./docs/backend-development-guide.md](docs/backend-development-guide.md) — AI agent 기반 서버 feature 개발 흐름, 구조, Flyway, PR 게이트
+- [./docs/local-development.md](docs/local-development.md) — 서버 개발자 로컬 실행 절차, AWS profile, Docker MySQL, 확인 URL
+- [./docs/testing-guide.md](docs/testing-guide.md) — 테스트 작성 기준, Testcontainers, 인수 테스트 기준, `@Nested`/`@DisplayName`
+- [./docs/swagger-openapi-policy.md](docs/swagger-openapi-policy.md) — 운영 Swagger/OpenAPI 접근 정책, Basic Auth, 계정 관리
 - [./docs/dto-and-query-patterns.md](docs/dto-and-query-patterns.md) — DTO 작성 규칙, 크로스 도메인 조회 패턴
 - [./docs/error-implementation.md](docs/error-implementation.md) — ErrorType·예외·전역 핸들러 구현
-- [./docs/env-guide.md](docs/env-guide.md) — 프로파일(local/prod), SSM Parameter Store, 시크릿
+- [./docs/env-guide.md](docs/env-guide.md) — 프로파일(local/prod/test), SSM Parameter Store, 시크릿
 - [./docs/ci-requirements.md](docs/ci-requirements.md) — CI/CD 담당자 인수인계 명세 (참고)
 
 ## 핵심 규칙 요약 (근거·상세는 위 문서)
@@ -23,7 +27,9 @@
 4. **생성자 주입만** (필드 `@Autowired` 금지) · `@Transactional`은 Service에만 · Controller는 검증·변환·호출만.
 5. **시크릿 하드코딩 금지** · `@Value`에 default 값 금지 (fail-fast).
 6. 시간은 주입받은 `Clock` 사용 (`LocalDateTime.now()` 직접 호출 금지).
-7. 인터페이스는 구현이 2개 이상이거나 외부 경계일 때만 (불필요한 추상화 금지).
+7. Swagger/OpenAPI는 운영에서도 제공하되 `/swagger-ui/**`, `/v3/api-docs/**`를 Basic Auth로 보호한다.
+8. `local`과 `prod` 모두 SSM Parameter Store를 사용한다 (`/thumbsup/local/`, `/thumbsup/prod/`). `dev` profile은 만들지 않는다.
+9. 인터페이스는 구현이 2개 이상이거나 외부 경계일 때만 (불필요한 추상화 금지).
 
 ## 패키지 구조 (기능별 — package-by-feature)
 
@@ -57,7 +63,8 @@ studio.thumbsup.server
 3. DTO는 **API별로** 새로 만든다 (목록/상세/생성 각각). 엔티티→DTO 변환은 `record`의 정적 팩토리 `from()`.
 4. 도메인 에러는 `{Domain}ErrorType`에 추가 (common 건드리지 않기).
 5. 다른 도메인 데이터가 필요하면 **연관관계 대신 ID로** 참조하고 조회는 [in절 일괄 조립 패턴](docs/dto-and-query-patterns.md#2-크로스-도메인-조회-조합-패턴)을 따른다 (해당 문서에 구현 예시·`@AuthenticationPrincipal`로 유저 식별하는 IDOR 방지 예시 포함). notice는 단일 엔티티라 이 패턴이 없으니, **크로스 도메인이 필요한 첫 feature는 그 문서 예시를 정본으로 삼는다.**
-6. **테스트 4종을 함께 복제** — Service(Mockito)·Controller(standalone MockMvc)·Repository(@DataJpaTest+Testcontainers)·Fixture. 테스트 없는 PR은 올리지 않는다.
-7. `./gradlew build` 통과 후 PR. (빌드에 테스트·ArchUnit·Spotless·Checkstyle이 전부 포함됨 — **빌드 통과 전 PR 금지**)
+6. **테스트 4종을 함께 복제** — Service(Mockito)·Controller(standalone MockMvc)·Repository(@DataJpaTest+Testcontainers)·Fixture. 인증/보안 경로는 필요 시 `@SpringBootTest` 인수 테스트를 추가한다.
+7. 테스트 케이스는 `@Nested`/`@DisplayName`으로 사람이 읽는 문장처럼 구분한다.
+8. `./gradlew --no-daemon spotlessApply build` 통과 후 PR. (빌드에 테스트·ArchUnit·Spotless·Checkstyle이 전부 포함됨 — **빌드 통과 전 PR 금지**)
 
 > 상세 규칙의 근거는 위 `docs/` 문서들에 있다. 판단이 서지 않으면 `notice/`의 실제 코드를 그대로 따른다.

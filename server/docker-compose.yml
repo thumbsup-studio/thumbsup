@@ -1,5 +1,5 @@
-# 기본(docker compose up --build): MySQL + 서버 전체 기동 — FE 개발자는 Java 설치 없이 로컬 API 확보
-# 서버 개발자(IDE에서 앱 실행): docker compose up -d mysql
+# 서버 개발자 기본 경로: docker compose up -d mysql 후 ./gradlew bootRun
+# app 서비스는 Docker 이미지 동작 확인용이며 local SSM을 읽기 위해 AWS profile이 필요하다.
 services:
   mysql:
     image: mysql:8.4 # 운영 RDS와 버전 일치 유지 (server/docs/ci-requirements.md)
@@ -31,6 +31,11 @@ services:
       SPRING_PROFILES_ACTIVE: local
       # 컨테이너 안에서는 localhost가 아니라 mysql 서비스명으로 접속
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
+      AWS_PROFILE: ${AWS_PROFILE:-thumbsup}
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-2}
+    volumes:
+      - ${HOME}/.aws:/home/appuser/.aws:ro
     depends_on:
       mysql:
         condition: service_healthy
