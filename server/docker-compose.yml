@@ -1,0 +1,39 @@
+# 기본(docker compose up --build): MySQL + 서버 전체 기동 — FE 개발자는 Java 설치 없이 로컬 API 확보
+# 서버 개발자(IDE에서 앱 실행): docker compose up -d mysql
+services:
+  mysql:
+    image: mysql:8.4 # 운영 RDS와 버전 일치 유지 (server/docs/ci-requirements.md)
+    container_name: thumbsup-mysql
+    environment:
+      MYSQL_DATABASE: thumbsup
+      MYSQL_USER: thumbsup
+      MYSQL_PASSWORD: thumbsup-local # 로컬 전용 값 — application-local.yml과 한 쌍
+      MYSQL_ROOT_PASSWORD: root-local
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uthumbsup", "-pthumbsup-local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    container_name: thumbsup-server
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      # 컨테이너 안에서는 localhost가 아니라 mysql 서비스명으로 접속
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
