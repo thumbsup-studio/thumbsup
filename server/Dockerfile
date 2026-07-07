@@ -13,5 +13,8 @@ RUN ./gradlew --no-daemon bootJar
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
+# 루트가 아닌 최소 권한 유저로 실행 (컨테이너 탈출 시 피해 축소)
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser
+USER appuser
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
