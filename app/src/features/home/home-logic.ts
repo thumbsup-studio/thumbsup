@@ -27,23 +27,20 @@ export function getWelcomeCopy(date: Date) {
 
   if (variant === "commute") {
     return {
-      eyebrow: "Today",
-      title: "출근 전에 한 문제, 오늘도 이어가요.",
-      body: "짧게 풀고 넘어가도 학습 흐름은 계속 이어집니다.",
+      titleTop: "출근 전에 한 문제,",
+      titleBottom: "오늘도 이어가요.",
     };
   }
 
   if (variant === "afterWork") {
     return {
-      eyebrow: "Today",
-      title: "퇴근한 지금, 오늘의 개념을 정리해요.",
-      body: "집에 가기 전에 핵심 한 문제로 흐름을 붙잡아 둡니다.",
+      titleTop: "퇴근한 지금,",
+      titleBottom: "오늘의 개념을 정리해요.",
     };
   }
 
   return {
-    eyebrow: "Today",
-    title: "자기 전에 한 번 더, 오늘 배운 걸 잠깐 확인해요.",
-    body: "부담 없는 3분 복습으로 내일의 감각을 남겨 둡니다.",
+    titleTop: "자기 전에 한 번 더,",
+    titleBottom: "오늘 배운 걸 잠깐 확인해요.",
   };
 }
