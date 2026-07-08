@@ -56,6 +56,12 @@ describe("filterNodesByQuery", () => {
     const nodes = getNodesForCategory(data, "network");
     expect(filterNodesByQuery(nodes, "UD").map((node) => node.id)).toEqual(["udp"]);
   });
+
+  it("matches case-insensitively (lowercase query → uppercase label)", () => {
+    const nodes = getNodesForCategory(data, "network");
+    expect(filterNodesByQuery(nodes, "ip").map((node) => node.id)).toEqual(["ip"]);
+    expect(filterNodesByQuery(nodes, "udp").map((node) => node.id)).toEqual(["udp"]);
+  });
 });
 
 describe("getEdgesForNodes", () => {

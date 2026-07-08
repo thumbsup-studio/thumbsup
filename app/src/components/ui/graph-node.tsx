@@ -152,9 +152,22 @@ export function MasteryIcon({
 
 const PILL_HEIGHT = 40;
 const ICON_RADIUS = 7;
-const CHAR_WIDTH = 9;
 const PADDING_X = 14;
 const ICON_GAP = 6;
+const ASCII_CHAR_WIDTH = 8;
+const WIDE_CHAR_WIDTH = 14; // CJK(한글 등)는 text-sm에서 대략 전각 폭
+
+// 한글 라벨은 ASCII보다 넓어 length*고정폭으로는 필이 좁게 잡혀 텍스트가 넘친다.
+// 런타임 getBBox는 SSR에서 못 쓰므로 문자 종류별 근사 폭으로 추정한다.
+// 한글 자모·가나·CJK·전각 영역을 전각 폭으로 취급.
+const WIDE_CHAR = /[ᄀ-ᇿ぀-ヿ㐀-鿿가-힯＀-￯]/;
+function estimateTextWidth(text: string): number {
+  let width = 0;
+  for (const char of text) {
+    width += WIDE_CHAR.test(char) ? WIDE_CHAR_WIDTH : ASCII_CHAR_WIDTH;
+  }
+  return width;
+}
 
 export type GraphNodeProps = {
   id: string;
@@ -177,10 +190,7 @@ export function GraphNode({
   selected = false,
   onSelect,
 }: GraphNodeProps) {
-  const width = Math.max(
-    64,
-    label.length * CHAR_WIDTH + ICON_RADIUS * 2 + PADDING_X * 2 + ICON_GAP,
-  );
+  const width = Math.max(64, estimateTextWidth(label) + ICON_RADIUS * 2 + PADDING_X * 2 + ICON_GAP);
   const left = x - width / 2;
   const top = y - PILL_HEIGHT / 2;
   const iconCx = left + PADDING_X + ICON_RADIUS;
