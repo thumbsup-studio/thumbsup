@@ -21,6 +21,16 @@
   --color-ink-muted: #5b6b81; /* 보조 텍스트 — bg·surface·surface-muted 위 AA 4.5:1↑ */
   --color-border: #e2e8f0;
 
+  /* 지식 그래프(아틀라스) 다크 캔버스 전용 — 라이트 토큰과 분리, knowledge-graph.png 픽셀 추출값 기준 */
+  --color-graph-bg: #0a0f1f; /* 그래프 캔버스 배경 */
+  --color-graph-surface: #1d273f; /* 캔버스 내부 패널·미학습 노드 배경 */
+  --color-graph-master: #34c88a; /* 마스터(숙련) 노드 그린 */
+  --color-graph-learning: #2f63ff; /* 학습중 노드 프라이머리 블루 */
+  --color-graph-unlearned: #8a97b5; /* 미학습 노드 보더·아이콘 회색 */
+  --color-graph-edge: #4b5a80; /* 엣지 라인 */
+  --color-graph-fg: #ffffff; /* 다크 위 흰 텍스트(학습중 노드 라벨) */
+  --color-graph-fg-muted: #b8c2da; /* 다크 위 보조 텍스트(미학습 라벨·범례) — bg 위 AA 4.5:1↑ */
+
   /* radius */
   --radius-card: 2rem;
   --radius-control: 1rem;
