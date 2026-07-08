@@ -14,7 +14,8 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 # 루트가 아닌 최소 권한 유저로 실행 (컨테이너 탈출 시 피해 축소)
-RUN useradd --system --no-create-home --shell /usr/sbin/nologin appuser
+# local 컨테이너 스모크 실행 시 ~/.aws profile을 읽을 수 있도록 홈 디렉터리는 만든다.
+RUN useradd --system --create-home --home-dir /home/appuser --shell /usr/sbin/nologin appuser
 USER appuser
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
