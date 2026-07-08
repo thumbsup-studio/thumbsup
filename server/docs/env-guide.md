@@ -33,13 +33,17 @@ Spring Cloud AWS의 `spring.config.import=aws-parameterstore:/path/`로 SSM 값�
 
 ## 3. 필수 SSM 키
 
+아래 키는 `application-local.yml`, `application-prod.yml`이 직접 참조하는 값이다.
+`SPRING_PROFILES_ACTIVE`, `AWS_PROFILE`, `AWS_REGION`은 SSM 키가 아니라 실행 환경에서 주입하는 값이다.
+로컬 DB 접속정보와 local CORS는 SSM으로 빼지 않는다.
+
 | 경로 | 타입 | 용도 |
 |------|------|------|
 | `/thumbsup/local/JWT_SECRET` | SecureString | local JWT 서명 키 |
 | `/thumbsup/local/SWAGGER_USERNAME` | String | local Swagger Basic Auth username |
 | `/thumbsup/local/SWAGGER_PASSWORD` | SecureString | local Swagger Basic Auth password |
 | `/thumbsup/prod/DB_URL` | String | prod JDBC URL |
-| `/thumbsup/prod/DB_USERNAME` | SecureString | prod DB username |
+| `/thumbsup/prod/DB_USERNAME` | String | prod DB username |
 | `/thumbsup/prod/DB_PASSWORD` | SecureString | prod DB password |
 | `/thumbsup/prod/JWT_SECRET` | SecureString | prod JWT 서명 키 |
 | `/thumbsup/prod/CORS_ALLOWED_ORIGIN_PATTERNS` | String | prod CORS origin patterns |
