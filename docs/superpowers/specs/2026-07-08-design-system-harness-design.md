@@ -31,11 +31,17 @@ preview에 배포됐고, 후속 화면이 이 디자인과 일관되게 만들�
 
 ### 3.1 레퍼런스 이미지
 
-`docs/design/references/`에 시안 2장을 커밋한다 (public 레포 노출은 승인됨 —
+`docs/design/references/`에 시안 6장을 커밋한다 (public 레포 노출은 승인됨 —
 배포된 앱에서 보이는 디자인이므로 무해 판단).
 
-- `reference-screens-1.png` — 홈·매칭형·OX·서술형·코드 문제 화면 (라이트, 블루 톤)
-- `reference-screens-2.png` — 투데이 변형(스트릭 복구 오렌지 배너·학습 잔디·티어 배지)·퀴즈 진행 화면들
+| 파일 | 내용 |
+|---|---|
+| `home-today.png` | 홈/Today 단독 — 포인트·스트릭 카드, 오늘의 코스 블루 hero 카드, 이어보기 리스트, 4탭(Today·Course·Atlas·Basecamp) |
+| `today-streak-recovery.png` | 투데이 변형 — 스트릭 복구 오렌지 배너, 진행바, 학습 잔디(그린 그리드), 티어 배지, 3탭 |
+| `quiz-types-board.png` | 퀴즈 유형 4종 — 매칭형·OX(그린/레드 대형 버튼)·키워드 서술형·코드 문제(다크 코드 블록) |
+| `quiz-flow-board.png` | 퀴즈 진행 6종 — OX·사지선다·빈칸·키워드 서술·코드 리딩·케이스 스터디, 상단 진행바 |
+| `answer-insight.png` | 정답 해설/인사이트 — 정답 그린 배너, 핵심 정리 블루 카드, 이론·예시·실무 섹션, 파생 개념 칩, 다크 꼬리질문 카드 |
+| `answer-feedback-popover.png` | 해설 상세 — 핵심 3줄 정리, 용어 팝오버(딤 오버레이), 꼬리 질문 CTA |
 
 ### 3.2 PRODUCT.md · DESIGN.md — impeccable init으로 작성
 
