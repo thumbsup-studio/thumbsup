@@ -55,11 +55,7 @@ function getTabClassName(isActive: boolean) {
   return `${baseTabClassName} text-slate-600 hover:bg-slate-100/90`;
 }
 
-export function BottomTabBar({
-  activeTab,
-  onHistoryClick,
-  onProfileClick,
-}: BottomTabBarProps) {
+export function BottomTabBar({ activeTab, onHistoryClick, onProfileClick }: BottomTabBarProps) {
   return (
     <nav
       aria-label="하단 탭"

@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Test Setup For Home Logic
+## Task 1: Test Setup For Home Logic
 
 **Files:**
 - Modify: `app/package.json`
@@ -70,7 +70,7 @@ Run: `cd app && pnpm test`
 
 Expected: FAIL because home logic functions do not exist yet
 
-### Task 2: Home Data And Logic Units
+## Task 2: Home Data And Logic Units
 
 **Files:**
 - Create: `app/src/features/home/types.ts`
@@ -115,7 +115,7 @@ Run: `cd app && pnpm test`
 
 Expected: PASS for logic tests
 
-### Task 3: Home UI Components
+## Task 3: Home UI Components
 
 **Files:**
 - Create: `app/src/features/home/components/home-shell.tsx`
@@ -156,7 +156,7 @@ Clicking `히스토리` or `프로필` should set a local “준비 중입니다
 
 Compose welcome, conditional streak, today card, and bottom tabs in a mobile-first single-column layout.
 
-### Task 4: UI Tests
+## Task 4: UI Tests
 
 **Files:**
 - Create: `app/src/test/home-page.test.tsx`
@@ -185,7 +185,7 @@ Run: `cd app && pnpm test`
 
 Expected: PASS for logic + UI tests
 
-### Task 5: Wire Root Page And Styling
+## Task 5: Wire Root Page And Styling
 
 **Files:**
 - Modify: `app/src/app/page.tsx`
@@ -206,7 +206,7 @@ Run: `cd app && pnpm test`
 
 Expected: PASS
 
-### Task 6: Verification And Delivery
+## Task 6: Verification And Delivery
 
 **Files:**
 - Verify only

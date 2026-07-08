@@ -1,7 +1,17 @@
 export type WelcomeVariant = "commute" | "afterWork" | "night";
 
+const seoulHourFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  hour12: false,
+  timeZone: "Asia/Seoul",
+});
+
+function getSeoulHour(date: Date): number {
+  return Number(seoulHourFormatter.format(date));
+}
+
 export function getWelcomeVariant(date: Date): WelcomeVariant {
-  const hour = date.getHours();
+  const hour = getSeoulHour(date);
 
   if (hour < 13) {
     return "commute";

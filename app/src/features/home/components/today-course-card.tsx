@@ -16,7 +16,9 @@ export function TodayCourseCard({ course, onStart }: TodayCourseCardProps) {
         <h2 className="text-2xl font-semibold tracking-tight">{course.subtitle}</h2>
       </div>
       <div className="mt-6 flex items-center justify-between gap-4 text-sm text-white/88">
-        <span>{course.progress}/10</span>
+        <span>
+          {course.progress}/{course.total}
+        </span>
         <span>{course.durationLabel}</span>
       </div>
       <button

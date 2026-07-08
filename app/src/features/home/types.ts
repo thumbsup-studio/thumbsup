@@ -4,6 +4,7 @@ export type HomeData = {
     title: string;
     subtitle: string;
     progress: number;
+    total: number;
     durationLabel: string;
   };
 };

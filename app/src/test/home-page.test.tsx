@@ -11,9 +11,10 @@ const baseData: HomeData = {
     title: "운영체제",
     subtitle: "프로세스와 스레드",
     progress: 3,
+    total: 8,
     durationLabel: "3분이면 끝나요",
   },
-};
+} as HomeData;
 
 afterEach(() => {
   vi.useRealTimers();
@@ -42,7 +43,7 @@ describe("HomePage", () => {
 
     expect(screen.getByText("운영체제")).toBeInTheDocument();
     expect(screen.getByText("프로세스와 스레드")).toBeInTheDocument();
-    expect(screen.getByText("3/10")).toBeInTheDocument();
+    expect(screen.getByText("3/8")).toBeInTheDocument();
     expect(screen.getByText("3분이면 끝나요")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "시작하기" })).toBeInTheDocument();
   });

@@ -7,13 +7,13 @@ describe("home logic", () => {
     expect(getWelcomeVariant(new Date("2026-07-08T12:59:00+09:00"))).toBe("commute");
   });
 
-  it("returns afterWork from 13:00 to 18:59", () => {
-    expect(getWelcomeVariant(new Date("2026-07-08T13:00:00+09:00"))).toBe("afterWork");
-    expect(getWelcomeVariant(new Date("2026-07-08T18:59:00+09:00"))).toBe("afterWork");
+  it("returns afterWork from 13:00 to 18:59 in Asia/Seoul", () => {
+    expect(getWelcomeVariant(new Date("2026-07-08T04:00:00Z"))).toBe("afterWork");
+    expect(getWelcomeVariant(new Date("2026-07-08T09:59:00Z"))).toBe("afterWork");
   });
 
-  it("returns night from 19:00", () => {
-    expect(getWelcomeVariant(new Date("2026-07-08T19:00:00+09:00"))).toBe("night");
+  it("returns night from 19:00 in Asia/Seoul", () => {
+    expect(getWelcomeVariant(new Date("2026-07-08T10:00:00Z"))).toBe("night");
   });
 
   it("hides streak when days are zero", () => {
