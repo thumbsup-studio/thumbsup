@@ -4,10 +4,16 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { type QaRoute, qaRoutes } from "./qa-routes";
 
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  /* .env.local 없음 — CI에서는 env로 주입됨 */
+}
+
 const targetUrl = process.env.QA_TARGET_URL?.replace(/\/+$/, "");
 const apiKey = process.env.ELICE_API_KEY;
 const apiBase = process.env.ELICE_QA_BASE_URL?.replace(/\/+$/, "");
-const model = process.env.ELICE_QA_MODEL || "gpt-5.2";
+const model = process.env.ELICE_QA_MODEL || "google/gemini-3.1-pro-preview";
 
 const OUT_DIR = path.resolve("e2e/screenshots");
 const REPORT_PATH = path.resolve("e2e/qa-report.md");

@@ -6,6 +6,5 @@ export type QaRoute = {
 };
 
 export const qaRoutes: QaRoute[] = [
-  { path: "/", design: null },
-  // 예) #38 이후: { path: "/quiz", design: "e2e/designs/quiz.png" },
+  { path: "/", design: "e2e/designs/home.png" },
 ];
