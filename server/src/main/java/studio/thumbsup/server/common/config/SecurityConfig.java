@@ -40,7 +40,9 @@ public class SecurityConfig {
     private static final String[] SWAGGER_PATHS = {
         "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml",
     };
-    private static final String[] PUBLIC_PATHS = {"/actuator/health", "/api/v1/auth/**"};
+    private static final String[] PUBLIC_PATHS = {
+        "/actuator/health", "/api/v1/auth/signup", "/api/v1/auth/login", "/api/v1/auth/refresh",
+    };
 
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;

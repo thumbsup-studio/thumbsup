@@ -16,6 +16,7 @@ spring:
 thumbsup:
   jwt:
     access-token-validity: 30m # 계약: docs/api-standard.md §8 (secret은 환경별 — 여기 두지 않는다)
+    refresh-token-validity: 14d # 계약: docs/api-standard.md §8
 
 server:
   port: 8080
