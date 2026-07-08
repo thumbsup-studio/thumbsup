@@ -12,10 +12,10 @@ export function StreakBlock({ streakDays }: StreakBlockProps) {
   return (
     <section
       aria-label="연속 학습"
-      className="shrink-0 rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-right shadow-[0_12px_26px_rgba(15,23,42,0.06)]"
+      className="shrink-0 rounded-card border border-border bg-surface px-4 py-3 text-right shadow-card"
     >
-      <p className="text-xs font-medium text-slate-500">연속 학습</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+      <p className="text-xs font-medium text-ink-muted">연속 학습</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight text-ink">
         {formatStreakDays(streakDays)}
       </p>
     </section>

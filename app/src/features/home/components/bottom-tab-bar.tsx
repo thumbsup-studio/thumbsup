@@ -45,21 +45,21 @@ function TabIcon({ active, tab }: { active: boolean; tab: TabKey }) {
 }
 
 const baseTabClassName =
-  "flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-5 py-2 text-[0.72rem] font-medium transition";
+  "flex min-h-11 flex-1 flex-col items-center justify-center gap-1 rounded-control px-5 py-2 text-xs font-medium transition";
 
 function getTabClassName(isActive: boolean) {
   if (isActive) {
-    return `${baseTabClassName} cursor-default text-slate-600`;
+    return `${baseTabClassName} cursor-default text-ink-muted`;
   }
 
-  return `${baseTabClassName} text-slate-600 hover:bg-slate-100/90`;
+  return `${baseTabClassName} text-ink-muted hover:bg-surface-muted`;
 }
 
 export function BottomTabBar({ activeTab, onHistoryClick, onProfileClick }: BottomTabBarProps) {
   return (
     <nav
       aria-label="하단 탭"
-      className="flex gap-1.5 rounded-[26px] border border-slate-200/90 bg-white/90 p-1.5 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur"
+      className="flex gap-1.5 rounded-card border border-border/90 bg-surface/90 p-1.5 shadow-card backdrop-blur"
     >
       <button
         aria-current={activeTab === "home" ? "page" : undefined}
