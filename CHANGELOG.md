@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://github.com/thumbsup-studio/thumbsup/compare/v0.2.0...v0.3.0) (2026-07-08)
+
+
+### Features
+
+* **app:** 디자인 시스템·3단 하네스 파운데이션 ([#38](https://github.com/thumbsup-studio/thumbsup/issues/38)) ([01b2da8](https://github.com/thumbsup-studio/thumbsup/commit/01b2da8711730aca1090a98233592c32b4850f5b))
+* **server:** refresh_token.user_id 유니크 제약 추가 ([#96](https://github.com/thumbsup-studio/thumbsup/issues/96)) ([269a8a0](https://github.com/thumbsup-studio/thumbsup/commit/269a8a09b39f8d8e7e396f723adbff151b9bf928))
+* **server:** 로그인/회원가입/토큰 재발급 API 구현 ([#44](https://github.com/thumbsup-studio/thumbsup/issues/44)) ([5486844](https://github.com/thumbsup-studio/thumbsup/commit/5486844f3de5ef8d86ca0e90fabe422807f5da5f))
+* **server:** 로그인/회원가입/토큰 재발급 API 구현 ([#44](https://github.com/thumbsup-studio/thumbsup/issues/44)) ([b0f6a72](https://github.com/thumbsup-studio/thumbsup/commit/b0f6a725c42e4a79d2681cfab5737ceb17d76bee))
+* **server:** 리프레시 토큰 지원을 위한 JWT 인프라 확장 ([#44](https://github.com/thumbsup-studio/thumbsup/issues/44)) ([ac21630](https://github.com/thumbsup-studio/thumbsup/commit/ac21630854d02deb643e8bbe10470d1eb5430b28))
+* **server:** 인증 도메인 엔티티·리포지토리·마이그레이션 추가 ([#44](https://github.com/thumbsup-studio/thumbsup/issues/44)) ([1295ed5](https://github.com/thumbsup-studio/thumbsup/commit/1295ed5734568b3091779bc31ae49aedec6fa6b3))
+* **server:** 퀴즈 문제 세트 DB 스키마·저장 로직 ([#40](https://github.com/thumbsup-studio/thumbsup/issues/40)) ([991d89a](https://github.com/thumbsup-studio/thumbsup/commit/991d89a193b7c3d765e8c22eab02420ca0cea2c9))
+
+
+### Bug Fixes
+
+* **server:** auth 마이그레이션 버전 재조정 ([#96](https://github.com/thumbsup-studio/thumbsup/issues/96)) ([5ef37df](https://github.com/thumbsup-studio/thumbsup/commit/5ef37df6bade0b47ec923cf885923cdd0bf13ad4))
+* **server:** Flyway 마이그레이션 버전 충돌 수정 및 refresh_token 유니크 제약 ([#96](https://github.com/thumbsup-studio/thumbsup/issues/96)) ([3eba789](https://github.com/thumbsup-studio/thumbsup/commit/3eba789b122bbd8d2e0e86060afce87a2ec32054))
+* **server:** refresh token 발급을 delete+insert 대신 원자적 upsert로 변경 ([#96](https://github.com/thumbsup-studio/thumbsup/issues/96)) ([ccf28c7](https://github.com/thumbsup-studio/thumbsup/commit/ccf28c71a83c5f6d880ddf141cfc0739fad0ea5c))
+
 ## [0.2.0](https://github.com/thumbsup-studio/thumbsup/compare/v0.1.0...v0.2.0) (2026-07-08)
 
 
