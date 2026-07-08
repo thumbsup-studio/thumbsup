@@ -176,6 +176,7 @@ PR #85는 그대로 머지한다(로직·테스트 유효). 이후 본 브랜치
   활성화되며(§5-③), **팀원 개별 키 배포가 불필요**해진다. 주의: Secret은 등록 후 값 재조회
   불가(write-only)이므로 로컬 사용과는 별개
 - **2차(선택) — 개인 `.env.local`**: 로컬에서 리뷰까지 돌리며 빠르게 반복하고 싶은 사람만.
+  커밋된 `app/.env.example`을 복사해 채운다 (`cp .env.example .env.local`).
   `.env*`는 gitignored + gitleaks CI 이중 방어. `visual-qa.ts`에 `process.loadEnvFile()`
   (Node 22, try/catch) 자동 로드를 추가해 셸에 키 붙여넣는 방식 제거. 키 없이 로컬 실행하면
   스크린샷만 저장(soft skip)되므로 키 없어도 육안 QA는 가능
