@@ -15,7 +15,8 @@ import lombok.NoArgsConstructor;
 import studio.thumbsup.server.common.entity.BaseEntity;
 
 /**
- * 유저의 퀴즈 풀이 이력 — 한 유저는 같은 퀴즈를 한 번만 풀 수 있다(DB 유니크 제약).
+ * 유저의 퀴즈 풀이 시도 이력 — 복습을 위해 같은 유저·퀴즈 조합도 여러 번 기록될 수 있다.
+ * "이미 통과했는지"는 이 이력 중 {@code isCorrect=true}인 시도가 있는지로 판단한다.
  *
  * <p>{@code userId}는 다른 도메인(auth)의 참조라 연관관계가 아니라 ID 값으로만 둔다
  * (server/docs/dto-and-query-patterns.md #2). {@code quiz}는 같은 도메인이라 연관관계를 사용한다.

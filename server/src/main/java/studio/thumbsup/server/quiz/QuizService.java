@@ -29,7 +29,10 @@ public class QuizService {
         this.quizProgressRepository = quizProgressRepository;
     }
 
-    /** 유저의 현재 진행 스텝에서, 아직 풀지 않은 문제 중 출제 순서가 가장 빠른 것을 반환한다. */
+    /**
+     * 유저의 현재 진행 스텝에서, 아직 정답을 맞히지 못한 문제 중 출제 순서가 가장 빠른 것을 반환한다.
+     * 오답으로 시도한 문제는 통과로 치지 않는다 — 복습(재시도)이 가능해야 하기 때문이다.
+     */
     public QuizNextResponse getNextQuiz(Long userId) {
         int stepOrder = quizProgressRepository
                 .findByUserId(userId)
@@ -41,12 +44,14 @@ public class QuizService {
             throw new BusinessException(QuizErrorType.QUIZ_NOT_FOUND);
         }
 
-        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
-                .map(attempt -> attempt.getQuiz().getId())
-                .collect(Collectors.toSet());
+        Set<Long> correctlyAnsweredQuizIds =
+                quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
+                        .filter(QuizAttempt::isCorrect)
+                        .map(attempt -> attempt.getQuiz().getId())
+                        .collect(Collectors.toSet());
 
         Quiz next = stepQuizzes.stream()
-                .filter(quiz -> !attemptedQuizIds.contains(quiz.getId()))
+                .filter(quiz -> !correctlyAnsweredQuizIds.contains(quiz.getId()))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
 

@@ -83,6 +83,21 @@ class QuizServiceTest {
         }
 
         @Test
+        @DisplayName("오답으로만 시도한 문제는 통과로 치지 않고 다시 반환한다(복습 허용)")
+        void does_not_skip_quiz_with_only_incorrect_attempt() {
+            quizService = service();
+            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            Quiz only = quizWithId(10L, 1, 1);
+            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(only));
+            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+                    .willReturn(List.of(QuizAttempt.create(only, USER_ID, false)));
+
+            QuizNextResponse response = quizService.getNextQuiz(USER_ID);
+
+            assertThat(response.quizId()).isEqualTo(10L);
+        }
+
+        @Test
         @DisplayName("현재 스텝에 해당하는 문제가 없으면 QUIZ_NOT_FOUND")
         void throws_quiz_not_found_when_step_is_empty() {
             quizService = service();

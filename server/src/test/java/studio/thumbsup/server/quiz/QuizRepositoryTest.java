@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -171,13 +171,30 @@ class QuizRepositoryTest {
     class QuizAttemptPersistence {
 
         @Test
-        @DisplayName("같은 유저·퀴즈 조합은 한 번만 저장된다(유니크 제약)")
-        void rejects_duplicate_attempt_for_same_user_and_quiz() {
+        @DisplayName("같은 유저·퀴즈 조합도 복습을 위해 여러 번 저장할 수 있다")
+        void allows_multiple_attempts_for_same_user_and_quiz() {
+            Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
+            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false));
+
+            assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true)))
+                    .doesNotThrowAnyException();
+            assertThat(quizAttemptRepository.findAll()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("풀이 이력이 남은 퀴즈는 삭제할 수 없다(ON DELETE RESTRICT)")
+        void rejects_deleting_quiz_with_attempt_history() {
             Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
             quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true));
 
-            assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false)))
-                    .isInstanceOf(DataIntegrityViolationException.class);
+            // 네이티브 SQL로 직접 삭제해 DB 제약(ON DELETE RESTRICT) 자체를 검증한다 —
+            // quizRepository.delete()는 Hibernate가 플러시 시점에 quiz_attempt의 참조를
+            // 미리 감지해 TransientObjectException을 던지므로 DB 레벨 확인에 부적합하다.
+            assertThatCode(() -> entityManager
+                            .createNativeQuery("DELETE FROM quiz WHERE id = :id")
+                            .setParameter("id", quiz.getId())
+                            .executeUpdate())
+                    .isInstanceOf(PersistenceException.class);
         }
 
         @Test
