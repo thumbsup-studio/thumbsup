@@ -8,12 +8,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
-# 운영에서는 API 스펙 비공개 (Swagger는 로컬 개발용)
+# 운영 Swagger/OpenAPI는 FE 협업용으로 켜되 SecurityConfig에서 Basic Auth로 보호한다.
 springdoc:
   api-docs:
-    enabled: false
+    enabled: true
   swagger-ui:
-    enabled: false
+    enabled: true
 
 thumbsup:
   jwt:
@@ -21,3 +21,7 @@ thumbsup:
   cors:
     # 콤마 구분 목록 — 예: https://thumbsup-app.vercel.app,https://*-thumbsup.vercel.app
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
+  swagger:
+    basic-auth:
+      username: ${SWAGGER_USERNAME} # SSM: /thumbsup/prod/SWAGGER_USERNAME
+      password: ${SWAGGER_PASSWORD} # SSM SecureString: /thumbsup/prod/SWAGGER_PASSWORD

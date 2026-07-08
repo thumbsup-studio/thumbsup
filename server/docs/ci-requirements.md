@@ -9,10 +9,12 @@ CI/CD·인프라 담당자가 파이프라인을 구성할 때 필요한 서버(
 
 | 체크 | 커맨드 | 포함 내용 |
 |------|--------|-----------|
-| 빌드+테스트 | `./gradlew build` (server/ 에서) | 컴파일 · 단위/통합 테스트 · **ArchUnit 아키텍처 규칙** · Spotless 포맷 · Checkstyle |
+| 빌드+테스트 | `./gradlew --no-daemon build` (server/ 에서) | 컴파일 · 단위/통합 테스트 · **ArchUnit 아키텍처 규칙** · Spotless 포맷 · Checkstyle |
 | 시크릿 스캔 | gitleaks | 하드코딩 시크릿 검출 (레포의 gitleaks 설정 사용) |
 
 - 통합 테스트는 **Testcontainers**로 MySQL 컨테이너를 띄운다 → CI 러너에 **Docker 필요** (ubuntu-latest 기본 지원).
+- 테스트는 `test` profile fixture 값을 사용한다. CI는 `/thumbsup/local/` 또는 `/thumbsup/prod/` SSM을 읽지 않는다.
+- 개발자는 PR 전 로컬에서 `./gradlew --no-daemon spotlessApply build`로 포맷 적용과 빌드를 함께 확인한다.
 - Java **21** (Temurin 권장), Gradle 캐시 활성화 권장.
 - 트리거: `server/**` 변경이 있는 PR (frontend 파이프라인은 별도).
 
@@ -21,7 +23,6 @@ CI/CD·인프라 담당자가 파이프라인을 구성할 때 필요한 서버(
 | 항목 | 값 |
 |------|-----|
 | main 직접 push | 금지 (PR로만) |
-| 필수 리뷰 | **사람 1명** (CodeRabbit 리뷰는 참고용 — 봇 승인으로 대체하지 않음) |
 | 필수 상태 체크 | 위 PR 체크 2개 (CI 생성 후 등록) |
 | 병합 방식 | **Squash merge** (CONTRIBUTING.md 컨벤션) |
 
@@ -39,9 +40,4 @@ CI/CD·인프라 담당자가 파이프라인을 구성할 때 필요한 서버(
 | AWS 인증 | GitHub Actions → **OIDC로 IAM Role 임시 위임** (장기 Access Key를 GitHub Secrets에 저장하지 않기) |
 | DB | MySQL — 버전은 `server/docker-compose.yml`에 고정된 버전과 **동일하게** (로컬↔운영 패리티) |
 | DB 마이그레이션 | 앱 부팅 시 Flyway가 자동 적용 — 별도 마이그레이션 스텝 불필요 |
-
-## 4. 서버 팀과 합의 필요한 항목
-
-- ECR 리포지토리 이름 / 배포 트리거 방식 (자동 vs 수동 승인)
-- prod CORS 허용 도메인 (프론트 배포 도메인 확정 시)
-- Actuator 노출 범위 (기본: `health`만 외부 노출)
+| Swagger/OpenAPI | 운영에서 활성화하되 `/swagger-ui/**`, `/v3/api-docs/**`는 SSM 주입 계정으로 Basic Auth 보호 |

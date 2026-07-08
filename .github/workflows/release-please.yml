@@ -1,0 +1,30 @@
+name: Release Please
+
+# main push마다 실행되어 Conventional Commits를 모아 Release PR을 생성/갱신한다.
+# 전용 토큰 RELEASE_PLEASE_TOKEN(사람 신원)을 쓰는 이유: 기본 GITHUB_TOKEN은
+# (1) 저장소 설정상 PR 생성이 차단되고 (2) 봇 토큰이 만든 PR은 필수 체크를
+# 트리거하지 못해 머지가 막힌다. 수동 확인이 필요하면 workflow_dispatch로도 실행 가능.
+# 상세는 releasing 스킬.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}

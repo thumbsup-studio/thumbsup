@@ -1,19 +1,20 @@
-# 로컬 개발 전용 — 값은 docker-compose.yml의 MySQL과 한 쌍 (시크릿 아님)
+# 로컬 개발 전용 — DB 값은 docker-compose.yml의 MySQL과 한 쌍 (시크릿 아님)
+# JWT/Swagger 계정 등 공유 시크릿은 /thumbsup/local/ SSM에서 주입한다.
 spring:
+  config:
+    import: "aws-parameterstore:/thumbsup/local/"
   datasource:
     url: jdbc:mysql://localhost:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
     username: thumbsup
     password: thumbsup-local
-  cloud:
-    aws:
-      parameterstore:
-        # 로컬에선 SSM 통합 완전 비활성 — 켜두면 SsmClient 생성 시 AWS region을
-        # 요구해 (호스트 ~/.aws가 없는) 깨끗한 환경·CI에서 부팅이 실패한다
-        enabled: false
 
 thumbsup:
   jwt:
-    secret: thumbsup-local-dev-only-secret-never-use-in-prod-32bytes # 로컬 전용 (시크릿 아님)
+    secret: ${JWT_SECRET} # SSM SecureString: /thumbsup/local/JWT_SECRET
   cors:
     allowed-origin-patterns:
       - http://localhost:3000 # Next.js 개발 서버 — docs/api-standard.md §9
+  swagger:
+    basic-auth:
+      username: ${SWAGGER_USERNAME} # SSM: /thumbsup/local/SWAGGER_USERNAME
+      password: ${SWAGGER_PASSWORD} # SSM SecureString: /thumbsup/local/SWAGGER_PASSWORD
