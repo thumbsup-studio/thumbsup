@@ -47,6 +47,16 @@ class RefreshTokenRepositoryTest {
     }
 
     @Test
+    void 유저_id로_조회한다() {
+        User user9 = userRepository.save(User.create("user9@test.com", "password"));
+        refreshTokenRepository.save(
+                RefreshToken.create(user9.getId(), "hash-9", Instant.parse("2026-07-21T00:00:00Z")));
+
+        assertThat(refreshTokenRepository.findByUserId(user9.getId())).isPresent();
+        assertThat(refreshTokenRepository.findByUserId(-1L)).isEmpty();
+    }
+
+    @Test
     void 유저_id로_삭제하면_조회되지_않는다() {
         User user7 = userRepository.save(User.create("user7@test.com", "password"));
         refreshTokenRepository.save(

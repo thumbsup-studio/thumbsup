@@ -81,11 +81,15 @@ public class AuthService {
     }
 
     private AuthTokenResponse issueTokens(Long userId) {
-        refreshTokenRepository.deleteByUserId(userId);
         String accessToken = jwtTokenProvider.createAccessToken(userId);
         String rawRefreshToken = jwtTokenProvider.createRefreshToken();
+        String tokenHash = hash(rawRefreshToken);
         Instant expiresAt = clock.instant().plus(jwtProperties.refreshTokenValidity());
-        refreshTokenRepository.save(RefreshToken.create(userId, hash(rawRefreshToken), expiresAt));
+        RefreshToken refreshToken = refreshTokenRepository
+                .findByUserId(userId)
+                .map(existing -> existing.rotate(tokenHash, expiresAt))
+                .orElseGet(() -> RefreshToken.create(userId, tokenHash, expiresAt));
+        refreshTokenRepository.save(refreshToken);
         return AuthTokenResponse.of(accessToken, rawRefreshToken);
     }
 
