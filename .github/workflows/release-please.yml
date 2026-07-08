@@ -1,8 +1,22 @@
 name: Release Please
 
+# 현재 수동 트리거(workflow_dispatch)로만 동작 — 아직 비활성 상태.
+# 활성화 조건: 기본 GITHUB_TOKEN으로는 (1) PR 생성이 저장소 설정에서 차단되고
+# (2) 봇 토큰이 만든 PR은 필수 체크(server-ci 등)를 트리거하지 못해 머지가 막힌다.
+# 활성화하려면: 사람 신원의 전용 토큰(fine-grained PAT 또는 GitHub App)을
+# RELEASE_PLEASE_TOKEN 시크릿으로 등록 → 아래 (a) push 트리거 주석 해제
+# (b) action 스텝에 `token: ${{ secrets.RELEASE_PLEASE_TOKEN }}` 추가.
+# 최초 활성화 시 앵커 태그부터: `gh release create v0.1.0 --target main`
+# (태그가 없으면 첫 실행이 과거 커밋 전체를 미릴리즈로 잡는다). 상세는 releasing 스킬.
+
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -16,3 +30,4 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # token: ${{ secrets.RELEASE_PLEASE_TOKEN }}  # 활성화 시 주석 해제

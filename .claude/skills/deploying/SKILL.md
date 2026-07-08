@@ -1,6 +1,6 @@
 ---
 name: deploying
-description: app 배포 파이프라인 이해·운영. main→프로덕션·PR→프리뷰 배포, Vercel CLI 방식, server가 배포 대상이 아닌 이유, 시크릿·프리뷰 URL·시각 QA를 확인할 때. 사용자가 "배포 어떻게 돼", "프리뷰 안 떠"라고 할 때도 트리거.
+description: app 배포 파이프라인 이해·운영. main→프로덕션·PR→프리뷰 배포, Vercel CLI 방식, server 배포(server-deploy.yml)와의 구분, 시크릿·프리뷰 URL·시각 QA를 확인할 때. 사용자가 "배포 어떻게 돼", "프리뷰 안 떠"라고 할 때도 트리거.
 ---
 
 # deploying — app 배포 파이프라인
@@ -11,7 +11,7 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`). G
 
 - **main push (`app/**` 변경)** → 프로덕션 배포 (`vercel deploy --prod`)
 - **PR (`app/**` 변경)** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
-- **`server/**`만 변경** → 배포 안 됨 (paths 필터가 `app/**`만 감시). 서버 배포는 #47에서 별도로 다룬다.
+- **`server/**` 변경** → 이 워크플로우(app-deploy)는 반응하지 않는다(paths 필터가 `app/**`만 감시). 서버는 별도 `server-deploy.yml`이 main push(`server/**`)를 AWS ECR로 배포한다 — app(Vercel)과 완전히 분리된 파이프라인이다.
 
 ## 도메인
 

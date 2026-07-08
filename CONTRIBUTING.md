@@ -96,5 +96,5 @@ CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
 
 ## 7. 배포 · 릴리즈
 
-- **배포는 `app/**` 변경에만 반응한다.** `.github/workflows/app-deploy.yml`이 main push(`app/**`)를 프로덕션에, PR(`app/**`)을 프리뷰에 배포한다. **server 작업은 Vercel 배포 대상이 아니다** — 서버 배포는 #47에서 별도로 다룬다. 상세는 `deploying` 스킬.
-- **릴리즈는 release-please가 자동화한다.** main 머지 시 Release PR이 생성되고, 이를 머지하면 통합 버전 태그(`vX.Y.Z`)와 GitHub Release가 만들어진다. 버전은 Conventional Commits 타입으로 결정된다(`feat`→minor, `fix`→patch). 상세는 `releasing` 스킬.
+- **app과 server는 배포 파이프라인이 분리돼 있다.** `app/**` 변경은 `app-deploy.yml`이 Vercel에(main→프로덕션, PR→프리뷰), `server/**` 변경은 `server-deploy.yml`이 AWS ECR에 배포한다. 서로 상대 경로에 반응하지 않는다. app 배포 상세는 `deploying` 스킬.
+- **릴리즈는 release-please로 자동화하도록 설정돼 있으나 현재 비활성이다.** 워크플로우는 수동 트리거만 걸려 있고, 활성화하려면 전용 토큰(`RELEASE_PLEASE_TOKEN`) 등록이 필요하다(기본 GITHUB_TOKEN으로는 Release PR 생성·머지가 막힌다). 활성화 후에는 main 머지 시 Release PR이 생기고, 이를 머지하면 통합 버전 태그(`vX.Y.Z`)+GitHub Release가 만들어진다(버전은 `feat`→minor, `fix`→patch). 상세는 `releasing` 스킬.
