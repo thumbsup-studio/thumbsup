@@ -113,6 +113,40 @@ describe("apiRequest", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2); // 원요청 + refresh(실패). 재시도 없음
   });
 
+  it("동시 401 TOKEN_EXPIRED는 refresh를 한 번만 호출한다(단일 인플라이트)", async () => {
+    tokenStore.set({ accessToken: "old-acc", refreshToken: "old-ref" });
+    let refreshCalls = 0;
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((url: unknown, init: { headers: Record<string, string> }) => {
+        if (String(url).includes("/auth/refresh")) {
+          refreshCalls += 1;
+          return Promise.resolve(
+            jsonResponse(
+              200,
+              envelope("SUCCESS", { accessToken: "new-acc", refreshToken: "new-ref" }),
+            ),
+          );
+        }
+        // 새 토큰으로 재시도한 요청만 성공, 옛 토큰 요청은 만료 응답
+        if (init.headers.Authorization === "Bearer new-acc") {
+          return Promise.resolve(jsonResponse(200, envelope("SUCCESS", { ok: true })));
+        }
+        return Promise.resolve(jsonResponse(401, envelope("TOKEN_EXPIRED", null, "만료")));
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [a, b] = await Promise.all([
+      apiRequest<{ ok: boolean }>("/notices"),
+      apiRequest<{ ok: boolean }>("/notices"),
+    ]);
+
+    expect(a).toEqual({ ok: true });
+    expect(b).toEqual({ ok: true });
+    expect(refreshCalls).toBe(1); // 두 요청이 하나의 refresh를 공유
+    expect(tokenStore.get()).toEqual({ accessToken: "new-acc", refreshToken: "new-ref" });
+  });
+
   it("공개 요청(auth:false)은 401이어도 refresh를 시도하지 않는다", async () => {
     const fetchMock = vi
       .fn()

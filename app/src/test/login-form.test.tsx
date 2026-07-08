@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/features/auth/login-form";
 import { ApiError, login } from "@/lib/api";
+import { AppToastProvider } from "@/providers/app-toast-provider";
+
+const renderForm = () => render(<LoginForm />, { wrapper: AppToastProvider });
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -25,7 +28,7 @@ beforeEach(() => {
 describe("LoginForm", () => {
   it("로그인 성공 시 입력값으로 login을 호출하고 홈으로 이동한다", async () => {
     loginMock.mockResolvedValue({ accessToken: "a", refreshToken: "r" });
-    render(<LoginForm />);
+    renderForm();
 
     fillForm("user@example.com", "password123");
     fireEvent.click(screen.getByRole("button", { name: "로그인" }));
@@ -38,7 +41,7 @@ describe("LoginForm", () => {
     loginMock.mockRejectedValue(
       new ApiError({ code: "INVALID_CREDENTIALS", status: 401, message: "실패" }),
     );
-    render(<LoginForm />);
+    renderForm();
 
     fillForm("user@example.com", "wrong-password");
     fireEvent.click(screen.getByRole("button", { name: "로그인" }));
@@ -50,7 +53,7 @@ describe("LoginForm", () => {
   });
 
   it("형식 오류면 API를 호출하지 않고 통합 에러만 보여준다", async () => {
-    render(<LoginForm />);
+    renderForm();
 
     fillForm("not-an-email", "short");
     fireEvent.click(screen.getByRole("button", { name: "로그인" }));

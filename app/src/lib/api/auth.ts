@@ -29,19 +29,28 @@ export async function login(email: string, password: string): Promise<Tokens> {
   return tokens;
 }
 
-/** 명시적 재발급(회전). 인터셉터가 자동 처리하지만 필요 시 직접 호출용. */
+/**
+ * 명시적 재발급(회전). 인터셉터가 자동 처리하지만 필요 시 직접 호출용.
+ * 실패하면 인터셉터(tryRefresh)와 동일하게 토큰을 비워 세션 무효 상태를 일치시킨다.
+ */
 export async function refresh(): Promise<Tokens> {
   const refreshToken = tokenStore.getRefresh();
   if (!refreshToken) {
+    tokenStore.clear();
     throw new ApiError({ code: "UNAUTHORIZED", status: 401, message: "세션이 만료됐어요." });
   }
-  const tokens = await apiRequest<Tokens>("/auth/refresh", {
-    method: "POST",
-    body: { refreshToken },
-    auth: false,
-  });
-  tokenStore.set(tokens);
-  return tokens;
+  try {
+    const tokens = await apiRequest<Tokens>("/auth/refresh", {
+      method: "POST",
+      body: { refreshToken },
+      auth: false,
+    });
+    tokenStore.set(tokens);
+    return tokens;
+  } catch (error) {
+    tokenStore.clear();
+    throw error;
+  }
 }
 
 /** 로그아웃. 서버 refresh 폐기 요청 + 로컬 토큰 삭제. 서버 실패는 무시하고 로컬은 항상 비운다. */

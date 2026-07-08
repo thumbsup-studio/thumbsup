@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SignupForm } from "@/features/auth/signup-form";
 import { ApiError, signup } from "@/lib/api";
+import { AppToastProvider } from "@/providers/app-toast-provider";
+
+const renderForm = () => render(<SignupForm />, { wrapper: AppToastProvider });
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -37,7 +40,7 @@ beforeEach(() => {
 describe("SignupForm", () => {
   it("유효 입력 + 약관 동의 시 signup을 호출하고 홈으로 이동한다(자동 로그인)", async () => {
     signupMock.mockResolvedValue({ accessToken: "a", refreshToken: "r" });
-    render(<SignupForm />);
+    renderForm();
 
     fillForm();
     fireEvent.click(screen.getByRole("button", { name: "가입하기" }));
@@ -47,7 +50,7 @@ describe("SignupForm", () => {
   });
 
   it("비밀번호가 일치하지 않으면 확인 필드 에러를 보이고 API를 호출하지 않는다", async () => {
-    render(<SignupForm />);
+    renderForm();
 
     fillForm({ confirm: "different1" });
     fireEvent.click(screen.getByRole("button", { name: "가입하기" }));
@@ -57,7 +60,7 @@ describe("SignupForm", () => {
   });
 
   it("약관에 동의하지 않으면 동의 요청 에러를 보이고 API를 호출하지 않는다", async () => {
-    render(<SignupForm />);
+    renderForm();
 
     fillForm({ agree: false });
     fireEvent.click(screen.getByRole("button", { name: "가입하기" }));
@@ -70,7 +73,7 @@ describe("SignupForm", () => {
     signupMock.mockRejectedValue(
       new ApiError({ code: "USER_EMAIL_DUPLICATED", status: 409, message: "중복" }),
     );
-    render(<SignupForm />);
+    renderForm();
 
     fillForm();
     fireEvent.click(screen.getByRole("button", { name: "가입하기" }));

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { LockIcon, MailIcon, RotateCcwIcon } from "@/components/icons";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { ApiError, login, NetworkError } from "@/lib/api";
+import { PlaceholderLink } from "./placeholder-link";
 import { validateEmail, validatePassword } from "./validation";
 
 const FAIL_MESSAGE = "이메일 또는 비밀번호를 다시 확인하고 재시도해 주세요.";
@@ -75,9 +75,12 @@ export function LoginForm() {
           error={hasError}
           disabled={loading}
         />
-        <Link href="/forgot-password" className="self-end text-sm font-medium text-primary">
+        <PlaceholderLink
+          message="비밀번호 찾기는 아직 준비 중이에요."
+          className="self-end text-sm font-medium text-primary"
+        >
           비밀번호를 잊으셨나요?
-        </Link>
+        </PlaceholderLink>
       </div>
 
       {hasError ? (

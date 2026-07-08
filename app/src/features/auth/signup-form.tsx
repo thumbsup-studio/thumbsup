@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { LockIcon, MailIcon } from "@/components/icons";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { ApiError, ErrorCode, NetworkError, signup } from "@/lib/api";
+import { PlaceholderLink } from "./placeholder-link";
 import { validateEmail, validatePassword, validatePasswordConfirm } from "./validation";
 
 type FieldErrors = { email?: string; password?: string; confirm?: string };
@@ -142,13 +142,19 @@ export function SignupForm() {
         />
         <span>
           <span className="font-semibold text-primary">(필수)</span>{" "}
-          <Link href="/terms" className="font-medium text-ink underline">
+          <PlaceholderLink
+            message="이용약관은 아직 준비 중이에요."
+            className="font-medium text-ink underline"
+          >
             이용약관
-          </Link>{" "}
+          </PlaceholderLink>{" "}
           및{" "}
-          <Link href="/privacy" className="font-medium text-ink underline">
+          <PlaceholderLink
+            message="개인정보 처리방침은 아직 준비 중이에요."
+            className="font-medium text-ink underline"
+          >
             개인정보 처리방침
-          </Link>
+          </PlaceholderLink>
           에 동의합니다.
         </span>
       </label>

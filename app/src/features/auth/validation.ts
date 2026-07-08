@@ -5,8 +5,12 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** 서버 정책과 동일(bcrypt 한계 72바이트) */
 export const PASSWORD_MIN = 8;
+/**
+ * 클라이언트 UX 상한. 시안(회원가입 S4 "8자 이상 72자 이하")과 bcrypt의 72바이트 절단 특성에
+ * 맞춘 값이다 — 서버는 하한(8자)만 강제하지만, 72바이트를 넘는 뒤쪽 문자는 bcrypt가 조용히
+ * 잘라내 무의미해지므로 클라이언트에서 미리 막는다.
+ */
 export const PASSWORD_MAX = 72;
 
 export function validateEmail(email: string): string | null {

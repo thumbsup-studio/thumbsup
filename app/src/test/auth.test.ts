@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { login, logout, signup } from "@/lib/api/auth";
+import { login, logout, refresh, signup } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/errors";
 import { tokenStore } from "@/lib/api/token-store";
 
@@ -66,6 +66,39 @@ describe("auth", () => {
     );
 
     await expect(logout()).resolves.toBeUndefined();
+    expect(tokenStore.get()).toBeNull();
+  });
+
+  it("refresh 성공 시 회전 토큰을 저장한다", async () => {
+    tokenStore.set({ accessToken: "a", refreshToken: "r" });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, envelope("SUCCESS", { accessToken: "a2", refreshToken: "r2" })),
+        ),
+    );
+
+    const tokens = await refresh();
+
+    expect(tokens).toEqual({ accessToken: "a2", refreshToken: "r2" });
+    expect(tokenStore.get()).toEqual({ accessToken: "a2", refreshToken: "r2" });
+  });
+
+  it("refresh 실패 시 토큰을 비운다(인터셉터와 일관)", async () => {
+    tokenStore.set({ accessToken: "a", refreshToken: "bad" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(401, envelope("UNAUTHORIZED", null, "재발급 실패"))),
+    );
+
+    await expect(refresh()).rejects.toBeInstanceOf(ApiError);
+    expect(tokenStore.get()).toBeNull();
+  });
+
+  it("refreshToken이 없으면 토큰을 비우고 실패한다", async () => {
+    await expect(refresh()).rejects.toBeInstanceOf(ApiError);
     expect(tokenStore.get()).toBeNull();
   });
 });

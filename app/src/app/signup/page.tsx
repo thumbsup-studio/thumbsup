@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeftIcon } from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { AuthBrand } from "@/features/auth/auth-brand";
+import { RedirectIfAuthenticated } from "@/features/auth/redirect-if-authenticated";
 import { SignupForm } from "@/features/auth/signup-form";
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default function SignupPage() {
   return (
     <main className="flex min-h-dvh flex-col px-6 py-10">
+      <RedirectIfAuthenticated />
       <div className="mx-auto w-full max-w-sm">
         <Link
           href="/login"

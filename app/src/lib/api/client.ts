@@ -26,6 +26,9 @@ const SUCCESS_CODE = "SUCCESS";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const PREFIX = "/api/v1";
 
+/** 응답이 오지 않을 때 무한 대기하지 않도록 요청 타임아웃(초과 시 abort → NetworkError). */
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
@@ -41,10 +44,26 @@ function extractFieldErrors(envelope: ApiResponse<unknown> | null): FieldError[]
 }
 
 /**
+ * 진행 중인 refresh 요청을 공유하기 위한 단일 인플라이트 프로미스.
+ * 여러 요청이 동시에 401 TOKEN_EXPIRED를 받아도 refresh는 한 번만 돈다
+ * (회전 토큰이 경합해 서로를 무효화하는 것을 방지).
+ */
+let refreshInFlight: Promise<boolean> | null = null;
+
+/**
  * access token 만료 시 refresh로 새 토큰(회전)을 받아 저장.
+ * 동시 호출은 하나의 refresh에 합류한다.
  * @returns 재발급 성공 여부. 실패하면 토큰을 비워 로그인 화면으로 유도.
  */
-async function tryRefresh(): Promise<boolean> {
+function tryRefresh(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<boolean> {
   const refreshToken = tokenStore.getRefresh();
   if (!refreshToken) return false;
   try {
@@ -77,6 +96,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS), // 타임아웃/네트워크 오류 모두 abort → NetworkError
     });
   } catch {
     throw new NetworkError();

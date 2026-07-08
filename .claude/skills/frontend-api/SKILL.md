@@ -15,9 +15,9 @@ FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서*
 
 ## 지금 상태 (작업 전 확인)
 
-- FE API 계층(fetch 래퍼·토큰 저장·env·미들웨어) **전부 미구현**.
-- `app/CLAUDE.md`: **API 클라이언트/명세 코드 생성은 #39 이후.** 이 스킬은 참조용, 코드 선작성 아님.
-- 데이터 페칭 라이브러리 없음 → 순수 `fetch`로 시작.
+- FE API 계층(fetch 래퍼·토큰 저장·refresh 인터셉터)은 **#1(로그인/회원가입)에서 `app/src/lib/api`에 구축**됨(`client.ts`·`auth.ts`·`token-store.ts`·`errors.ts`). 새 API 소비는 이 계층을 재사용한다.
+- **토큰 저장 = localStorage** (#1에서 결정, 근거는 `token-store.ts` 주석). httpOnly cookie는 전체 BFF 프록시가 필요해 범위 밖 — 하드닝 단계에서 재검토.
+- 데이터 페칭 라이브러리 없음 → 순수 `fetch` 기반.
 - `NEXT_PUBLIC_API_URL` 미설정 (Vercel env로 추후 도입 예정).
 
 ## 베이스 URL·접속
@@ -54,12 +54,12 @@ type ApiResponse<T> = { code: string; message: string; data: T | null; meta: Cur
 // unwrap(res): code !== "SUCCESS"면 code로 throw, 아니면 data 반환
 ```
 
-## #39에서 정할 열린 항목 (지금 코드로 확정하지 말 것)
+## 아직 열린 항목
 
-- 토큰 저장 위치 (httpOnly cookie vs localStorage) — 계약 문서 미규정, FE 결정.
-- fetch 래퍼/클라이언트 모듈 구조, refresh 인터셉터 구현.
 - Server Component vs Client Component fetch 경계 (`next-best-practices` 참조).
 - 페칭 라이브러리(TanStack Query 등) 도입 여부.
+
+> 토큰 저장(localStorage)·fetch 래퍼·refresh 인터셉터는 #1에서 확정·구현됨(위 "지금 상태"). BFF+httpOnly cookie 이전은 하드닝 단계에서 별도 검토.
 
 ## 하지 말 것
 
@@ -67,4 +67,4 @@ type ApiResponse<T> = { code: string; message: string; data: T | null; meta: Cur
 - 204/No-Content 기대 — 삭제도 200 + `data:null`.
 - offset 페이지네이션 가정 — 커서 방식만.
 - 로컬 FE → prod 서버 직접 호출 (CORS 차단).
-- #39 전에 API 클라이언트/명세 코드 커밋.
+- 기존 `src/lib/api` 계층을 우회한 임시 `fetch` 남발 — envelope 언랩·Bearer·refresh 재발급이 빠진다.
