@@ -1,0 +1,56 @@
+export type WelcomeVariant = "commute" | "afterWork" | "night";
+
+const seoulHourFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  hour12: false,
+  timeZone: "Asia/Seoul",
+});
+
+function getSeoulHour(date: Date): number {
+  return Number(seoulHourFormatter.format(date));
+}
+
+export function getWelcomeVariant(date: Date): WelcomeVariant {
+  const hour = getSeoulHour(date);
+
+  if (hour < 13) {
+    return "commute";
+  }
+
+  if (hour < 19) {
+    return "afterWork";
+  }
+
+  return "night";
+}
+
+export function shouldShowStreak(streakDays: number): boolean {
+  return streakDays > 0;
+}
+
+export function formatStreakDays(streakDays: number): string {
+  return `${streakDays}일`;
+}
+
+export function getWelcomeCopy(date: Date) {
+  const variant = getWelcomeVariant(date);
+
+  if (variant === "commute") {
+    return {
+      titleTop: "출근하며 한 문제,",
+      titleBottom: "오늘도 이어가요.",
+    };
+  }
+
+  if (variant === "afterWork") {
+    return {
+      titleTop: "자기 전에 한 문제,",
+      titleBottom: "오늘도 이어가요.",
+    };
+  }
+
+  return {
+    titleTop: "자기 전에 한 문제,",
+    titleBottom: "오늘도 이어가요.",
+  };
+}
