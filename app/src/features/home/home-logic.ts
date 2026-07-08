@@ -37,20 +37,20 @@ export function getWelcomeCopy(date: Date) {
 
   if (variant === "commute") {
     return {
-      titleTop: "출근 전에 한 문제,",
+      titleTop: "출근하며 한 문제,",
       titleBottom: "오늘도 이어가요.",
     };
   }
 
   if (variant === "afterWork") {
     return {
-      titleTop: "퇴근한 지금,",
-      titleBottom: "오늘의 개념을 정리해요.",
+      titleTop: "자기 전에 한 문제,",
+      titleBottom: "오늘도 이어가요.",
     };
   }
 
   return {
-    titleTop: "자기 전에 한 번 더,",
-    titleBottom: "오늘 배운 걸 잠깐 확인해요.",
+    titleTop: "자기 전에 한 문제,",
+    titleBottom: "오늘도 이어가요.",
   };
 }
