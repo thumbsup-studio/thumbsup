@@ -46,7 +46,7 @@ Claude 디자인 산출물 — **자립형 HTML 목업**(폰트 임베드, 브�
 - 아틀라스: `atlas.png`(데이터 있음) / `atlas-empty.png`(빈 상태)
 
 ## 기존 레퍼런스 (잠정·레거시 — 새 시안으로 교체 예정)
-#38에서 커밋된 6장. 새 Claude 디자인이 확정되기 전까지의 참고용이며 기준으로 고정하지 않는다.
+이 PR(#38)에서 커밋된 6장. 새 Claude 디자인이 확정되기 전까지의 참고용이며 기준으로 고정하지 않는다.
 `home-today.png` · `today-streak-recovery.png` · `quiz-types-board.png` · `quiz-flow-board.png` · `answer-insight.png` · `answer-feedback-popover.png`
 
 ## 다음 단계
