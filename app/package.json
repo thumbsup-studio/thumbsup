@@ -16,7 +16,9 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:ci": "biome ci .",
-    "qa:visual": "tsx e2e/visual-qa.ts"
+    "qa:visual": "tsx e2e/visual-qa.ts",
+    "check:design": "node scripts/check-design.mjs",
+    "test:design": "node --test scripts/check-design.test.mjs"
   },
   "dependencies": {
     "next": "16.2.10",
