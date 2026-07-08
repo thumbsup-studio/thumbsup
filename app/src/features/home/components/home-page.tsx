@@ -17,9 +17,9 @@ export function HomePage({ data, now }: HomePageProps) {
   const currentDate = typeof now === "string" ? new Date(now) : now;
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7f9fc_38%,#eef2f8_100%)] px-4 py-6 text-slate-950 sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md flex-col gap-5">
-        <section className="rounded-[36px] border border-slate-200/80 bg-[#f4f7fb] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.10)]">
+    <main className="flex min-h-screen flex-col bg-bg px-4 py-6 text-ink sm:px-6">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
+        <section className="rounded-card border border-border/80 bg-bg p-5 shadow-card">
           <div className="space-y-5">
             <div className="flex items-start justify-between gap-4">
               <WelcomeBlock now={currentDate} />

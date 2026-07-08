@@ -80,8 +80,8 @@ export function AppToastProvider({ children }: PropsWithChildren) {
 
   const toastClassName =
     toast?.tone === "error"
-      ? "border-rose-200 bg-rose-50 text-rose-950 shadow-[0_12px_30px_rgba(225,29,72,0.18)]"
-      : "border-slate-200 bg-white text-slate-900 shadow-[0_12px_30px_rgba(15,23,42,0.12)]";
+      ? "border-danger/30 bg-danger/10 text-ink shadow-card"
+      : "border-border bg-surface text-ink shadow-card";
 
   return (
     <ToastContext.Provider value={value}>
@@ -90,7 +90,7 @@ export function AppToastProvider({ children }: PropsWithChildren) {
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
           <div
             aria-live="polite"
-            className={`w-full max-w-sm rounded-2xl border px-4 py-3 text-sm font-medium ${toastClassName}`}
+            className={`w-full max-w-sm rounded-control border px-4 py-3 text-sm font-medium ${toastClassName}`}
             data-tone={toast.tone}
             role={toast.tone === "error" ? "alert" : "status"}
           >

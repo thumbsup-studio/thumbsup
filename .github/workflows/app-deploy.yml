@@ -107,7 +107,7 @@ jobs:
         env:
           QA_TARGET_URL: ${{ needs.deploy.outputs.url }}
           ELICE_API_KEY: ${{ secrets.ELICE_API_KEY }}
-          ELICE_BASE_URL: ${{ vars.ELICE_BASE_URL }}
+          ELICE_QA_BASE_URL: ${{ secrets.ELICE_QA_BASE_URL }}
           ELICE_QA_MODEL: ${{ vars.ELICE_QA_MODEL }}
         run: pnpm qa:visual
       - name: QA 리포트 코멘트

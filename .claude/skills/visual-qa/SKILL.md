@@ -10,7 +10,7 @@ description: UI 변경 후 로컬에서 AI 시각 QA 실행. 스크린샷 → �
 
 ```bash
 cd app && QA_TARGET_URL=http://localhost:3000 \
-  ELICE_API_KEY=<키> ELICE_BASE_URL=<엘리스 OpenAI 호환 엔드포인트, /v1까지> \
+  ELICE_API_KEY=<키> ELICE_QA_BASE_URL=<엘리스 OpenAI 호환 엔드포인트, /v1까지> \
   pnpm qa:visual
 ```
 

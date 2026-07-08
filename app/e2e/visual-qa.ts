@@ -4,10 +4,16 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { type QaRoute, qaRoutes } from "./qa-routes";
 
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  /* .env.local 없음 — CI에서는 env로 주입됨 */
+}
+
 const targetUrl = process.env.QA_TARGET_URL?.replace(/\/+$/, "");
 const apiKey = process.env.ELICE_API_KEY;
-const apiBase = process.env.ELICE_BASE_URL?.replace(/\/+$/, "");
-const model = process.env.ELICE_QA_MODEL || "gpt-5.2";
+const apiBase = process.env.ELICE_QA_BASE_URL?.replace(/\/+$/, "");
+const model = process.env.ELICE_QA_MODEL || "google/gemini-3.1-pro-preview";
 
 const OUT_DIR = path.resolve("e2e/screenshots");
 const REPORT_PATH = path.resolve("e2e/qa-report.md");
@@ -96,7 +102,7 @@ async function main() {
 
   if (!apiKey || !apiBase) {
     console.log(
-      "⏭️ ELICE_API_KEY / ELICE_BASE_URL 미설정 — 스크린샷만 저장하고 AI 리뷰는 건너뜁니다.",
+      "⏭️ ELICE_API_KEY / ELICE_QA_BASE_URL 미설정 — 스크린샷만 저장하고 AI 리뷰는 건너뜁니다.",
     );
     return; // soft skip: 리포트 없음, exit 0
   }

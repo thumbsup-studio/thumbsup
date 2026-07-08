@@ -1,0 +1,34 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="디자인/토큰" />
+
+# 디자인 토큰
+
+앱 스타일은 전부 이 토큰 이름으로만 참조한다. 값은 `src/app/globals.css`의 `@theme`.
+
+## 컬러
+<div className="flex flex-wrap gap-3">
+  <div className="rounded-control bg-primary text-primary-fg p-4">primary</div>
+  <div className="rounded-control bg-accent text-primary-fg p-4">accent</div>
+  <div className="rounded-control bg-ox-o text-primary-fg p-4">ox-o</div>
+  <div className="rounded-control bg-ox-x text-primary-fg p-4">ox-x</div>
+  <div className="rounded-control bg-surface-muted text-ink p-4 border border-border">surface-muted</div>
+</div>
+
+## Radius
+<div className="flex gap-3">
+  <div className="rounded-card bg-surface border border-border p-6">card</div>
+  <div className="rounded-control bg-surface border border-border p-6">control</div>
+  <div className="rounded-chip bg-surface border border-border px-4 py-2">chip</div>
+</div>
+
+## 그림자
+<div className="flex gap-6">
+  <div className="rounded-card bg-surface shadow-card p-6">shadow-card</div>
+  <div className="rounded-card bg-primary text-primary-fg shadow-hero p-6">shadow-hero</div>
+</div>
+
+## 룰
+- arbitrary value(`bg-[#...]`)·raw hex 금지 — `check:design` 게이트가 차단
+- 새 컴포넌트는 스토리 필수
+- 색만으로 상태 구분 금지(아이콘·텍스트 병행)
