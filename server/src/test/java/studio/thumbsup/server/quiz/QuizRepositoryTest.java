@@ -2,6 +2,7 @@ package studio.thumbsup.server.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,9 +34,19 @@ class QuizRepositoryTest {
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final QuizRepository quizRepository;
+    private final EntityManager entityManager;
 
-    QuizRepositoryTest(@Autowired QuizRepository quizRepository) {
+    QuizRepositoryTest(@Autowired QuizRepository quizRepository, @Autowired EntityManager entityManager) {
         this.quizRepository = quizRepository;
+        this.entityManager = entityManager;
+    }
+
+    private long countChoicesByQuizId(Long quizId) {
+        return ((Number) entityManager
+                        .createNativeQuery("SELECT COUNT(*) FROM quiz_choice WHERE quiz_id = :quizId")
+                        .setParameter("quizId", quizId)
+                        .getSingleResult())
+                .longValue();
     }
 
     @Nested
@@ -94,24 +105,36 @@ class QuizRepositoryTest {
         }
     }
 
-    @Test
-    @DisplayName("감사 필드는 저장 시 자동으로 채워진다")
-    void audit_fields_are_populated_on_save() {
-        Quiz saved = quizRepository.save(QuizFixture.oxQuiz());
+    @Nested
+    @DisplayName("감사 필드")
+    class AuditFields {
 
-        assertThat(saved.getCreatedAt()).isNotNull();
-        assertThat(saved.getUpdatedAt()).isNotNull();
+        @Test
+        @DisplayName("저장 시 자동으로 채워진다")
+        void audit_fields_are_populated_on_save() {
+            Quiz saved = quizRepository.save(QuizFixture.oxQuiz());
+
+            assertThat(saved.getCreatedAt()).isNotNull();
+            assertThat(saved.getUpdatedAt()).isNotNull();
+        }
     }
 
-    @Test
-    @DisplayName("퀴즈 삭제 시 자식 데이터도 함께 삭제된다(cascade)")
-    void deleting_quiz_cascades_to_children() {
-        Quiz saved = quizRepository.save(QuizFixture.multipleChoiceQuiz());
-        Long id = saved.getId();
+    @Nested
+    @DisplayName("퀴즈 삭제")
+    class DeleteQuiz {
 
-        quizRepository.delete(saved);
-        quizRepository.flush();
+        @Test
+        @DisplayName("자식 데이터(선택지)도 DB에서 함께 삭제된다(cascade)")
+        void deleting_quiz_cascades_to_children() {
+            Quiz saved = quizRepository.save(QuizFixture.multipleChoiceQuiz());
+            Long id = saved.getId();
+            assertThat(countChoicesByQuizId(id)).isEqualTo(4);
 
-        assertThat(quizRepository.findById(id)).isEmpty();
+            quizRepository.delete(saved);
+            quizRepository.flush();
+
+            assertThat(quizRepository.findById(id)).isEmpty();
+            assertThat(countChoicesByQuizId(id)).isZero();
+        }
     }
 }

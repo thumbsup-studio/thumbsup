@@ -27,7 +27,7 @@ CREATE TABLE quiz_choice (
     is_correct    BIT(1)       NOT NULL,
     display_order INT          NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_quiz_choice_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id)
+    CONSTRAINT fk_quiz_choice_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id) ON DELETE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -38,7 +38,7 @@ CREATE TABLE quiz_answer_keyword (
     slot_order INT          NOT NULL,
     keyword    VARCHAR(200) NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_quiz_answer_keyword_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id)
+    CONSTRAINT fk_quiz_answer_keyword_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id) ON DELETE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -50,7 +50,7 @@ CREATE TABLE quiz_follow_up_question (
     is_primary    BIT(1)       NOT NULL DEFAULT 0, -- 해설 화면 대표 꼬리질문(#9)
     display_order INT          NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_quiz_follow_up_question_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id)
+    CONSTRAINT fk_quiz_follow_up_question_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id) ON DELETE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -61,7 +61,7 @@ CREATE TABLE quiz_derived_concept (
     name          VARCHAR(200) NOT NULL,
     display_order INT          NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_quiz_derived_concept_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id)
+    CONSTRAINT fk_quiz_derived_concept_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id) ON DELETE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -72,7 +72,7 @@ CREATE TABLE quiz_keyword (
     keyword     VARCHAR(200)  NOT NULL,
     description VARCHAR(1000) NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_quiz_keyword_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id)
+    CONSTRAINT fk_quiz_keyword_quiz FOREIGN KEY (quiz_id) REFERENCES quiz (id) ON DELETE CASCADE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
