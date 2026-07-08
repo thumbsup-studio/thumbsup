@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
 import java.nio.charset.StandardCharsets;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -70,10 +68,11 @@ class AuthServiceTest {
     }
 
     @Test
-    void 회원가입_성공시_유저를_생성하고_기존_토큰_정리_후_신규_토큰을_발급한다() {
+    void 회원가입_성공시_유저를_생성하고_신규_토큰을_발급한다() {
         given(userRepository.existsByEmail("a@test.com")).willReturn(false);
         given(passwordEncoder.encode("password1")).willReturn("hashed");
         given(userRepository.save(any(User.class))).willReturn(AuthFixture.user(1L, "a@test.com", "hashed"));
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
         given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
 
@@ -91,10 +90,6 @@ class AuthServiceTest {
         assertThat(savedRefreshToken.getTokenHash()).isEqualTo(expectedHash);
         assertThat(savedRefreshToken.getTokenHash()).isNotEqualTo(response.refreshToken());
         assertThat(savedRefreshToken.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(14)));
-
-        InOrder inOrder = inOrder(refreshTokenRepository);
-        inOrder.verify(refreshTokenRepository).deleteByUserId(1L);
-        inOrder.verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 
     private static String sha256Hex(String rawToken) {
@@ -133,6 +128,7 @@ class AuthServiceTest {
         User user = AuthFixture.user(1L, "a@test.com", "hashed");
         given(userRepository.findByEmail("a@test.com")).willReturn(Optional.of(user));
         given(passwordEncoder.matches("password1", "hashed")).willReturn(true);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
         given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
 
@@ -140,6 +136,26 @@ class AuthServiceTest {
 
         assertThat(response.accessToken()).isEqualTo("access-token");
         assertThat(response.refreshToken()).isNotBlank();
+    }
+
+    @Test
+    void 로그인_성공시_기존_refresh_token이_있으면_회전한다() {
+        User user = AuthFixture.user(1L, "a@test.com", "hashed");
+        RefreshToken existing = AuthFixture.refreshToken(9L, 1L, "old-hash", NOW.plus(Duration.ofDays(1)));
+        given(userRepository.findByEmail("a@test.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("password1", "hashed")).willReturn(true);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of(existing));
+        given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
+        given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
+
+        AuthTokenResponse response = authService.login(new LoginRequest("a@test.com", "password1"));
+
+        ArgumentCaptor<RefreshToken> refreshTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(refreshTokenCaptor.capture());
+        RefreshToken savedRefreshToken = refreshTokenCaptor.getValue();
+
+        assertThat(savedRefreshToken.getId()).isEqualTo(9L);
+        assertThat(savedRefreshToken.getTokenHash()).isEqualTo(sha256Hex(response.refreshToken()));
     }
 
     @Test
@@ -167,6 +183,7 @@ class AuthServiceTest {
     void refresh_성공시_기존_토큰을_회전하고_신규_토큰을_발급한다() {
         RefreshToken valid = AuthFixture.refreshToken(1L, 7L, "hash", NOW.plus(Duration.ofDays(1)));
         given(refreshTokenRepository.findByTokenHash(any())).willReturn(Optional.of(valid));
+        given(refreshTokenRepository.findByUserId(7L)).willReturn(Optional.of(valid));
         given(jwtTokenProvider.createAccessToken(7L)).willReturn("new-access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("new-raw-refresh-token");
 
@@ -180,14 +197,11 @@ class AuthServiceTest {
         RefreshToken savedRefreshToken = refreshTokenCaptor.getValue();
 
         String expectedHash = sha256Hex(response.refreshToken());
+        assertThat(savedRefreshToken.getId()).isEqualTo(1L);
         assertThat(savedRefreshToken.getTokenHash()).hasSize(64).matches("[0-9a-f]{64}");
         assertThat(savedRefreshToken.getTokenHash()).isEqualTo(expectedHash);
         assertThat(savedRefreshToken.getTokenHash()).isNotEqualTo(response.refreshToken());
         assertThat(savedRefreshToken.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofDays(14)));
-
-        InOrder inOrder = inOrder(refreshTokenRepository);
-        inOrder.verify(refreshTokenRepository).deleteByUserId(7L);
-        inOrder.verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 
     @Test

@@ -23,7 +23,7 @@ public class RefreshToken extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
     @Column(name = "token_hash", nullable = false, unique = true, length = 64)
@@ -44,5 +44,11 @@ public class RefreshToken extends BaseEntity {
 
     public boolean isExpired(Clock clock) {
         return expiresAt.isBefore(clock.instant());
+    }
+
+    public RefreshToken rotate(String tokenHash, Instant expiresAt) {
+        this.tokenHash = tokenHash;
+        this.expiresAt = expiresAt;
+        return this;
     }
 }
