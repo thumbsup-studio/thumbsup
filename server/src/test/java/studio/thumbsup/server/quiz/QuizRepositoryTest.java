@@ -2,6 +2,7 @@ package studio.thumbsup.server.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
@@ -190,7 +191,7 @@ class QuizRepositoryTest {
             // 네이티브 SQL로 직접 삭제해 DB 제약(ON DELETE RESTRICT) 자체를 검증한다 —
             // quizRepository.delete()는 Hibernate가 플러시 시점에 quiz_attempt의 참조를
             // 미리 감지해 TransientObjectException을 던지므로 DB 레벨 확인에 부적합하다.
-            assertThatCode(() -> entityManager
+            assertThatThrownBy(() -> entityManager
                             .createNativeQuery("DELETE FROM quiz WHERE id = :id")
                             .setParameter("id", quiz.getId())
                             .executeUpdate())

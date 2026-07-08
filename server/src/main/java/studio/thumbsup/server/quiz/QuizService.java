@@ -16,6 +16,8 @@ import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 @Transactional(readOnly = true)
 public class QuizService {
 
+    private static final int INITIAL_STEP_ORDER = 1;
+
     private final QuizRepository quizRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizProgressRepository quizProgressRepository;
@@ -37,7 +39,7 @@ public class QuizService {
         int stepOrder = quizProgressRepository
                 .findByUserId(userId)
                 .map(QuizProgress::getCurrentStepOrder)
-                .orElse(1);
+                .orElse(INITIAL_STEP_ORDER);
 
         List<Quiz> stepQuizzes = quizRepository.findByStepOrderOrderBySlotOrderAsc(stepOrder);
         if (stepQuizzes.isEmpty()) {

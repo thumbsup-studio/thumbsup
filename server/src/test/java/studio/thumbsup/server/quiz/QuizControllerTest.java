@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -53,27 +55,34 @@ class QuizControllerTest {
                 .setAuthentication(new UsernamePasswordAuthenticationToken(userId, null, List.of()));
     }
 
-    @Test
-    void 다음_문제_조회_성공시_200과_문제_데이터를_반환한다() throws Exception {
-        authenticateAs(7L);
-        QuizNextResponse response = new QuizNextResponse(
-                1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 1);
-        given(quizService.getNextQuiz(eq(7L))).willReturn(response);
+    @Nested
+    @DisplayName("다음 문제 조회")
+    class GetNextQuiz {
 
-        mockMvc.perform(get("/api/v1/quizzes/next"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.quizId").value(1))
-                .andExpect(jsonPath("$.data.type").value("OX"));
-    }
+        @Test
+        @DisplayName("성공하면 200과 문제 데이터를 반환한다")
+        void returns_200_with_quiz_data_on_success() throws Exception {
+            authenticateAs(7L);
+            QuizNextResponse response = new QuizNextResponse(
+                    1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 1);
+            given(quizService.getNextQuiz(eq(7L))).willReturn(response);
 
-    @Test
-    void 스텝을_모두_풀었으면_404_QUIZ_STEP_COMPLETED() throws Exception {
-        authenticateAs(7L);
-        given(quizService.getNextQuiz(eq(7L))).willThrow(new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
+            mockMvc.perform(get("/api/v1/quizzes/next"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.quizId").value(1))
+                    .andExpect(jsonPath("$.data.type").value("OX"));
+        }
 
-        mockMvc.perform(get("/api/v1/quizzes/next"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("QUIZ_STEP_COMPLETED"));
+        @Test
+        @DisplayName("스텝을 모두 풀었으면 404 QUIZ_STEP_COMPLETED를 반환한다")
+        void returns_404_when_step_completed() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getNextQuiz(eq(7L))).willThrow(new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
+
+            mockMvc.perform(get("/api/v1/quizzes/next"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("QUIZ_STEP_COMPLETED"));
+        }
     }
 }
