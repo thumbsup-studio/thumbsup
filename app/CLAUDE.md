@@ -17,7 +17,7 @@ pnpm build       # 프로덕션 빌드
 - Server Component가 기본. `'use client'`는 상호작용이 필요한 최소 단위 컴포넌트에만
 - import alias: `@/*` → `src/*`
 - **UI 작업 시 design-system 스킬 필수 로드.** 스타일은 globals.css @theme 토큰·src/components/ui 컴포넌트만 사용(arbitrary value·raw hex 금지, check:design 게이트가 강제)
-- API 클라이언트/명세 관련 코드 생성 금지 — #39 이후
+- **API 연동·소비 작업 시 `frontend-api` 스킬을 먼저 로드한다** (계약·엔드포인트·소비 규칙). API 클라이언트 계층(`src/lib/api`)은 #1(로그인/회원가입)에서 최초 구축된다
 
 ## 완료 기준
 
