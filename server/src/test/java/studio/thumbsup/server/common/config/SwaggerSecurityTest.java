@@ -8,11 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +30,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @ActiveProfiles("test")
 class SwaggerSecurityTest {
+
+    static Stream<String> swaggerDocumentPaths() {
+        return Stream.of(
+                "/swagger-ui.html",
+                "/swagger-ui/index.html",
+                "/v3/api-docs",
+                "/v3/api-docs.yaml",
+                "/v3/api-docs/swagger-config");
+    }
 
     @Container
     @ServiceConnection
@@ -53,14 +63,7 @@ class SwaggerSecurityTest {
         }
 
         @ParameterizedTest
-        @ValueSource(
-                strings = {
-                    "/swagger-ui.html",
-                    "/swagger-ui/index.html",
-                    "/v3/api-docs",
-                    "/v3/api-docs.yaml",
-                    "/v3/api-docs/swagger-config",
-                })
+        @MethodSource("studio.thumbsup.server.common.config.SwaggerSecurityTest#swaggerDocumentPaths")
         @DisplayName("Swagger/OpenAPI 경로는 인증 없이 접근하면 Basic 인증을 요구한다")
         void swagger_paths_require_basic_auth(String path) throws Exception {
             mockMvc.perform(get(path))
@@ -69,14 +72,7 @@ class SwaggerSecurityTest {
         }
 
         @ParameterizedTest
-        @ValueSource(
-                strings = {
-                    "/swagger-ui.html",
-                    "/swagger-ui/index.html",
-                    "/v3/api-docs",
-                    "/v3/api-docs.yaml",
-                    "/v3/api-docs/swagger-config",
-                })
+        @MethodSource("studio.thumbsup.server.common.config.SwaggerSecurityTest#swaggerDocumentPaths")
         @DisplayName("잘못된 Swagger 계정이면 Swagger/OpenAPI 경로 접근을 거부한다")
         void swagger_paths_reject_wrong_basic_auth(String path) throws Exception {
             mockMvc.perform(get(path).with(httpBasic("swagger-test", "wrong-password")))
@@ -84,14 +80,7 @@ class SwaggerSecurityTest {
         }
 
         @ParameterizedTest
-        @ValueSource(
-                strings = {
-                    "/swagger-ui.html",
-                    "/swagger-ui/index.html",
-                    "/v3/api-docs",
-                    "/v3/api-docs.yaml",
-                    "/v3/api-docs/swagger-config",
-                })
+        @MethodSource("studio.thumbsup.server.common.config.SwaggerSecurityTest#swaggerDocumentPaths")
         @DisplayName("올바른 Swagger 계정이면 Swagger/OpenAPI 경로 접근을 통과시킨다")
         void swagger_paths_allow_valid_basic_auth(String path) throws Exception {
             mockMvc.perform(get(path).with(httpBasic("swagger-test", "swagger-test-password")))

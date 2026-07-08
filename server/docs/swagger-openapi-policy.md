@@ -15,7 +15,7 @@ Swagger/OpenAPI는 FE 협업용 API 레퍼런스다. FE 개발자에게 로컬 D
 
 ## 2. 보안 정책
 
-- `/swagger-ui/**`, `/swagger-ui.html`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml`은 Basic Auth로 보호한다.
+- `/swagger-ui/**`, `/swagger-ui.html`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml`, `/v3/api-docs/swagger-config`는 Basic Auth로 보호한다.
 - IP 제한과 VPN은 쓰지 않는다. FE 개발자의 접근 제약이 커지기 때문이다.
 - Swagger Basic Auth 계정은 API 로그인 계정이 아니다. 문서 접근 전용 계정이다.
 - Swagger 화면의 `Authorize` 버튼에 넣는 Bearer JWT는 API 테스트용이다. Basic Auth와 목적이 다르다.
@@ -39,6 +39,6 @@ Swagger 접근 정책을 바꾸는 PR은 다음을 같이 확인한다.
 
 - `SecurityConfig`에서 Swagger 경로가 일반 `permitAll`에 포함되어 있지 않은가
 - Swagger 전용 Basic Auth 프로퍼티가 local/prod 모두 fail-fast로 주입되는가
-- `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml` 무인증 요청이 401과 `WWW-Authenticate: Basic`으로 응답하는가
+- `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml`, `/v3/api-docs/swagger-config` 무인증 요청이 401과 `WWW-Authenticate: Basic`으로 응답하는가
 - prod에서 `springdoc.api-docs.enabled`와 `springdoc.swagger-ui.enabled`가 켜져 있는가
 - 계정/비밀번호가 코드, 테스트 로그, PR 본문에 노출되지 않았는가

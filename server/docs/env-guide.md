@@ -5,18 +5,19 @@
 
 ## 1. 프로파일 구조
 
-`local`과 `prod` 2개만 유지한다. 별도 `dev` 서버/profile은 만들지 않는다.
+서버 런타임 profile은 `local`과 `prod` 2개만 유지한다. 별도 `dev` 서버/profile은 만들지 않는다.
 
 | 프로파일 | 용도 | 설정 소스 |
 |----------|------|-----------|
 | `local` (기본) | 서버 개발자 로컬 머신 | `application-local.yml` + docker-compose MySQL + SSM `/thumbsup/local/` |
 | `prod` | AWS 운영 | `application-prod.yml` + SSM `/thumbsup/prod/` |
-| `test` | Gradle 테스트 | `src/test/resources/application-test.yml` fixture 값 + Testcontainers |
 
 - `application.yml` = 전 환경 공통 설정만 둔다.
 - `application-local.yml` = 로컬 DB 고정값 + `/thumbsup/local/` SSM import.
 - `application-prod.yml` = 운영 DB/CORS/시크릿을 `/thumbsup/prod/` SSM에서 주입.
-- `test` profile은 AWS SSM을 읽지 않는다. 회귀 테스트는 Docker/Testcontainers만 필요해야 한다.
+- `test` profile은 서버 런타임 profile이 아니라 Gradle 테스트 전용 설정이다.
+- `src/test/resources/application-test.yml`은 fixture 값과 Testcontainers 연결에만 사용한다.
+- 테스트는 AWS SSM을 읽지 않는다. 회귀 테스트는 Docker/Testcontainers만 필요해야 한다.
 
 ## 2. Parameter Store 정책
 
