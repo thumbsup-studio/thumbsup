@@ -7,6 +7,12 @@ description: app UI(화면·컴포넌트·스타일)를 만들거나 고칠 때 
 
 UI 작업 전 이 규칙을 따른다. 상세는 `app/DESIGN.md`, 토큰은 `app/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
 
+## 화면 구현 시 레퍼런스 (먼저 확인)
+화면(로그인·회원가입·지식그래프 등)을 만들 땐 **레퍼런스 HTML을 먼저 연다.**
+- 화면↔파일 매핑: `docs/design/references/SCREENS.md`.
+- 해당 시안 HTML: `docs/design/references/html/<screen>.html` (로그인=`login`·회원가입=`signup`·지식그래프=`knowledge-graph`). 브라우저로 열어 레이아웃·구성·상태를 **시각 기준**으로 재현한다.
+- ⚠️ HTML의 raw hex를 그대로 옮기지 말 것 — 반드시 아래 토큰·`components/ui`로 매핑한다. 다크 화면(지식그래프)은 `--color-graph-*` 토큰을 정의해 쓴다(라이트 토큰 재사용 금지).
+
 ## 규칙
 - **토큰만 사용.** `bg-primary`·`rounded-card`·`shadow-hero`·`text-ink` 등 이름 유틸리티로만. `bg-[#...]`·`rounded-[36px]`·raw hex 금지.
 - **새 스타일이 필요하면 토큰을 먼저 추가.** globals.css `@theme`에 이름을 정의하고 그 이름을 쓴다.
