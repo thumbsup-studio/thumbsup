@@ -98,15 +98,17 @@ public class SecurityConfig {
         return new AuthenticationProvider() {
             @Override
             public Authentication authenticate(Authentication authentication) {
+                String username = authentication.getName();
                 String password = authentication.getCredentials() == null
                         ? ""
                         : authentication.getCredentials().toString();
-                if (!properties.username().equals(authentication.getName())
-                        || !passwordEncoder.matches(password, encodedPassword)) {
+                boolean usernameMatches = properties.username().equals(username);
+                boolean passwordMatches = passwordEncoder.matches(password, encodedPassword);
+                if (!usernameMatches || !passwordMatches) {
                     throw new BadCredentialsException("Invalid Swagger credentials");
                 }
                 return UsernamePasswordAuthenticationToken.authenticated(
-                        authentication.getName(), null, AuthorityUtils.createAuthorityList("ROLE_" + SWAGGER_ROLE));
+                        username, null, AuthorityUtils.createAuthorityList("ROLE_" + SWAGGER_ROLE));
             }
 
             @Override

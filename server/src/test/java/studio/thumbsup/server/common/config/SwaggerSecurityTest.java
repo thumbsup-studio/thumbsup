@@ -79,6 +79,13 @@ class SwaggerSecurityTest {
                     .andExpect(status().isUnauthorized());
         }
 
+        @Test
+        @DisplayName("잘못된 Swagger username이면 비밀번호가 맞아도 접근을 거부한다")
+        void swagger_rejects_wrong_username() throws Exception {
+            mockMvc.perform(get("/v3/api-docs").with(httpBasic("wrong-user", "swagger-test-password")))
+                    .andExpect(status().isUnauthorized());
+        }
+
         @ParameterizedTest
         @MethodSource("studio.thumbsup.server.common.config.SwaggerSecurityTest#swaggerDocumentPaths")
         @DisplayName("올바른 Swagger 계정이면 Swagger/OpenAPI 경로 접근을 통과시킨다")
