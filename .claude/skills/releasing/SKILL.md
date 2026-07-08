@@ -7,7 +7,7 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 릴리즈는 `release-please`가 자동화한다 (`.github/workflows/release-please.yml`). 저장소 **통합 버전**(컴포넌트 접두어 없는 `vX.Y.Z` 태그) — app·server 공통 단일 버전.
 
-> **현재 비활성.** 워크플로우는 수동 트리거(`workflow_dispatch`)로만 있고 자동 실행되지 않는다. 기본 GITHUB_TOKEN으로는 Release PR 생성이 차단되고, 봇이 만든 PR은 필수 체크(server-ci 등)를 트리거하지 못해 머지도 막히기 때문이다. **활성화**하려면 사람 신원의 전용 토큰(fine-grained PAT 또는 GitHub App)을 `RELEASE_PLEASE_TOKEN` 시크릿으로 등록하고, 워크플로우의 push 트리거·`token:` 입력 주석을 해제한 뒤, 앵커 태그(`gh release create v0.1.0 --target main`)를 먼저 만든다(태그가 없으면 첫 실행이 과거 커밋 전체를 미릴리즈로 잡는다). 활성화 절차는 워크플로우 파일 상단 주석에 정리돼 있다. 아래 흐름은 활성화 후 기준.
+> **활성 상태.** main push마다 자동 실행된다. 전용 토큰 `RELEASE_PLEASE_TOKEN`(사람 신원 fine-grained PAT)으로 구동하는데, 기본 GITHUB_TOKEN은 Release PR 생성이 차단되고 봇이 만든 PR은 필수 체크(server-ci 등)를 트리거하지 못해 머지도 막히기 때문이다. 버전 앵커는 `v0.1.0` 릴리즈(2026-07-08 생성) — 그 이후 커밋부터 버전이 오른다. 토큰이 만료되면 재발급 후 시크릿만 갱신하면 된다.
 
 ## 흐름 (2단계)
 
