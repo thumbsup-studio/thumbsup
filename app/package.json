@@ -18,7 +18,9 @@
     "lint:ci": "biome ci .",
     "qa:visual": "tsx e2e/visual-qa.ts",
     "check:design": "node scripts/check-design.mjs",
-    "test:design": "node --test scripts/check-design.test.mjs"
+    "test:design": "node --test scripts/check-design.test.mjs",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "next": "16.2.10",
@@ -27,6 +29,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.2",
+    "@storybook/addon-docs": "^10.4.6",
+    "@storybook/nextjs-vite": "^10.4.6",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -35,6 +39,7 @@
     "@types/react-dom": "^19",
     "jsdom": "^27.0.1",
     "playwright": "^1.61.1",
+    "storybook": "^10.4.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.0",
     "typescript": "^5",

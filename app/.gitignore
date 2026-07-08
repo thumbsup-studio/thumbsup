@@ -44,3 +44,6 @@ next-env.d.ts
 # visual QA 산출물
 /e2e/screenshots
 /e2e/qa-report.md
+
+*storybook.log
+storybook-static
