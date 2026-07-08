@@ -41,9 +41,3 @@ CI/CD·인프라 담당자가 파이프라인을 구성할 때 필요한 서버(
 | DB | MySQL — 버전은 `server/docker-compose.yml`에 고정된 버전과 **동일하게** (로컬↔운영 패리티) |
 | DB 마이그레이션 | 앱 부팅 시 Flyway가 자동 적용 — 별도 마이그레이션 스텝 불필요 |
 | Swagger/OpenAPI | 운영에서 활성화하되 `/swagger-ui/**`, `/v3/api-docs/**`는 SSM 주입 계정으로 Basic Auth 보호 |
-
-## 4. 서버 팀과 합의 필요한 항목
-
-- ECR 리포지토리 이름 / 배포 트리거 방식 (자동 vs 수동 승인)
-- prod CORS 허용 도메인 (프론트 배포 도메인 확정 시)
-- Actuator 노출 범위 (기본: `health`만 외부 노출)
