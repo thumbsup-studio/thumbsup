@@ -55,7 +55,8 @@ public class AuthService {
 
     @Transactional
     public AuthTokenResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
+        User user = userRepository
+                .findByEmail(request.email())
                 .orElseThrow(() -> new BusinessException(AuthErrorType.INVALID_CREDENTIALS));
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new BusinessException(AuthErrorType.INVALID_CREDENTIALS);
@@ -65,7 +66,8 @@ public class AuthService {
 
     @Transactional
     public AuthTokenResponse refresh(RefreshRequest request) {
-        RefreshToken stored = refreshTokenRepository.findByTokenHash(hash(request.refreshToken()))
+        RefreshToken stored = refreshTokenRepository
+                .findByTokenHash(hash(request.refreshToken()))
                 .orElseThrow(() -> new BusinessException(AuthErrorType.INVALID_REFRESH_TOKEN));
         if (stored.isExpired(clock)) {
             throw new BusinessException(AuthErrorType.INVALID_REFRESH_TOKEN);
