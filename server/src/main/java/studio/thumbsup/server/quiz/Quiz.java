@@ -63,6 +63,14 @@ public class Quiz extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String wrongAnswerExplanation;
 
+    /** 커리큘럼 진행 스텝(#41) — 스텝당 5문제(하2·중2·상1). MVP는 코스 1개라 course 참조 없이 순서만 둔다. */
+    @Column(nullable = false)
+    private int stepOrder;
+
+    /** 스텝 내 출제 순서(1~5) — 같은 난이도가 2개씩 있어 순서 구분이 필요하다. */
+    @Column(nullable = false)
+    private int slotOrder;
+
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
     private List<QuizChoice> choices = new ArrayList<>();
@@ -120,6 +128,12 @@ public class Quiz extends BaseEntity {
     /** OX 전용 — 정답을 "O" 또는 "X"로 지정한다. */
     public void assignCorrectAnswer(String correctAnswer) {
         this.correctAnswer = correctAnswer;
+    }
+
+    /** 커리큘럼 내 위치를 지정한다 — 콘텐츠 필드와 분리해 생성자 파라미터 수를 제한한다(checkstyle). */
+    public void assignPosition(int stepOrder, int slotOrder) {
+        this.stepOrder = stepOrder;
+        this.slotOrder = slotOrder;
     }
 
     public void addChoice(String content, boolean isCorrect, int displayOrder) {
