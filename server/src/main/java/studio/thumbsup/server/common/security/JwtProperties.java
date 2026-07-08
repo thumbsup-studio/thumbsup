@@ -15,4 +15,6 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "thumbsup.jwt")
 @Validated
 public record JwtProperties(
-        @NotBlank String secret, @NotNull Duration accessTokenValidity) {}
+        @NotBlank String secret,
+        @NotNull Duration accessTokenValidity,
+        @NotNull Duration refreshTokenValidity) {}

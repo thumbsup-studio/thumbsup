@@ -6,25 +6,25 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
-/**
- * Access token 발급·검증. 시간은 주입받은 {@link Clock}만 사용한다 (결정적 테스트).
- *
- * <p>Refresh token은 auth feature에서 DB 저장+회전으로 관리한다 — docs/api-standard.md §8.
- */
 @Component
 public class JwtTokenProvider {
+
+    private static final int REFRESH_TOKEN_BYTE_LENGTH = 32;
 
     private final SecretKey secretKey;
     private final Duration accessTokenValidity;
     private final Clock clock;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public JwtTokenProvider(JwtProperties properties, Clock clock) {
         Assert.hasText(properties.secret(), "thumbsup.jwt.secret 설정이 필요합니다 (fail-fast)");
@@ -42,6 +42,12 @@ public class JwtTokenProvider {
                 .expiration(Date.from(now.plus(accessTokenValidity)))
                 .signWith(secretKey)
                 .compact();
+    }
+
+    public String createRefreshToken() {
+        byte[] bytes = new byte[REFRESH_TOKEN_BYTE_LENGTH];
+        secureRandom.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     /**

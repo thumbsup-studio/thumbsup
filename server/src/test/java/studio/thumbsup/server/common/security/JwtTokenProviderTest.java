@@ -19,9 +19,11 @@ class JwtTokenProviderTest {
     private static final String SECRET = "test-secret-key-for-jwt-hmac-sha-256-minimum-32-bytes";
     private static final Instant BASE_TIME = Instant.parse("2026-07-07T00:00:00Z");
     private static final Duration VALIDITY = Duration.ofMinutes(30);
+    private static final Duration REFRESH_VALIDITY = Duration.ofDays(14);
 
     private JwtTokenProvider providerAt(Instant instant) {
-        return new JwtTokenProvider(new JwtProperties(SECRET, VALIDITY), Clock.fixed(instant, ZoneOffset.UTC));
+        return new JwtTokenProvider(
+                new JwtProperties(SECRET, VALIDITY, REFRESH_VALIDITY), Clock.fixed(instant, ZoneOffset.UTC));
     }
 
     @Test
@@ -54,10 +56,22 @@ class JwtTokenProviderTest {
     @Test
     void 서명이_다른_토큰은_JwtException을_던진다() {
         JwtTokenProvider otherKeyProvider = new JwtTokenProvider(
-                new JwtProperties("another-secret-key-for-jwt-hmac-sha-256-32bytes!!", VALIDITY),
+                new JwtProperties("another-secret-key-for-jwt-hmac-sha-256-32bytes!!", VALIDITY, REFRESH_VALIDITY),
                 Clock.fixed(BASE_TIME, ZoneOffset.UTC));
         String token = otherKeyProvider.createAccessToken(42L);
 
         assertThatThrownBy(() -> providerAt(BASE_TIME).parseUserId(token)).isInstanceOf(JwtException.class);
+    }
+
+    @Test
+    void refresh_token은_매번_다른_고엔트로피_문자열을_생성한다() {
+        JwtTokenProvider provider = providerAt(BASE_TIME);
+
+        String first = provider.createRefreshToken();
+        String second = provider.createRefreshToken();
+
+        assertThat(first).isNotBlank();
+        assertThat(second).isNotBlank();
+        assertThat(first).isNotEqualTo(second);
     }
 }
