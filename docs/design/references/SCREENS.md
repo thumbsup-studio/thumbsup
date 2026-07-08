@@ -24,7 +24,7 @@ Claude 디자인 결과물이 오면 이 표의 슬롯에 채우고 아래 레�
 | 해설 | `/answer` *(잠정)* | *(비움)* | 라이트 | 미연결 | 🟡 재디자인 대기 |
 | **로그인** | `/login` | `html/login.html` | 라이트 | 미연결 | 🟢 시안 확정(HTML) |
 | **회원가입** | `/signup` | `html/signup.html` | 라이트 | 미연결 | 🟢 시안 확정(HTML) |
-| **지식 그래프 (히스토리 탭)** | `/history` *(잠정)* | `html/knowledge-graph.html` | **다크** | 미연결 | 🟢 시안 확정(HTML) |
+| **지식 그래프 (히스토리 탭)** | `/history` *(잠정)* | `html/knowledge-graph.html` | 라이트+다크 그래프카드 | 미연결 | 🟢 시안 확정(HTML) |
 
 메모:
 - **홈**: 현 구현은 #85 MVP + 토큰 retrofit. 라이브 visual-qa 연결(`/`→`home.png`)은 새 시안이 올 때까지 그대로 두고, 새 홈 시안 도착 시 교체.
@@ -38,8 +38,8 @@ Claude 디자인 결과물이 오면 이 표의 슬롯에 채우고 아래 레�
 Claude 디자인 산출물 — **자립형 HTML 목업**(폰트 임베드, 브라우저로 직접 열어 확인). 화면 구현 시 이 파일이 **레이아웃·구성의 시각 기준**이다.
 - `login.html`(로그인, 라이트) · `signup.html`(회원가입, 라이트) · `knowledge-graph.html`(지식 그래프/히스토리 탭, **다크**)
 - HTML은 대부분 우리 토큰 값(`#2f63ff`·`#020617`·`#eef2f8`)을 이미 쓰지만, 구현 시엔 **raw hex 복붙 금지 — `globals.css` 토큰·`components/ui` 로 매핑**한다.
-- **지식 그래프 다크 팔레트**(HTML 추출): 배경 `#3C4A6E` 계열, 마스터 노드 그린 `#34C88A`, 활성 primary `#2F63FF`, 텍스트 흰색 → 확정 시 `globals.css` 에 `--color-graph-*` 로 편입.
-- **visual-qa 연결**: 현재 visual-qa 는 PNG 대조 → HTML을 390px로 스크린샷(PNG)해서 `docs/design/references/<screen>.png` 저장 후 레시피대로 연결. (향후: CI에서 레퍼런스 HTML을 앱과 같은 Chromium·같은 뷰포트로 렌더해 비교하면 해상도·폰트 렌더 오차가 사라져 더 정확 — 픽셀 diff 1차 게이트 + Gemini 의미 리뷰 2차 구조 가능.)
+- **지식 그래프 테마**: 화면 자체는 라이트, **그래프 캔버스 카드만 다크**. 다크 팔레트(HTML 추출): 배경 `#3C4A6E` 계열, 마스터 노드 그린 `#34C88A`, 학습중 primary `#2F63FF`, 미학습 회색 dashed, 텍스트 흰색 → 확정 시 `globals.css` 에 `--color-graph-*` 로 편입. 숙련도는 색+아이콘(✓/반원/dashed) 병행.
+- **visual-qa 시안(PNG) 준비 완료**: `login.png`·`signup.png`·`knowledge-graph.png`(단일 **기본 상태**, 390×844@2x) + `<screen>-board.png`(전체 상태 보드). Playwright(visual-qa와 같은 Chromium)로 HTML 렌더 추출 — 앱과 같은 엔진이라 대조 정확. **페이지 구현 시** `cp docs/design/references/<screen>.png app/e2e/designs/` + qa-routes 연결하면 시안 대조 활성화(지금은 페이지가 없어 미연결). (향후: CI에서 HTML 직접 렌더 + 픽셀 diff 1차 게이트 + Gemini 2차.)
 
 ### 화면당 상태 시안 (도착 시 보관, visual-qa 는 대표 1장만 연결)
 - 로그인: `login-default.png` / `login-loading.png` / `login-error.png`
