@@ -1,8 +1,10 @@
 package studio.thumbsup.server.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import jakarta.persistence.EntityManager;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -34,10 +37,18 @@ class QuizRepositoryTest {
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final QuizRepository quizRepository;
+    private final QuizAttemptRepository quizAttemptRepository;
+    private final QuizProgressRepository quizProgressRepository;
     private final EntityManager entityManager;
 
-    QuizRepositoryTest(@Autowired QuizRepository quizRepository, @Autowired EntityManager entityManager) {
+    QuizRepositoryTest(
+            @Autowired QuizRepository quizRepository,
+            @Autowired QuizAttemptRepository quizAttemptRepository,
+            @Autowired QuizProgressRepository quizProgressRepository,
+            @Autowired EntityManager entityManager) {
         this.quizRepository = quizRepository;
+        this.quizAttemptRepository = quizAttemptRepository;
+        this.quizProgressRepository = quizProgressRepository;
         this.entityManager = entityManager;
     }
 
@@ -135,6 +146,69 @@ class QuizRepositoryTest {
 
             assertThat(quizRepository.findById(id)).isEmpty();
             assertThat(countChoicesByQuizId(id)).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("스텝 단위 조회")
+    class FindByStep {
+
+        @Test
+        @DisplayName("한 스텝의 5문제를 slot_order 순서대로 조회한다")
+        void finds_step_quizzes_in_slot_order() {
+            List<Quiz> step = QuizFixture.step(1);
+            step.forEach(quizRepository::save);
+
+            List<Quiz> found = quizRepository.findByStepOrderOrderBySlotOrderAsc(1);
+
+            assertThat(found).hasSize(5);
+            assertThat(found).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3, 4, 5);
+        }
+    }
+
+    @Nested
+    @DisplayName("퀴즈 풀이 이력")
+    class QuizAttemptPersistence {
+
+        @Test
+        @DisplayName("같은 유저·퀴즈 조합은 한 번만 저장된다(유니크 제약)")
+        void rejects_duplicate_attempt_for_same_user_and_quiz() {
+            Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
+            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true));
+
+            assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("스텝 기준으로 유저의 풀이 이력을 조회한다")
+        void finds_attempts_by_user_and_step() {
+            List<Quiz> step =
+                    QuizFixture.step(1).stream().map(quizRepository::save).toList();
+            quizAttemptRepository.save(QuizAttempt.create(step.get(0), 1L, true));
+
+            List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(1L, 1);
+
+            assertThat(attempts).hasSize(1);
+            assertThat(attempts.get(0).getQuiz().getId()).isEqualTo(step.get(0).getId());
+        }
+    }
+
+    @Nested
+    @DisplayName("유저 진행 상태")
+    class QuizProgressPersistence {
+
+        @Test
+        @DisplayName("생성 시 1스텝부터 시작하고, 진행하면 다음 스텝으로 넘어간다")
+        void starts_at_step_one_and_advances() {
+            QuizProgress progress = quizProgressRepository.save(QuizProgress.create(1L));
+            assertThat(progress.getCurrentStepOrder()).isEqualTo(1);
+
+            progress.advanceToNextStep();
+            quizProgressRepository.saveAndFlush(progress);
+
+            QuizProgress found = quizProgressRepository.findByUserId(1L).orElseThrow();
+            assertThat(found.getCurrentStepOrder()).isEqualTo(2);
         }
     }
 }

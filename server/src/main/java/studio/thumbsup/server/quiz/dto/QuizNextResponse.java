@@ -1,0 +1,50 @@
+package studio.thumbsup.server.quiz.dto;
+
+import java.util.List;
+import studio.thumbsup.server.quiz.Quiz;
+import studio.thumbsup.server.quiz.QuizChoice;
+import studio.thumbsup.server.quiz.QuizDifficulty;
+import studio.thumbsup.server.quiz.QuizType;
+
+/**
+ * "다음 문제 조회" 응답 — 정답을 맞히는 데 필요한 정보만 내려간다.
+ * 정답(correctAnswer/answerKeywords의 값/choices의 isCorrect)과 해설은 포함하지 않는다
+ * (정답 확인은 #42, 해설은 #43의 몫).
+ */
+public record QuizNextResponse(
+        Long quizId,
+        QuizType type,
+        QuizDifficulty difficulty,
+        String questionText,
+        String codeSnippet,
+        List<ChoiceItem> choices,
+        Integer blankCount,
+        int stepOrder,
+        int slotOrder) {
+
+    public record ChoiceItem(String content, int displayOrder) {
+
+        static ChoiceItem from(QuizChoice choice) {
+            return new ChoiceItem(choice.getContent(), choice.getDisplayOrder());
+        }
+    }
+
+    public static QuizNextResponse from(Quiz quiz) {
+        List<ChoiceItem> choiceItems = quiz.getType() == QuizType.MULTIPLE_CHOICE
+                ? quiz.getChoices().stream().map(ChoiceItem::from).toList()
+                : null;
+        Integer blankCount = quiz.getType() == QuizType.KEYWORD_BLANK
+                ? quiz.getAnswerKeywords().size()
+                : null;
+        return new QuizNextResponse(
+                quiz.getId(),
+                quiz.getType(),
+                quiz.getDifficulty(),
+                quiz.getQuestionText(),
+                quiz.getCodeSnippet(),
+                choiceItems,
+                blankCount,
+                quiz.getStepOrder(),
+                quiz.getSlotOrder());
+    }
+}
