@@ -22,6 +22,7 @@ CREATE TABLE refresh_token (
     updated_at DATETIME(6)  NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_refresh_token_hash (token_hash),
+    UNIQUE KEY uk_refresh_token_user_id (user_id),
     CONSTRAINT fk_refresh_token_user FOREIGN KEY (user_id) REFERENCES users (id)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
