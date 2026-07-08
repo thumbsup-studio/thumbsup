@@ -116,7 +116,7 @@ devDependency만 추가되므로 "신규 런타임 의존성 0" 결정과 충돌
 |---|---|---|
 | ① design-system 스킬 | UI 작업 시작 시 (에이전트 지침) | 0 |
 | ② check-design 정적 검사 | verify-app 실행 시 + app 변경 PR의 CI | <1초 |
-| ③ visual-qa 시안 대조 | **CI 자동 — app 변경 PR마다** (app-deploy.yml에 기 구현) + 로컬 선택 | 수 분·API 비용 0 (엘리스AX 무료 모델) |
+| ③ visual-qa 시안 대조 | **CI 자동 — app 변경 PR마다** (app-deploy.yml에 기 구현) + 로컬 선택 | 수 분 (엘리스 스프린트 리소스 종량제) |
 
 ### ① 작업 전 — design-system 프로젝트 스킬
 
@@ -144,7 +144,7 @@ devDependency만 추가되므로 "신규 런타임 의존성 0" 결정과 충돌
 엘리스 멀티모달 리뷰 → PR sticky 코멘트 + 스크린샷 아티팩트. soft gate(머지 차단 아님).
 지금까지는 `ELICE_API_KEY` 미등록으로 리뷰가 스킵되고 있었다.
 
-- **활성화**: `ELICE_API_KEY`를 GitHub Secret으로, `ELICE_BASE_URL`(·선택 `ELICE_QA_MODEL`)을 GitHub Variable로 등록 — 이것만으로 CI 리뷰가 켜진다. 엘리스AX 무료 모델이라 API 비용 0
+- **활성화**: `ELICE_API_KEY`·`ELICE_QA_BASE_URL`을 GitHub **Secret**으로 등록(레포가 public이라 워크플로우 로그 노출을 막기 위해 URL도 Secret — `app-deploy.yml`의 `vars.ELICE_BASE_URL` 참조를 `secrets.ELICE_QA_BASE_URL`로 변경), `ELICE_QA_MODEL`은 Variable. 엔드포인트 변수는 엘리스가 모델마다 다른 프록시 호스트(`mlapi.run/<모델별-ID>/v1`)를 발급하므로 공통 `ELICE_BASE_URL`이 아니라 역할 기반 `ELICE_QA_BASE_URL`로 명명(기존 `ELICE_QA_MODEL`과 짝). 시각 QA 모델은 팀 모델 운용 계획(§8) 기준 **Gemini 3.1 Pro**(`google/gemini-3.1-pro-preview`, 이미지 입력 담당) — 엔드포인트는 모델 라이브러리의 Gemini 페이지 값을 사용하고, 스크립트 기본값(gpt-5.2, 발급 모델에 없음)도 같은 ID로 갱신. 비용은 AI 스프린트 제공 리소스로 충당(serverless 종량제, 무제한 아님)
 - **본 스펙에서 할 일**: `e2e/qa-routes.ts`의 `design` 필드에 레퍼런스 이미지를 연결해 휴리스틱 모드 → 시안 대조 모드(COMPARE_PROMPT)로 전환. CI·로컬 공통 적용
 - **키 배포 문제 해소**: 팀원은 키가 필요 없다 — 리뷰는 CI가 수행하고, 로컬 실행은 키 없으면 스크린샷만 찍고 soft skip. 빠른 반복이 필요한 사람만 개인 `.env.local`에 키 보관(§8)
 - **완료 규약**: PR의 visual-qa 코멘트에서 🔴은 해소 후 머지, 🟡은 판단 처리 (soft gate이므로 사람·에이전트가 지키는 규약)
@@ -171,8 +171,19 @@ PR #85는 그대로 머지한다(로직·테스트 유효). 이후 본 브랜치
 
 ## 8. 엘리스 API 키 운영
 
-- **1차 보관처 — GitHub**: `ELICE_API_KEY`는 repo Secret, `ELICE_BASE_URL`(OpenAI 호환
-  엔드포인트, `/v1`까지)·선택 `ELICE_QA_MODEL`은 repo Variable. 이것으로 CI 시각 QA가
+### 모델 운용 계획 (2026-07-08 확정)
+
+발급 키 1개가 3개 모델 공용. 엔드포인트는 모델별로 다름(`https://mlapi.run/<모델별-ID>/v1`).
+등록은 **소비자가 생기는 시점**에 한다 — 미리 등록하면 파이프라인 설계에 따라 네이밍 재작업 리스크만 생김.
+
+| 역할 | 모델 | 소비처 | 설정 보관처 |
+|---|---|---|---|
+| 시각 QA (이미지 입력) | **Gemini 3.1 Pro** | app CI `visual-qa` job · 로컬 | GitHub Secret/Variable + 개인 `.env.local` — **지금 세팅** |
+| 문제·해설 생성 | GPT-5.4 | server(Spring) — 예정 | SSM `/thumbsup/prod/*` (server 설정 경로) — 파이프라인 설계 시 등록 |
+| 대량 문제 생성 | GPT-5 mini | 배치/스크립트 — 예정 | 소비자 확정 시 결정 |
+
+- **1차 보관처 — GitHub**: `ELICE_API_KEY`·`ELICE_QA_BASE_URL`(엔드포인트, `/v1`까지)은
+  repo Secret, `ELICE_QA_MODEL`은 repo Variable. 이것으로 CI 시각 QA가
   활성화되며(§5-③), **팀원 개별 키 배포가 불필요**해진다. 주의: Secret은 등록 후 값 재조회
   불가(write-only)이므로 로컬 사용과는 별개
 - **2차(선택) — 개인 `.env.local`**: 로컬에서 리뷰까지 돌리며 빠르게 반복하고 싶은 사람만.

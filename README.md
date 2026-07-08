@@ -34,7 +34,7 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Gi
 | `VERCEL_TOKEN` | GitHub Secrets | CLI 배포 인증 |
 | `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` | GitHub Secrets | 대상 프로젝트 식별 |
 | `ELICE_API_KEY` | GitHub Secrets | 시각 QA 모델 호출 (미등록 시 QA 자동 스킵) |
-| `ELICE_BASE_URL` | GitHub Variables | 엘리스 OpenAI 호환 엔드포인트 (`/v1`까지) |
+| `ELICE_QA_BASE_URL` | GitHub Secrets | 시각 QA 엔드포인트 (`/v1`까지, public 레포 로그 노출 방지로 Secret) |
 | `ELICE_QA_MODEL` | GitHub Variables | QA 모델 ID (기본 `gpt-5.2`) |
 | `CLAUDE_CODE_OAUTH_TOKEN` | GitHub Secrets | `@claude` 봇 인증 |
 

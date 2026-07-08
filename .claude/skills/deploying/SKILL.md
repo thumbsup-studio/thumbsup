@@ -28,7 +28,8 @@ PR 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 
 |------|------|------|
 | `VERCEL_TOKEN`·`VERCEL_ORG_ID`·`VERCEL_PROJECT_ID` | Secrets | CLI 배포 |
 | `ELICE_API_KEY` | Secrets | 시각 QA (미등록 시 스킵) |
-| `ELICE_BASE_URL`·`ELICE_QA_MODEL` | Variables | 엘리스 엔드포인트·모델 |
+| `ELICE_QA_BASE_URL` | Secrets | 시각 QA 엔드포인트 (`/v1`까지, public 레포라 Secret) |
+| `ELICE_QA_MODEL` | Variables | 시각 QA 모델 ID |
 
 앱 런타임 env(`NEXT_PUBLIC_API_URL` 등)는 Vercel 프로젝트 → Settings → Environment Variables에서 관리. 자세한 표는 [README](../../../README.md) 참고.
 
