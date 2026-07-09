@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { DisconnectedNodesIcon, PlayIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ type AtlasPageProps = {
 };
 
 export function AtlasPage({ data }: AtlasPageProps) {
+  const router = useRouter();
   const { showToast } = useAppToast();
   const [activeCategoryId, setActiveCategoryId] = useState(data.categories[0]?.id ?? "");
   const [query, setQuery] = useState("");
@@ -50,7 +52,7 @@ export function AtlasPage({ data }: AtlasPageProps) {
     <main className="flex min-h-screen flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
         <AtlasHeader
-          onBack={() => showToast({ message: "이전 화면은 준비 중입니다." })}
+          onBack={() => router.push("/")}
           onShare={() => showToast({ message: "공유는 준비 중입니다." })}
         />
 

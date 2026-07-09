@@ -7,7 +7,7 @@ type AtlasHeaderProps = {
 
 export function AtlasHeader({ onBack, onShare }: AtlasHeaderProps) {
   return (
-    <header className="flex items-center justify-between">
+    <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-bg px-4 py-2 sm:-mx-6 sm:px-6">
       <button
         aria-label="뒤로 가기"
         className="flex size-10 items-center justify-center rounded-control text-ink"
