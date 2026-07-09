@@ -22,8 +22,13 @@ export type ApiResponse<T> = {
 
 const SUCCESS_CODE = "SUCCESS";
 
-/** prod는 NEXT_PUBLIC_API_URL(Vercel env), 미설정 시 로컬 서버(:8080). 로컬 FE→prod는 CORS 차단. */
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+/**
+ * API 베이스 URL. `NEXT_PUBLIC_API_URL`이 있으면 그 값을, 없으면 prod API로 향한다.
+ * 배포(Vercel preview·prod)는 env 미설정이어도 실제 백엔드를 부르게 하기 위함이며,
+ * 로컬 개발은 `.env.local`에 `NEXT_PUBLIC_API_URL=http://localhost:8080`을 두고 로컬 서버를 띄운다
+ * (로컬 FE→prod 직접 호출은 CORS로 차단됨).
+ */
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://thumbsup-api.duckdns.org";
 const PREFIX = "/api/v1";
 
 /** 응답이 오지 않을 때 무한 대기하지 않도록 요청 타임아웃(초과 시 abort → NetworkError). */
