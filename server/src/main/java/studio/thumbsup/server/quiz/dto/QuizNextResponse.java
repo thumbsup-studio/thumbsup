@@ -22,10 +22,10 @@ public record QuizNextResponse(
         int stepOrder,
         int slotOrder) {
 
-    public record ChoiceItem(String content, int displayOrder) {
+    public record ChoiceItem(Long choiceId, String content, int displayOrder) {
 
         static ChoiceItem from(QuizChoice choice) {
-            return new ChoiceItem(choice.getContent(), choice.getDisplayOrder());
+            return new ChoiceItem(choice.getId(), choice.getContent(), choice.getDisplayOrder());
         }
     }
 

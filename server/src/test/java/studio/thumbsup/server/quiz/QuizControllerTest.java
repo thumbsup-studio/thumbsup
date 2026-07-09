@@ -3,6 +3,7 @@ package studio.thumbsup.server.quiz;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.exception.GlobalExceptionHandler;
+import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
+import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 
 /** Controller 슬라이스 테스트 — standalone MockMvc로 요청/응답 계약만 검증한다 (피라미드 2층). */
@@ -83,6 +87,66 @@ class QuizControllerTest {
             mockMvc.perform(get("/api/v1/quizzes/next"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("QUIZ_STEP_COMPLETED"));
+        }
+    }
+
+    @Nested
+    @DisplayName("정답 제출")
+    class SubmitAnswer {
+
+        @Test
+        @DisplayName("성공하면 200과 채점 결과를 반환한다")
+        void returns_200_with_grading_result() throws Exception {
+            authenticateAs(7L);
+            given(quizService.submitAnswer(eq(7L), eq(1L), eq(new AnswerSubmitRequest(List.of("O")))))
+                    .willReturn(new AnswerSubmitResponse(true));
+
+            mockMvc.perform(post("/api/v1/quizzes/1/answers")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of("O")))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.isCorrect").value(true));
+        }
+
+        @Test
+        @DisplayName("답을 비워 제출하면 400 INVALID_INPUT")
+        void returns_400_when_answers_empty() throws Exception {
+            authenticateAs(7L);
+
+            mockMvc.perform(post("/api/v1/quizzes/1/answers")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of()))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 퀴즈면 404 QUIZ_NOT_FOUND")
+        void returns_404_when_quiz_not_found() throws Exception {
+            authenticateAs(7L);
+            given(quizService.submitAnswer(eq(7L), eq(999L), eq(new AnswerSubmitRequest(List.of("O")))))
+                    .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+
+            mockMvc.perform(post("/api/v1/quizzes/999/answers")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of("O")))))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_FOUND"));
+        }
+
+        @Test
+        @DisplayName("아직 진행하지 않은 미래 스텝의 문제면 403 QUIZ_NOT_ACCESSIBLE")
+        void returns_403_when_quiz_not_accessible() throws Exception {
+            authenticateAs(7L);
+            given(quizService.submitAnswer(eq(7L), eq(1L), eq(new AnswerSubmitRequest(List.of("O")))))
+                    .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE));
+
+            mockMvc.perform(post("/api/v1/quizzes/1/answers")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of("O")))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_ACCESSIBLE"));
         }
     }
 }
