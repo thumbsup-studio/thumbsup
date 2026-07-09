@@ -61,6 +61,9 @@ Thumbs Up 서버의 모든 HTTP API가 따르는 규격이다.
 | enum 값 | UPPER_SNAKE_CASE | `"MULTIPLE_CHOICE"` |
 | 리스트 키 | 항상 **`items`** | `data.items` (~~list, events, tips~~) |
 
+- **`items` 규칙은 그 응답의 주인공이 목록일 때만 적용된다** — 페이지네이션 대상이 되는 최상위 컬렉션(`data.items`)을 가리킨다.
+- 상세 응답 안에 딸린 배열은 무엇을 담았는지 드러나는 이름을 쓴다 — `data.choices`, `data.keywords`, `data.followUpQuestions`. 한 응답에 배열이 여럿일 수 있으므로 전부 `items`일 수는 없다.
+
 ## 5. 날짜/시간
 
 - 직렬화: **ISO 8601 + KST 오프셋** — `"2026-07-07T21:00:00+09:00"`
