@@ -2,10 +2,10 @@ import type { HomeData } from "@/features/home/types";
 
 type TodayCourseCardProps = {
   course: HomeData["todayCourse"];
-  onStart: () => void;
+  startHref: string;
 };
 
-export function TodayCourseCard({ course, onStart }: TodayCourseCardProps) {
+export function TodayCourseCard({ course, startHref }: TodayCourseCardProps) {
   return (
     <section className="rounded-card bg-primary px-6 py-6 text-primary-fg shadow-hero">
       <p className="inline-flex rounded-chip border border-surface/20 bg-surface/12 px-3 py-1 text-xs font-semibold tracking-wide">
@@ -21,13 +21,12 @@ export function TodayCourseCard({ course, onStart }: TodayCourseCardProps) {
         </span>
         <span>{course.durationLabel}</span>
       </div>
-      <button
+      <a
         className="mt-6 flex min-h-12 w-full items-center justify-center rounded-control bg-surface px-4 py-3 text-base font-semibold text-primary"
-        onClick={onStart}
-        type="button"
+        href={startHref}
       >
         시작하기
-      </button>
+      </a>
     </section>
   );
 }
