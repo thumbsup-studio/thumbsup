@@ -1,21 +1,45 @@
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { Progress } from "@/components/ui/progress";
+import { CodeBlock } from "@/features/play/components/code-block";
+import { KeywordTooltipText } from "@/features/play/components/keyword-tooltip-text";
 import { getDifficultyLabel, getProgressPercent } from "@/features/play/play-logic";
 import type { PlayQuestion, PlaySession } from "@/features/play/types";
 
+const FANFARE_SRC = "/lottie/fanfare.lottie";
+
 type InsightPageProps = {
   correct: boolean;
+  correctStreak?: number;
   questionIndex: number;
   session: PlaySession;
 };
 
-export function InsightPage({ correct, questionIndex, session }: InsightPageProps) {
+export function InsightPage({
+  correct,
+  correctStreak = 0,
+  questionIndex,
+  session,
+}: InsightPageProps) {
   const question = session.questions[questionIndex];
   const total = session.questions.length;
   const isLastQuestion = questionIndex === total - 1;
   const nextHref = isLastQuestion ? "/" : `/play?question=${questionIndex + 1}`;
+  const showFanfare = correct && correctStreak >= 3;
+  const summaryLines = question.insight.summary.slice(0, 3);
 
   return (
-    <main className="flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+    <main className="relative flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+      {showFanfare ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-50"
+          data-src={FANFARE_SRC}
+          data-testid="lottie-fanfare"
+        >
+          <DotLottieReact autoplay className="h-screen w-screen" loop={false} src={FANFARE_SRC} />
+        </div>
+      ) : null}
+
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
         <header className="rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between gap-3">
@@ -54,33 +78,101 @@ export function InsightPage({ correct, questionIndex, session }: InsightPageProp
         </header>
 
         <section className="flex flex-1 flex-col rounded-card border border-border bg-surface-muted p-5 shadow-card">
-          <div>
+          <div
+            className={`rounded-control border px-4 py-4 ${
+              correct
+                ? "border-success/20 bg-success/10 text-success"
+                : "border-danger/20 bg-danger/10 text-danger"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black">{correct ? "정답이에요" : "오답이에요"}</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-ink-muted">
+                  {correct
+                    ? "핵심을 잘 짚었어요. 바로 개념을 정리해볼게요."
+                    : "괜찮아요. 틀린 지점을 먼저 짚고 넘어갈게요."}
+                </p>
+              </div>
+              {correct ? (
+                <span className="rounded-chip bg-surface px-3 py-1.5 text-xs font-black text-success">
+                  +10P
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          {!correct ? (
+            <div className="mt-4 rounded-control border border-danger/20 bg-surface px-4 py-4">
+              <p className="text-sm font-bold text-danger">왜 틀렸는지</p>
+              <p className="mt-2 text-sm leading-6 text-ink-muted">
+                <KeywordTooltipText
+                  keywords={question.insight.keywords}
+                  text={question.insight.wrongReason}
+                />
+              </p>
+            </div>
+          ) : null}
+
+          <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
+            <p className="text-sm font-bold text-ink">핵심 3줄</p>
+            <ol aria-label="핵심 3줄" className="mt-3 space-y-2">
+              {summaryLines.map((line, index) => (
+                <li className="flex gap-3 text-sm leading-6 text-ink-muted" key={line}>
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-chip bg-ink text-xs font-black text-primary-fg">
+                    {index + 1}
+                  </span>
+                  <span>
+                    <KeywordTooltipText keywords={question.insight.keywords} text={line} />
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="mt-4">
             <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
               {getQuestionKindLabel(question)}
             </p>
             <h2 className="mt-2 text-2xl font-black leading-8">{question.prompt}</h2>
           </div>
 
-          <div className="mt-5 rounded-control border border-border bg-surface px-4 py-4">
-            <p className="text-sm font-bold text-ink">핵심 정리</p>
-            <ul className="mt-3 space-y-2">
-              {question.insight.summary.map((line) => (
-                <li className="flex gap-2 text-sm leading-6 text-ink-muted" key={line}>
-                  <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 rounded-chip bg-ink" />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
             <p className="text-sm font-bold text-ink">해설</p>
-            <p className="mt-2 text-sm leading-6 text-ink-muted">{question.explanation}</p>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              <KeywordTooltipText
+                keywords={question.insight.keywords}
+                text={question.explanation}
+              />
+            </p>
           </div>
 
+          {question.insight.codeExample ? (
+            <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
+              <p className="text-sm font-bold text-ink">코드 적용 예시</p>
+              <div className="mt-3">
+                <CodeBlock
+                  code={question.insight.codeExample.source}
+                  languageLabel={question.insight.codeExample.language}
+                />
+              </div>
+              <p className="mt-3 text-sm leading-6 text-ink-muted">
+                <KeywordTooltipText
+                  keywords={question.insight.keywords}
+                  text={question.insight.codeExample.description}
+                />
+              </p>
+            </div>
+          ) : null}
+
           <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
-            <p className="text-sm font-bold text-ink">예시</p>
-            <p className="mt-2 text-sm leading-6 text-ink-muted">{question.insight.example}</p>
+            <p className="text-sm font-bold text-ink">실무 사용처</p>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">
+              <KeywordTooltipText
+                keywords={question.insight.keywords}
+                text={question.insight.usageExample}
+              />
+            </p>
           </div>
 
           <div className="mt-4 flex items-center justify-between rounded-control border border-dashed border-border px-4 py-3 text-sm text-ink-muted">

@@ -1,9 +1,22 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
 import { mockPlaySession } from "@/features/play/mock-play-session";
 
+const mockRouter = vi.hoisted(() => ({
+  push: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => mockRouter,
+}));
+
 describe("PlayPage", () => {
+  beforeEach(() => {
+    mockRouter.push.mockClear();
+    window.localStorage.clear();
+  });
+
   it("renders the low difficulty ox question first and links to insight after grading", async () => {
     vi.useFakeTimers();
     const onInsightNavigate = vi.fn();
@@ -22,7 +35,7 @@ describe("PlayPage", () => {
       vi.advanceTimersByTime(240);
     });
 
-    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=0&correct=true");
+    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=0&correct=true&streak=1");
     expect(screen.queryByText("정답입니다")).not.toBeInTheDocument();
 
     vi.useRealTimers();
@@ -58,7 +71,48 @@ describe("PlayPage", () => {
       vi.advanceTimersByTime(240);
     });
 
-    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=0&correct=true");
+    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=0&correct=true&streak=1");
+
+    vi.useRealTimers();
+  });
+
+  it("passes the updated consecutive correct streak to insight", async () => {
+    vi.useFakeTimers();
+    const onInsightNavigate = vi.fn();
+
+    window.localStorage.setItem("thumbsup:mock-os-process-thread:correct-streak", "2");
+
+    render(
+      <PlayPage
+        initialQuestionIndex={2}
+        onInsightNavigate={onInsightNavigate}
+        session={mockPlaySession}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: /경쟁 상태/ }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+    await act(async () => {
+      vi.advanceTimersByTime(240);
+    });
+
+    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=2&correct=true&streak=3");
+
+    vi.useRealTimers();
+  });
+
+  it("uses Next router push when no navigation override is provided", async () => {
+    vi.useFakeTimers();
+
+    render(<PlayPage session={mockPlaySession} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "O" }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+    await act(async () => {
+      vi.advanceTimersByTime(240);
+    });
+
+    expect(mockRouter.push).toHaveBeenCalledWith("/insight?question=0&correct=true&streak=1");
 
     vi.useRealTimers();
   });
