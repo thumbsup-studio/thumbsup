@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { CheckIcon, LockIcon, MailIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
@@ -22,6 +22,7 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<FormError | null>(null);
+  const termsLabelId = useId();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -132,18 +133,20 @@ export function SignupForm() {
         disabled={loading}
       />
 
-      <label className="flex items-start gap-2 text-sm text-ink-muted">
+      {/* 약관 링크(버튼)를 <label> 밖에 두려고 label 대신 aria-labelledby로 체크박스를 텍스트에 연결한다. */}
+      <div className="flex items-start gap-2 text-sm text-ink-muted">
         <span className="relative mt-0.5 inline-flex size-5 shrink-0">
           <input
             type="checkbox"
             checked={agreed}
             onChange={(event) => setAgreed(event.target.checked)}
             disabled={loading}
+            aria-labelledby={termsLabelId}
             className="peer size-5 appearance-none rounded-md border border-border bg-surface transition-colors checked:border-primary checked:bg-primary disabled:opacity-60"
           />
           <CheckIcon className="pointer-events-none absolute inset-0 m-auto size-3.5 text-primary-fg opacity-0 peer-checked:opacity-100" />
         </span>
-        <span>
+        <span id={termsLabelId}>
           <span className="font-semibold text-primary">(필수)</span>{" "}
           <PlaceholderLink
             message="이용약관은 아직 준비 중이에요."
@@ -160,7 +163,7 @@ export function SignupForm() {
           </PlaceholderLink>
           에 동의합니다.
         </span>
-      </label>
+      </div>
 
       {formError ? (
         <Feedback tone="error">
