@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -134,15 +135,26 @@ public class QuizService {
         }
     }
 
+    /**
+     * 빈칸 하나에 동의어가 여러 개 등록될 수 있다(같은 slotOrder를 여러 행이 공유) — 그중 하나만 맞아도
+     * 그 빈칸은 정답으로 인정한다. slotOrder는 실제 빈칸 개수와 일치해야 하므로, 답 개수는 "고유 slotOrder 개수"와
+     * 비교한다(등록된 키워드 행 개수가 아님).
+     */
     private boolean gradeKeywordBlank(Quiz quiz, List<String> answers) {
-        List<QuizAnswerKeyword> correctKeywords = quiz.getAnswerKeywords(); // slotOrder 순 정렬 보장(@OrderBy)
-        if (answers.size() != correctKeywords.size()) {
+        Map<Integer, List<String>> synonymsBySlot = quiz.getAnswerKeywords().stream()
+                .collect(Collectors.groupingBy(
+                        QuizAnswerKeyword::getSlotOrder,
+                        Collectors.mapping(QuizAnswerKeyword::getKeyword, Collectors.toList())));
+        List<Integer> slotOrders = synonymsBySlot.keySet().stream().sorted().toList();
+        if (answers.size() != slotOrders.size()) {
             return false;
         }
         for (int i = 0; i < answers.size(); i++) {
-            if (!answers.get(i)
-                    .trim()
-                    .equalsIgnoreCase(correctKeywords.get(i).getKeyword().trim())) {
+            List<String> synonyms = synonymsBySlot.get(slotOrders.get(i));
+            String submitted = answers.get(i).trim();
+            boolean matched =
+                    synonyms.stream().anyMatch(keyword -> keyword.trim().equalsIgnoreCase(submitted));
+            if (!matched) {
                 return false;
             }
         }
