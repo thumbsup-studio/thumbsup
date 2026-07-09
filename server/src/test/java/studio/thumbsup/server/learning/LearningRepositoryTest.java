@@ -53,7 +53,7 @@ class LearningRepositoryTest {
         this.databaseCleanUp = databaseCleanUp;
     }
 
-    // Flyway 시드(V20260709161024)가 course id=1("CS 기초")·user_progress(user_id=1, course_id=1)를
+    // Flyway 시드(V20260710021230)가 course id=1("CS 기초")·user_progress(user_id=1, course_id=1)를
     // 이미 커밋해 둔다 — "첫 코스"·"특정 user_id" 같은 절대적 조건을 검증하는 테스트가 시드와 충돌하지
     // 않도록 각 테스트 실행 전 모든 테이블을 TRUNCATE해 독립적으로 검증한다.
     @BeforeEach
