@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -40,16 +41,19 @@ class QuizRepositoryTest {
     private final QuizRepository quizRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizProgressRepository quizProgressRepository;
+    private final QuizStepRepository quizStepRepository;
     private final EntityManager entityManager;
 
     QuizRepositoryTest(
             @Autowired QuizRepository quizRepository,
             @Autowired QuizAttemptRepository quizAttemptRepository,
             @Autowired QuizProgressRepository quizProgressRepository,
+            @Autowired QuizStepRepository quizStepRepository,
             @Autowired EntityManager entityManager) {
         this.quizRepository = quizRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.quizProgressRepository = quizProgressRepository;
+        this.quizStepRepository = quizStepRepository;
         this.entityManager = entityManager;
     }
 
@@ -59,6 +63,11 @@ class QuizRepositoryTest {
                         .setParameter("quizId", quizId)
                         .getSingleResult())
                 .longValue();
+    }
+
+    /** quiz.step_order가 quiz_step을 FK로 참조하므로, 스텝에 문제를 저장하기 전 부모 행을 먼저 만든다. */
+    private void saveStep(int stepOrder) {
+        quizStepRepository.save(QuizStep.create(stepOrder, "테스트 스텝 " + stepOrder));
     }
 
     @Nested
@@ -157,10 +166,11 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("한 스텝의 5문제를 slot_order 순서대로 조회한다")
         void finds_step_quizzes_in_slot_order() {
-            List<Quiz> step = QuizFixture.step(1);
+            saveStep(101);
+            List<Quiz> step = QuizFixture.step(101);
             step.forEach(quizRepository::save);
 
-            List<Quiz> found = quizRepository.findByStepOrderOrderBySlotOrderAsc(1);
+            List<Quiz> found = quizRepository.findByStepOrderOrderBySlotOrderAsc(101);
 
             assertThat(found).hasSize(5);
             assertThat(found).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3, 4, 5);
@@ -169,13 +179,34 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("스텝 완료 판정용으로 ID만 조회할 수 있다")
         void finds_step_quiz_ids() {
-            List<Quiz> step = QuizFixture.step(1);
+            saveStep(101);
+            List<Quiz> step = QuizFixture.step(101);
             List<Long> savedIds =
                     step.stream().map(quizRepository::save).map(Quiz::getId).toList();
 
-            List<Long> foundIds = quizRepository.findIdsByStepOrder(1);
+            List<Long> foundIds = quizRepository.findIdsByStepOrder(101);
 
             assertThat(foundIds).containsExactlyInAnyOrderElementsOf(savedIds);
+        }
+
+        @Test
+        @DisplayName("정식 커리큘럼(step_order > 0)의 최댓값을 조회한다 — 0은 제외")
+        void finds_max_step_order_excluding_placeholder() {
+            quizRepository.save(QuizFixture.oxQuiz()); // step_order 기본값 0(placeholder)
+            saveStep(101);
+            saveStep(102);
+            QuizFixture.step(101).forEach(quizRepository::save);
+            QuizFixture.step(102).forEach(quizRepository::save);
+
+            assertThat(quizRepository.findMaxStepOrder()).contains(102);
+        }
+
+        @Test
+        @DisplayName("시드된 정식 커리큘럼의 최댓값(V20260709210001 기준 12)을 반환한다")
+        void finds_seeded_curriculum_max_step_order() {
+            // 마이그레이션이 항상 1~12스텝 커리큘럼을 시드하므로 "커리큘럼 없음" 상태는 재현할 수 없다 —
+            // 대신 시드된 실제 최댓값을 검증해 마이그레이션 스텝 수 자체도 함께 확인한다.
+            assertThat(quizRepository.findMaxStepOrder()).contains(12);
         }
     }
 
@@ -213,11 +244,12 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("스텝 기준으로 유저의 풀이 이력을 조회한다")
         void finds_attempts_by_user_and_step() {
+            saveStep(101);
             List<Quiz> step =
-                    QuizFixture.step(1).stream().map(quizRepository::save).toList();
+                    QuizFixture.step(101).stream().map(quizRepository::save).toList();
             quizAttemptRepository.save(QuizAttempt.create(step.get(0), 1L, true));
 
-            List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(1L, 1);
+            List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(1L, 101);
 
             assertThat(attempts).hasSize(1);
             assertThat(attempts.get(0).getQuiz().getId()).isEqualTo(step.get(0).getId());
@@ -239,6 +271,33 @@ class QuizRepositoryTest {
 
             QuizProgress found = quizProgressRepository.findByUserId(1L).orElseThrow();
             assertThat(found.getCurrentStepOrder()).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    @DisplayName("스텝 주제(QuizStep)")
+    class QuizStepPersistence {
+
+        @Test
+        @DisplayName("스텝 주제를 저장하고 조회한다")
+        void saves_and_finds_by_step_order() {
+            quizStepRepository.save(QuizStep.create(101, "CPU 스케줄링 기초"));
+
+            QuizStep found = quizStepRepository.findByStepOrder(101).orElseThrow();
+
+            assertThat(found.getTopic()).isEqualTo("CPU 스케줄링 기초");
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 step_order로 문제를 저장하면 FK 위반으로 실패한다")
+        void rejects_quiz_with_unknown_step_order() {
+            Quiz quiz = QuizFixture.oxQuiz();
+            quiz.assignPosition(99, 1); // quiz_step에 없는 step_order
+
+            // Repository 프록시를 거치면 DataIntegrityViolationException으로 변환된다(PersistenceException 아님) —
+            // 원본 예외를 그대로 보고 싶으면 entityManager 네이티브 쿼리를 써야 한다(다른 테스트 참고).
+            assertThatThrownBy(() -> quizRepository.saveAndFlush(quiz))
+                    .isInstanceOf(DataIntegrityViolationException.class);
         }
     }
 }
