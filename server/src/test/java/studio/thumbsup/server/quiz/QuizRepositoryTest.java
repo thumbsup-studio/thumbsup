@@ -165,6 +165,18 @@ class QuizRepositoryTest {
             assertThat(found).hasSize(5);
             assertThat(found).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3, 4, 5);
         }
+
+        @Test
+        @DisplayName("스텝 완료 판정용으로 ID만 조회할 수 있다")
+        void finds_step_quiz_ids() {
+            List<Quiz> step = QuizFixture.step(1);
+            List<Long> savedIds =
+                    step.stream().map(quizRepository::save).map(Quiz::getId).toList();
+
+            List<Long> foundIds = quizRepository.findIdsByStepOrder(1);
+
+            assertThat(foundIds).containsExactlyInAnyOrderElementsOf(savedIds);
+        }
     }
 
     @Nested

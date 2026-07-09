@@ -2,9 +2,14 @@ package studio.thumbsup.server.quiz;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
     /** 한 스텝(5문제)을 출제 순서대로 조회한다. */
     List<Quiz> findByStepOrderOrderBySlotOrderAsc(int stepOrder);
+
+    /** 스텝 완료 여부 판정처럼 ID만 필요할 때 — TEXT 컬럼이 큰 본문을 불필요하게 읽지 않는다. */
+    @Query("SELECT q.id FROM Quiz q WHERE q.stepOrder = :stepOrder")
+    List<Long> findIdsByStepOrder(int stepOrder);
 }

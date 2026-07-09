@@ -134,5 +134,19 @@ class QuizControllerTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("QUIZ_NOT_FOUND"));
         }
+
+        @Test
+        @DisplayName("아직 진행하지 않은 미래 스텝의 문제면 403 QUIZ_NOT_ACCESSIBLE")
+        void returns_403_when_quiz_not_accessible() throws Exception {
+            authenticateAs(7L);
+            given(quizService.submitAnswer(eq(7L), eq(1L), eq(new AnswerSubmitRequest(List.of("O")))))
+                    .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE));
+
+            mockMvc.perform(post("/api/v1/quizzes/1/answers")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of("O")))))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_ACCESSIBLE"));
+        }
     }
 }

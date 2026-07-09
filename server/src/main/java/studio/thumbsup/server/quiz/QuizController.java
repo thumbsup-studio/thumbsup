@@ -43,6 +43,9 @@ public class QuizController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404",
             description = "code=QUIZ_NOT_FOUND — 존재하지 않는 퀴즈")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "code=QUIZ_NOT_ACCESSIBLE — 아직 진행하지 않은 미래 스텝의 문제")
     @PostMapping("/{quizId}/answers")
     public ApiResponse<AnswerSubmitResponse> submitAnswer(
             @AuthenticationPrincipal Long userId,

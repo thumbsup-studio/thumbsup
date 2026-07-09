@@ -144,7 +144,7 @@ class QuizServiceTest {
             quizService = service();
             Quiz quiz = quizWithId(10L, 1, 1); // oxQuiz — correctAnswer="O"
             given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(quiz));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
 
@@ -160,7 +160,7 @@ class QuizServiceTest {
             quizService = service();
             Quiz quiz = quizWithId(10L, 1, 1);
             given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(quiz));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
 
@@ -186,7 +186,7 @@ class QuizServiceTest {
                     .findFirst()
                     .orElseThrow();
             given(quizRepository.findById(20L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(quiz));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
 
@@ -204,7 +204,7 @@ class QuizServiceTest {
             quiz.assignPosition(1, 1);
             ReflectionTestUtils.setField(quiz, "id", 30L);
             given(quizRepository.findById(30L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(quiz));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
 
@@ -215,6 +215,42 @@ class QuizServiceTest {
         }
 
         @Test
+        @DisplayName("키워드 빈칸은 제출 개수가 정답 개수와 다르면 오답으로 처리한다")
+        void grades_keyword_blank_incorrect_when_answer_count_mismatches() {
+            quizService = service();
+            Quiz quiz = QuizFixture.keywordBlankQuiz(); // answerKeywords = ["LIFO"] (1개)
+            quiz.assignPosition(1, 1);
+            ReflectionTestUtils.setField(quiz, "id", 30L);
+            given(quizRepository.findById(30L)).willReturn(Optional.of(quiz));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
+            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+                    .willReturn(List.of());
+
+            AnswerSubmitResponse response =
+                    quizService.submitAnswer(USER_ID, 30L, new AnswerSubmitRequest(List.of("LIFO", "여분")));
+
+            assertThat(response.isCorrect()).isFalse();
+        }
+
+        @Test
+        @DisplayName("사지선다는 숫자로 파싱되지 않는 선택지 id를 제출하면 오답으로 처리한다")
+        void grades_multiple_choice_incorrect_when_choice_id_is_not_numeric() {
+            quizService = service();
+            Quiz quiz = QuizFixture.multipleChoiceQuiz();
+            quiz.assignPosition(1, 1);
+            ReflectionTestUtils.setField(quiz, "id", 20L);
+            given(quizRepository.findById(20L)).willReturn(Optional.of(quiz));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
+            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+                    .willReturn(List.of());
+
+            AnswerSubmitResponse response =
+                    quizService.submitAnswer(USER_ID, 20L, new AnswerSubmitRequest(List.of("garbage")));
+
+            assertThat(response.isCorrect()).isFalse();
+        }
+
+        @Test
         @DisplayName("스텝의 모든 문제를 한 번씩 시도했으면 다음 스텝으로 진행한다")
         void advances_progress_when_step_fully_attempted() {
             quizService = service();
@@ -222,13 +258,40 @@ class QuizServiceTest {
             List<Quiz> stepQuizzes = List.of(
                     quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
             given(quizRepository.findById(10L)).willReturn(Optional.of(last));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(stepQuizzes);
+            given(quizRepository.findIdsByStepOrder(1))
+                    .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
             List<QuizAttempt> allAttempted = stepQuizzes.stream()
                     .map(q -> QuizAttempt.create(q, USER_ID, true))
                     .toList();
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(allAttempted);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(QuizProgress.create(USER_ID)));
+            given(quizProgressRepository.findByUserIdForUpdate(USER_ID))
+                    .willReturn(Optional.of(QuizProgress.create(USER_ID)));
+
+            quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
+
+            ArgumentCaptor<QuizProgress> captor = ArgumentCaptor.forClass(QuizProgress.class);
+            verify(quizProgressRepository).save(captor.capture());
+            assertThat(captor.getValue().getCurrentStepOrder()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("최초로 스텝을 완료하면 진행 상태 행을 새로 만들어 다음 스텝으로 저장한다")
+        void creates_progress_row_on_first_step_completion() {
+            quizService = service();
+            Quiz last = quizWithId(10L, 1, 5);
+            List<Quiz> stepQuizzes = List.of(
+                    quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
+            given(quizRepository.findById(10L)).willReturn(Optional.of(last));
+            given(quizRepository.findIdsByStepOrder(1))
+                    .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
+            List<QuizAttempt> allAttempted = stepQuizzes.stream()
+                    .map(q -> QuizAttempt.create(q, USER_ID, true))
+                    .toList();
+            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+                    .willReturn(allAttempted);
+            given(quizProgressRepository.findByUserIdForUpdate(USER_ID)).willReturn(Optional.empty());
+            given(quizProgressRepository.saveAndFlush(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
@@ -243,8 +306,7 @@ class QuizServiceTest {
             quizService = service();
             Quiz quiz = quizWithId(10L, 1, 1);
             given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1))
-                    .willReturn(List.of(quiz, quizWithId(11L, 1, 2)));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(10L, 11L));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
 
@@ -263,6 +325,39 @@ class QuizServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
                             .isEqualTo(QuizErrorType.QUIZ_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("아직 진행하지 않은 미래 스텝의 문제는 QUIZ_NOT_ACCESSIBLE")
+        void throws_quiz_not_accessible_when_step_is_ahead_of_progress() {
+            quizService = service();
+            Quiz futureQuiz = quizWithId(10L, 2, 1);
+            given(quizRepository.findById(10L)).willReturn(Optional.of(futureQuiz));
+            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(QuizProgress.create(USER_ID)));
+
+            assertThatThrownBy(() -> quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O"))))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
+                            .isEqualTo(QuizErrorType.QUIZ_NOT_ACCESSIBLE));
+        }
+
+        @Test
+        @DisplayName("이미 지난 스텝의 문제는 복습을 위해 제출할 수 있다")
+        void allows_submitting_for_a_past_step() {
+            quizService = service();
+            QuizProgress progress = QuizProgress.create(USER_ID);
+            progress.advanceToNextStep(); // currentStepOrder=2
+            Quiz pastQuiz = quizWithId(10L, 1, 1);
+            given(quizRepository.findById(10L)).willReturn(Optional.of(pastQuiz));
+            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progress));
+            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(pastQuiz.getId()));
+            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+                    .willReturn(List.of());
+
+            AnswerSubmitResponse response =
+                    quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
+
+            assertThat(response.isCorrect()).isTrue();
         }
     }
 }
