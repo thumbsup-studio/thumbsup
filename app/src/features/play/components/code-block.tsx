@@ -20,7 +20,7 @@ function highlightLine(line: string) {
     }
 
     nodes.push(
-      <span className="text-blue-700" key={`${word}-${start}`}>
+      <span className="text-primary" key={`${word}-${start}`}>
         {word}
       </span>,
     );
@@ -50,12 +50,12 @@ function getCodeLines(code: string) {
 
 export function CodeBlock({ code, languageLabel }: CodeBlockProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-slate-100 shadow-inner">
-      <div className="flex items-center justify-between border-slate-800 border-b px-4 py-2 text-[0.68rem] font-semibold text-slate-400 uppercase">
+    <div className="overflow-hidden rounded-control border border-border bg-ink text-primary-fg shadow-card">
+      <div className="flex items-center justify-between border-border/20 border-b px-4 py-2 text-xs font-semibold text-primary-fg/70 uppercase">
         <span>{languageLabel}</span>
         <span>code</span>
       </div>
-      <pre className="overflow-x-auto px-4 py-4 text-[0.82rem] leading-6 [tab-size:2]">
+      <pre className="overflow-x-auto px-4 py-4 text-sm leading-6">
         <code>
           {getCodeLines(code).map(({ key, line }) => (
             <span className="block min-w-max" key={key}>
