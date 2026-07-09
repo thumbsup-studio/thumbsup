@@ -41,13 +41,18 @@ public class QuizAttempt extends BaseEntity {
     @Column(nullable = false)
     private boolean isCorrect;
 
-    private QuizAttempt(Quiz quiz, Long userId, boolean isCorrect) {
+    /** 유저가 실제로 제출한 답(쉼표 구분) — 오답 사유 표시 등 향후 복습 기능에서 참고용. 채점 근거로는 쓰지 않는다. */
+    @Column(nullable = false, length = 500)
+    private String submittedAnswer;
+
+    private QuizAttempt(Quiz quiz, Long userId, boolean isCorrect, String submittedAnswer) {
         this.quiz = quiz;
         this.userId = userId;
         this.isCorrect = isCorrect;
+        this.submittedAnswer = submittedAnswer;
     }
 
-    public static QuizAttempt create(Quiz quiz, Long userId, boolean isCorrect) {
-        return new QuizAttempt(quiz, userId, isCorrect);
+    public static QuizAttempt create(Quiz quiz, Long userId, boolean isCorrect, String submittedAnswer) {
+        return new QuizAttempt(quiz, userId, isCorrect, submittedAnswer);
     }
 }

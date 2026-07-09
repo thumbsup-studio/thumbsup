@@ -53,9 +53,7 @@ public class QuizService {
             throw new BusinessException(QuizErrorType.QUIZ_NOT_FOUND);
         }
 
-        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
-                .map(attempt -> attempt.getQuiz().getId())
-                .collect(Collectors.toSet());
+        Set<Long> attemptedQuizIds = attemptedQuizIds(userId, stepOrder);
 
         Quiz next = stepQuizzes.stream()
                 .filter(quiz -> !attemptedQuizIds.contains(quiz.getId()))
@@ -90,7 +88,8 @@ public class QuizService {
         validateAccessible(userId, quiz);
 
         boolean isCorrect = grade(quiz, request.answers());
-        quizAttemptRepository.save(QuizAttempt.create(quiz, userId, isCorrect));
+        String submittedAnswer = String.join(",", request.answers());
+        quizAttemptRepository.save(QuizAttempt.create(quiz, userId, isCorrect, submittedAnswer));
         advanceProgressIfStepCompleted(userId, quiz.getStepOrder());
 
         return new AnswerSubmitResponse(isCorrect);
@@ -124,10 +123,16 @@ public class QuizService {
     }
 
     private boolean gradeOx(Quiz quiz, List<String> answers) {
+        if (answers.size() != 1) {
+            return false;
+        }
         return answers.get(0).equalsIgnoreCase(quiz.getCorrectAnswer());
     }
 
     private boolean gradeMultipleChoice(Quiz quiz, List<String> answers) {
+        if (answers.size() != 1) {
+            return false;
+        }
         Long submittedChoiceId = parseChoiceId(answers.get(0));
         if (submittedChoiceId == null) {
             return false;
@@ -177,9 +182,7 @@ public class QuizService {
         QuizProgress progress = lockOrCreateProgress(userId);
 
         List<Long> stepQuizIds = quizRepository.findIdsByStepOrder(stepOrder);
-        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
-                .map(attempt -> attempt.getQuiz().getId())
-                .collect(Collectors.toSet());
+        Set<Long> attemptedQuizIds = attemptedQuizIds(userId, stepOrder);
         boolean stepCompleted = stepQuizIds.stream().allMatch(attemptedQuizIds::contains);
         if (!stepCompleted) {
             return;
@@ -206,5 +209,12 @@ public class QuizService {
         } catch (DataIntegrityViolationException e) {
             return quizProgressRepository.findByUserIdForUpdate(userId).orElseThrow();
         }
+    }
+
+    /** 스텝 내에서 이 유저가 이미 시도한 quizId 집합 — "다음 문제" 계산과 스텝 완료 판정이 공유한다. */
+    private Set<Long> attemptedQuizIds(Long userId, int stepOrder) {
+        return quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
+                .map(attempt -> attempt.getQuiz().getId())
+                .collect(Collectors.toSet());
     }
 }

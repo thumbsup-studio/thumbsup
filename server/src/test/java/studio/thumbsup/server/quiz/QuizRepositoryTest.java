@@ -187,9 +187,9 @@ class QuizRepositoryTest {
         @DisplayName("같은 유저·퀴즈 조합도 복습을 위해 여러 번 저장할 수 있다")
         void allows_multiple_attempts_for_same_user_and_quiz() {
             Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
-            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false));
+            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false, "X"));
 
-            assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true)))
+            assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true, "O")))
                     .doesNotThrowAnyException();
             assertThat(quizAttemptRepository.findAll()).hasSize(2);
         }
@@ -198,7 +198,7 @@ class QuizRepositoryTest {
         @DisplayName("풀이 이력이 남은 퀴즈는 삭제할 수 없다(ON DELETE RESTRICT)")
         void rejects_deleting_quiz_with_attempt_history() {
             Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
-            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true));
+            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true, "O"));
 
             // 네이티브 SQL로 직접 삭제해 DB 제약(ON DELETE RESTRICT) 자체를 검증한다 —
             // quizRepository.delete()는 Hibernate가 플러시 시점에 quiz_attempt의 참조를
@@ -215,7 +215,7 @@ class QuizRepositoryTest {
         void finds_attempts_by_user_and_step() {
             List<Quiz> step =
                     QuizFixture.step(1).stream().map(quizRepository::save).toList();
-            quizAttemptRepository.save(QuizAttempt.create(step.get(0), 1L, true));
+            quizAttemptRepository.save(QuizAttempt.create(step.get(0), 1L, true, "O"));
 
             List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(1L, 1);
 
