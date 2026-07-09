@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { LockIcon, MailIcon } from "@/components/icons";
+import { CheckIcon, LockIcon, MailIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
@@ -133,13 +133,16 @@ export function SignupForm() {
       />
 
       <label className="flex items-start gap-2 text-sm text-ink-muted">
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(event) => setAgreed(event.target.checked)}
-          disabled={loading}
-          className="mt-0.5 size-5 shrink-0 accent-primary"
-        />
+        <span className="relative mt-0.5 inline-flex size-5 shrink-0">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(event) => setAgreed(event.target.checked)}
+            disabled={loading}
+            className="peer size-5 appearance-none rounded-md border border-border bg-surface transition-colors checked:border-primary checked:bg-primary disabled:opacity-60"
+          />
+          <CheckIcon className="pointer-events-none absolute inset-0 m-auto size-3.5 text-primary-fg opacity-0 peer-checked:opacity-100" />
+        </span>
         <span>
           <span className="font-semibold text-primary">(필수)</span>{" "}
           <PlaceholderLink

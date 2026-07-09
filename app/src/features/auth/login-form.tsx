@@ -77,7 +77,7 @@ export function LoginForm() {
         />
         <PlaceholderLink
           message="비밀번호 찾기는 아직 준비 중이에요."
-          className="self-end text-sm font-medium text-primary"
+          className="self-end text-sm font-medium text-ink-muted"
         >
           비밀번호를 잊으셨나요?
         </PlaceholderLink>

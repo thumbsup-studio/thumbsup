@@ -74,11 +74,18 @@ export function AlertCircleIcon(props: IconProps) {
   );
 }
 
-export function ArrowLeftIcon(props: IconProps) {
+export function ChevronLeftIcon(props: IconProps) {
   return (
     <StrokeIcon {...props}>
-      <path d="m12 19-7-7 7-7" />
-      <path d="M19 12H5" />
+      <path d="m15 18-6-6 6-6" />
+    </StrokeIcon>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M20 6 9 17l-5-5" />
     </StrokeIcon>
   );
 }

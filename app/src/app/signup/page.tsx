@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeftIcon } from "@/components/icons";
+import { ChevronLeftIcon } from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { AuthBrand } from "@/features/auth/auth-brand";
 import { RedirectIfAuthenticated } from "@/features/auth/redirect-if-authenticated";
@@ -21,7 +21,7 @@ export default function SignupPage() {
           aria-label="뒤로 가기"
           className="-ml-2 inline-flex size-11 items-center justify-center rounded-control text-ink"
         >
-          <ArrowLeftIcon className="size-6" />
+          <ChevronLeftIcon className="size-6" />
         </Link>
       </div>
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-8">
