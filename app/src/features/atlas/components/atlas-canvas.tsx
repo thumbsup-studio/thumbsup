@@ -48,7 +48,8 @@ export function AtlasCanvas({
         ) : null}
       </div>
 
-      <svg aria-label={`${title} 그래프`} className="w-full" role="img" viewBox={VIEW_BOX}>
+      {/* role 미지정 → svg의 암묵 role(graphics-document). 단일 이미지로 묶지 않아 내부 노드(role="button")가 접근성 트리에 노출된다 */}
+      <svg aria-label={`${title} 그래프`} className="w-full" viewBox={VIEW_BOX}>
         <defs>
           <marker
             id={GRAPH_ARROW_MARKER_ID}

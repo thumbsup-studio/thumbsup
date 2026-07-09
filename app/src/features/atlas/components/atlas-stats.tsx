@@ -4,12 +4,17 @@ type AtlasStatsRowProps = {
   stats: AtlasStats;
 };
 
+/** 양수만 "+"를 붙인다(0·음수는 "+0"/"+-3" 같은 어색한 표기 방지). */
+function formatGrowth(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
 export function AtlasStatsRow({ stats }: AtlasStatsRowProps) {
   return (
     <div className="grid grid-cols-3 gap-3">
       <StatCard label="배운 노드" value={stats.learnedNodeCount} />
       <StatCard label="연결 수" value={stats.connectionCount} />
-      <StatCard accent label="이번 주 확장" value={`+${stats.weeklyGrowth}`} />
+      <StatCard accent label="이번 주 확장" value={formatGrowth(stats.weeklyGrowth)} />
     </div>
   );
 }

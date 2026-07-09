@@ -211,7 +211,7 @@ export function GraphNode({
     <g
       aria-label={`${label}, 숙련도 ${MASTERY_LABEL[mastery]}`}
       aria-pressed={selected}
-      className="cursor-pointer"
+      className="cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-graph-fg"
       onClick={() => onSelect?.(id)}
       onKeyDown={handleKeyDown}
       role="button"
