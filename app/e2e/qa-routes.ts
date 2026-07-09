@@ -7,6 +7,8 @@ export type QaRoute = {
 
 export const qaRoutes: QaRoute[] = [
   { path: "/", design: "e2e/designs/home.png" },
+  { path: "/play", design: null },
+  { path: "/insight?question=0&correct=true", design: null },
   { path: "/login", design: "e2e/designs/login.png" },
   { path: "/signup", design: "e2e/designs/signup.png" },
 ];
