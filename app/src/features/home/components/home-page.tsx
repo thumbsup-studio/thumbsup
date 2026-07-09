@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { BottomTabBar } from "@/features/home/components/bottom-tab-bar";
 import { StreakBlock } from "@/features/home/components/streak-block";
 import { TodayCourseCard } from "@/features/home/components/today-course-card";
@@ -14,6 +15,7 @@ type HomePageProps = {
 
 export function HomePage({ data, now }: HomePageProps) {
   const { showToast } = useAppToast();
+  const router = useRouter();
   const currentDate = typeof now === "string" ? new Date(now) : now;
 
   return (
@@ -34,7 +36,7 @@ export function HomePage({ data, now }: HomePageProps) {
           <BottomTabBar
             activeTab="home"
             onHistoryClick={() => {
-              showToast({ message: "히스토리는 준비 중입니다." });
+              router.push("/history");
             }}
             onProfileClick={() => {
               showToast({ message: "프로필은 준비 중입니다." });
