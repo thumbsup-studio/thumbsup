@@ -9,5 +9,5 @@ export const qaRoutes: QaRoute[] = [
   { path: "/", design: "e2e/designs/home.png" },
   { path: "/play", design: null },
   { path: "/insight?question=0&correct=true", design: null },
-  // 예) #38 이후: { path: "/quiz", design: "e2e/designs/quiz.png" },
+  { path: "/history", design: "e2e/designs/history.png" },
 ];

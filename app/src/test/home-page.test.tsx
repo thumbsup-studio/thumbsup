@@ -5,6 +5,9 @@ import { HomePage } from "@/features/home/components/home-page";
 import type { HomeData } from "@/features/home/types";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+
 const baseData: HomeData = {
   streakDays: 12,
   todayCourse: {
@@ -18,6 +21,7 @@ const baseData: HomeData = {
 
 afterEach(() => {
   vi.useRealTimers();
+  pushMock.mockClear();
 });
 
 describe("HomePage", () => {
@@ -48,7 +52,7 @@ describe("HomePage", () => {
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/play");
   });
 
-  it("shows a coming soon message when inactive tabs are clicked", () => {
+  it("navigates to /history from the history tab and toasts for not-yet-built tabs", () => {
     vi.useFakeTimers();
 
     render(
@@ -58,12 +62,15 @@ describe("HomePage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "히스토리" }));
-    expect(screen.getByText("히스토리는 준비 중입니다.")).toBeInTheDocument();
+    expect(pushMock).toHaveBeenCalledWith("/history");
+
+    fireEvent.click(screen.getByRole("button", { name: "프로필" }));
+    expect(screen.getByText("프로필은 준비 중입니다.")).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(3000);
     });
-    expect(screen.queryByText("히스토리는 준비 중입니다.")).not.toBeInTheDocument();
+    expect(screen.queryByText("프로필은 준비 중입니다.")).not.toBeInTheDocument();
   });
 
   it("links the start action to the play page", () => {

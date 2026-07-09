@@ -14,3 +14,11 @@ export const WithAction: StoryObj<typeof EmptyState> = {
     action: <Button>오늘의 문제 시작</Button>,
   },
 };
+export const Dark: StoryObj<typeof EmptyState> = {
+  args: {
+    tone: "dark",
+    title: "아직 연결된 개념이 없어요",
+    description: "첫 퀴즈를 풀면 학습한 개념이 그래프에 노드로 나타나요.",
+    action: <Button>퀴즈 시작하기</Button>,
+  },
+};
