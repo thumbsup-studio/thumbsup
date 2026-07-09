@@ -91,6 +91,30 @@ public final class QuizFixture {
         return quiz;
     }
 
+    /**
+     * 해설 조회(#43)용 — 본문에 {@code [[키워드]]} 마커가 저작돼 있다.
+     *
+     * <p>실제 생성물의 두 가지 특성을 재현한다: (1) 키워드 '비연결형'은 해설 본문이 아니라 오답 해설에만
+     * 등장한다. (2) 대표 꼬리질문이 저작 순서상 뒤에 있어, 응답에서 앞으로 끌어올려야 한다.
+     */
+    public static Quiz annotatedExplanationQuiz() {
+        Quiz quiz = Quiz.create(
+                QuizType.OX,
+                QuizDifficulty.EASY,
+                "TCP는 연결 지향 프로토콜이다.",
+                null,
+                "TCP는 [[연결 지향]] 프로토콜이다.\n연결은 [[3-way handshake]]로 맺어진다.",
+                "웹 브라우저도 접속 전에 [[3-way handshake]]를 거친다.",
+                "UDP는 [[비연결형]]이라 handshake가 없다.");
+        quiz.assignCorrectAnswer("O");
+        quiz.addFollowUpQuestion("보조 질문입니다.", false, 2);
+        quiz.addFollowUpQuestion("대표 질문입니다.", true, 1);
+        quiz.addKeyword("연결 지향", "통신 전에 연결을 먼저 수립하는 방식");
+        quiz.addKeyword("3-way handshake", "세 단계로 패킷을 주고받아 연결을 맺는 절차");
+        quiz.addKeyword("비연결형", "연결을 수립하지 않고 곧바로 전송하는 방식");
+        return quiz;
+    }
+
     /** 한 스텝(5문제: 하2·중2·상1)을 slot_order 1~5로 조립한다. */
     public static List<Quiz> step(int stepOrder) {
         Quiz first = oxQuiz();

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
+import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 
 /**
@@ -62,6 +63,18 @@ public class QuizService {
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
 
         return QuizNextResponse.from(next);
+    }
+
+    /**
+     * 문제 하나의 해설을 조회한다 — 해설 화면(S4)이 그리는 콘텐츠 전부를 한 번에 내려준다.
+     *
+     * <p>해설은 quizId만으로 정해지는 정적 콘텐츠라 채점 결과에 의존하지 않는다. 그래서 정답 제출(#42)이
+     * 쓴 풀이 이력을 읽지 않으며, 새로고침·딥링크·복습처럼 채점 없이 해설만 필요한 흐름에서도 그대로 쓰인다.
+     */
+    public QuizExplanationResponse getExplanation(Long quizId) {
+        Quiz quiz =
+                quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        return QuizExplanationResponse.from(quiz);
     }
 
     /**

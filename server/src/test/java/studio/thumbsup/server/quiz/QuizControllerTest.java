@@ -28,6 +28,7 @@ import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.exception.GlobalExceptionHandler;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
+import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 
 /** Controller 슬라이스 테스트 — standalone MockMvc로 요청/응답 계약만 검증한다 (피라미드 2층). */
@@ -147,6 +148,51 @@ class QuizControllerTest {
                             .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of("O")))))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("QUIZ_NOT_ACCESSIBLE"));
+        }
+    }
+
+    @Nested
+    @DisplayName("해설 조회")
+    class GetExplanation {
+
+        private QuizExplanationResponse explanationResponse() {
+            return new QuizExplanationResponse(
+                    1L,
+                    List.of(new QuizExplanationResponse.AnnotatedText(
+                            "TCP는 연결 지향 프로토콜이다.", List.of(new QuizExplanationResponse.Highlight("연결 지향", 5, 10)))),
+                    null,
+                    new QuizExplanationResponse.AnnotatedText("UDP는 비연결형이다.", List.of()),
+                    List.of(new QuizExplanationResponse.KeywordItem("연결 지향", "통신 전에 연결을 먼저 수립하는 방식")),
+                    List.of("대표 질문입니다."));
+        }
+
+        @Test
+        @DisplayName("성공하면 200과 해설 데이터를 반환한다")
+        void returns_200_with_explanation_data() throws Exception {
+            given(quizService.getExplanation(eq(1L))).willReturn(explanationResponse());
+
+            mockMvc.perform(get("/api/v1/quizzes/1/explanation"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.quizId").value(1))
+                    .andExpect(jsonPath("$.data.explanationSummary[0].text").value("TCP는 연결 지향 프로토콜이다."))
+                    .andExpect(jsonPath("$.data.explanationSummary[0].highlights[0].keyword")
+                            .value("연결 지향"))
+                    .andExpect(jsonPath("$.data.explanationSummary[0].highlights[0].start")
+                            .value(5))
+                    .andExpect(jsonPath("$.data.explanationExample").isEmpty())
+                    .andExpect(jsonPath("$.data.wrongAnswerExplanation.text").value("UDP는 비연결형이다."))
+                    .andExpect(jsonPath("$.data.followUpQuestions[0]").value("대표 질문입니다."));
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 문제면 404 QUIZ_NOT_FOUND를 반환한다")
+        void returns_404_when_quiz_is_absent() throws Exception {
+            given(quizService.getExplanation(eq(999L))).willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+
+            mockMvc.perform(get("/api/v1/quizzes/999/explanation"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_FOUND"));
         }
     }
 }
