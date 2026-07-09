@@ -49,7 +49,7 @@ describe("HomePage", () => {
     expect(screen.getByText("프로세스와 스레드")).toBeInTheDocument();
     expect(screen.getByText("3/8")).toBeInTheDocument();
     expect(screen.getByText("3분이면 끝나요")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "시작하기" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/play");
   });
 
   it("navigates to /history from the history tab and toasts for not-yet-built tabs", () => {
@@ -73,21 +73,13 @@ describe("HomePage", () => {
     expect(screen.queryByText("프로필은 준비 중입니다.")).not.toBeInTheDocument();
   });
 
-  it("shows a toast when the start button is clicked", () => {
-    vi.useFakeTimers();
-
+  it("links the start action to the play page", () => {
     render(
       <AppToastProvider>
         <HomePage data={baseData} now={new Date("2026-07-08T08:00:00+09:00")} />
       </AppToastProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
-    expect(screen.getByText("퀴즈는 준비 중입니다.")).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(screen.queryByText("퀴즈는 준비 중입니다.")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/play");
   });
 });

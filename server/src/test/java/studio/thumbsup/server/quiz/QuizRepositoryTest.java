@@ -1,8 +1,12 @@
 package studio.thumbsup.server.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,10 +38,18 @@ class QuizRepositoryTest {
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final QuizRepository quizRepository;
+    private final QuizAttemptRepository quizAttemptRepository;
+    private final QuizProgressRepository quizProgressRepository;
     private final EntityManager entityManager;
 
-    QuizRepositoryTest(@Autowired QuizRepository quizRepository, @Autowired EntityManager entityManager) {
+    QuizRepositoryTest(
+            @Autowired QuizRepository quizRepository,
+            @Autowired QuizAttemptRepository quizAttemptRepository,
+            @Autowired QuizProgressRepository quizProgressRepository,
+            @Autowired EntityManager entityManager) {
         this.quizRepository = quizRepository;
+        this.quizAttemptRepository = quizAttemptRepository;
+        this.quizProgressRepository = quizProgressRepository;
         this.entityManager = entityManager;
     }
 
@@ -135,6 +147,86 @@ class QuizRepositoryTest {
 
             assertThat(quizRepository.findById(id)).isEmpty();
             assertThat(countChoicesByQuizId(id)).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("스텝 단위 조회")
+    class FindByStep {
+
+        @Test
+        @DisplayName("한 스텝의 5문제를 slot_order 순서대로 조회한다")
+        void finds_step_quizzes_in_slot_order() {
+            List<Quiz> step = QuizFixture.step(1);
+            step.forEach(quizRepository::save);
+
+            List<Quiz> found = quizRepository.findByStepOrderOrderBySlotOrderAsc(1);
+
+            assertThat(found).hasSize(5);
+            assertThat(found).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3, 4, 5);
+        }
+    }
+
+    @Nested
+    @DisplayName("퀴즈 풀이 이력")
+    class QuizAttemptPersistence {
+
+        @Test
+        @DisplayName("같은 유저·퀴즈 조합도 복습을 위해 여러 번 저장할 수 있다")
+        void allows_multiple_attempts_for_same_user_and_quiz() {
+            Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
+            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false));
+
+            assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true)))
+                    .doesNotThrowAnyException();
+            assertThat(quizAttemptRepository.findAll()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("풀이 이력이 남은 퀴즈는 삭제할 수 없다(ON DELETE RESTRICT)")
+        void rejects_deleting_quiz_with_attempt_history() {
+            Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
+            quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true));
+
+            // 네이티브 SQL로 직접 삭제해 DB 제약(ON DELETE RESTRICT) 자체를 검증한다 —
+            // quizRepository.delete()는 Hibernate가 플러시 시점에 quiz_attempt의 참조를
+            // 미리 감지해 TransientObjectException을 던지므로 DB 레벨 확인에 부적합하다.
+            assertThatThrownBy(() -> entityManager
+                            .createNativeQuery("DELETE FROM quiz WHERE id = :id")
+                            .setParameter("id", quiz.getId())
+                            .executeUpdate())
+                    .isInstanceOf(PersistenceException.class);
+        }
+
+        @Test
+        @DisplayName("스텝 기준으로 유저의 풀이 이력을 조회한다")
+        void finds_attempts_by_user_and_step() {
+            List<Quiz> step =
+                    QuizFixture.step(1).stream().map(quizRepository::save).toList();
+            quizAttemptRepository.save(QuizAttempt.create(step.get(0), 1L, true));
+
+            List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(1L, 1);
+
+            assertThat(attempts).hasSize(1);
+            assertThat(attempts.get(0).getQuiz().getId()).isEqualTo(step.get(0).getId());
+        }
+    }
+
+    @Nested
+    @DisplayName("유저 진행 상태")
+    class QuizProgressPersistence {
+
+        @Test
+        @DisplayName("생성 시 1스텝부터 시작하고, 진행하면 다음 스텝으로 넘어간다")
+        void starts_at_step_one_and_advances() {
+            QuizProgress progress = quizProgressRepository.save(QuizProgress.create(1L));
+            assertThat(progress.getCurrentStepOrder()).isEqualTo(1);
+
+            progress.advanceToNextStep();
+            quizProgressRepository.saveAndFlush(progress);
+
+            QuizProgress found = quizProgressRepository.findByUserId(1L).orElseThrow();
+            assertThat(found.getCurrentStepOrder()).isEqualTo(2);
         }
     }
 }

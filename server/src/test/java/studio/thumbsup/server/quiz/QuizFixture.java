@@ -1,5 +1,7 @@
 package studio.thumbsup.server.quiz;
 
+import java.util.List;
+
 /** 퀴즈 테스트 픽스처 — feature 소유. 영속화 전 완전한 aggregate를 만들어 반환한다. */
 public final class QuizFixture {
 
@@ -16,6 +18,22 @@ public final class QuizFixture {
         quiz.addFollowUpQuestion("UDP와 TCP의 핵심 차이는 무엇인가요?", true, 1);
         quiz.addDerivedConcept("3-way handshake", 1);
         quiz.addKeyword("연결 지향", "통신 전에 연결을 먼저 수립하는 방식");
+        return quiz;
+    }
+
+    public static Quiz oxQuiz2() {
+        Quiz quiz = Quiz.create(
+                QuizType.OX,
+                QuizDifficulty.EASY,
+                "UDP는 신뢰성을 보장한다.",
+                null,
+                "UDP는 신뢰성을 보장하지 않는 비연결형 프로토콜이다.",
+                null,
+                "TCP와 헷갈리기 쉽다 — 신뢰성 보장은 TCP의 특징이다.");
+        quiz.assignCorrectAnswer("X");
+        quiz.addFollowUpQuestion("UDP는 어떤 상황에 적합한가요?", true, 1);
+        quiz.addDerivedConcept("비연결형 프로토콜", 1);
+        quiz.addKeyword("신뢰성", "데이터 전달을 보장하는 성질");
         return quiz;
     }
 
@@ -38,6 +56,25 @@ public final class QuizFixture {
         return quiz;
     }
 
+    public static Quiz multipleChoiceQuiz2() {
+        Quiz quiz = Quiz.create(
+                QuizType.MULTIPLE_CHOICE,
+                QuizDifficulty.MEDIUM,
+                "프로세스와 스레드의 차이로 옳은 것은?",
+                null,
+                "프로세스는 독립된 메모리 공간을, 스레드는 프로세스 내 메모리를 공유한다.",
+                "멀티스레드 웹 서버가 스레드 간 메모리 공유의 대표적인 예시다.",
+                "스레드도 독립된 메모리를 갖는다고 착각하기 쉽다 — 스택만 별도이고 힙은 공유한다.");
+        quiz.addChoice("프로세스는 메모리를 공유하고 스레드는 독립적이다", false, 1);
+        quiz.addChoice("스레드는 프로세스 내 메모리를 공유한다", true, 2);
+        quiz.addChoice("둘 다 완전히 독립된 메모리를 가진다", false, 3);
+        quiz.addChoice("차이가 없다", false, 4);
+        quiz.addFollowUpQuestion("스레드 간 메모리 공유가 왜 위험할 수 있나요?", true, 1);
+        quiz.addDerivedConcept("컨텍스트 스위칭", 1);
+        quiz.addKeyword("스레드", "프로세스 내에서 실행되는 작업 단위");
+        return quiz;
+    }
+
     public static Quiz keywordBlankQuiz() {
         Quiz quiz = Quiz.create(
                 QuizType.KEYWORD_BLANK,
@@ -52,6 +89,23 @@ public final class QuizFixture {
         quiz.addDerivedConcept("LIFO", 1);
         quiz.addKeyword("스택", "한쪽 끝에서만 데이터를 넣고 뺄 수 있는 자료구조");
         return quiz;
+    }
+
+    /** 한 스텝(5문제: 하2·중2·상1)을 slot_order 1~5로 조립한다. */
+    public static List<Quiz> step(int stepOrder) {
+        Quiz first = oxQuiz();
+        Quiz second = oxQuiz2();
+        Quiz third = multipleChoiceQuiz();
+        Quiz fourth = multipleChoiceQuiz2();
+        Quiz fifth = keywordBlankQuiz();
+
+        first.assignPosition(stepOrder, 1);
+        second.assignPosition(stepOrder, 2);
+        third.assignPosition(stepOrder, 3);
+        fourth.assignPosition(stepOrder, 4);
+        fifth.assignPosition(stepOrder, 5);
+
+        return List.of(first, second, third, fourth, fifth);
     }
 
     private QuizFixture() {}
