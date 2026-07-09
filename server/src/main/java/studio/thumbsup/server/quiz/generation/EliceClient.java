@@ -1,8 +1,12 @@
 package studio.thumbsup.server.quiz.generation;
 
+import java.time.Duration;
 import java.util.List;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -15,6 +19,8 @@ public class EliceClient {
 
     private static final String RESPONSE_FORMAT_JSON = "json_object";
     private static final double TEMPERATURE = 0.2; // 사실 기반 콘텐츠라 창의성보다 일관성 우선
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration READ_TIMEOUT = Duration.ofMinutes(2); // 문제 5개 생성은 수십 초가 걸릴 수 있다
 
     private static final String SYSTEM_PROMPT = """
             너는 컴퓨터공학 전공 교재 수준의 정확성을 가진 CS 강사이며, 학습자의 이해도를 확인하는 퀴즈를 만든다.
@@ -32,7 +38,15 @@ public class EliceClient {
 
     public EliceClient(EliceProperties properties) {
         this.properties = properties;
-        this.restClient = RestClient.builder().baseUrl(properties.baseUrl()).build();
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.defaults()
+                .withConnectTimeout(CONNECT_TIMEOUT)
+                .withReadTimeout(READ_TIMEOUT);
+        ClientHttpRequestFactory requestFactory =
+                ClientHttpRequestFactoryBuilder.detect().build(settings);
+        this.restClient = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestFactory(requestFactory)
+                .build();
     }
 
     /** 프롬프트를 보내고 모델 응답 본문(텍스트)을 그대로 반환한다 — JSON 파싱은 호출자의 몫. */
@@ -54,7 +68,7 @@ public class EliceClient {
                 .retrieve()
                 .body(EliceChatResponse.class);
 
-        if (response == null || response.choices().isEmpty()) {
+        if (response == null || response.choices() == null || response.choices().isEmpty()) {
             throw new QuizGenerationException("엘리스 API가 빈 응답을 반환했습니다.");
         }
         return response.choices().get(0).message().content();

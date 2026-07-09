@@ -10,12 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizDifficulty;
-import studio.thumbsup.server.quiz.QuizRepository;
-import studio.thumbsup.server.quiz.QuizStep;
-import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.QuizType;
 
 /**
@@ -37,40 +32,25 @@ public class QuizGenerationService {
             new Expected(QuizType.KEYWORD_BLANK, QuizDifficulty.HARD));
 
     private final EliceClient eliceClient;
-    private final QuizRepository quizRepository;
-    private final QuizStepRepository quizStepRepository;
+    private final QuizPersister quizPersister;
     private final ObjectMapper objectMapper;
 
-    public QuizGenerationService(
-            EliceClient eliceClient,
-            QuizRepository quizRepository,
-            QuizStepRepository quizStepRepository,
-            ObjectMapper objectMapper) {
+    public QuizGenerationService(EliceClient eliceClient, QuizPersister quizPersister, ObjectMapper objectMapper) {
         this.eliceClient = eliceClient;
-        this.quizRepository = quizRepository;
-        this.quizStepRepository = quizStepRepository;
+        this.quizPersister = quizPersister;
         this.objectMapper = objectMapper;
     }
 
-    /** 코스 주제로 한 스텝(5문제)을 생성·저장하고, 배정된 스텝 번호를 반환한다. */
-    @Transactional
+    /**
+     * 코스 주제로 한 스텝(5문제)을 생성·저장하고, 배정된 스텝 번호를 반환한다.
+     * LLM 호출(수십 초 소요 가능)은 여기서 트랜잭션 밖에 두고, DB 저장만 {@link QuizPersister}의
+     * 트랜잭션으로 묶는다 — 그렇지 않으면 외부 호출 대기 시간만큼 DB 커넥션을 점유하게 된다.
+     */
     public int generateStep(String courseTopic) {
-        int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
-
         String rawResponse = eliceClient.generate(QuizGenerationPromptBuilder.build(courseTopic));
         GeneratedQuizSet generated = parse(rawResponse);
         validate(generated);
-
-        // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
-        quizStepRepository.save(QuizStep.create(stepOrder, courseTopic));
-
-        int slotOrder = 1;
-        for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
-            Quiz quiz = toEntity(g);
-            quiz.assignPosition(stepOrder, slotOrder++);
-            quizRepository.save(quiz);
-        }
-        return stepOrder;
+        return quizPersister.persist(courseTopic, generated);
     }
 
     private GeneratedQuizSet parse(String rawResponse) {
@@ -127,11 +107,12 @@ public class QuizGenerationService {
         validateKeywordMarkers(slotOrder, quiz);
     }
 
-    /** explanationSummary는 #43(해설 조회 API)의 "핵심 3줄" 계약이라 정확히 3줄이어야 한다. */
+    /** explanationSummary는 #43(해설 조회 API)의 "핵심 3줄, 줄 끝 공백 없음" 계약이라 이를 엄격히 검증한다. */
     private void validateExplanationSummaryLineCount(int slotOrder, String explanationSummary) {
         String[] lines = explanationSummary.split("\n", -1);
         boolean hasBlankLine = Arrays.stream(lines).anyMatch(String::isBlank);
-        if (lines.length != EXPECTED_SUMMARY_LINES || hasBlankLine) {
+        boolean hasTrailingWhitespace = Arrays.stream(lines).anyMatch(line -> !line.equals(line.stripTrailing()));
+        if (lines.length != EXPECTED_SUMMARY_LINES || hasBlankLine || hasTrailingWhitespace) {
             throw new QuizGenerationException("슬롯 %d의 explanationSummary가 정확히 %d줄이 아닙니다(실제 %d줄)."
                     .formatted(slotOrder, EXPECTED_SUMMARY_LINES, lines.length));
         }
@@ -215,15 +196,17 @@ public class QuizGenerationService {
         } else if (quiz.type() == QuizType.MULTIPLE_CHOICE) {
             validateChoices(slotOrder, quiz.choices());
         } else {
-            validateAnswerKeywords(slotOrder, quiz.answerKeywords());
+            validateAnswerKeywords(slotOrder, quiz.questionText(), quiz.answerKeywords());
         }
     }
 
     /**
      * answerKeywords는 "빈칸별 동의어 묶음" 목록이다 — 바깥 리스트 원소 하나 = 빈칸 하나, 그 안의 문자열들은
-     * 그 빈칸의 동의어(하나만 맞아도 정답)다. 빈칸이 비어있거나, 어떤 빈칸의 동의어 묶음이 빈 리스트면 안 된다.
+     * 그 빈칸의 동의어(하나만 맞아도 정답)다. 빈칸이 비어있거나, 어떤 빈칸의 동의어 묶음이 빈 리스트면 안 되고,
+     * 배열 길이가 questionText의 실제 빈칸(___) 개수와도 일치해야 한다 — 어긋나면 QuizService의 슬롯 순서
+     * 기반 채점과 실제 빈칸 위치가 틀어진다.
      */
-    private void validateAnswerKeywords(int slotOrder, List<List<String>> answerKeywords) {
+    private void validateAnswerKeywords(int slotOrder, String questionText, List<List<String>> answerKeywords) {
         if (answerKeywords == null || answerKeywords.isEmpty()) {
             throw new QuizGenerationException("슬롯 %d의 answerKeywords가 비어 있습니다.".formatted(slotOrder));
         }
@@ -231,6 +214,11 @@ public class QuizGenerationService {
             if (synonyms == null || synonyms.isEmpty()) {
                 throw new QuizGenerationException("슬롯 %d의 answerKeywords 중 빈 동의어 묶음이 있습니다.".formatted(slotOrder));
             }
+        }
+        long blankCount = Pattern.compile("___").matcher(questionText).results().count();
+        if (blankCount != answerKeywords.size()) {
+            throw new QuizGenerationException("슬롯 %d의 빈칸 개수(%d)와 answerKeywords 길이(%d)가 다릅니다."
+                    .formatted(slotOrder, blankCount, answerKeywords.size()));
         }
     }
 
@@ -264,62 +252,6 @@ public class QuizGenerationService {
     private void requireNonEmpty(int slotOrder, String field, List<String> values) {
         if (values == null || values.isEmpty()) {
             throw new QuizGenerationException("슬롯 %d의 %s가 비어 있습니다.".formatted(slotOrder, field));
-        }
-    }
-
-    private Quiz toEntity(GeneratedQuizSet.GeneratedQuiz g) {
-        Quiz quiz = Quiz.create(
-                g.type(),
-                g.difficulty(),
-                g.questionText(),
-                g.codeSnippet(),
-                g.explanationSummary(),
-                g.explanationExample(),
-                g.wrongAnswerExplanation());
-
-        if (g.type() == QuizType.OX) {
-            quiz.assignCorrectAnswer(g.correctAnswer());
-        }
-        if (g.type() == QuizType.MULTIPLE_CHOICE) {
-            addChoices(quiz, g.choices());
-        }
-        if (g.type() == QuizType.KEYWORD_BLANK) {
-            addAnswerKeywords(quiz, g.answerKeywords());
-        }
-        addFollowUpQuestions(quiz, g.followUpQuestions());
-        addDerivedConcepts(quiz, g.derivedConcepts());
-        g.keywords().forEach(keyword -> quiz.addKeyword(keyword.keyword(), keyword.description()));
-        return quiz;
-    }
-
-    private void addChoices(Quiz quiz, List<GeneratedQuizSet.GeneratedChoice> choices) {
-        int order = 1;
-        for (GeneratedQuizSet.GeneratedChoice choice : choices) {
-            quiz.addChoice(choice.content(), choice.isCorrect(), order++);
-        }
-    }
-
-    private void addAnswerKeywords(Quiz quiz, List<List<String>> answerKeywords) {
-        int slot = 1;
-        for (List<String> synonyms : answerKeywords) {
-            for (String keyword : synonyms) {
-                quiz.addAnswerKeyword(slot, keyword);
-            }
-            slot++;
-        }
-    }
-
-    private void addFollowUpQuestions(Quiz quiz, List<GeneratedQuizSet.GeneratedFollowUpQuestion> followUpQuestions) {
-        int order = 1;
-        for (GeneratedQuizSet.GeneratedFollowUpQuestion fq : followUpQuestions) {
-            quiz.addFollowUpQuestion(fq.content(), fq.isPrimary(), order++);
-        }
-    }
-
-    private void addDerivedConcepts(Quiz quiz, List<String> derivedConcepts) {
-        int order = 1;
-        for (String concept : derivedConcepts) {
-            quiz.addDerivedConcept(concept, order++);
         }
     }
 
