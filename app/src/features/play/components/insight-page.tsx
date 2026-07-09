@@ -40,7 +40,9 @@ export function InsightPage({ correct, questionIndex, session }: InsightPageProp
           </div>
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-muted">
-              <span>{questionIndex + 1}/5</span>
+              <span>
+                {questionIndex + 1}/{total}
+              </span>
               <span>{getDifficultyLabel(question.difficulty)}</span>
             </div>
             <Progress

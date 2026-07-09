@@ -76,7 +76,9 @@ export function PlayPage({
           </div>
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-muted">
-              <span>{currentIndex + 1}/5</span>
+              <span>
+                {currentIndex + 1}/{total}
+              </span>
               <span>{getDifficultyLabel(question.difficulty)}</span>
             </div>
             <Progress label="문제 진행률" max={100} value={progressPercent} />
