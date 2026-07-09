@@ -113,6 +113,16 @@ describe("apiRequest", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2); // 원요청 + refresh(실패). 재시도 없음
   });
 
+  it("refreshToken이 없는 상태의 401 TOKEN_EXPIRED는 토큰을 비운다(catch 분기와 대칭)", async () => {
+    localStorage.setItem("thumbsup.accessToken", "acc"); // refreshToken 없음
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(401, envelope("TOKEN_EXPIRED")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiRequest("/notices")).rejects.toBeInstanceOf(ApiError);
+    expect(tokenStore.getAccess()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // refresh 요청 안 감(토큰 없음)
+  });
+
   it("동시 401 TOKEN_EXPIRED는 refresh를 한 번만 호출한다(단일 인플라이트)", async () => {
     tokenStore.set({ accessToken: "old-acc", refreshToken: "old-ref" });
     let refreshCalls = 0;

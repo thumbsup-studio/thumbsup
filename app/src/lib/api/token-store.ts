@@ -53,15 +53,23 @@ export const tokenStore = {
   set(tokens: Tokens): void {
     const s = storage();
     if (!s) return;
-    s.setItem(ACCESS_KEY, tokens.accessToken);
-    s.setItem(REFRESH_KEY, tokens.refreshToken);
+    try {
+      s.setItem(ACCESS_KEY, tokens.accessToken);
+      s.setItem(REFRESH_KEY, tokens.refreshToken);
+    } catch {
+      // 쿼터 초과·프라이빗 모드 등에서 setItem이 던져도 인증 흐름을 깨지 않는다(미영속 상태로 진행).
+    }
   },
 
   clear(): void {
     const s = storage();
     if (!s) return;
-    s.removeItem(ACCESS_KEY);
-    s.removeItem(REFRESH_KEY);
+    try {
+      s.removeItem(ACCESS_KEY);
+      s.removeItem(REFRESH_KEY);
+    } catch {
+      // removeItem 실패도 무시
+    }
   },
 
   /** 로그인 여부 (access token 보유) */

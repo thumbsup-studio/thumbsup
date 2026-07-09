@@ -70,7 +70,10 @@ function tryRefresh(): Promise<boolean> {
 
 async function doRefresh(): Promise<boolean> {
   const refreshToken = tokenStore.getRefresh();
-  if (!refreshToken) return false;
+  if (!refreshToken) {
+    tokenStore.clear(); // 실패 catch 분기와 대칭 — 세션 무효 상태를 일치시켜 로그인 화면으로 유도
+    return false;
+  }
   try {
     const tokens = await apiRequest<Tokens>("/auth/refresh", {
       method: "POST",

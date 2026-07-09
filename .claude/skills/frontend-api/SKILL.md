@@ -18,7 +18,7 @@ FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서*
 - FE API 계층(fetch 래퍼·토큰 저장·refresh 인터셉터)은 **#1(로그인/회원가입)에서 `app/src/lib/api`에 구축**됨(`client.ts`·`auth.ts`·`token-store.ts`·`errors.ts`). 새 API 소비는 이 계층을 재사용한다.
 - **토큰 저장 = localStorage** (#1에서 결정, 근거는 `token-store.ts` 주석). httpOnly cookie는 전체 BFF 프록시가 필요해 범위 밖 — 하드닝 단계에서 재검토.
 - 데이터 페칭 라이브러리 없음 → 순수 `fetch` 기반.
-- `NEXT_PUBLIC_API_URL` 미설정 (Vercel env로 추후 도입 예정).
+- `NEXT_PUBLIC_API_URL` 미설정 시 클라이언트는 prod 백엔드(`https://thumbsup-api.duckdns.org`)로 폴백한다. 로컬 개발은 `.env.local`에 `http://localhost:8080` 설정.
 
 ## 베이스 URL·접속
 
