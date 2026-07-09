@@ -80,6 +80,13 @@ export function AtlasPage({ data }: AtlasPageProps) {
             selectedNodeId={selectedNodeId}
             title={`${activeCategory.label} 영역`}
           />
+        ) : query.trim() ? (
+          <EmptyState
+            description="다른 검색어나 카테고리로 찾아보세요."
+            icon={<DisconnectedNodesIcon />}
+            title="검색 결과가 없어요"
+            tone="dark"
+          />
         ) : (
           <EmptyState
             action={

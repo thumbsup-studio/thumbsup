@@ -64,4 +64,14 @@ describe("AtlasPage", () => {
     expect(screen.getByText("아직 연결된 개념이 없어요")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "퀴즈 시작하기" })).toBeInTheDocument();
   });
+
+  it("shows a distinct empty state when a search yields no results", () => {
+    renderPage();
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "존재하지않는개념" } });
+
+    expect(screen.getByText("검색 결과가 없어요")).toBeInTheDocument();
+    // 검색 결과 없음에는 데이터 없음용 '퀴즈 시작하기' CTA를 띄우지 않는다
+    expect(screen.queryByRole("button", { name: "퀴즈 시작하기" })).not.toBeInTheDocument();
+  });
 });
