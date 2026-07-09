@@ -23,12 +23,19 @@ export type ApiResponse<T> = {
 const SUCCESS_CODE = "SUCCESS";
 
 /**
- * API 베이스 URL. `NEXT_PUBLIC_API_URL`이 있으면 그 값을, 없으면 prod API로 향한다.
- * 배포(Vercel preview·prod)는 env 미설정이어도 실제 백엔드를 부르게 하기 위함이며,
- * 로컬 개발은 `.env.local`에 `NEXT_PUBLIC_API_URL=http://localhost:8080`을 두고 로컬 서버를 띄운다
- * (로컬 FE→prod 직접 호출은 CORS로 차단됨).
+ * API 베이스 URL — 환경별로 자동 결정된다.
+ * 1. `NEXT_PUBLIC_API_URL`이 명시되면 항상 그 값 (로컬에서 prod에 붙거나 그 반대도 가능).
+ * 2. 미설정 시: 로컬 개발(`NODE_ENV=development`)은 로컬 서버(:8080),
+ *    배포(Vercel preview·prod, 빌드 시 `NODE_ENV=production`)는 prod 서버(duckdns).
+ *
+ * → 로컬은 `.env.local` 없이도 로컬 서버로, Vercel은 env 미설정이어도 prod로 향한다.
+ *   (로컬 FE→prod 직접 호출은 CORS로 차단되므로 로컬은 로컬 서버가 기본값이어야 한다.)
  */
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://thumbsup-api.duckdns.org";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8080"
+    : "https://thumbsup-api.duckdns.org");
 const PREFIX = "/api/v1";
 
 /** 응답이 오지 않을 때 무한 대기하지 않도록 요청 타임아웃(초과 시 abort → NetworkError). */

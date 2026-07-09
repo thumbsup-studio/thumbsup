@@ -37,10 +37,11 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Gi
 | `ELICE_QA_BASE_URL` | GitHub Secrets | 시각 QA 엔드포인트 (`/v1`까지, public 레포 로그 노출 방지로 Secret) |
 | `ELICE_QA_MODEL` | GitHub Variables | QA 모델 ID (기본 `gpt-5.2`) |
 | `CLAUDE_CODE_OAUTH_TOKEN` | GitHub Secrets | `@claude` 봇 인증 |
+| `NEXT_PUBLIC_API_URL` | 로컬 `.env.local` (배포는 **미설정 권장**) | 앱이 호출할 API base URL. 미설정 시 자동 분기 — 로컬(`next dev`)=로컬 서버 `:8080`, 배포(Preview·Prod)=prod 서버 `thumbsup-api.duckdns.org`. Vercel에 값을 두면 그 값이 우선하므로 별도 스테이징을 붙일 때만 설정 |
 
 > `QA_TARGET_URL`(시각 QA 대상 주소)은 위 표에 없다 — CI가 배포 잡의 프리뷰 URL을 자동으로 주입한다. 로컬에서 QA를 직접 돌릴 때만 `QA_TARGET_URL=http://localhost:3000` 형태로 지정하며, 자세한 사용법은 `visual-qa` 스킬을 참고한다.
 
-앱 런타임 환경변수(추후 `NEXT_PUBLIC_API_URL` 등)는 Vercel 프로젝트 → Settings → Environment Variables에서 관리하고 이 표에 추가한다.
+> `NEXT_PUBLIC_API_URL`은 위 표대로 **미설정이 기본값**이다 — 코드가 환경별로 자동 분기하므로(로컬=로컬 서버, 배포=prod 서버), Vercel 프로젝트 → Settings → Environment Variables에 이 변수를 **두지 않으면** Preview·Production 모두 prod 서버로 향한다. 별도 스테이징 서버를 붙이는 등 예외 상황에서만 Vercel에 스코프별로 설정한다.
 
 ## CodeRabbit 리뷰
 
