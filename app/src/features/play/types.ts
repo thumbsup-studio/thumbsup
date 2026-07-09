@@ -9,7 +9,17 @@ type BaseQuestion = {
   explanation: string;
   insight: {
     summary: string[];
-    example: string;
+    wrongReason: string;
+    codeExample?: {
+      language: "ts" | "pseudo";
+      source: string;
+      description: string;
+    };
+    usageExample: string;
+    keywords: {
+      term: string;
+      description: string;
+    }[];
     referenceLabel: string;
   };
 };

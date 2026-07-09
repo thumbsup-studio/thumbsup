@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { CodeBlock } from "@/features/play/components/code-block";
@@ -19,14 +20,10 @@ type PlayPageProps = {
 };
 
 const optionLabels = ["A", "B", "C", "D"];
+const correctStreakStoragePrefix = "thumbsup:insight-correct-streak";
 
-export function PlayPage({
-  initialQuestionIndex = 0,
-  onInsightNavigate = (href) => {
-    window.location.assign(href);
-  },
-  session,
-}: PlayPageProps) {
+export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session }: PlayPageProps) {
+  const router = useRouter();
   const [currentIndex] = useState(() =>
     clampQuestionIndex(initialQuestionIndex, session.questions.length),
   );
@@ -50,10 +47,18 @@ export function PlayPage({
     setIsSubmitting(true);
     window.setTimeout(() => {
       const result = gradeMockAnswer(question, draft);
+      const nextStreak = updateCorrectStreak(session.id, currentIndex, result.correct);
+      const insightHref = `/insight?question=${currentIndex}&correct=${
+        result.correct ? "true" : "false"
+      }&streak=${nextStreak}`;
       setIsSubmitting(false);
-      onInsightNavigate(
-        `/insight?question=${currentIndex}&correct=${result.correct ? "true" : "false"}`,
-      );
+
+      if (onInsightNavigate) {
+        onInsightNavigate(insightHref);
+        return;
+      }
+
+      router.push(insightHref);
     }, 220);
   }
 
@@ -110,6 +115,26 @@ export function PlayPage({
       </div>
     </main>
   );
+}
+
+function getCorrectStreakStorageKey(sessionId: string) {
+  return `${correctStreakStoragePrefix}:${sessionId}`;
+}
+
+function readCorrectStreak(sessionId: string) {
+  const rawValue = window.localStorage.getItem(getCorrectStreakStorageKey(sessionId));
+  const value = Number(rawValue ?? 0);
+
+  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+
+function updateCorrectStreak(sessionId: string, questionIndex: number, correct: boolean) {
+  const previousStreak = questionIndex === 0 ? 0 : readCorrectStreak(sessionId);
+  const nextStreak = correct ? previousStreak + 1 : 0;
+
+  window.localStorage.setItem(getCorrectStreakStorageKey(sessionId), String(nextStreak));
+
+  return nextStreak;
 }
 
 type QuestionRendererProps = {
