@@ -8,6 +8,9 @@ export const MASTERY_LABEL: Record<MasteryLevel, string> = {
   unlearned: "미학습",
 };
 
+/** 노드 글로우 SVG 필터 id. 필터 정의는 상위 svg의 <defs>(AtlasCanvas)에 있다. */
+export const GRAPH_NODE_GLOW_ID = "graph-node-glow";
+
 type GlyphColor = { stroke: string; fill: string };
 
 // 노드 필(pill) 안에서 쓰는 색 — 필 배경색과 대비되도록 맞춘다(마스터=진한 네이비, 학습중=흰색, 미학습=연한 회색).
@@ -216,6 +219,7 @@ export function GraphNode({
     >
       <rect
         className={`${PILL_FILL[mastery]} ${selected ? "stroke-graph-fg" : "stroke-transparent"}`}
+        filter={mastery === "unlearned" ? undefined : `url(#${GRAPH_NODE_GLOW_ID})`}
         height={PILL_HEIGHT}
         rx={PILL_HEIGHT / 2}
         strokeWidth={selected ? 3 : 0}

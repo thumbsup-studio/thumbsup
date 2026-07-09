@@ -56,7 +56,7 @@ export function AtlasPage({ data }: AtlasPageProps) {
 
         <div>
           <p className="text-xs font-semibold tracking-wide text-ink-muted">ATLAS</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-balance text-ink">
+          <h2 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
             배운 개념이 연결될수록, 내 공부가 보입니다.
           </h2>
         </div>
