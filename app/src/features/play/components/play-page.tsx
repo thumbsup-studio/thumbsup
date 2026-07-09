@@ -20,7 +20,7 @@ type PlayPageProps = {
 };
 
 const optionLabels = ["A", "B", "C", "D"];
-const correctStreakStoragePrefix = "thumbsup";
+const correctStreakStoragePrefix = "thumbsup:insight-correct-streak";
 
 export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session }: PlayPageProps) {
   const router = useRouter();
@@ -118,7 +118,7 @@ export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session 
 }
 
 function getCorrectStreakStorageKey(sessionId: string) {
-  return `${correctStreakStoragePrefix}:${sessionId}:correct-streak`;
+  return `${correctStreakStoragePrefix}:${sessionId}`;
 }
 
 function readCorrectStreak(sessionId: string) {

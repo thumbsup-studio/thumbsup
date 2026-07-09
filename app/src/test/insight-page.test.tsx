@@ -1,7 +1,47 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { InsightPage } from "@/features/play/components/insight-page";
 import { mockPlaySession } from "@/features/play/mock-play-session";
+
+const lottieCompleteListeners = vi.hoisted(() => new Set<() => void>());
+
+vi.mock("@lottiefiles/dotlottie-react", async () => {
+  const React = await import("react");
+
+  return {
+    DotLottieReact: ({
+      dotLottieRefCallback,
+    }: {
+      dotLottieRefCallback?: (
+        player: {
+          addEventListener: (eventName: string, listener: () => void) => void;
+          removeEventListener: (eventName: string, listener: () => void) => void;
+        } | null,
+      ) => void;
+    }) => {
+      React.useEffect(() => {
+        const player = {
+          addEventListener: (eventName: string, listener: () => void) => {
+            if (eventName === "complete") {
+              lottieCompleteListeners.add(listener);
+            }
+          },
+          removeEventListener: (eventName: string, listener: () => void) => {
+            if (eventName === "complete") {
+              lottieCompleteListeners.delete(listener);
+            }
+          },
+        };
+
+        dotLottieRefCallback?.(player);
+
+        return undefined;
+      }, [dotLottieRefCallback]);
+
+      return <canvas data-testid="dotlottie-canvas" />;
+    },
+  };
+});
 
 describe("InsightPage", () => {
   it("renders the current question explanation and links back to the next play question", () => {
@@ -43,6 +83,17 @@ describe("InsightPage", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("프로세스 안에서 나뉘는 실행 흐름");
   });
 
+  it("closes inline keyword tooltip with Escape", () => {
+    render(<InsightPage correct questionIndex={0} session={mockPlaySession} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "프로세스 설명 보기" })[0]);
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
   it("renders code application and real-world usage sections", () => {
     render(<InsightPage correct questionIndex={2} session={mockPlaySession} />);
 
@@ -60,7 +111,7 @@ describe("InsightPage", () => {
     expect(screen.queryByText("+10P")).not.toBeInTheDocument();
   });
 
-  it("shows fanfare only from the third consecutive correct answer", () => {
+  it("shows fanfare only from the third consecutive correct answer and hides it on completion", () => {
     const { rerender } = render(
       <InsightPage correct correctStreak={2} questionIndex={2} session={mockPlaySession} />,
     );
@@ -74,6 +125,14 @@ describe("InsightPage", () => {
       "/lottie/fanfare.lottie",
     );
     expect(screen.getByTestId("lottie-fanfare")).toHaveClass("fixed", "inset-0");
+
+    act(() => {
+      for (const listener of lottieCompleteListeners) {
+        listener();
+      }
+    });
+
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
 
   it("links the last question insight back home", () => {

@@ -80,7 +80,7 @@ describe("PlayPage", () => {
     vi.useFakeTimers();
     const onInsightNavigate = vi.fn();
 
-    window.localStorage.setItem("thumbsup:mock-os-process-thread:correct-streak", "2");
+    window.localStorage.setItem("thumbsup:insight-correct-streak:mock-os-process-thread", "2");
 
     render(
       <PlayPage

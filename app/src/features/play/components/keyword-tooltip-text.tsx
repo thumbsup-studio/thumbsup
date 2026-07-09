@@ -13,6 +13,8 @@ type KeywordTooltipTextProps = {
 };
 
 const tooltipOpenEventName = "thumbsup:keyword-tooltip-open";
+const keywordWordChars = String.raw`\p{L}\p{N}`;
+const koreanParticle = "(?:은|는|이|가|을|를|와|과|으로|로|이나)";
 
 type TextPart = {
   key: string;
@@ -23,14 +25,24 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function getKeywordTermPattern(term: string) {
+  const escapedTerm = escapeRegExp(term);
+
+  if (term.length <= 1) {
+    return `(?<![${keywordWordChars}])${escapedTerm}(?=$|[^${keywordWordChars}]|${koreanParticle})`;
+  }
+
+  return escapedTerm;
+}
+
 function getKeywordPattern(keywords: Keyword[]) {
   const terms = keywords
     .map((keyword) => keyword.term.trim())
     .filter(Boolean)
     .sort((a, b) => b.length - a.length)
-    .map(escapeRegExp);
+    .map(getKeywordTermPattern);
 
-  return terms.length > 0 ? new RegExp(`(${terms.join("|")})`, "g") : null;
+  return terms.length > 0 ? new RegExp(`(${terms.join("|")})`, "gu") : null;
 }
 
 function getTextParts(text: string, keywords: Keyword[]): TextPart[] {
@@ -89,6 +101,12 @@ export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) 
       }
     }
 
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenId(null);
+      }
+    }
+
     function closeWhenAnotherTooltipOpens(event: Event) {
       const openedId = (event as CustomEvent<string>).detail;
 
@@ -96,10 +114,12 @@ export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) 
     }
 
     document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
     window.addEventListener(tooltipOpenEventName, closeWhenAnotherTooltipOpens);
 
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
       window.removeEventListener(tooltipOpenEventName, closeWhenAnotherTooltipOpens);
     };
   }, []);

@@ -1,4 +1,7 @@
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+"use client";
+
+import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { KeywordTooltipText } from "@/features/play/components/keyword-tooltip-text";
@@ -20,12 +23,31 @@ export function InsightPage({
   questionIndex,
   session,
 }: InsightPageProps) {
+  const [fanfarePlayer, setFanfarePlayer] = useState<DotLottie | null>(null);
+  const [dismissedFanfareKey, setDismissedFanfareKey] = useState<string | null>(null);
   const question = session.questions[questionIndex];
   const total = session.questions.length;
   const isLastQuestion = questionIndex === total - 1;
   const nextHref = isLastQuestion ? "/" : `/play?question=${questionIndex + 1}`;
-  const showFanfare = correct && correctStreak >= 3;
-  const summaryLines = question.insight.summary.slice(0, 3);
+  const fanfareKey = correct && correctStreak >= 3 ? `${questionIndex}:${correctStreak}` : null;
+  const showFanfare = fanfareKey !== null && dismissedFanfareKey !== fanfareKey;
+  const summaryItems = getSummaryItems(question.insight.summary.slice(0, 3));
+
+  useEffect(() => {
+    if (!fanfarePlayer) {
+      return undefined;
+    }
+
+    function dismissFanfare() {
+      setDismissedFanfareKey(fanfareKey);
+    }
+
+    fanfarePlayer.addEventListener("complete", dismissFanfare);
+
+    return () => {
+      fanfarePlayer.removeEventListener("complete", dismissFanfare);
+    };
+  }, [fanfareKey, fanfarePlayer]);
 
   return (
     <main className="relative flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
@@ -36,7 +58,13 @@ export function InsightPage({
           data-src={FANFARE_SRC}
           data-testid="lottie-fanfare"
         >
-          <DotLottieReact autoplay className="h-screen w-screen" loop={false} src={FANFARE_SRC} />
+          <DotLottieReact
+            autoplay
+            className="h-screen w-screen"
+            dotLottieRefCallback={setFanfarePlayer}
+            loop={false}
+            src={FANFARE_SRC}
+          />
         </div>
       ) : null}
 
@@ -117,13 +145,13 @@ export function InsightPage({
           <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
             <p className="text-sm font-bold text-ink">핵심 3줄</p>
             <ol aria-label="핵심 3줄" className="mt-3 space-y-2">
-              {summaryLines.map((line, index) => (
-                <li className="flex gap-3 text-sm leading-6 text-ink-muted" key={line}>
+              {summaryItems.map((item) => (
+                <li className="flex gap-3 text-sm leading-6 text-ink-muted" key={item.key}>
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-chip bg-ink text-xs font-black text-primary-fg">
-                    {index + 1}
+                    {item.position}
                   </span>
                   <span>
-                    <KeywordTooltipText keywords={question.insight.keywords} text={line} />
+                    <KeywordTooltipText keywords={question.insight.keywords} text={item.line} />
                   </span>
                 </li>
               ))}
@@ -204,4 +232,19 @@ function getQuestionKindLabel(question: PlayQuestion) {
   }
 
   return "키워드 빈칸 해설";
+}
+
+function getSummaryItems(lines: string[]) {
+  const occurrenceByLine = new Map<string, number>();
+
+  return lines.map((line, index) => {
+    const occurrence = occurrenceByLine.get(line) ?? 0;
+    occurrenceByLine.set(line, occurrence + 1);
+
+    return {
+      key: `${line}-${occurrence}`,
+      line,
+      position: index + 1,
+    };
+  });
 }
