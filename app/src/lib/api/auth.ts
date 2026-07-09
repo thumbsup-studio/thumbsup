@@ -48,7 +48,8 @@ export async function refresh(): Promise<Tokens> {
     tokenStore.set(tokens);
     return tokens;
   } catch (error) {
-    tokenStore.clear();
+    // 인증 실패(ApiError)만 토큰을 비운다. 네트워크 오류는 일시적이라 세션을 유지한다.
+    if (error instanceof ApiError) tokenStore.clear();
     throw error;
   }
 }

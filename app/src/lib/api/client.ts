@@ -83,8 +83,9 @@ async function doRefresh(): Promise<boolean> {
     });
     tokenStore.set(tokens); // 회전: access + refresh 모두 새 값으로 교체
     return true;
-  } catch {
-    tokenStore.clear();
+  } catch (error) {
+    // 인증 실패(ApiError)만 세션 무효로 보고 토큰을 비운다. 네트워크 오류는 일시적이라 유지.
+    if (error instanceof ApiError) tokenStore.clear();
     return false;
   }
 }

@@ -6,9 +6,8 @@ export const dynamic = "force-dynamic";
 
 export default function Home() {
   return (
-    <>
-      <RequireAuth />
+    <RequireAuth>
       <HomePage data={mockHomeData} now={new Date().toISOString()} />
-    </>
+    </RequireAuth>
   );
 }
