@@ -14,3 +14,8 @@ thumbsup:
     basic-auth:
       username: swagger-test
       password: swagger-test-password
+  elice:
+    quiz:
+      api-key: test-elice-api-key
+      base-url: http://localhost:0/v1
+      model: test-model

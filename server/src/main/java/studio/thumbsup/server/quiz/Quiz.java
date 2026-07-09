@@ -87,7 +87,9 @@ public class Quiz extends BaseEntity {
     @OrderBy("displayOrder ASC")
     private List<QuizDerivedConcept> derivedConcepts = new ArrayList<>();
 
+    /** 저작 순서를 응답 순서로 삼는다 — 해설 API의 키워드 사전이 결정적으로 내려가야 한다(#43). */
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
     private List<QuizKeyword> keywords = new ArrayList<>();
 
     private Quiz(

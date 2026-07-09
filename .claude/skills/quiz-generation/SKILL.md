@@ -1,0 +1,177 @@
+---
+name: quiz-generation
+description: 엘리스 GPT-5.4로 퀴즈 문제 세트(스텝당 5문제)를 자동 생성해 DB에 저장하는 파이프라인(#26). CLI 트리거 방법, 프롬프트 스키마, [[키워드]] 마커·동의어 그룹 규칙, 생성 검증 로직, prod 반영(로컬 생성→검수→SQL 마이그레이션) 절차를 알아야 할 때. 사용자가 "문제 어떻게 생성해", "새 스텝 만들어줘", "커리큘럼 추가", "퀴즈 생성 파이프라인"이라고 할 때 트리거.
+---
+
+# quiz-generation — 문제 생성 파이프라인 (#26)
+
+엘리스 GPT-5.4(`elice-models` 스킬 참조)로 주제 하나당 5문제(스텝 1개)를 생성해 DB에 저장한다. 상시 HTTP 엔드포인트가 아니라 **CLI 전용**이다 — LLM 호출 비용이 들고, 아직 admin/role 체계가 없는 코드베이스에서 열어두면 안전하지 않기 때문.
+
+## 아키텍처 (한 스텝 생성 흐름)
+
+```
+QuizGenerationRunner (CLI, @Profile("generate"))
+  → QuizGenerationService#generateStep(topic)
+      1. EliceClient.generate(prompt)          — 트랜잭션 밖. LLM 호출은 수십 초 걸릴 수 있어
+                                                   DB 커넥션을 점유하면 안 된다.
+      2. parse()                                — 마크다운 코드펜스 제거 후 GeneratedQuizSet으로 역직렬화
+      3. validate()                             — 스키마·마커·빈칸 정합성 검증 (아래 "검증 규칙")
+      4. QuizPersister.persist(topic, generated) — @Transactional, 여기서만 DB 커넥션 사용
+  → 배정된 stepOrder 반환
+```
+
+`QuizPersister`가 `QuizGenerationService`와 분리된 별도 `@Service`인 이유: `@Transactional` 메서드를 같은 클래스 안에서 `this.x()`로 호출하면 Spring AOP 프록시를 거치지 않아(self-invocation) 트랜잭션이 적용되지 않는다. 반드시 외부 빈 호출로 프록시를 타야 한다.
+
+## 실행 방법
+
+```bash
+cd server
+# 주제 1개, 스텝 1개
+./gradlew bootRun --args='--spring.profiles.active=local,generate --topic=운영체제 --steps=1'
+
+# 여러 주제(각각 스텝 1개씩) — 반드시 파일 방식
+./gradlew bootRun --args='--spring.profiles.active=local,generate --topicsFile=/path/to/topics.txt'
+```
+
+- `topics.txt`는 한 줄에 주제 하나씩(공백 포함 가능).
+- ⚠️ **Gradle `--args`는 공백 기준으로 토큰을 통째로 쪼갠다.** `--topics=주제1,주제2`처럼 콤마 나열 방식은 주제에 공백(예: "프로세스 동기화")이 있으면 첫 단어만 남고 잘린다. 여러 주제, 특히 한글 복합 주제는 **항상 `--topicsFile`을 쓴다.**
+- 우선순위: `--topicsFile` → `--topics`(콤마, 공백 없는 주제 전용) → `--topic`+`--steps`(같은 주제 반복).
+- 실행이 끝나면 웹서버로 남지 않고 `SpringApplication.exit()` + `System.exit()`로 즉시 종료한다.
+
+## 스텝 구성 (고정, 변경 불가)
+
+슬롯 순서와 유형·난이도가 정확히 이 조합이어야 하며 어긋나면 검증에서 실패한다.
+
+| 슬롯 | 유형 | 난이도 |
+|---|---|---|
+| 1 | OX | EASY |
+| 2 | OX | EASY |
+| 3 | MULTIPLE_CHOICE | MEDIUM |
+| 4 | MULTIPLE_CHOICE | MEDIUM |
+| 5 | KEYWORD_BLANK | HARD |
+
+변형 출제(문제 뱅크에서 슬롯당 여러 후보 중 랜덤 출제)는 지원하지 않는다 — 슬롯당 문제 1개 고정 스키마의 전제와 일치시킨 설계.
+
+## 프롬프트 구성 (`EliceClient` + `QuizGenerationPromptBuilder`)
+
+요청은 system 메시지(고정 페르소나·톤) + user 메시지(주제별 스키마·규칙)로 나뉜다. `temperature=0.2`(사실 기반 콘텐츠라 창의성보다 일관성 우선), `response_format=json_object`(자유 텍스트 섞임 방지, 그래도 코드펜스가 섞여 오는 경우가 있어 파싱 전에 한 번 더 벗겨낸다), `readTimeout=2분`(문제 5개 생성은 수십 초 걸릴 수 있음).
+
+### system 프롬프트 (`EliceClient.SYSTEM_PROMPT`, 고정)
+
+```text
+너는 컴퓨터공학 전공 교재 수준의 정확성을 가진 CS 강사이며, 학습자의 이해도를 확인하는 퀴즈를 만든다.
+
+- 사실 기반으로만 작성한다. 확실하지 않은 내용, 검증되지 않은 수치·통계, 존재하지 않는 개념이나
+  용어를 지어내지 않는다. 확신이 없으면 더 널리 알려진 확실한 소재로 대체한다.
+- 사용자가 제시한 JSON 스키마를 한 글자도 벗어나지 않고 정확히 지킨다. 스키마에 없는 필드를
+  추가하거나, 요구된 필드를 누락하거나, 타입(문자열/배열/불리언 등)을 다르게 쓰지 않는다.
+- 응답은 오직 유효한 JSON 객체 하나뿐이어야 한다. 인사말, 설명 문장, 주석, 마크다운 코드펜스
+  (```)는 절대 포함하지 않는다.
+```
+
+"교재 수준의 정확성"·"확신이 없으면 대체"를 넣은 이유: 초기 튜닝에서 페르소나 없이 돌렸을 때 그럴듯하지만 미묘하게 틀린 사실(예: 존재하지 않는 알고리즘 이름)이 섞여 나온 적이 있어, 불확실한 소재 자체를 피하도록 명시적으로 유도했다.
+
+### user 프롬프트 (`QuizGenerationPromptBuilder.build(topic)`, 주제별로 조립)
+
+```text
+"{주제}" 주제로 학습 퀴즈 5문제를 한 세트로 생성해줘. 오직 아래 JSON 스키마와 정확히 일치하는
+JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는 절대 포함하지 마.
+
+난이도 구성(정확히 이 순서·개수를 지켜야 함):
+1. EASY(OX) — 참/거짓 판정 문제. choices와 answerKeywords는 null, correctAnswer는 "O" 또는 "X".
+2. EASY(OX) — 위와 같은 유형, 다른 소재.
+3. MEDIUM(MULTIPLE_CHOICE) — 4지선다, choices 배열에 정확히 4개, 그중 정답 1개만 isCorrect=true.
+   correctAnswer와 answerKeywords는 null.
+4. MEDIUM(MULTIPLE_CHOICE) — 위와 같은 유형, 다른 소재. 가능하면 코드 지문(codeSnippet) 포함.
+5. HARD(KEYWORD_BLANK) — 빈칸 채우기. questionText에 빈칸(___)을 포함하고, answerKeywords는
+   "빈칸 개수만큼의 배열"이어야 한다 — 배열 원소 하나가 빈칸 하나다. 빈칸이 1개면 answerKeywords도
+   원소 1개짜리 배열이다. 절대로 같은 뜻의 다른 표현(동의어·약어/전체 이름 등)을 별도 빈칸으로
+   쪼개서 배열 길이를 늘리지 마라 — 동의어는 그 빈칸에 해당하는 원소 안에 함께 나열한다.
+   예: 빈칸 1개, 정답이 "PCB"와 "Process Control Block" 둘 다 인정되면
+   answerKeywords = [["PCB", "Process Control Block"]] (배열 길이 1, 안쪽에 동의어 2개).
+   choices와 correctAnswer는 null.
+
+모든 문제 공통 요구사항:
+- explanationSummary: 정확히 개행(\n) 3줄로 된 핵심 요약. 줄 끝 공백·빈 줄 없이 정확히 3줄이어야 한다.
+- wrongAnswerExplanation: 이 문제를 틀렸을 때 보여줄, 왜 틀렸는지 설명하는 해설
+- followUpQuestions: 1개 이상, 그중 정확히 1개는 isPrimary=true
+- derivedConcepts: 1개 이상
+- keywords: 지문 속에서 학습자가 어려워할 만한 용어 1개 이상과 그 설명
+
+키워드 하이라이트 마커 (explanationSummary·explanationExample·wrongAnswerExplanation 전용 —
+questionText·codeSnippet에는 절대 넣지 마라):
+- keywords에 등록한 각 용어가 처음 등장하는 위치를 [[용어]]로 감싸라.
+  예: "[[프로세스]]는 실행 중인 프로그램이다."
+- 마커 안 문자열은 keywords[].keyword 값과 공백·대소문자까지 정확히 일치해야 한다.
+  조사(은/는/이/가/을/를 등)는 마커 밖에 둔다. 올바름: [[프로세스]]는 / 잘못됨: [[프로세스는]]
+- 같은 용어를 한 컬럼 안에서 두 번 이상 마킹하지 마라 — 첫 등장 1회만 마킹한다.
+- 마커를 중첩하거나 겹치게 쓰지 마라 (예: [[가상 [[메모리]]]] 금지).
+- keywords에 등록한 용어는 반드시 이 3개 컬럼 중 최소 한 곳에 자연스러운 문장으로 등장하고
+  마킹돼야 한다. 본문에 자연스럽게 넣을 수 없는 용어는 keywords 목록에 아예 넣지 마라.
+
+JSON 스키마:
+{
+  "quizzes": [
+    {
+      "type": "OX | MULTIPLE_CHOICE | KEYWORD_BLANK",
+      "difficulty": "EASY | MEDIUM | HARD",
+      "questionText": "문제 본문",
+      "codeSnippet": "코드 지문(없으면 null)",
+      "explanationSummary": "핵심 3줄 요약 해설 — keywords 용어 첫 등장에 [[용어]] 마커",
+      "explanationExample": "실무 적용/코드 예시(없으면 null) — keywords 용어 첫 등장에 [[용어]] 마커",
+      "wrongAnswerExplanation": "오답 해설(왜 틀렸는지) — keywords 용어 첫 등장에 [[용어]] 마커",
+      "correctAnswer": "OX 전용 정답 \"O\" 또는 \"X\"(그 외 유형은 null)",
+      "choices": [{"content": "선택지 내용", "isCorrect": true}],
+      "answerKeywords": [["빈칸1 정답", "빈칸1과 같은 뜻의 동의어(있으면)"], ["빈칸2 정답"]],
+      "followUpQuestions": [{"content": "꼬리질문", "isPrimary": true}],
+      "derivedConcepts": ["관련 파생 개념 이름"],
+      "keywords": [{"keyword": "지문 속 어려운 용어", "description": "그 용어의 설명"}]
+    }
+  ]
+}
+```
+
+### 프롬프트 설계에서 겪은 실패와 그에 대한 대응
+
+- **동의어를 빈칸으로 착각**: 초기 버전은 "동의어도 인정하고 싶으면 어떻게 하라"는 지시가 없었다 — 모델이 "PCB"와 "Process Control Block"을 별도 빈칸 2개로 쪼개 `answerKeywords` 길이가 실제 빈칸(`___`) 개수와 안 맞는 응답을 냈다. 위 5번 규칙(동의어는 같은 원소 안에)과 `validateAnswerKeywords`의 개수 대조 검증을 함께 추가해 해결.
+- **마커 위치 오탐**: 마커 규칙 없이 요청하면 한국어 조사 때문에 "정렬"이 "정렬되지 않은"의 부분 문자열로 오매칭되는 문제가 있었다(서버 측 문자열 검색 방식일 때). 저작 시점에 `[[키워드]]`로 위치를 명시하는 방식으로 전환하면서 프롬프트에도 "조사는 마커 밖" 규칙을 명시했다.
+- **키워드가 본문에 없음**: 모델이 `keywords` 목록만 만들고 본문에 마킹을 빼먹는 경우가 있어 "커버리지" 문장("반드시 이 3개 컬럼 중 최소 한 곳에 …")을 프롬프트에 넣고, 서버 검증(`validateKeywordMarkers`)으로 이중 방어했다 — 프롬프트만 믿지 않는다.
+
+## 검증 규칙 (`QuizGenerationService#validate`)
+
+생성 응답이 아래 중 하나라도 어기면 `QuizGenerationException`을 던지고 그 스텝 전체를 저장하지 않는다(부분 저장 없음).
+
+- 문제 개수 정확히 5개, 슬롯별 유형/난이도 정확히 일치
+- 공통 필드(`questionText`/`explanationSummary`/`wrongAnswerExplanation`) 비어있지 않음
+- `followUpQuestions` 1개 이상, 그중 정확히 1개만 `isPrimary=true`
+- `derivedConcepts`·`keywords` 1개 이상
+- `explanationSummary` 정확히 3줄, 빈 줄·줄 끝 공백 없음
+- 마커 괄호 짝 검증, 마커 문자열이 `keywords`에 등록된 것과 정확히 일치(오타 감지), 같은 필드 내 중복 마킹 금지, 등록된 키워드 전부가 최소 한 컬럼에 마킹돼 있는지(커버리지)
+- 타입별: OX는 `correctAnswer`가 `O`/`X`, 사지선다는 선택지 정확히 4개 중 정답 1개, 키워드 빈칸은 `answerKeywords` 배열 길이가 `questionText`의 실제 빈칸(`___`) 개수와 일치
+
+## 영속화 (`QuizPersister`)
+
+- `stepOrder`는 `quizRepository.findMaxStepOrder() + 1`로 자동 이어붙인다(수동 지정 없음) — 실행할 때마다 다음 빈 스텝에 채워진다.
+- `QuizStep`(스텝 번호 + 주제명, `step_order` UNIQUE) 먼저 저장 후 5문제를 `slotOrder` 1~5로 배정.
+- `quiz.step_order`는 `quiz_step.step_order`를 FK로 참조 — 커리큘럼 구조 무결성이 DB 레벨에서 강제된다.
+
+## 환경설정
+
+`thumbsup.elice.quiz.{api-key,base-url,model}` (SSM `/thumbsup/{local,prod}/ELICE_API_KEY` 등, 모델은 `openai/gpt-5.4`). 상세 base URL 규칙·인증 동작·비용은 [`elice-models` 스킬](../elice-models/SKILL.md) 참조 — 이 스킬은 quiz 도메인에 특화된 프롬프트·검증·저장 규칙만 다룬다.
+
+## prod 반영 절차 (직접 API 호출 금지 — 팀 결정)
+
+이 파이프라인은 **로컬 DB에만 쓴다.** prod에 반영하는 흐름은 다음과 같다:
+
+1. 로컬에서 생성 (`--topicsFile`로 스텝 여러 개 한 번에)
+2. **사람이 전 문제를 검수** — 정답·해설·키워드 커버리지·꼬리질문까지 전부 눈으로 확인. LLM 생성물이라 신뢰하지 않는다.
+3. 검수 통과분만 **Flyway 마이그레이션으로 prod 반영** — 로컬 DB의 실제 저장값을 스크립트로 뽑아 SQL을 생성한다(수기 전사 금지 — 손으로 옮겨 적으면 내용이 미묘하게 바뀔 위험이 있다).
+4. 마이그레이션은 `INSERT ... ; SET @qid = LAST_INSERT_ID(); INSERT INTO quiz_follow_up_question (quiz_id, ...) VALUES (@qid, ...);` 패턴으로 부모(quiz)-자식(꼬리질문·파생개념·키워드) 관계를 auto-increment ID로 연결한다. id는 로컬 값과 무관하게 prod에서 새로 채번된다.
+
+직접 prod API를 호출해 생성하지 않는 이유: 검수 없이 LLM 원본이 바로 서비스에 노출되는 걸 막고, Flyway 마이그레이션 파일 자체가 "무엇이 언제 반영됐는지"의 감사 기록(정본)이 되게 하기 위함.
+
+## 알려진 주의사항
+
+- 마커가 없는(구버전) 시드 데이터는 해설 조회 API에서 `highlights`가 빈 배열로 나간다 — 에러 아님, 정상.
+- Testcontainers 통합 테스트는 seed 마이그레이션까지 전부 적용되므로, 테스트 픽스처의 `step_order`는 실제 커리큘럼 범위와 겹치지 않는 값(예: 101/102)을 쓴다.
+- 생성 실패는 스텝 단위로 전부 롤백된다(부분 저장 없음) — 재시도는 같은 주제로 다시 실행하면 된다(단, `stepOrder`가 자동 증가하므로 실패한 시도가 스텝 번호를 소비하지는 않는다 — 저장 자체가 안 됐으므로).

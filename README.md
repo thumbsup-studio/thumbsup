@@ -37,10 +37,11 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Gi
 | `ELICE_QA_BASE_URL` | GitHub Secrets | 시각 QA 엔드포인트 (`/v1`까지, public 레포 로그 노출 방지로 Secret) |
 | `ELICE_QA_MODEL` | GitHub Variables | QA 모델 ID (기본 `gpt-5.2`) |
 | `CLAUDE_CODE_OAUTH_TOKEN` | GitHub Secrets | `@claude` 봇 인증 |
+| `NEXT_PUBLIC_API_URL` | 로컬 `.env.local` / 배포는 **Vercel 환경변수 필수** | 앱이 호출할 API base URL. 로컬(`next dev`)은 미설정 시 로컬 서버 `:8080` 기본. 배포(Preview·Prod)는 이 값을 **반드시 등록**한다(운영 주소는 소스에 두지 않음). 미설정 시 앱이 부팅에 실패해 누락을 즉시 드러낸다 |
 
 > `QA_TARGET_URL`(시각 QA 대상 주소)은 위 표에 없다 — CI가 배포 잡의 프리뷰 URL을 자동으로 주입한다. 로컬에서 QA를 직접 돌릴 때만 `QA_TARGET_URL=http://localhost:3000` 형태로 지정하며, 자세한 사용법은 `visual-qa` 스킬을 참고한다.
 
-앱 런타임 환경변수(추후 `NEXT_PUBLIC_API_URL` 등)는 Vercel 프로젝트 → Settings → Environment Variables에서 관리하고 이 표에 추가한다.
+> 배포(Preview·Production)에서는 `NEXT_PUBLIC_API_URL`을 Vercel 프로젝트 → Settings → Environment Variables에 **반드시 등록**한다 — 운영 API 주소를 공개 소스 레포에 하드코딩하지 않기 위함이다. 미설정 상태로 배포하면 앱이 부팅 시 명시적으로 실패해 누락을 즉시 드러낸다. 로컬 개발은 `next dev`가 자동으로 로컬 서버(`:8080`)를 기본값으로 쓴다.
 
 ## CodeRabbit 리뷰
 

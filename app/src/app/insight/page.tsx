@@ -8,6 +8,7 @@ type InsightRouteProps = {
   searchParams?: Promise<{
     correct?: string;
     question?: string;
+    streak?: string;
   }>;
 };
 
@@ -17,10 +18,13 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
     Number(params?.question ?? 0),
     mockPlaySession.questions.length,
   );
+  const rawStreak = Number(params?.streak ?? 0);
+  const correctStreak = Number.isFinite(rawStreak) ? Math.max(0, Math.trunc(rawStreak)) : 0;
 
   return (
     <InsightPage
       correct={params?.correct === "true"}
+      correctStreak={correctStreak}
       questionIndex={questionIndex}
       session={mockPlaySession}
     />

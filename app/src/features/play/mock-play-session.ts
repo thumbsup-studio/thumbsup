@@ -18,8 +18,31 @@ export const mockPlaySession: PlaySession = {
           "운영체제는 프로세스마다 별도 주소 공간과 자원을 관리합니다.",
           "스레드는 이 프로세스 안에서 실행 흐름을 나눕니다.",
         ],
-        example:
+        wrongReason:
+          "프로세스를 단순한 코드 파일로만 보면 운영체제가 실행 중 자원을 분리해 관리한다는 점을 놓치기 쉽습니다.",
+        codeExample: {
+          language: "pseudo",
+          source: `process = os.spawn("browser-tab")
+process.memory = isolated_address_space`,
+          description:
+            "운영체제는 프로세스를 만들 때 독립된 주소 공간을 붙여 실행 중인 단위로 관리합니다.",
+        },
+        usageExample:
           "브라우저 탭 하나가 별도 프로세스로 실행되면 한 탭의 오류가 다른 탭으로 번지기 어렵습니다.",
+        keywords: [
+          {
+            term: "프로세스",
+            description: "운영체제가 자원을 독립적으로 관리하는 실행 단위입니다.",
+          },
+          {
+            term: "운영체제",
+            description: "CPU, 메모리, 파일 같은 컴퓨터 자원을 관리하는 시스템 소프트웨어입니다.",
+          },
+          {
+            term: "스레드",
+            description: "프로세스 안에서 나뉘는 실행 흐름입니다.",
+          },
+        ],
         referenceLabel: "OS process model",
       },
     },
@@ -37,8 +60,31 @@ export const mockPlaySession: PlaySession = {
           "공유 영역이 있기 때문에 통신은 가볍지만 동시성 문제가 생길 수 있습니다.",
           "각 스레드는 독립적인 호출 흐름을 위해 자신의 스택을 가집니다.",
         ],
-        example:
+        wrongReason:
+          "스레드를 작은 프로세스처럼 생각하면 코드와 힙까지 분리된다고 착각할 수 있습니다.",
+        codeExample: {
+          language: "pseudo",
+          source: `threadA.cache = shared_heap.cache
+threadB.cache = shared_heap.cache`,
+          description:
+            "같은 프로세스의 스레드는 힙과 데이터를 공유하므로 공통 캐시에 접근할 수 있습니다.",
+        },
+        usageExample:
           "웹 서버가 요청마다 스레드를 나누면 공통 캐시를 공유하면서도 요청 처리를 병렬화할 수 있습니다.",
+        keywords: [
+          {
+            term: "스레드",
+            description: "프로세스 내부에서 독립적으로 스케줄링되는 실행 흐름입니다.",
+          },
+          {
+            term: "힙",
+            description: "동적으로 만든 객체와 공유 데이터가 주로 놓이는 메모리 영역입니다.",
+          },
+          {
+            term: "스택",
+            description: "함수 호출과 지역 변수처럼 각 실행 흐름의 상태를 담는 메모리 영역입니다.",
+          },
+        ],
         referenceLabel: "Thread memory layout",
       },
     },
@@ -70,8 +116,35 @@ function increase() {
           "읽기, 계산, 쓰기가 원자적으로 묶이지 않으면 값이 유실될 수 있습니다.",
           "락이나 원자 연산으로 공유 상태 접근을 보호해야 합니다.",
         ],
-        example:
+        wrongReason:
+          "한 줄의 증가식이라도 실제로는 읽기, 계산, 쓰기 단계로 나뉘기 때문에 동시에 실행되면 안전하지 않습니다.",
+        codeExample: {
+          language: "ts",
+          source: `mutex.lock();
+try {
+  count = count + 1;
+} finally {
+  mutex.unlock();
+}`,
+          description:
+            "락이나 원자 연산으로 공유 상태 접근을 한 번에 하나의 흐름만 실행하게 보호합니다.",
+        },
+        usageExample:
           "두 스레드가 동시에 count 값을 0으로 읽고 각각 1을 쓰면 실제 증가 횟수는 2번이어도 결과는 1이 됩니다.",
+        keywords: [
+          {
+            term: "경쟁 상태",
+            description: "동시 실행 순서에 따라 결과가 달라지는 버그입니다.",
+          },
+          {
+            term: "원자 연산",
+            description: "중간에 끼어들 수 없도록 하나의 단위처럼 처리되는 연산입니다.",
+          },
+          {
+            term: "락",
+            description: "공유 자원에 동시에 접근하지 못하게 막는 동기화 장치입니다.",
+          },
+        ],
         referenceLabel: "Race condition",
       },
     },
@@ -95,8 +168,33 @@ function increase() {
           "레지스터와 실행 위치를 저장하고 다음 작업의 상태를 복원합니다.",
           "너무 자주 발생하면 실제 작업보다 교체 비용이 커질 수 있습니다.",
         ],
-        example:
+        wrongReason:
+          "컨텍스트 스위칭은 단순히 순서만 바꾸는 일이 아니라 CPU 상태 저장과 복원 비용을 동반합니다.",
+        codeExample: {
+          language: "pseudo",
+          source: `save(current.registers)
+load(next.registers)
+run(next)`,
+          description:
+            "운영체제는 현재 실행 상태를 저장하고 다음 실행 상태를 복원한 뒤 CPU를 넘깁니다.",
+        },
+        usageExample:
           "짧은 작업을 지나치게 많은 스레드로 쪼개면 CPU가 계산보다 스레드 전환에 시간을 더 쓸 수 있습니다.",
+        keywords: [
+          {
+            term: "컨텍스트 스위칭",
+            description:
+              "CPU가 실행할 작업을 바꾸며 이전 상태를 저장하고 다음 상태를 복원하는 과정입니다.",
+          },
+          {
+            term: "레지스터",
+            description: "CPU가 바로 계산에 쓰는 아주 빠른 임시 저장 공간입니다.",
+          },
+          {
+            term: "스레드",
+            description: "CPU 스케줄링의 대상이 될 수 있는 실행 흐름입니다.",
+          },
+        ],
         referenceLabel: "Context switching",
       },
     },
@@ -124,8 +222,33 @@ finally:
           "상호 배제를 보장해야 데이터가 깨지지 않습니다.",
           "락의 범위는 필요한 만큼만 좁게 잡는 것이 좋습니다.",
         ],
-        example:
+        wrongReason:
+          "공유 자원을 다루는 코드 중에서도 동시에 들어오면 결과가 깨지는 구간을 따로 식별해야 합니다.",
+        codeExample: {
+          language: "pseudo",
+          source: `lock.acquire()
+try:
+  balance = balance - payment
+finally:
+  lock.release()`,
+          description: "공유 자원을 수정하는 코드만 락으로 감싸 임계 구역을 보호합니다.",
+        },
+        usageExample:
           "계좌 잔액을 읽고 차감한 뒤 저장하는 구간은 동시에 실행되면 잔액 오류가 생길 수 있어 임계 구역으로 보호합니다.",
+        keywords: [
+          {
+            term: "임계 구역",
+            description: "동시에 실행되면 안 되는 공유 자원 접근 코드 영역입니다.",
+          },
+          {
+            term: "상호 배제",
+            description: "한 번에 하나의 실행 흐름만 공유 자원에 접근하게 하는 성질입니다.",
+          },
+          {
+            term: "락",
+            description: "상호 배제를 구현할 때 쓰는 잠금 장치입니다.",
+          },
+        ],
         referenceLabel: "Critical section",
       },
     },

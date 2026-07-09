@@ -1,0 +1,99 @@
+package studio.thumbsup.server.quiz.generation;
+
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import studio.thumbsup.server.quiz.Quiz;
+import studio.thumbsup.server.quiz.QuizRepository;
+import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.QuizStepRepository;
+import studio.thumbsup.server.quiz.QuizType;
+
+/**
+ * 검증을 마친 생성 결과를 DB에 저장한다(#26). {@link QuizGenerationService}에서 분리한 이유는
+ * 트랜잭션 경계를 DB 저장에만 좁히기 위해서다 — 같은 클래스 안에서 {@code @Transactional} 메서드를
+ * 자기 자신이 호출하면 Spring AOP 프록시를 거치지 않아(self-invocation) 트랜잭션이 적용되지 않는다.
+ */
+@Service
+class QuizPersister {
+
+    private final QuizRepository quizRepository;
+    private final QuizStepRepository quizStepRepository;
+
+    QuizPersister(QuizRepository quizRepository, QuizStepRepository quizStepRepository) {
+        this.quizRepository = quizRepository;
+        this.quizStepRepository = quizStepRepository;
+    }
+
+    @Transactional
+    int persist(String courseTopic, GeneratedQuizSet generated) {
+        int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
+
+        // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
+        quizStepRepository.save(QuizStep.create(stepOrder, courseTopic));
+
+        int slotOrder = 1;
+        for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
+            Quiz quiz = toEntity(g);
+            quiz.assignPosition(stepOrder, slotOrder++);
+            quizRepository.save(quiz);
+        }
+        return stepOrder;
+    }
+
+    private Quiz toEntity(GeneratedQuizSet.GeneratedQuiz g) {
+        Quiz quiz = Quiz.create(
+                g.type(),
+                g.difficulty(),
+                g.questionText(),
+                g.codeSnippet(),
+                g.explanationSummary(),
+                g.explanationExample(),
+                g.wrongAnswerExplanation());
+
+        if (g.type() == QuizType.OX) {
+            quiz.assignCorrectAnswer(g.correctAnswer());
+        }
+        if (g.type() == QuizType.MULTIPLE_CHOICE) {
+            addChoices(quiz, g.choices());
+        }
+        if (g.type() == QuizType.KEYWORD_BLANK) {
+            addAnswerKeywords(quiz, g.answerKeywords());
+        }
+        addFollowUpQuestions(quiz, g.followUpQuestions());
+        addDerivedConcepts(quiz, g.derivedConcepts());
+        g.keywords().forEach(keyword -> quiz.addKeyword(keyword.keyword(), keyword.description()));
+        return quiz;
+    }
+
+    private void addChoices(Quiz quiz, List<GeneratedQuizSet.GeneratedChoice> choices) {
+        int order = 1;
+        for (GeneratedQuizSet.GeneratedChoice choice : choices) {
+            quiz.addChoice(choice.content(), choice.isCorrect(), order++);
+        }
+    }
+
+    private void addAnswerKeywords(Quiz quiz, List<List<String>> answerKeywords) {
+        int slot = 1;
+        for (List<String> synonyms : answerKeywords) {
+            for (String keyword : synonyms) {
+                quiz.addAnswerKeyword(slot, keyword);
+            }
+            slot++;
+        }
+    }
+
+    private void addFollowUpQuestions(Quiz quiz, List<GeneratedQuizSet.GeneratedFollowUpQuestion> followUpQuestions) {
+        int order = 1;
+        for (GeneratedQuizSet.GeneratedFollowUpQuestion fq : followUpQuestions) {
+            quiz.addFollowUpQuestion(fq.content(), fq.isPrimary(), order++);
+        }
+    }
+
+    private void addDerivedConcepts(Quiz quiz, List<String> derivedConcepts) {
+        int order = 1;
+        for (String concept : derivedConcepts) {
+            quiz.addDerivedConcept(concept, order++);
+        }
+    }
+}
