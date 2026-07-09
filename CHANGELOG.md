@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.4.0](https://github.com/thumbsup-studio/thumbsup/compare/v0.3.0...v0.4.0) (2026-07-09)
+
+
+### Features
+
+* **app:** add insight handoff flow ([7254a41](https://github.com/thumbsup-studio/thumbsup/commit/7254a41a7a88f80c67c0eeaf53b64c7c407d72fe))
+* **app:** implement play quiz session ([17caa18](https://github.com/thumbsup-studio/thumbsup/commit/17caa1811c6b2f6dbe87e9f4c2e1fcce43aed8ef))
+* **app:** Play 문제 풀이와 Insight 해설 흐름 구현 ([4474717](https://github.com/thumbsup-studio/thumbsup/commit/44747171edb2ea6a9d96a97749fbf7244af73369))
+* **app:** 로그인·회원가입 화면과 auth API 연동 ([#1](https://github.com/thumbsup-studio/thumbsup/issues/1)) ([#100](https://github.com/thumbsup-studio/thumbsup/issues/100)) ([b6056e7](https://github.com/thumbsup-studio/thumbsup/commit/b6056e7290f63fb202171252bb8f43f5a2566f26))
+* **app:** 지식 그래프(Atlas /history) 화면과 그래프 프리미티브 ([#10](https://github.com/thumbsup-studio/thumbsup/issues/10)) ([#101](https://github.com/thumbsup-studio/thumbsup/issues/101)) ([3b731cc](https://github.com/thumbsup-studio/thumbsup/commit/3b731cc7cf273a865d1e96621a68d370a1750fad))
+* **server:** 다음 문제 조회 API — 유저별 커리큘럼 진행 ([#41](https://github.com/thumbsup-studio/thumbsup/issues/41)) ([c2f6110](https://github.com/thumbsup-studio/thumbsup/commit/c2f6110c0aaf41acf41c7ea96ec07737977eb6b3))
+* **server:** 정답 확인 API + 다음 문제 선형 진행 수정 ([#41](https://github.com/thumbsup-studio/thumbsup/issues/41), [#42](https://github.com/thumbsup-studio/thumbsup/issues/42)) ([55f67c1](https://github.com/thumbsup-studio/thumbsup/commit/55f67c1ca5167dcb71ccf74dae17fc31f0e61c35))
+* **server:** 정답 확인 API 엔드포인트·DTO ([#42](https://github.com/thumbsup-studio/thumbsup/issues/42)) ([cedff65](https://github.com/thumbsup-studio/thumbsup/commit/cedff65274e09b7e693ab98e21956ea2f8a54726))
+* **server:** 퀴즈 복습(재시도) 허용 — 오답 이력 보존 ([#41](https://github.com/thumbsup-studio/thumbsup/issues/41)) ([2e1f147](https://github.com/thumbsup-studio/thumbsup/commit/2e1f147dd6eaf4a659feb2154386b469a74d1b64))
+
+
+### Bug Fixes
+
+* **app:** align play flow styles with design tokens ([1837df7](https://github.com/thumbsup-studio/thumbsup/commit/1837df7783c21a27adfbb22165812ec690a6e39f))
+* **app:** merge conflict ([8e4c273](https://github.com/thumbsup-studio/thumbsup/commit/8e4c2736f3861db3eb28f958c0e38836bbd99c60))
+* **app:** sanitize visual qa screenshot filenames ([b004a2f](https://github.com/thumbsup-studio/thumbsup/commit/b004a2f621775401fbb04177c706970ba358b0de))
+* **app:** use session total in play progress labels ([8732124](https://github.com/thumbsup-studio/thumbsup/commit/87321247074864bf76d6ccd1c151b1ea16a4540b))
+* **server:** CodeRabbit 지적 반영 — 테스트 구조·상수 추출 ([#41](https://github.com/thumbsup-studio/thumbsup/issues/41)) ([2990dbe](https://github.com/thumbsup-studio/thumbsup/commit/2990dbe83ae0edf6dc2b3be69bc896748da17f9e))
+* **server:** 다음 문제 선형 진행 + 정답 확인 서비스 로직 ([#41](https://github.com/thumbsup-studio/thumbsup/issues/41), [#42](https://github.com/thumbsup-studio/thumbsup/issues/42)) ([d2d88f4](https://github.com/thumbsup-studio/thumbsup/commit/d2d88f422d8d6053cd667e5bcf22e364c69e19a8))
+* **server:** 정답 제출 API 동시성·접근 검증·조회 효율 개선 ([#42](https://github.com/thumbsup-studio/thumbsup/issues/42)) ([478fdde](https://github.com/thumbsup-studio/thumbsup/commit/478fddef2457feeec2badf7985557ef3304a662a))
+
 ## [0.3.0](https://github.com/thumbsup-studio/thumbsup/compare/v0.2.0...v0.3.0) (2026-07-08)
 
 
