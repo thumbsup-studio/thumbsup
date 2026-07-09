@@ -35,6 +35,17 @@ const COMPARE_PROMPT = `당신은 디자인 충실도 검사관이다. 첫 번�
 
 type Shot = { viewport: string; file: string };
 
+function toShotSlug(routePath: string) {
+  if (routePath === "/") {
+    return "home";
+  }
+
+  return routePath
+    .replace(/^\/+/, "")
+    .replaceAll(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 async function capture(route: QaRoute): Promise<Shot[]> {
   const browser = await chromium.launch();
   const shots: Shot[] = [];
@@ -42,7 +53,7 @@ async function capture(route: QaRoute): Promise<Shot[]> {
     for (const vp of VIEWPORTS) {
       const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
       await page.goto(`${targetUrl}${route.path}`, { waitUntil: "networkidle", timeout: 30_000 });
-      const slug = route.path === "/" ? "home" : route.path.replaceAll("/", "_").replace(/^_/, "");
+      const slug = toShotSlug(route.path);
       const file = path.join(OUT_DIR, `${slug}-${vp.name}.png`);
       await page.screenshot({ path: file, fullPage: true });
       await page.close();

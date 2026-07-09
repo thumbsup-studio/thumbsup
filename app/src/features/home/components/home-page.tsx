@@ -28,12 +28,7 @@ export function HomePage({ data, now }: HomePageProps) {
           </div>
         </section>
 
-        <TodayCourseCard
-          course={data.todayCourse}
-          onStart={() => {
-            showToast({ message: "퀴즈는 준비 중입니다." });
-          }}
-        />
+        <TodayCourseCard course={data.todayCourse} startHref="/play" />
 
         <div className="mt-auto pt-1">
           <BottomTabBar
