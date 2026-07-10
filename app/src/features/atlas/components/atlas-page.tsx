@@ -50,7 +50,7 @@ export function AtlasPage({ data }: AtlasPageProps) {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-bg px-4 py-6 text-ink sm:px-6">
+    <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
         <AtlasHeader
           onBack={() => router.push("/")}

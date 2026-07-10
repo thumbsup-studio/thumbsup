@@ -54,7 +54,7 @@ export function Input({
           type={inputType}
           aria-invalid={hasError}
           aria-describedby={errorMessage ? errorId : undefined}
-          className={`min-h-11 flex-1 bg-transparent py-2 text-base text-ink outline-none placeholder:text-ink-muted ${className}`}
+          className={`min-h-11 min-w-0 flex-1 bg-transparent py-2 text-base text-ink outline-none placeholder:text-ink-muted ${className}`}
           {...props}
         />
         {/* 비밀번호는 에러 중에도 표시 토글을 유지(입력값 확인 가능). 에러는 테두리·좌측 아이콘·하단 메시지로 전달. */}

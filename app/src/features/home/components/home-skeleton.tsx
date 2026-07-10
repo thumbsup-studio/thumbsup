@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** 홈 데이터 로딩 중 골격 — HomePage 레이아웃(환영·스트릭 카드 + 오늘의 학습 카드)을 본뜬다. */
 export function HomeSkeleton() {
   return (
-    <main className="flex min-h-screen flex-col bg-bg px-4 py-6 text-ink sm:px-6">
+    <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div
         aria-busy="true"
         aria-label="홈 불러오는 중"
