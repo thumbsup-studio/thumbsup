@@ -9,7 +9,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -53,6 +55,7 @@ class FollowUpQuestionAcceptanceTest {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final QuizRepository quizRepository;
+    private final QuizFollowUpQuestionRepository quizFollowUpQuestionRepository;
     private final QuizStepRepository quizStepRepository;
 
     FollowUpQuestionAcceptanceTest(
@@ -60,11 +63,13 @@ class FollowUpQuestionAcceptanceTest {
             @Autowired JwtTokenProvider jwtTokenProvider,
             @Autowired ObjectMapper objectMapper,
             @Autowired QuizRepository quizRepository,
+            @Autowired QuizFollowUpQuestionRepository quizFollowUpQuestionRepository,
             @Autowired QuizStepRepository quizStepRepository) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.objectMapper = objectMapper;
         this.quizRepository = quizRepository;
+        this.quizFollowUpQuestionRepository = quizFollowUpQuestionRepository;
         this.quizStepRepository = quizStepRepository;
     }
 
@@ -190,6 +195,23 @@ class FollowUpQuestionAcceptanceTest {
         }
 
         @Test
+        @DisplayName("모든 시드 꼬리질문은 등록 키워드를 한 줄 답과 전체 블록에서 정확히 한 번만 하이라이트한다")
+        void highlights_each_keyword_once_across_every_authored_field() throws Exception {
+            List<Long> detailedFollowUpQuestionIds = quizFollowUpQuestionRepository.findAll().stream()
+                    .filter(QuizFollowUpQuestion::hasDetail)
+                    .map(QuizFollowUpQuestion::getId)
+                    .toList();
+            assertThat(detailedFollowUpQuestionIds).hasSizeGreaterThanOrEqualTo(123);
+
+            List<String> violations = new ArrayList<>();
+            for (Long followUpQuestionId : detailedFollowUpQuestionIds) {
+                collectHighlightViolations(followUpQuestionId, fetchDetailData(followUpQuestionId), violations);
+            }
+
+            assertThat(violations).as("꼬리질문 API 하이라이트 전수 검사 위반 목록").isEmpty();
+        }
+
+        @Test
         @DisplayName("상세가 저작되지 않은 꼬리질문이면 404 FOLLOW_UP_DETAIL_NOT_FOUND — 새 문제를 생성했는데 상세를 빠뜨린 경우")
         void returns_404_when_detail_is_not_authored_yet() throws Exception {
             mockMvc.perform(get("/api/v1/follow-up-questions/{id}", followUpQuestionIdWithoutDetail())
@@ -211,6 +233,65 @@ class FollowUpQuestionAcceptanceTest {
         @DisplayName("Authorization 헤더가 없으면 필터체인이 401로 막는다")
         void returns_401_without_token() throws Exception {
             mockMvc.perform(get("/api/v1/follow-up-questions/{id}", 1L)).andExpect(status().isUnauthorized());
+        }
+
+        private void collectHighlightViolations(Long followUpQuestionId, JsonNode data, List<String> violations) {
+            List<String> dictionary = new ArrayList<>();
+            data.path("keywords")
+                    .forEach(keyword -> dictionary.add(keyword.path("keyword").asText()));
+
+            List<JsonNode> annotatedTexts = new ArrayList<>();
+            annotatedTexts.add(data.path("oneLineAnswer"));
+            data.path("blocks").forEach(block -> annotatedTexts.add(block.path("content")));
+
+            Map<String, Integer> highlightCounts = new HashMap<>();
+            for (JsonNode annotated : annotatedTexts) {
+                collectAnnotatedTextViolations(followUpQuestionId, annotated, dictionary, highlightCounts, violations);
+            }
+
+            for (String keyword : dictionary) {
+                int count = highlightCounts.getOrDefault(keyword, 0);
+                if (count != 1) {
+                    violations.add(followUpQuestionId + ": " + keyword + " highlight " + count + "회");
+                }
+            }
+        }
+
+        private void collectAnnotatedTextViolations(
+                Long followUpQuestionId,
+                JsonNode annotated,
+                List<String> dictionary,
+                Map<String, Integer> highlightCounts,
+                List<String> violations) {
+            String text = annotated.path("text").asText();
+            if (text.contains("[[") || text.contains("]]")) {
+                violations.add(followUpQuestionId + ": 응답 평문에 marker 구분자 노출");
+            }
+            for (JsonNode highlight : annotated.path("highlights")) {
+                collectSingleHighlightViolation(
+                        followUpQuestionId, text, highlight, dictionary, highlightCounts, violations);
+            }
+        }
+
+        private void collectSingleHighlightViolation(
+                Long followUpQuestionId,
+                String text,
+                JsonNode highlight,
+                List<String> dictionary,
+                Map<String, Integer> highlightCounts,
+                List<String> violations) {
+            String keyword = highlight.path("keyword").asText();
+            highlightCounts.merge(keyword, 1, Integer::sum);
+            if (!dictionary.contains(keyword)) {
+                violations.add(followUpQuestionId + ": 미등록 highlight " + keyword);
+            }
+            int start = highlight.path("start").asInt();
+            int end = highlight.path("end").asInt();
+            if (start < 0 || end > text.length() || start >= end) {
+                violations.add(followUpQuestionId + ": 잘못된 highlight 구간 " + keyword);
+            } else if (!text.substring(start, end).equals(keyword)) {
+                violations.add(followUpQuestionId + ": highlight 구간 불일치 " + keyword);
+            }
         }
     }
 }

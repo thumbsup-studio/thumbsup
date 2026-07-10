@@ -94,7 +94,7 @@ class QuizFollowUpQuestionServiceTest {
             givenFollowUpQuestion(QuizFixture.detailedFollowUpQuestion(FOLLOW_UP_QUESTION_ID, SOURCE_QUIZ_ID));
 
             FollowUpQuestionDetailResponse.AnnotatedText block =
-                    service().getDetail(FOLLOW_UP_QUESTION_ID).blocks().get(0).content();
+                    service().getDetail(FOLLOW_UP_QUESTION_ID).blocks().get(1).content();
 
             FollowUpQuestionDetailResponse.Highlight highlight =
                     block.highlights().get(0);

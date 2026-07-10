@@ -25,9 +25,9 @@ final class QuizGenerationPromptBuilder {
                       "content": "꼬리질문 본문 — 마커를 넣지 않는 평문",
                       "isPrimary": true,
                       "difficulty": "EASY | MEDIUM | HARD — 이 꼬리질문 자체의 난이도",
-                      "oneLineAnswer": "한 줄 답 — 이 꼬리질문 keywords 용어 첫 등장에 [[용어]] 마커",
+                      "oneLineAnswer": "한 줄 답 — 꼬리질문 전체 keywords 마커 정책의 최우선 영역",
                       "blocks": [
-                        {"label": "해설", "content": "블록 본문 — 이 꼬리질문 keywords 용어 첫 등장에 [[용어]] 마커"}
+                        {"label": "해설", "content": "블록 본문 — 꼬리질문 전체 keywords 마커 정책 적용"}
                       ],
                       "keywords": [{"keyword": "이 꼬리질문의 어려운 용어", "description": "그 용어의 설명"}]
                     }
@@ -83,15 +83,16 @@ final class QuizGenerationPromptBuilder {
               (2) 각 꼬리질문의 oneLineAnswer와 blocks의 content — 그 꼬리질문의 keywords를 사전으로 쓴다.
                   부모 문제의 keywords가 아니다.
             - questionText·codeSnippet·followUpQuestions의 content에는 절대 넣지 마라.
-            - 사전에 등록한 각 용어가 처음 등장하는 위치를 [[용어]]로 감싸라.
+            - 사전에 등록한 각 용어는 아래 영역 우선순위로 선택한 한 위치의 첫 등장만 [[용어]]로 감싸라.
               예: "[[프로세스]]는 실행 중인 프로그램이다."
             - 마커 안 문자열은 keyword 값과 공백·대소문자까지 정확히 일치해야 한다.
               조사(은/는/이/가/을/를 등)는 마커 밖에 둔다. 올바름: [[프로세스]]는 / 잘못됨: [[프로세스는]]
             - 문제 keywords의 각 용어는 해설 3개 컬럼 전체에서 정확히 한 번만 마킹한다.
               같은 용어가 여러 컬럼에 등장하면 explanationSummary → explanationExample → wrongAnswerExplanation 우선순위로
               한 곳만 골라 마킹하고, 나머지 컬럼의 같은 용어는 마커 없는 평문으로 둔다.
-            - 꼬리질문에서는 같은 용어를 한 필드 안에서 두 번 이상 마킹하지 마라 — 첫 등장 1회만 마킹한다.
-              blocks는 블록 하나하나가 각각 별개의 필드다.
+            - 꼬리질문 keywords의 각 용어는 oneLineAnswer와 모든 blocks의 content 전체에서 정확히 한 번만 마킹한다.
+              같은 용어가 여러 영역에 등장하면 oneLineAnswer → blocks 배열 순서(displayOrder 오름차순) 우선순위로
+              한 곳만 골라 마킹하고, 나머지 영역의 같은 용어는 마커 없는 평문으로 둔다.
             - 마커를 중첩하거나 겹치게 쓰지 마라 (예: [[가상 [[메모리]]]] 금지).
             - 커버리지: 문제의 keywords는 해설 3개 컬럼 중 최소 한 곳에, 꼬리질문의 keywords는 그 꼬리질문의
               oneLineAnswer나 blocks의 content 중 최소 한 곳에 자연스러운 문장으로 등장하고 마킹돼야 한다.

@@ -9,7 +9,7 @@ package studio.thumbsup.server.quiz.generation;
  */
 final class GeneratedQuizJsonFixture {
 
-    static final String DEFAULT_BLOCKS = "[{\"label\": \"해설\", \"content\": \"큐는 [[FIFO]] 순서다.\"}]";
+    static final String DEFAULT_BLOCKS = "[{\"label\": \"해설\", \"content\": \"큐는 먼저 넣은 것이 먼저 나온다.\"}]";
     static final String DEFAULT_KEYWORDS = "[{\"keyword\": \"FIFO\", \"description\": \"설명\"}]";
     static final String DEFAULT_ONE_LINE_ANSWER = "[[FIFO]]는 먼저 넣은 것이 먼저 나온다.";
 
