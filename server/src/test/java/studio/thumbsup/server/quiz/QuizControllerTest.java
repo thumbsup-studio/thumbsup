@@ -170,7 +170,7 @@ class QuizControllerTest {
                     null,
                     new QuizExplanationResponse.AnnotatedText("UDP는 비연결형이다.", List.of()),
                     List.of(new QuizExplanationResponse.KeywordItem("연결 지향", "통신 전에 연결을 먼저 수립하는 방식")),
-                    List.of("대표 질문입니다."));
+                    List.of(new QuizExplanationResponse.FollowUpQuestionItem(10L, "대표 질문입니다.", true)));
         }
 
         @Test
@@ -196,7 +196,10 @@ class QuizControllerTest {
                             .value(5))
                     .andExpect(jsonPath("$.data.explanationExample").isEmpty())
                     .andExpect(jsonPath("$.data.wrongAnswerExplanation.text").value("UDP는 비연결형이다."))
-                    .andExpect(jsonPath("$.data.followUpQuestions[0]").value("대표 질문입니다."));
+                    .andExpect(jsonPath("$.data.followUpQuestions[0].followUpQuestionId")
+                            .value(10))
+                    .andExpect(jsonPath("$.data.followUpQuestions[0].content").value("대표 질문입니다."))
+                    .andExpect(jsonPath("$.data.followUpQuestions[0].isPrimary").value(true));
         }
 
         @Test

@@ -2,6 +2,7 @@ package studio.thumbsup.server.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
 
 import java.util.Optional;
@@ -117,13 +118,18 @@ class QuizExplanationServiceTest {
         }
 
         @Test
-        @DisplayName("대표 꼬리질문을 저작 순서와 무관하게 맨 앞에 둔다")
-        void puts_primary_follow_up_question_first() {
+        @DisplayName("대표 꼬리질문을 저작 순서와 무관하게 맨 앞에 두고, 상세가 없는 질문은 제외한다")
+        void puts_primary_follow_up_question_first_and_drops_the_ones_without_detail() {
             givenExplanationContext(annotatedQuizWithId(QUIZ_ID));
 
             QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
 
-            assertThat(response.followUpQuestions()).containsExactly("대표 질문입니다.", "보조 질문입니다.");
+            assertThat(response.followUpQuestions())
+                    .extracting(
+                            QuizExplanationResponse.FollowUpQuestionItem::followUpQuestionId,
+                            QuizExplanationResponse.FollowUpQuestionItem::content,
+                            QuizExplanationResponse.FollowUpQuestionItem::isPrimary)
+                    .containsExactly(tuple(10L, "대표 질문입니다.", true), tuple(20L, "보조 질문입니다.", false));
         }
 
         @Test
