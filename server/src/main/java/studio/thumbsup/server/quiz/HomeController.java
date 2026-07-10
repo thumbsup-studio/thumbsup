@@ -1,4 +1,4 @@
-package studio.thumbsup.server.learning;
+package studio.thumbsup.server.quiz;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import studio.thumbsup.server.common.response.ApiResponse;
-import studio.thumbsup.server.learning.dto.HomeResponse;
+import studio.thumbsup.server.quiz.dto.HomeResponse;
 
 /**
  * 컨트롤러는 얇게 — 검증·호출·envelope 감싸기만 한다.

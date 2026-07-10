@@ -26,14 +26,20 @@ public class QuizService {
     private static final int INITIAL_STEP_ORDER = 1;
 
     private final QuizRepository quizRepository;
+    private final CourseRepository courseRepository;
+    private final QuizStepRepository quizStepRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizProgressRepository quizProgressRepository;
 
     public QuizService(
             QuizRepository quizRepository,
+            CourseRepository courseRepository,
+            QuizStepRepository quizStepRepository,
             QuizAttemptRepository quizAttemptRepository,
             QuizProgressRepository quizProgressRepository) {
         this.quizRepository = quizRepository;
+        this.courseRepository = courseRepository;
+        this.quizStepRepository = quizStepRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.quizProgressRepository = quizProgressRepository;
     }
@@ -75,7 +81,18 @@ public class QuizService {
     public QuizExplanationResponse getExplanation(Long quizId) {
         Quiz quiz =
                 quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        return QuizExplanationResponse.from(quiz);
+
+        String courseTitle = courseRepository
+                .findFirstByOrderByIdAsc()
+                .map(Course::getTitle)
+                .orElseThrow(() -> new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
+        String unitTitle = quizStepRepository
+                .findByStepOrder(quiz.getStepOrder())
+                .map(QuizStep::getTopic)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        long totalCount = quizRepository.countByStepOrder(quiz.getStepOrder());
+
+        return QuizExplanationResponse.from(quiz, totalCount, courseTitle, unitTitle);
     }
 
     /**

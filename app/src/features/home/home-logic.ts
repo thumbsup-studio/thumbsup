@@ -1,3 +1,5 @@
+import type { CharacterMood } from "@/components/icons";
+
 export type WelcomeVariant = "commute" | "afterWork" | "night";
 
 const seoulHourFormatter = new Intl.DateTimeFormat("en-US", {
@@ -34,6 +36,24 @@ export function formatStreakDays(streakDays: number): string {
 
 export function formatDuration(estimatedMinutes: number): string {
   return `${estimatedMinutes}분이면 끝나요`;
+}
+
+export function formatFullness(fullness: number): string {
+  const clamped = Math.min(100, Math.max(0, Math.round(fullness)));
+  return `포만감 ${clamped}%`;
+}
+
+/** 포만감 구간 → 표정. 67%↑ 행복 · 34~66% 보통 · 33%↓ 배고픔. */
+export function getCharacterMood(fullness: number): CharacterMood {
+  if (fullness >= 67) {
+    return "happy";
+  }
+
+  if (fullness >= 34) {
+    return "neutral";
+  }
+
+  return "hungry";
 }
 
 export function getWelcomeCopy(date: Date) {

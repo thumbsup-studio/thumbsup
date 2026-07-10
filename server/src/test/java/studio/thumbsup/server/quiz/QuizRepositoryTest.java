@@ -67,7 +67,7 @@ class QuizRepositoryTest {
 
     /** quiz.step_order가 quiz_step을 FK로 참조하므로, 스텝에 문제를 저장하기 전 부모 행을 먼저 만든다. */
     private void saveStep(int stepOrder) {
-        quizStepRepository.save(QuizStep.create(stepOrder, "테스트 스텝 " + stepOrder));
+        quizStepRepository.save(QuizStep.create(stepOrder, "테스트 스텝 " + stepOrder, 3));
     }
 
     @Nested
@@ -190,6 +190,15 @@ class QuizRepositoryTest {
         }
 
         @Test
+        @DisplayName("스텝에 실제 저장된 문제 수를 조회한다")
+        void counts_step_quizzes() {
+            saveStep(101);
+            QuizFixture.step(101).forEach(quizRepository::save);
+
+            assertThat(quizRepository.countByStepOrder(101)).isEqualTo(5);
+        }
+
+        @Test
         @DisplayName("정식 커리큘럼(step_order > 0)의 최댓값을 조회한다 — 0은 제외")
         void finds_max_step_order_excluding_placeholder() {
             quizRepository.save(QuizFixture.oxQuiz()); // step_order 기본값 0(placeholder)
@@ -281,11 +290,12 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("스텝 주제를 저장하고 조회한다")
         void saves_and_finds_by_step_order() {
-            quizStepRepository.save(QuizStep.create(101, "CPU 스케줄링 기초"));
+            quizStepRepository.save(QuizStep.create(101, "CPU 스케줄링 기초", 5));
 
             QuizStep found = quizStepRepository.findByStepOrder(101).orElseThrow();
 
             assertThat(found.getTopic()).isEqualTo("CPU 스케줄링 기초");
+            assertThat(found.getEstimatedMinutes()).isEqualTo(5);
         }
 
         @Test

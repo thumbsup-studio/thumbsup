@@ -1,6 +1,7 @@
 "use client";
 
 import { AppTabBar } from "@/components/app-tab-bar";
+import { CharacterBlock } from "@/features/home/components/character-block";
 import { StreakBlock } from "@/features/home/components/streak-block";
 import { TodayCourseCard } from "@/features/home/components/today-course-card";
 import { WelcomeBlock } from "@/features/home/components/welcome-block";
@@ -25,6 +26,8 @@ export function HomePage({ data, now }: HomePageProps) {
             </div>
           </div>
         </section>
+
+        <CharacterBlock name={data.character.name} fullness={data.character.fullness} />
 
         <TodayCourseCard course={data.todayCourse} startHref="/play" />
 

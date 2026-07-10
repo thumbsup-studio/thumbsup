@@ -10,6 +10,10 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 
 const baseData: HomeData = {
   streakDays: 12,
+  character: {
+    name: "보리",
+    fullness: 62,
+  },
   todayCourse: {
     title: "운영체제",
     subtitle: "프로세스와 스레드",
@@ -17,7 +21,7 @@ const baseData: HomeData = {
     total: 8,
     durationLabel: "3분이면 끝나요",
   },
-} as HomeData;
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -36,6 +40,18 @@ describe("HomePage", () => {
     );
 
     expect(screen.queryByLabelText("연속 학습")).not.toBeInTheDocument();
+  });
+
+  it("renders the character block with name and fullness", () => {
+    render(
+      <AppToastProvider>
+        <HomePage data={baseData} now={new Date("2026-07-08T08:00:00+09:00")} />
+      </AppToastProvider>,
+    );
+
+    expect(screen.getByText("보리")).toBeInTheDocument();
+    expect(screen.getByText("포만감")).toBeInTheDocument();
+    expect(screen.getByText("62%")).toBeInTheDocument();
   });
 
   it("renders the required course card text", () => {
