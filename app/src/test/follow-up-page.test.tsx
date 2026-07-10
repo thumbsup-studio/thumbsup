@@ -48,6 +48,7 @@ function renderFollowUp() {
       correctStreak={2}
       followUpQuestionId={1}
       questionIndex={0}
+      quizId={100}
       session={mockPlaySession}
     />,
   );
@@ -72,6 +73,14 @@ describe("FollowUpPage", () => {
     expect(screen.getByText("운영체제가 중개하는", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("해설")).toBeInTheDocument();
     expect(screen.getByText("실무 사용처")).toBeInTheDocument();
+  });
+
+  it("threads quizId back to the insight route so 해설로 돌아가기 restores the explanation", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    renderFollowUp();
+
+    const backLink = await screen.findByRole("link", { name: "해설로 돌아가기" });
+    expect(backLink).toHaveAttribute("href", "/insight?quizId=100&correct=true&streak=2");
   });
 
   it("shows a 준비 중 notice when the follow-up detail is not ready yet", async () => {

@@ -25,6 +25,7 @@ type FollowUpPageProps = {
   correctStreak?: number;
   followUpQuestionId: number;
   questionIndex: number;
+  quizId: number | null;
   session: PlaySession;
 };
 
@@ -46,6 +47,7 @@ export function FollowUpPage({
   correctStreak = 0,
   followUpQuestionId,
   questionIndex,
+  quizId,
   session,
 }: FollowUpPageProps) {
   const router = useRouter();
@@ -54,7 +56,8 @@ export function FollowUpPage({
   const total = session.questions.length;
   const isLastQuestion = questionIndex === total - 1;
   const nextHref = isLastQuestion ? "/" : `/play?question=${questionIndex + 1}`;
-  const insightHref = `/insight?question=${questionIndex}&correct=${
+  // 해설 화면은 quizId로 해설을 다시 불러오므로 왕복 내내 quizId를 유지한다(question 스킴 아님).
+  const insightHref = `/insight?quizId=${quizId ?? ""}&correct=${
     correct ? "true" : "false"
   }&streak=${correctStreak}`;
 

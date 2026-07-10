@@ -10,6 +10,7 @@ type FollowUpRouteProps = {
     correct?: string;
     fq?: string;
     question?: string;
+    quizId?: string;
     streak?: string;
   }>;
 };
@@ -25,11 +26,14 @@ export default async function FollowUp({ searchParams }: FollowUpRouteProps) {
   const correctStreak = Number.isFinite(rawStreak) ? Math.max(0, Math.trunc(rawStreak)) : 0;
   const correct = params?.correct === "true";
   const followUpQuestionId = Number(params?.fq);
+  // 해설로 돌아갈 때 필요한 quizId — insight 라우트와 동일 규약으로 파싱(page.tsx의 quizId 파싱과 일치).
+  const rawQuizId = Number(params?.quizId);
+  const quizId = Number.isFinite(rawQuizId) && rawQuizId > 0 ? Math.trunc(rawQuizId) : null;
 
   // 유효하지 않은 꼬리질문 id로 직접 진입하면 해설로 돌려보낸다(방어).
   if (!Number.isFinite(followUpQuestionId) || followUpQuestionId <= 0) {
     redirect(
-      `/insight?question=${questionIndex}&correct=${correct ? "true" : "false"}&streak=${correctStreak}`,
+      `/insight?quizId=${quizId ?? ""}&correct=${correct ? "true" : "false"}&streak=${correctStreak}`,
     );
   }
 
@@ -39,6 +43,7 @@ export default async function FollowUp({ searchParams }: FollowUpRouteProps) {
       correctStreak={correctStreak}
       followUpQuestionId={followUpQuestionId}
       questionIndex={questionIndex}
+      quizId={quizId}
       session={mockPlaySession}
     />
   );

@@ -273,7 +273,7 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
                 {primaryFollowUpQuestion ? (
                   <a
                     className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-                    href={`/follow-up?correct=${
+                    href={`/follow-up?quizId=${quizId ?? ""}&correct=${
                       correct ? "true" : "false"
                     }&streak=${correctStreak}&fq=${primaryFollowUpQuestion.followUpQuestionId}`}
                   >
