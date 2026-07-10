@@ -40,6 +40,10 @@ class FollowUpQuestionAcceptanceTest {
 
     private static final long TEST_USER_ID = 999L;
     private static final long ABSENT_FOLLOW_UP_QUESTION_ID = 999_999L;
+    /** 샘플 문제(커리큘럼 밖)가 사는 스텝. 정식 커리큘럼은 1부터다. */
+    private static final int SAMPLE_STEP_ORDER = 0;
+    /** 픽스처 전용 스텝 — 시드가 쓰는 어떤 스텝과도 겹치지 않는다(server/docs 관례: 101/102). */
+    private static final int FIXTURE_STEP_ORDER = 101;
 
     @Container
     @ServiceConnection
@@ -49,19 +53,19 @@ class FollowUpQuestionAcceptanceTest {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final QuizRepository quizRepository;
-    private final QuizFollowUpQuestionRepository quizFollowUpQuestionRepository;
+    private final QuizStepRepository quizStepRepository;
 
     FollowUpQuestionAcceptanceTest(
             @Autowired MockMvc mockMvc,
             @Autowired JwtTokenProvider jwtTokenProvider,
             @Autowired ObjectMapper objectMapper,
             @Autowired QuizRepository quizRepository,
-            @Autowired QuizFollowUpQuestionRepository quizFollowUpQuestionRepository) {
+            @Autowired QuizStepRepository quizStepRepository) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.objectMapper = objectMapper;
         this.quizRepository = quizRepository;
-        this.quizFollowUpQuestionRepository = quizFollowUpQuestionRepository;
+        this.quizStepRepository = quizStepRepository;
     }
 
     private String bearerToken() {
@@ -70,7 +74,7 @@ class FollowUpQuestionAcceptanceTest {
 
     /** 해설 응답이 실제로 내려준 ID를 그대로 쓴다 — 두 API가 이어지는지가 이 테스트의 핵심이다. */
     private long primaryFollowUpQuestionId() throws Exception {
-        long sampleQuizId = quizRepository.findByStepOrderOrderBySlotOrderAsc(0).stream()
+        long sampleQuizId = quizRepository.findByStepOrderOrderBySlotOrderAsc(SAMPLE_STEP_ORDER).stream()
                 .findFirst()
                 .orElseThrow()
                 .getId();
@@ -91,13 +95,22 @@ class FollowUpQuestionAcceptanceTest {
                 .asLong();
     }
 
-    /** 생성 파이프라인(#26)이 아직 상세를 채우지 않은 커리큘럼 꼬리질문 하나. */
+    /**
+     * 상세가 없는 꼬리질문을 직접 만든다 — 시드에서 주워 쓰지 않는다.
+     * 커리큘럼 120건을 백필(#133)한 뒤로 시드에는 상세 없는 꼬리질문이 하나도 남아 있지 않다.
+     *
+     * <p>이 클래스는 {@code @Transactional}이 없어 저장한 행이 남는다. 시드가 쓰는 스텝을 건드리지 않도록
+     * 커리큘럼 밖 스텝을 따로 만든다 — 문제 수를 세는 단언이 실행 순서에 따라 흔들리지 않게.
+     */
     private long followUpQuestionIdWithoutDetail() {
-        return quizFollowUpQuestionRepository.findAll().stream()
-                .filter(followUpQuestion -> !followUpQuestion.hasDetail())
-                .findFirst()
-                .orElseThrow()
-                .getId();
+        // quiz.step_order가 quiz_step.step_order를 FK로 참조하므로 스텝 행이 먼저 있어야 한다.
+        quizStepRepository
+                .findByStepOrder(FIXTURE_STEP_ORDER)
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, "픽스처 스텝", 3)));
+
+        Quiz quiz = QuizFixture.oxQuiz();
+        quiz.assignPosition(FIXTURE_STEP_ORDER, 1);
+        return quizRepository.saveAndFlush(quiz).getFollowUpQuestions().get(0).getId();
     }
 
     private JsonNode fetchDetailData(long followUpQuestionId) throws Exception {
@@ -177,7 +190,7 @@ class FollowUpQuestionAcceptanceTest {
         }
 
         @Test
-        @DisplayName("상세가 아직 저작되지 않은 꼬리질문이면 404 FOLLOW_UP_DETAIL_NOT_FOUND")
+        @DisplayName("상세가 저작되지 않은 꼬리질문이면 404 FOLLOW_UP_DETAIL_NOT_FOUND — 새 문제를 생성했는데 상세를 빠뜨린 경우")
         void returns_404_when_detail_is_not_authored_yet() throws Exception {
             mockMvc.perform(get("/api/v1/follow-up-questions/{id}", followUpQuestionIdWithoutDetail())
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))

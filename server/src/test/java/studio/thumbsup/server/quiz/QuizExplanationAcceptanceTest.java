@@ -42,6 +42,10 @@ class QuizExplanationAcceptanceTest {
 
     private static final long TEST_USER_ID = 999L;
     private static final int FORMAL_STEP_ORDER = 1;
+    private static final int SAMPLE_STEP_ORDER = 0;
+    /** 픽스처 전용 스텝 — 시드가 쓰는 어떤 스텝과도 겹치지 않는다(server/docs 관례: 101/102). */
+    private static final int FIXTURE_STEP_ORDER = 101;
+
     private static final long ABSENT_QUIZ_ID = 999_999L;
 
     @Container
@@ -52,16 +56,19 @@ class QuizExplanationAcceptanceTest {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final QuizRepository quizRepository;
+    private final QuizStepRepository quizStepRepository;
 
     QuizExplanationAcceptanceTest(
             @Autowired MockMvc mockMvc,
             @Autowired JwtTokenProvider jwtTokenProvider,
             @Autowired ObjectMapper objectMapper,
-            @Autowired QuizRepository quizRepository) {
+            @Autowired QuizRepository quizRepository,
+            @Autowired QuizStepRepository quizStepRepository) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.objectMapper = objectMapper;
         this.quizRepository = quizRepository;
+        this.quizStepRepository = quizStepRepository;
     }
 
     private String bearerToken() {
@@ -76,11 +83,29 @@ class QuizExplanationAcceptanceTest {
                 .orElseThrow();
     }
 
-    /** 커리큘럼 밖 샘플 문제 — 꼬리질문 상세가 저작돼 있는 유일한 시드다. */
+    /** 커리큘럼 밖 샘플 문제. 꼬리질문 상세가 저작돼 있다. */
     private Quiz placeholderQuiz() {
-        return quizRepository.findByStepOrderOrderBySlotOrderAsc(0).stream()
+        return quizRepository.findByStepOrderOrderBySlotOrderAsc(SAMPLE_STEP_ORDER).stream()
                 .findFirst()
                 .orElseThrow();
+    }
+
+    /**
+     * 상세 없는 꼬리질문을 가진 문제를 직접 만든다 — 시드에는 더 이상 그런 꼬리질문이 없다(#133 백필).
+     *
+     * <p>이 클래스는 {@code @Transactional}이 없어 저장한 행이 남는다. 시드가 쓰는 스텝에 끼워 넣으면
+     * {@code countByStepOrder}로 계산되는 {@code totalCount} 단언이 실행 순서에 따라 흔들린다 —
+     * 그래서 커리큘럼 밖 스텝을 따로 만든다.
+     */
+    private Quiz quizWithUndetailedFollowUpQuestion() {
+        // quiz.step_order가 quiz_step.step_order를 FK로 참조하므로 스텝 행이 먼저 있어야 한다.
+        quizStepRepository
+                .findByStepOrder(FIXTURE_STEP_ORDER)
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, "픽스처 스텝", 3)));
+
+        Quiz quiz = QuizFixture.oxQuiz();
+        quiz.assignPosition(FIXTURE_STEP_ORDER, 1);
+        return quizRepository.saveAndFlush(quiz);
     }
 
     private JsonNode fetchExplanationData(long quizId) throws Exception {
@@ -136,10 +161,26 @@ class QuizExplanationAcceptanceTest {
         @Test
         @DisplayName("상세 콘텐츠가 저작되지 않은 꼬리질문은 응답에서 제외된다 — 탭해도 그릴 것이 없기 때문")
         void omits_follow_up_questions_without_detail() throws Exception {
-            JsonNode data = fetchExplanationData(seededOxQuiz().getId());
+            JsonNode data =
+                    fetchExplanationData(quizWithUndetailedFollowUpQuestion().getId());
 
             assertThat(data.path("followUpQuestions").isArray()).isTrue();
             assertThat(data.path("followUpQuestions").size()).isZero();
+        }
+
+        @Test
+        @DisplayName("커리큘럼 문제는 백필(#133)된 꼬리질문 2건을 대표 질문부터 내려준다")
+        void exposes_backfilled_follow_up_questions_of_the_curriculum() throws Exception {
+            JsonNode followUpQuestions =
+                    fetchExplanationData(seededOxQuiz().getId()).path("followUpQuestions");
+
+            assertThat(followUpQuestions.size()).isEqualTo(2);
+            assertThat(followUpQuestions.path(0).path("isPrimary").asBoolean()).isTrue();
+            assertThat(followUpQuestions.path(1).path("isPrimary").asBoolean()).isFalse();
+            followUpQuestions.forEach(followUpQuestion -> {
+                assertThat(followUpQuestion.path("followUpQuestionId").asLong()).isPositive();
+                assertThat(followUpQuestion.path("content").asText()).doesNotContain("[[");
+            });
         }
 
         @Test
