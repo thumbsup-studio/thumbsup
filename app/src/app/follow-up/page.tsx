@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 type FollowUpRouteProps = {
   searchParams?: Promise<{
     correct?: string;
+    fq?: string;
     question?: string;
     streak?: string;
   }>;
@@ -19,21 +20,24 @@ export default async function FollowUp({ searchParams }: FollowUpRouteProps) {
     Number(params?.question ?? 0),
     mockPlaySession.questions.length,
   );
-  const followUp = mockPlaySession.questions[questionIndex].followUp;
-
-  // 꼬리질문이 없는 문제로 직접 진입하면 해당 문제 풀이로 돌려보낸다(방어).
-  if (!followUp) {
-    redirect(`/play?question=${questionIndex}`);
-  }
 
   const rawStreak = Number(params?.streak ?? 0);
   const correctStreak = Number.isFinite(rawStreak) ? Math.max(0, Math.trunc(rawStreak)) : 0;
+  const correct = params?.correct === "true";
+  const followUpQuestionId = Number(params?.fq);
+
+  // 유효하지 않은 꼬리질문 id로 직접 진입하면 해설로 돌려보낸다(방어).
+  if (!Number.isFinite(followUpQuestionId) || followUpQuestionId <= 0) {
+    redirect(
+      `/insight?question=${questionIndex}&correct=${correct ? "true" : "false"}&streak=${correctStreak}`,
+    );
+  }
 
   return (
     <FollowUpPage
-      correct={params?.correct === "true"}
+      correct={correct}
       correctStreak={correctStreak}
-      followUp={followUp}
+      followUpQuestionId={followUpQuestionId}
       questionIndex={questionIndex}
       session={mockPlaySession}
     />

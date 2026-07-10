@@ -2,22 +2,33 @@ export type Difficulty = "low" | "medium" | "high";
 
 export type QuestionKind = "ox" | "multiple-choice" | "keyword-blank";
 
-/**
- * 해설에서 이어지는 꼬리 질문. 본 문제(PlayQuestion) 1개당 1개. API 미확정이라 목업으로 채운다.
- * oneLineAnswer·explanation·usageExample 안의 keyword.term은 KeywordTooltipText로 하이라이트된다.
- */
-export type FollowUpQuestion = {
-  category: string;
-  difficulty: Difficulty;
+/** 서버 오프셋 기반 키워드 하이라이트. 단위는 UTF-16 code unit, end는 배타적. */
+export type Highlight = { keyword: string; start: number; end: number };
+
+/** 하이라이트 오프셋이 딸린 서버 원문. */
+export type AnnotatedText = { text: string; highlights: Highlight[] };
+
+/** 꼬리질문 자체의 난이도(서버 표기). PlayQuestion의 Difficulty와는 별개 스케일. */
+export type ServerDifficulty = "EASY" | "MEDIUM" | "HARD";
+
+export type FollowUpBlock = { label: string; type: "TEXT"; content: AnnotatedText };
+
+export type FollowUpKeyword = { keyword: string; description: string };
+
+/** GET /api/v1/follow-up-questions/{id} 응답. */
+export type FollowUpQuestionDetail = {
+  followUpQuestionId: number;
+  sourceQuizId: number;
+  sourceQuizNumber: number;
+  difficulty: ServerDifficulty;
   question: string;
-  oneLineAnswer: string;
-  explanation: string;
-  usageExample: string;
-  keywords: {
-    term: string;
-    description: string;
-  }[];
+  oneLineAnswer: AnnotatedText;
+  blocks: FollowUpBlock[];
+  keywords: FollowUpKeyword[];
 };
+
+/** 해설 응답에 실려오는 꼬리질문 요약(상세 API 호출 전 목록/CTA용). */
+export type FollowUpSummary = { followUpQuestionId: number; content: string; isPrimary: boolean };
 
 type BaseQuestion = {
   id: string;
@@ -39,7 +50,7 @@ type BaseQuestion = {
     }[];
     referenceLabel: string;
   };
-  followUp?: FollowUpQuestion;
+  followUpQuestions: FollowUpSummary[];
 };
 
 export type OxQuestion = BaseQuestion & {

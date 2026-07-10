@@ -27,6 +27,8 @@ export function InsightPage({
   const [fanfarePlayer, setFanfarePlayer] = useState<DotLottie | null>(null);
   const [dismissedFanfareKey, setDismissedFanfareKey] = useState<string | null>(null);
   const question = session.questions[questionIndex];
+  // 대표 꼬리질문은 isPrimary로 고른다 — 배열 순서에만 의존하면 비대표로 라우팅될 수 있다.
+  const primaryFollowUp = question.followUpQuestions.find((followUp) => followUp.isPrimary);
   const total = session.questions.length;
   const isLastQuestion = questionIndex === total - 1;
   const nextHref = isLastQuestion ? "/" : `/play?question=${questionIndex + 1}`;
@@ -210,20 +212,29 @@ export function InsightPage({
           </div>
 
           <div className="mt-auto flex flex-col gap-2.5 pt-5">
-            {question.followUp ? (
+            {primaryFollowUp ? (
               <a
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
                 href={`/follow-up?question=${questionIndex}&correct=${
                   correct ? "true" : "false"
-                }&streak=${correctStreak}`}
+                }&streak=${correctStreak}&fq=${primaryFollowUp.followUpQuestionId}`}
               >
                 <HelpCircleIcon className="h-5 w-5" />
                 꼬리 질문 풀기
               </a>
-            ) : null}
+            ) : (
+              <button
+                className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-control border border-border bg-surface-muted px-5 py-3 font-bold text-ink-muted"
+                disabled
+                type="button"
+              >
+                <HelpCircleIcon className="h-5 w-5" />
+                꼬리 질문 준비 중
+              </button>
+            )}
             <a
               className={
-                question.followUp
+                primaryFollowUp
                   ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
                   : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
               }

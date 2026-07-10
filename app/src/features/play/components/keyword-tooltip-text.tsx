@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { AnnotatedText, FollowUpKeyword } from "@/features/play/types";
 
 type Keyword = {
   term: string;
@@ -12,13 +13,20 @@ type KeywordTooltipTextProps = {
   text: string;
 };
 
+type AnnotatedTooltipTextProps = {
+  annotated: AnnotatedText;
+  keywords: FollowUpKeyword[];
+};
+
 const tooltipOpenEventName = "thumbsup:keyword-tooltip-open";
 const keywordWordChars = String.raw`\p{L}\p{N}`;
 const koreanParticle = "(?:은|는|이|가|을|를|와|과|으로|로|이나)";
 
+/** 두 렌더러(정규식 매칭·서버 오프셋)가 공유하는 조각 형태. description이 있으면 키워드 버튼, 없으면 평문. */
 type TextPart = {
   key: string;
   value: string;
+  description?: string;
 };
 
 function escapeRegExp(value: string) {
@@ -45,6 +53,7 @@ function getKeywordPattern(keywords: Keyword[]) {
   return terms.length > 0 ? new RegExp(`(${terms.join("|")})`, "gu") : null;
 }
 
+/** insight용: mock 키워드({term,description})를 정규식으로 찾아 조각을 만든다. */
 function getTextParts(text: string, keywords: Keyword[]): TextPart[] {
   const pattern = getKeywordPattern(keywords);
 
@@ -52,6 +61,7 @@ function getTextParts(text: string, keywords: Keyword[]): TextPart[] {
     return [{ key: "text-0", value: text }];
   }
 
+  const descriptionByTerm = new Map(keywords.map((keyword) => [keyword.term, keyword.description]));
   const parts: TextPart[] = [];
   let cursor = 0;
 
@@ -70,6 +80,7 @@ function getTextParts(text: string, keywords: Keyword[]): TextPart[] {
     parts.push({
       key: `keyword-${start}-${end}`,
       value,
+      description: descriptionByTerm.get(value),
     });
     cursor = end;
   }
@@ -84,15 +95,51 @@ function getTextParts(text: string, keywords: Keyword[]): TextPart[] {
   return parts;
 }
 
-export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) {
+/** follow-up용: 서버가 내려준 start/end 오프셋으로 조각을 슬라이스한다(재검증 없이 서버 불변식을 신뢰). */
+function getAnnotatedParts(annotated: AnnotatedText, keywords: FollowUpKeyword[]): TextPart[] {
+  const { text, highlights } = annotated;
+
+  if (highlights.length === 0) {
+    return [{ key: "text-0", value: text }];
+  }
+
+  const descriptionByKeyword = new Map(
+    keywords.map((keyword) => [keyword.keyword, keyword.description]),
+  );
+  const parts: TextPart[] = [];
+  let cursor = 0;
+
+  for (const highlight of highlights) {
+    if (highlight.start > cursor) {
+      parts.push({
+        key: `text-${cursor}-${highlight.start}`,
+        value: text.slice(cursor, highlight.start),
+      });
+    }
+
+    parts.push({
+      key: `keyword-${highlight.start}-${highlight.end}`,
+      value: text.slice(highlight.start, highlight.end),
+      description: descriptionByKeyword.get(highlight.keyword),
+    });
+    cursor = highlight.end;
+  }
+
+  if (cursor < text.length) {
+    parts.push({
+      key: `text-${cursor}-${text.length}`,
+      value: text.slice(cursor),
+    });
+  }
+
+  return parts;
+}
+
+/** 팝오버 UI+상호작용(외부클릭/Escape 닫기, 하나만 열기)을 공유하는 렌더러. */
+function TooltipParts({ parts }: { parts: TextPart[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const instanceId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
-  const keywordMap = useMemo(
-    () => new Map(keywords.map((keyword) => [keyword.term, keyword])),
-    [keywords],
-  );
-  const parts = useMemo(() => getTextParts(text, keywords), [keywords, text]);
 
   useEffect(() => {
     function closeOnOutsideClick(event: PointerEvent) {
@@ -127,12 +174,11 @@ export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) 
   return (
     <span ref={rootRef}>
       {parts.map((part) => {
-        const keyword = keywordMap.get(part.value);
-
-        if (!keyword) {
+        if (!part.description) {
           return <span key={part.key}>{part.value}</span>;
         }
 
+        const description = part.description;
         const tooltipId = `${instanceId}-${part.key}`;
         const isOpen = openId === tooltipId;
 
@@ -141,7 +187,7 @@ export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) 
             <button
               aria-describedby={isOpen ? tooltipId : undefined}
               aria-expanded={isOpen}
-              aria-label={`${keyword.term} 설명 보기`}
+              aria-label={`${part.value} 설명 보기`}
               className="inline border-0 bg-transparent p-0 font-bold text-primary underline decoration-primary underline-offset-4"
               onClick={() => {
                 if (isOpen) {
@@ -162,7 +208,7 @@ export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) 
                 id={tooltipId}
                 role="tooltip"
               >
-                {keyword.description}
+                {description}
               </span>
             ) : null}
           </span>
@@ -170,4 +216,18 @@ export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) 
       })}
     </span>
   );
+}
+
+/** insight 화면 전용(정규식 키워드 매칭). mock 데이터가 오프셋을 안 주므로 이 방식을 유지한다. */
+export function KeywordTooltipText({ keywords, text }: KeywordTooltipTextProps) {
+  const parts = useMemo(() => getTextParts(text, keywords), [keywords, text]);
+
+  return <TooltipParts parts={parts} />;
+}
+
+/** follow-up 화면 전용(서버 offsets 기반). */
+export function AnnotatedTooltipText({ annotated, keywords }: AnnotatedTooltipTextProps) {
+  const parts = useMemo(() => getAnnotatedParts(annotated, keywords), [annotated, keywords]);
+
+  return <TooltipParts parts={parts} />;
 }

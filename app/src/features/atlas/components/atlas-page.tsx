@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppTabBar } from "@/components/app-tab-bar";
 import { DisconnectedNodesIcon, PlayIcon } from "@/components/icons";
@@ -12,7 +11,6 @@ import {
   getNodesForCategory,
 } from "@/features/atlas/atlas-logic";
 import { AtlasCanvas } from "@/features/atlas/components/atlas-canvas";
-import { AtlasHeader } from "@/features/atlas/components/atlas-header";
 import { AtlasSearch } from "@/features/atlas/components/atlas-search";
 import { AtlasStatsRow } from "@/features/atlas/components/atlas-stats";
 import { CategoryFilter } from "@/features/atlas/components/category-filter";
@@ -25,7 +23,6 @@ type AtlasPageProps = {
 };
 
 export function AtlasPage({ data }: AtlasPageProps) {
-  const router = useRouter();
   const { showToast } = useAppToast();
   const [activeCategoryId, setActiveCategoryId] = useState(data.categories[0]?.id ?? "");
   const [query, setQuery] = useState("");
@@ -52,11 +49,6 @@ export function AtlasPage({ data }: AtlasPageProps) {
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
-        <AtlasHeader
-          onBack={() => router.push("/")}
-          onShare={() => showToast({ message: "공유는 준비 중입니다." })}
-        />
-
         <div>
           <p className="text-xs font-semibold tracking-wide text-ink-muted">ATLAS</p>
           <h2 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
