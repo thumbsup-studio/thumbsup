@@ -141,6 +141,41 @@ class QuizFollowUpQuestionRepositoryTest {
         }
 
         @Test
+        @DisplayName("같은 꼬리질문에 같은 표시 순서의 블록을 또 넣으면 DB 제약이 막는다 — 백필 재적용 방지")
+        void rejects_duplicate_block_display_order() {
+            Long followUpQuestionId = persistAndDetach();
+
+            assertThatThrownBy(() -> {
+                        entityManager
+                                .createNativeQuery("""
+                                        INSERT INTO quiz_follow_up_block
+                                            (follow_up_question_id, label, type, content, display_order)
+                                        VALUES (?1, '해설', 'TEXT', '같은 칸을 또 넣는다.', 1)""")
+                                .setParameter(1, followUpQuestionId)
+                                .executeUpdate();
+                        entityManager.flush();
+                    })
+                    .isInstanceOf(PersistenceException.class);
+        }
+
+        @Test
+        @DisplayName("같은 꼬리질문 사전에 같은 용어를 또 넣으면 DB 제약이 막는다 — 툴팁에 같은 항목이 두 번 나오지 않는다")
+        void rejects_duplicate_keyword_in_one_dictionary() {
+            Long followUpQuestionId = persistAndDetach();
+
+            assertThatThrownBy(() -> {
+                        entityManager
+                                .createNativeQuery("""
+                                        INSERT INTO quiz_follow_up_keyword (follow_up_question_id, keyword, description)
+                                        VALUES (?1, 'LIFO', '같은 용어를 또 넣는다.')""")
+                                .setParameter(1, followUpQuestionId)
+                                .executeUpdate();
+                        entityManager.flush();
+                    })
+                    .isInstanceOf(PersistenceException.class);
+        }
+
+        @Test
         @DisplayName("출처 문제가 지워지면 꼬리질문의 블록과 키워드까지 함께 지워진다")
         void cascades_delete_to_blocks_and_keywords() {
             Quiz quiz = persistQuizWithDetailedFollowUpQuestion();
@@ -176,6 +211,17 @@ class QuizFollowUpQuestionRepositoryTest {
         void detail_columns_are_always_filled_in_pairs() {
             assertThat(countRows("quiz_follow_up_question WHERE (difficulty IS NULL) <> (one_line_answer IS NULL)"))
                     .isZero();
+        }
+
+        @Test
+        @DisplayName("같은 꼬리질문에 같은 칸의 블록이나 같은 용어가 두 번 실려 있지 않다 — 백필이 두 번 적용되면 이렇게 된다")
+        void detail_rows_are_never_duplicated() {
+            assertThat(countRows("""
+                            (SELECT 1 FROM quiz_follow_up_block
+                             GROUP BY follow_up_question_id, display_order HAVING COUNT(*) > 1) AS duplicated_blocks""")).isZero();
+            assertThat(countRows("""
+                            (SELECT 1 FROM quiz_follow_up_keyword
+                             GROUP BY follow_up_question_id, keyword HAVING COUNT(*) > 1) AS duplicated_keywords""")).isZero();
         }
 
         @Test
