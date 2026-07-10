@@ -6,6 +6,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.keywordBlankQuizJson;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.multipleChoiceQuizJson;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.oxQuizJson;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.quizJson;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.setJsonWithFirstQuiz;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.validSetJson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +21,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+/**
+ * 문제 세트의 스키마·해설·타입별 필드 검증을 다룬다.
+ * 꼬리질문 상세(#133)의 검증은 {@link QuizGenerationFollowUpValidationTest}가 담당한다.
+ */
 @ExtendWith(MockitoExtension.class)
 class QuizGenerationServiceTest {
 
@@ -28,58 +38,6 @@ class QuizGenerationServiceTest {
 
     private QuizGenerationService service() {
         return new QuizGenerationService(eliceClient, quizPersister, objectMapper);
-    }
-
-    private static String quizJson(String type, String difficulty, String questionText, String extraFields) {
-        return """
-                {
-                  "type": "%s",
-                  "difficulty": "%s",
-                  "questionText": "%s",
-                  "codeSnippet": null,
-                  "explanationSummary": "[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.",
-                  "explanationExample": null,
-                  "wrongAnswerExplanation": "오답 해설",
-                  %s,
-                  "followUpQuestions": [{"content": "꼬리질문", "isPrimary": true}],
-                  "derivedConcepts": ["개념1"],
-                  "keywords": [{"keyword": "PCB", "description": "설명"}]
-                }
-                """.formatted(type, difficulty, questionText, extraFields);
-    }
-
-    private static String oxQuizJson() {
-        return quizJson("OX", "EASY", "질문 본문", "\"correctAnswer\": \"O\", \"choices\": null, \"answerKeywords\": null");
-    }
-
-    private static String multipleChoiceQuizJson() {
-        return quizJson("MULTIPLE_CHOICE", "MEDIUM", "질문 본문", """
-                "correctAnswer": null, "answerKeywords": null,
-                "choices": [
-                  {"content": "a", "isCorrect": false},
-                  {"content": "b", "isCorrect": true},
-                  {"content": "c", "isCorrect": false},
-                  {"content": "d", "isCorrect": false}
-                ]
-                """);
-    }
-
-    private static String keywordBlankQuizJson() {
-        return quizJson(
-                "KEYWORD_BLANK",
-                "HARD",
-                "빈칸 ___ 채우기 문제",
-                "\"correctAnswer\": null, \"choices\": null, \"answerKeywords\": [[\"LIFO\", \"Last In First Out\"]]");
-    }
-
-    private static String validSetJson() {
-        return "{\"quizzes\": [%s, %s, %s, %s, %s]}"
-                .formatted(
-                        oxQuizJson(),
-                        oxQuizJson(),
-                        multipleChoiceQuizJson(),
-                        multipleChoiceQuizJson(),
-                        keywordBlankQuizJson());
     }
 
     @Nested
@@ -146,14 +104,7 @@ class QuizGenerationServiceTest {
         void rejects_invalid_ox_answer() {
             String invalidOx = quizJson(
                     "OX", "EASY", "질문 본문", "\"correctAnswer\": \"MAYBE\", \"choices\": null, \"answerKeywords\": null");
-            given(eliceClient.generate(any()))
-                    .willReturn("{\"quizzes\": [%s, %s, %s, %s, %s]}"
-                            .formatted(
-                                    invalidOx,
-                                    oxQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    keywordBlankQuizJson()));
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(invalidOx));
 
             assertThatThrownBy(() -> service().generateStep("운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
@@ -254,17 +205,9 @@ class QuizGenerationServiceTest {
         @Test
         @DisplayName("explanationSummary가 정확히 3줄이 아니면 예외")
         void rejects_explanation_summary_not_three_lines() {
-            String oneLineSummary = quizJson(
-                    "OX", "EASY", "질문 본문", "\"correctAnswer\": \"O\", \"choices\": null, \"answerKeywords\": null");
-            oneLineSummary = oneLineSummary.replace("[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.", "[[PCB]] 한 줄짜리 요약.");
-            given(eliceClient.generate(any()))
-                    .willReturn("{\"quizzes\": [%s, %s, %s, %s, %s]}"
-                            .formatted(
-                                    oneLineSummary,
-                                    oxQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    keywordBlankQuizJson()));
+            String oneLineSummary =
+                    oxQuizJson().replace("[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.", "[[PCB]] 한 줄짜리 요약.");
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(oneLineSummary));
 
             assertThatThrownBy(() -> service().generateStep("운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
@@ -274,18 +217,11 @@ class QuizGenerationServiceTest {
         @Test
         @DisplayName("explanationSummary 줄 끝에 공백이 있으면 예외")
         void rejects_explanation_summary_with_trailing_whitespace() {
-            String trailingWhitespace = quizJson(
-                    "OX", "EASY", "질문 본문", "\"correctAnswer\": \"O\", \"choices\": null, \"answerKeywords\": null");
-            trailingWhitespace = trailingWhitespace.replace(
-                    "[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.", "[[PCB]]는 핵심 요약 1줄. \\n핵심 요약 2줄.\\n핵심 요약 3줄.");
-            given(eliceClient.generate(any()))
-                    .willReturn("{\"quizzes\": [%s, %s, %s, %s, %s]}"
-                            .formatted(
-                                    trailingWhitespace,
-                                    oxQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    keywordBlankQuizJson()));
+            String trailingWhitespace = oxQuizJson()
+                    .replace(
+                            "[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.",
+                            "[[PCB]]는 핵심 요약 1줄. \\n핵심 요약 2줄.\\n핵심 요약 3줄.");
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(trailingWhitespace));
 
             assertThatThrownBy(() -> service().generateStep("운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
@@ -295,17 +231,8 @@ class QuizGenerationServiceTest {
         @Test
         @DisplayName("keywords에 없는 문자열을 마커로 쓰면 오타로 간주해 예외")
         void rejects_marker_not_in_keywords() {
-            String typoMarker = quizJson(
-                    "OX", "EASY", "질문 본문", "\"correctAnswer\": \"O\", \"choices\": null, \"answerKeywords\": null");
-            typoMarker = typoMarker.replace("[[PCB]]는", "[[PCM]]는");
-            given(eliceClient.generate(any()))
-                    .willReturn("{\"quizzes\": [%s, %s, %s, %s, %s]}"
-                            .formatted(
-                                    typoMarker,
-                                    oxQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    keywordBlankQuizJson()));
+            String typoMarker = oxQuizJson().replace("[[PCB]]는 핵심 요약", "[[PCM]]는 핵심 요약");
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(typoMarker));
 
             assertThatThrownBy(() -> service().generateStep("운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
@@ -315,20 +242,12 @@ class QuizGenerationServiceTest {
         @Test
         @DisplayName("keywords 중 어느 컬럼에도 마킹되지 않은 게 있으면 예외")
         void rejects_keyword_not_covered_by_any_marker() {
-            String uncoveredKeyword = quizJson(
-                    "OX", "EASY", "질문 본문", "\"correctAnswer\": \"O\", \"choices\": null, \"answerKeywords\": null");
-            uncoveredKeyword = uncoveredKeyword.replace(
-                    "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}]",
-                    "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}, "
-                            + "{\"keyword\": \"페이지 폴트\", \"description\": \"설명\"}]");
-            given(eliceClient.generate(any()))
-                    .willReturn("{\"quizzes\": [%s, %s, %s, %s, %s]}"
-                            .formatted(
-                                    uncoveredKeyword,
-                                    oxQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    multipleChoiceQuizJson(),
-                                    keywordBlankQuizJson()));
+            String uncoveredKeyword = oxQuizJson()
+                    .replace(
+                            "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}]",
+                            "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}, "
+                                    + "{\"keyword\": \"페이지 폴트\", \"description\": \"설명\"}]");
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(uncoveredKeyword));
 
             assertThatThrownBy(() -> service().generateStep("운영체제"))
                     .isInstanceOf(QuizGenerationException.class)

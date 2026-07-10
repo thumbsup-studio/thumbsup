@@ -55,6 +55,12 @@ class QuizFollowUpQuestionRepositoryTest {
                 .longValue();
     }
 
+    /** 정식 커리큘럼(step_order >= 1)의 꼬리질문만 센다 — step_order 0은 샘플 문제다. */
+    private long countCurriculumFollowUpQuestions(String extraCondition) {
+        return countRows(
+                "quiz_follow_up_question f JOIN quiz q ON f.quiz_id = q.id WHERE q.step_order > 0 " + extraCondition);
+    }
+
     /** 블록 2개·키워드 1개를 붙인 꼬리질문 하나를 가진 문제를 저장한다. 저작 순서와 표시 순서를 일부러 어긋나게 둔다. */
     private Quiz persistQuizWithDetailedFollowUpQuestion() {
         Quiz quiz = QuizFixture.oxQuiz();
@@ -146,6 +152,42 @@ class QuizFollowUpQuestionRepositoryTest {
 
             assertThat(countRows("quiz_follow_up_block")).isEqualTo(blocksBefore - 2);
             assertThat(countRows("quiz_follow_up_keyword")).isEqualTo(keywordsBefore - 1);
+        }
+    }
+
+    @Nested
+    @DisplayName("커리큘럼 백필(#133)")
+    class CurriculumBackfill {
+
+        /** 백필 시점의 커리큘럼 규모. 스텝이 늘면 커지므로 하한으로만 쓴다. */
+        private static final long BACKFILLED_FOLLOW_UP_QUESTION_COUNT = 120L;
+
+        @Test
+        @DisplayName("커리큘럼 꼬리질문에 상세가 빠짐없이 채워져 있다 — 하나라도 비면 그 꼬리질문이 해설 화면에서 사라진다")
+        void every_curriculum_follow_up_question_has_detail() {
+            assertThat(countCurriculumFollowUpQuestions(""))
+                    .isGreaterThanOrEqualTo(BACKFILLED_FOLLOW_UP_QUESTION_COUNT);
+            assertThat(countCurriculumFollowUpQuestions("AND f.one_line_answer IS NULL"))
+                    .isZero();
+        }
+
+        @Test
+        @DisplayName("난이도와 한 줄 답이 한쪽만 채워진 행이 하나도 없다")
+        void detail_columns_are_always_filled_in_pairs() {
+            assertThat(countRows("quiz_follow_up_question WHERE (difficulty IS NULL) <> (one_line_answer IS NULL)"))
+                    .isZero();
+        }
+
+        @Test
+        @DisplayName("커리큘럼 꼬리질문은 모두 첫 블록이 \"해설\"이고 키워드 사전을 갖는다")
+        void every_curriculum_follow_up_question_has_blocks_and_keywords() {
+            assertThat(countCurriculumFollowUpQuestions("""
+                            AND NOT EXISTS (SELECT 1 FROM quiz_follow_up_block b
+                                            WHERE b.follow_up_question_id = f.id
+                                              AND b.display_order = 1 AND b.label = '해설')""")).isZero();
+            assertThat(countCurriculumFollowUpQuestions("""
+                            AND NOT EXISTS (SELECT 1 FROM quiz_follow_up_keyword k
+                                            WHERE k.follow_up_question_id = f.id)""")).isZero();
         }
     }
 

@@ -3,7 +3,9 @@ package studio.thumbsup.server.quiz.generation;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import studio.thumbsup.server.quiz.FollowUpBlockType;
 import studio.thumbsup.server.quiz.Quiz;
+import studio.thumbsup.server.quiz.QuizFollowUpQuestion;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
@@ -86,10 +88,22 @@ class QuizPersister {
         }
     }
 
+    /** 상세(난이도·한 줄 답)와 블록·키워드를 꼬리질문에 함께 붙인다 — 하나라도 빠지면 조회 API가 그 꼬리질문을 감춘다(#133). */
     private void addFollowUpQuestions(Quiz quiz, List<GeneratedQuizSet.GeneratedFollowUpQuestion> followUpQuestions) {
         int order = 1;
         for (GeneratedQuizSet.GeneratedFollowUpQuestion fq : followUpQuestions) {
-            quiz.addFollowUpQuestion(fq.content(), fq.isPrimary(), order++);
+            QuizFollowUpQuestion followUpQuestion = quiz.addFollowUpQuestion(fq.content(), fq.isPrimary(), order++);
+            followUpQuestion.attachDetail(fq.difficulty(), fq.oneLineAnswer());
+            addFollowUpBlocks(followUpQuestion, fq.blocks());
+            fq.keywords().forEach(keyword -> followUpQuestion.addKeyword(keyword.keyword(), keyword.description()));
+        }
+    }
+
+    private void addFollowUpBlocks(
+            QuizFollowUpQuestion followUpQuestion, List<GeneratedQuizSet.GeneratedFollowUpBlock> blocks) {
+        int order = 1;
+        for (GeneratedQuizSet.GeneratedFollowUpBlock block : blocks) {
+            followUpQuestion.addBlock(block.label(), FollowUpBlockType.TEXT, block.content(), order++);
         }
     }
 
