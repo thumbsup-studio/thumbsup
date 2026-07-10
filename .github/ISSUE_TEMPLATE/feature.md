@@ -1,6 +1,6 @@
 ---
 name: 기능 (Feature)
-about: 스프린트 기능 이슈. 제목은 <type>(<scope>): 요약 형식으로.
+about: "스프린트 기능 이슈. 제목은 <type>(<scope>): 요약 형식으로."
 title: "<type>(app|server): "
 labels: ["status: todo"]
 ---
