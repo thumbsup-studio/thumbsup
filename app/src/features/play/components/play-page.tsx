@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Progress } from "@/components/ui/progress";
+import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
 import {
   canSubmitAnswer,
@@ -52,6 +53,11 @@ export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session 
         result.correct ? "true" : "false"
       }&streak=${nextStreak}`;
       setIsSubmitting(false);
+
+      // 세션(5문제) 완료 — 정답 여부와 무관하게 먹이 지급. 실패해도 결과 화면 이동은 막지 않는다.
+      if (currentIndex === total - 1) {
+        void feedMascot().catch(() => {});
+      }
 
       if (onInsightNavigate) {
         onInsightNavigate(insightHref);
