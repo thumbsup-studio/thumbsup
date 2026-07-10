@@ -65,6 +65,15 @@ describe("AppTabBar", () => {
     expect(pushMock).toHaveBeenCalledWith("/history");
   });
 
+  it("routes to /profile when the profile tab is pressed", () => {
+    pushMock.mockClear();
+    renderTabBar("home");
+
+    fireEvent.click(screen.getByRole("button", { name: "프로필" }));
+
+    expect(pushMock).toHaveBeenCalledWith("/profile");
+  });
+
   it("does not navigate when the already-active tab is pressed", () => {
     pushMock.mockClear();
     renderTabBar("history");

@@ -49,6 +49,26 @@
   /* 폰트 */
   --font-sans: var(--font-pretendard), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* 애니메이션 — 바텀시트 등장(아래→제자리)·오버레이 페이드인 */
+  --animate-sheet-rise: sheet-rise 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-overlay-fade: overlay-fade 0.18s ease;
+  @keyframes sheet-rise {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  @keyframes overlay-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
 body {

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HomePage } from "@/features/home/components/home-page";
@@ -24,7 +24,6 @@ const baseData: HomeData = {
 };
 
 afterEach(() => {
-  vi.useRealTimers();
   pushMock.mockClear();
 });
 
@@ -70,9 +69,7 @@ describe("HomePage", () => {
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/play");
   });
 
-  it("navigates to /history from the history tab and toasts for not-yet-built tabs", () => {
-    vi.useFakeTimers();
-
+  it("navigates to /history and /profile from the bottom tabs", () => {
     render(
       <AppToastProvider>
         <HomePage data={baseData} now={new Date("2026-07-08T08:00:00+09:00")} />
@@ -83,12 +80,7 @@ describe("HomePage", () => {
     expect(pushMock).toHaveBeenCalledWith("/history");
 
     fireEvent.click(screen.getByRole("button", { name: "프로필" }));
-    expect(screen.getByText("프로필은 준비 중입니다.")).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(screen.queryByText("프로필은 준비 중입니다.")).not.toBeInTheDocument();
+    expect(pushMock).toHaveBeenCalledWith("/profile");
   });
 
   it("links the start action to the play page", () => {
