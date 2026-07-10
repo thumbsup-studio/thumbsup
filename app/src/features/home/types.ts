@@ -1,5 +1,6 @@
 export type HomeData = {
   streakDays: number;
+  todayCompleted: boolean;
   character: {
     name: string;
     fullness: number;

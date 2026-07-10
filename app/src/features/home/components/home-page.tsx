@@ -29,7 +29,11 @@ export function HomePage({ data, now }: HomePageProps) {
 
         <CharacterBlock name={data.character.name} fullness={data.character.fullness} />
 
-        <TodayCourseCard course={data.todayCourse} startHref="/play" />
+        <TodayCourseCard
+          course={data.todayCourse}
+          startHref="/play"
+          completed={data.todayCompleted}
+        />
 
         <div className="sticky bottom-4 mt-auto pt-1">
           <AppTabBar activeTab="home" />

@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/api";
 type HomeResponse = {
   streakDays: number;
   points: number;
+  todayCompleted: boolean;
   today: {
     courseId: number;
     courseTitle: string;
@@ -35,6 +36,7 @@ type MascotResponse = {
 function toHomeData(home: HomeResponse, mascot: MascotResponse): HomeData {
   return {
     streakDays: home.streakDays,
+    todayCompleted: home.todayCompleted,
     character: mascot,
     todayCourse: {
       title: home.today.courseTitle,
