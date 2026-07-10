@@ -120,7 +120,7 @@ public final class QuizFixture {
                 "TCP는 연결 지향 프로토콜이다.",
                 null,
                 "TCP는 [[연결 지향]] 프로토콜이다.\n연결은 [[3-way handshake]]로 맺어진다.",
-                "웹 브라우저도 접속 전에 [[3-way handshake]]를 거친다.",
+                "웹 브라우저도 접속 전에 3-way handshake를 거친다.",
                 "UDP는 [[비연결형]]이라 handshake가 없다.");
         quiz.assignCorrectAnswer("O");
         withDetail(quiz.addFollowUpQuestion("보조 질문입니다.", false, 2), 20L);
@@ -149,7 +149,7 @@ public final class QuizFixture {
         followUpQuestion.attachDetail(QuizDifficulty.MEDIUM, "정렬이 안 됐다면 이진 탐색은 못 써요. [[선형 탐색]]이 기본입니다.");
         followUpQuestion.addKeyword("선형 탐색", "앞에서부터 하나씩 확인하는 탐색 방법");
         followUpQuestion.addKeyword("해시셋", "값의 존재 여부를 평균 O(1)에 확인하는 자료구조");
-        followUpQuestion.addBlock("해설", FollowUpBlockType.TEXT, "[[선형 탐색]]은 정렬 여부와 무관하게 O(n)이다.", 1);
+        followUpQuestion.addBlock("해설", FollowUpBlockType.TEXT, "선형 탐색은 정렬 여부와 무관하게 O(n)이다.", 1);
         followUpQuestion.addBlock("실무 사용처", FollowUpBlockType.TEXT, "반복 조회라면 [[해시셋]]으로 미리 인덱싱한다.", 2);
         return followUpQuestion;
     }

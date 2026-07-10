@@ -26,8 +26,8 @@ final class KeywordMarkerValidator {
     /**
      * 한 필드의 마커를 검증하고, 그 필드에서 마킹된 키워드 집합을 돌려준다.
      *
-     * <p>"첫 등장 1회"는 필드 단위 규칙이다 — 필드를 이어붙여 한 번에 넘기면 규칙의 의미가 달라진다.
-     * 상세 정리 블록은 블록마다 따로 넘겨야 블록별로 첫 등장 1회가 된다.
+     * <p>이 메서드는 필드 내부 중복까지만 판단한다. 여러 필드 전체에서 정확히 한 번인지 확인해야 하는 호출자는
+     * 반환된 집합을 표시 우선순위대로 합치면서 필드 간 중복과 최종 커버리지를 별도로 검증한다.
      */
     static Set<String> validateField(String location, String field, String text, Set<String> registeredKeywords) {
         Set<String> seenInField = new HashSet<>();

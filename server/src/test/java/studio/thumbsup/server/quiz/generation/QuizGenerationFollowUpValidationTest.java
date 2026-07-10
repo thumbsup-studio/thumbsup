@@ -86,6 +86,15 @@ class QuizGenerationFollowUpValidationTest {
         }
 
         @Test
+        @DisplayName("빈 keyword와 빈 마커 조합도 저장 전에 거부한다")
+        void rejects_blank_keyword_even_when_empty_marker_covers_it() {
+            String blankKeyword = "[{\"keyword\": \"\", \"description\": \"설명\"}]";
+            givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", "[[]]는 빈 키워드다.", DEFAULT_BLOCKS, blankKeyword));
+
+            assertRejected("keywords[1].keyword가 비어 있습니다");
+        }
+
+        @Test
         @DisplayName("대표 꼬리질문이 정확히 1개가 아니면 예외")
         void rejects_when_primary_is_not_exactly_one() {
             String notPrimary = followUpJson(
@@ -172,11 +181,46 @@ class QuizGenerationFollowUpValidationTest {
         }
 
         @Test
-        @DisplayName("블록이 다르면 같은 키워드를 각각 한 번씩 마킹할 수 있다 — 블록 하나가 곧 한 필드다")
-        void accepts_same_keyword_marked_once_in_each_block() {
+        @DisplayName("한 줄 답과 블록 사이에서 같은 키워드를 중복 마킹하면 예외")
+        void rejects_duplicate_marker_across_one_line_answer_and_block() {
+            String blocks = "[{\"label\": \"해설\", \"content\": \"큐는 [[FIFO]] 순서다.\"}]";
+            givenFirstQuizFollowUp(
+                    followUpJson("꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, blocks, DEFAULT_KEYWORDS));
+
+            assertRejected("한 줄 답과 상세 정리 블록에서 같은 키워드가 두 번 이상 마킹됐습니다: [[FIFO]]");
+        }
+
+        @Test
+        @DisplayName("서로 다른 블록 사이에서 같은 키워드를 중복 마킹하면 예외")
+        void rejects_duplicate_marker_across_blocks() {
             String blocks = "[{\"label\": \"해설\", \"content\": \"큐는 [[FIFO]] 순서다.\"},"
                     + " {\"label\": \"실무 사용처\", \"content\": \"작업 대기열은 [[FIFO]]로 처리한다.\"}]";
             givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", "마커 없는 한 줄 답.", blocks, DEFAULT_KEYWORDS));
+
+            assertRejected("한 줄 답과 상세 정리 블록에서 같은 키워드가 두 번 이상 마킹됐습니다: [[FIFO]]");
+        }
+
+        @Test
+        @DisplayName("서로 다른 키워드를 한 줄 답과 블록에 나눠 한 번씩 마킹하면 저장한다")
+        void accepts_distinct_keywords_distributed_across_follow_up_fields() {
+            String blocks = "[{\"label\": \"해설\", \"content\": \"[[작업 대기열]]은 요청을 순서대로 보관한다.\"}]";
+            String keywords = "[{\"keyword\": \"FIFO\", \"description\": \"설명\"},"
+                    + " {\"keyword\": \"작업 대기열\", \"description\": \"설명\"}]";
+            givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, blocks, keywords));
+            given(quizPersister.persist(any(), any())).willReturn(1);
+
+            assertThat(service().generateStep("운영체제")).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("서로 다른 꼬리질문은 사전과 마커 중복 범위를 독립적으로 검증한다")
+        void accepts_same_keyword_once_in_each_follow_up_question() {
+            String primary =
+                    followUpJson("대표 꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, DEFAULT_BLOCKS, DEFAULT_KEYWORDS);
+            String secondary = followUpJson(
+                            "보조 꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, DEFAULT_BLOCKS, DEFAULT_KEYWORDS)
+                    .replace("\"isPrimary\": true", "\"isPrimary\": false");
+            givenFirstQuizFollowUp(primary + "," + secondary);
             given(quizPersister.persist(any(), any())).willReturn(1);
 
             assertThat(service().generateStep("운영체제")).isEqualTo(1);

@@ -100,9 +100,7 @@ public class QuizGenerationService {
         requireNonBlank(location, "explanationSummary", quiz.explanationSummary());
         requireNonBlank(location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation());
         requireNonEmpty(location, "derivedConcepts", quiz.derivedConcepts());
-        if (quiz.keywords() == null || quiz.keywords().isEmpty()) {
-            throw new QuizGenerationException("%s의 keywords가 비어 있습니다.".formatted(location));
-        }
+        validateKeywords(location, quiz.keywords());
         validateExplanationSummaryLineCount(slotOrder, quiz.explanationSummary());
         validateKeywordMarkers(location, quiz);
         validateFollowUpQuestions(location, quiz.followUpQuestions());
@@ -130,30 +128,29 @@ public class QuizGenerationService {
                 .collect(Collectors.toSet());
 
         Set<String> coveredKeywords = new HashSet<>();
-        validateExplanationField(
-                location, "explanationSummary", quiz.explanationSummary(), registeredKeywords, coveredKeywords);
-        validateExplanationField(
-                location, "explanationExample", quiz.explanationExample(), registeredKeywords, coveredKeywords);
-        validateExplanationField(
-                location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation(), registeredKeywords, coveredKeywords);
+        validateFieldAcrossScope(
+                location,
+                "explanationSummary",
+                quiz.explanationSummary(),
+                registeredKeywords,
+                coveredKeywords,
+                "해설 3개 컬럼");
+        validateFieldAcrossScope(
+                location,
+                "explanationExample",
+                quiz.explanationExample(),
+                registeredKeywords,
+                coveredKeywords,
+                "해설 3개 컬럼");
+        validateFieldAcrossScope(
+                location,
+                "wrongAnswerExplanation",
+                quiz.wrongAnswerExplanation(),
+                registeredKeywords,
+                coveredKeywords,
+                "해설 3개 컬럼");
 
         KeywordMarkerValidator.requireAllCovered(location, registeredKeywords, coveredKeywords, "해설 3개 컬럼");
-    }
-
-    private void validateExplanationField(
-            String location, String field, String text, Set<String> registeredKeywords, Set<String> coveredKeywords) {
-        Set<String> fieldKeywords = KeywordMarkerValidator.validateField(location, field, text, registeredKeywords);
-        Set<String> duplicatedKeywords = new HashSet<>(coveredKeywords);
-        duplicatedKeywords.retainAll(fieldKeywords);
-        if (!duplicatedKeywords.isEmpty()) {
-            String duplicatedMarkers = duplicatedKeywords.stream()
-                    .sorted()
-                    .map(keyword -> "[[%s]]".formatted(keyword))
-                    .collect(Collectors.joining(", "));
-            throw new QuizGenerationException(
-                    "%s의 해설 3개 컬럼에서 같은 키워드가 두 번 이상 마킹됐습니다: %s".formatted(location, duplicatedMarkers));
-        }
-        coveredKeywords.addAll(fieldKeywords);
     }
 
     /**
@@ -178,9 +175,7 @@ public class QuizGenerationService {
         if (followUpQuestion.difficulty() == null) {
             throw new QuizGenerationException("%s의 difficulty가 비어 있습니다.".formatted(location));
         }
-        if (followUpQuestion.keywords() == null || followUpQuestion.keywords().isEmpty()) {
-            throw new QuizGenerationException("%s의 keywords가 비어 있습니다.".formatted(location));
-        }
+        validateKeywords(location, followUpQuestion.keywords());
         validateFollowUpBlocks(location, followUpQuestion.blocks());
         validateFollowUpMarkers(location, followUpQuestion);
     }
@@ -201,21 +196,56 @@ public class QuizGenerationService {
         }
     }
 
-    /** 사전은 꼬리질문마다 다르다 — 부모 문제의 keywords를 쓰지 않는다. 블록은 한 칸씩 따로 넘겨 블록별로 첫 등장 1회를 강제한다. */
+    /**
+     * 사전과 마커 범위는 꼬리질문마다 독립적이다 — 부모 문제의 keywords를 쓰지 않고, 한 줄 답과 모든 블록
+     * 전체에서 등록 키워드마다 정확히 한 번만 허용한다. 블록 배열 순서는 저장될 displayOrder 순서다.
+     */
     private void validateFollowUpMarkers(String location, GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion) {
         Set<String> registeredKeywords = followUpQuestion.keywords().stream()
                 .map(GeneratedQuizSet.GeneratedKeyword::keyword)
                 .collect(Collectors.toSet());
 
-        Set<String> coveredKeywords = new HashSet<>(KeywordMarkerValidator.validateField(
-                location, "oneLineAnswer", followUpQuestion.oneLineAnswer(), registeredKeywords));
+        Set<String> coveredKeywords = new HashSet<>();
+        validateFieldAcrossScope(
+                location,
+                "oneLineAnswer",
+                followUpQuestion.oneLineAnswer(),
+                registeredKeywords,
+                coveredKeywords,
+                "한 줄 답과 상세 정리 블록");
         int index = 1;
         for (GeneratedQuizSet.GeneratedFollowUpBlock block : followUpQuestion.blocks()) {
-            coveredKeywords.addAll(KeywordMarkerValidator.validateField(
-                    location, "blocks[%d].content".formatted(index++), block.content(), registeredKeywords));
+            validateFieldAcrossScope(
+                    location,
+                    "blocks[%d].content".formatted(index++),
+                    block.content(),
+                    registeredKeywords,
+                    coveredKeywords,
+                    "한 줄 답과 상세 정리 블록");
         }
 
         KeywordMarkerValidator.requireAllCovered(location, registeredKeywords, coveredKeywords, "한 줄 답과 상세 정리 블록");
+    }
+
+    private void validateFieldAcrossScope(
+            String location,
+            String field,
+            String text,
+            Set<String> registeredKeywords,
+            Set<String> coveredKeywords,
+            String scopeLabel) {
+        Set<String> fieldKeywords = KeywordMarkerValidator.validateField(location, field, text, registeredKeywords);
+        Set<String> duplicatedKeywords = new HashSet<>(coveredKeywords);
+        duplicatedKeywords.retainAll(fieldKeywords);
+        if (!duplicatedKeywords.isEmpty()) {
+            String duplicatedMarkers = duplicatedKeywords.stream()
+                    .sorted()
+                    .map(keyword -> "[[%s]]".formatted(keyword))
+                    .collect(Collectors.joining(", "));
+            throw new QuizGenerationException(
+                    "%s의 %s에서 같은 키워드가 두 번 이상 마킹됐습니다: %s".formatted(location, scopeLabel, duplicatedMarkers));
+        }
+        coveredKeywords.addAll(fieldKeywords);
     }
 
     private void requirePrimaryFollowUpQuestion(
@@ -281,6 +311,19 @@ public class QuizGenerationService {
         if (correctCount != 1) {
             throw new QuizGenerationException(
                     "슬롯 %d(사지선다)의 정답 선택지가 정확히 1개가 아닙니다: %d개".formatted(slotOrder, correctCount));
+        }
+    }
+
+    private void validateKeywords(String location, List<GeneratedQuizSet.GeneratedKeyword> keywords) {
+        if (keywords == null || keywords.isEmpty()) {
+            throw new QuizGenerationException("%s의 keywords가 비어 있습니다.".formatted(location));
+        }
+        for (int index = 0; index < keywords.size(); index++) {
+            GeneratedQuizSet.GeneratedKeyword keyword = keywords.get(index);
+            if (keyword == null) {
+                throw new QuizGenerationException("%s의 keywords[%d]가 비어 있습니다.".formatted(location, index + 1));
+            }
+            requireNonBlank(location, "keywords[%d].keyword".formatted(index + 1), keyword.keyword());
         }
     }
 
