@@ -1,71 +1,119 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
+import { getProgressPercent } from "@/features/play/play-logic";
 import {
-  canSubmitAnswer,
-  clampQuestionIndex,
-  getDifficultyLabel,
-  getProgressPercent,
-  gradeMockAnswer,
-} from "@/features/play/play-logic";
-import type { AnswerDraft, PlayQuestion, PlaySession } from "@/features/play/types";
+  difficultyLabels,
+  getPlayQuestionKindLabel,
+  isUnauthorized,
+} from "@/features/play/quiz-shared";
+import { getNextQuiz, type QuizNextResponse, submitQuizAnswer } from "@/lib/api/quiz";
 
-type PlayPageProps = {
-  initialQuestionIndex?: number;
-  onInsightNavigate?: (href: string) => void;
-  session: PlaySession;
-};
+type AnswerDraft = boolean | string | string[] | null;
 
 const optionLabels = ["A", "B", "C", "D"];
-const correctStreakStoragePrefix = "thumbsup:insight-correct-streak";
+const correctStreakStorageKeyPrefix = "thumbsup:insight-correct-streak:api-quiz";
+const defaultStepTotal = 5;
 
-export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session }: PlayPageProps) {
+export function PlayPage() {
   const router = useRouter();
-  const [currentIndex] = useState(() =>
-    clampQuestionIndex(initialQuestionIndex, session.questions.length),
-  );
+  const [quiz, setQuiz] = useState<QuizNextResponse | null>(null);
   const [draft, setDraft] = useState<AnswerDraft>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const question = session.questions[currentIndex];
-  const total = session.questions.length;
-  const progressPercent = getProgressPercent(currentIndex, total);
-  const submitEnabled = canSubmitAnswer(question, draft) && !isSubmitting;
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const liveText = useMemo(
-    () => `${total}문제 중 ${currentIndex + 1}번째, ${getDifficultyLabel(question.difficulty)}`,
-    [currentIndex, question.difficulty, total],
-  );
+  const totalCount = quiz?.totalCount ?? defaultStepTotal;
+  const currentNumber = quiz?.slotOrder ?? 1;
+  const submitEnabled = quiz ? canSubmitAnswer(quiz, draft) && !isSubmitting : false;
 
-  function submitAnswer() {
-    if (!submitEnabled) {
+  const liveText = useMemo(() => {
+    if (!quiz) {
+      return "문제를 불러오는 중";
+    }
+
+    return `${totalCount}문제 중 ${currentNumber}번째, ${difficultyLabels[quiz.difficulty]}`;
+  }, [currentNumber, quiz, totalCount]);
+
+  useEffect(() => {
+    let ignore = false;
+    const requestKey = reloadKey;
+
+    if (requestKey < 0) {
+      return undefined;
+    }
+
+    async function loadQuiz() {
+      setIsLoading(true);
+      setError(null);
+      setDraft(null);
+
+      try {
+        const nextQuiz = await getNextQuiz();
+        if (!ignore) {
+          if (nextQuiz.slotOrder === 1) {
+            resetCorrectStreak(nextQuiz.stepOrder);
+          }
+          setQuiz(nextQuiz);
+        }
+      } catch (loadError) {
+        if (isUnauthorized(loadError)) {
+          router.replace("/login");
+          return;
+        }
+
+        if (!ignore) {
+          setError("문제를 불러오지 못했어요.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadQuiz();
+
+    return () => {
+      ignore = true;
+    };
+  }, [reloadKey, router]);
+
+  async function submitAnswer() {
+    if (!quiz || !submitEnabled) {
       return;
     }
 
     setIsSubmitting(true);
-    window.setTimeout(() => {
-      const result = gradeMockAnswer(question, draft);
-      const nextStreak = updateCorrectStreak(session.id, currentIndex, result.correct);
-      const insightHref = `/insight?question=${currentIndex}&correct=${
-        result.correct ? "true" : "false"
-      }&streak=${nextStreak}`;
-      setIsSubmitting(false);
+    setError(null);
 
-      // 세션(5문제) 완료 — 정답 여부와 무관하게 먹이 지급. 실패해도 결과 화면 이동은 막지 않는다.
-      if (currentIndex === total - 1) {
+    try {
+      const result = await submitQuizAnswer(quiz.quizId, getSubmittedAnswers(quiz, draft));
+      const nextStreak = updateCorrectStreak(quiz.stepOrder, result.isCorrect);
+      if (currentNumber === totalCount) {
         void feedMascot().catch(() => {});
       }
-
-      if (onInsightNavigate) {
-        onInsightNavigate(insightHref);
+      router.push(
+        `/insight?quizId=${quiz.quizId}&correct=${result.isCorrect ? "true" : "false"}&streak=${nextStreak}`,
+      );
+    } catch (submitError) {
+      if (isUnauthorized(submitError)) {
+        router.replace("/login");
         return;
       }
 
-      router.push(insightHref);
-    }, 220);
+      setError("정답을 확인하지 못했어요.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -75,24 +123,34 @@ export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session 
           <div className="flex items-center justify-between gap-3">
             <a
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              aria-label="이전 문제로 돌아가기"
-              href={currentIndex === 0 ? "/" : `/play?question=${currentIndex - 1}`}
+              aria-label="홈으로 돌아가기"
+              href="/"
             >
               ‹
             </a>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-ink-muted">{session.courseTitle}</p>
-              <h1 className="truncate text-base font-bold">{session.unitTitle}</h1>
+              <p className="truncate text-xs font-semibold text-ink-muted">오늘의 학습</p>
+              <h1 className="truncate text-base font-bold">문제 풀기</h1>
             </div>
           </div>
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-muted">
-              <span>
-                {currentIndex + 1}/{total}
-              </span>
-              <span>{getDifficultyLabel(question.difficulty)}</span>
+              {quiz ? (
+                <>
+                  <span>
+                    {currentNumber}/{totalCount}
+                  </span>
+                  <span>{difficultyLabels[quiz.difficulty]}</span>
+                </>
+              ) : (
+                <span>문제를 준비하고 있어요</span>
+              )}
             </div>
-            <Progress label="문제 진행률" max={100} value={progressPercent} />
+            <Progress
+              label="문제 진행률"
+              max={100}
+              value={quiz ? getProgressPercent(currentNumber - 1, totalCount) : 0}
+            />
           </div>
           <p aria-live="polite" className="sr-only">
             {liveText}
@@ -100,73 +158,80 @@ export function PlayPage({ initialQuestionIndex = 0, onInsightNavigate, session 
         </header>
 
         <section className="flex flex-1 flex-col rounded-card border border-border bg-surface-muted p-5 shadow-card">
-          <QuestionRenderer
-            draft={draft}
-            isLocked={isSubmitting}
-            onDraftChange={setDraft}
-            question={question}
-          />
+          {isLoading ? <PlaySkeleton /> : null}
+          {!isLoading && error ? (
+            <Feedback tone="error" onRetry={() => setReloadKey((key) => key + 1)}>
+              {error}
+            </Feedback>
+          ) : null}
+          {!isLoading && !error && quiz ? (
+            <>
+              <QuestionRenderer
+                draft={draft}
+                isLocked={isSubmitting}
+                onDraftChange={setDraft}
+                quiz={quiz}
+              />
 
-          <div className="pt-4">
-            <button
-              className="min-h-12 w-full rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
-              disabled={!submitEnabled}
-              onClick={submitAnswer}
-              type="button"
-            >
-              {isSubmitting ? "채점 중" : "정답 확인"}
-            </button>
-          </div>
+              <div className="pt-4">
+                <Button
+                  className="w-full shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
+                  disabled={!submitEnabled}
+                  loading={isSubmitting}
+                  loadingText="채점 중"
+                  onClick={submitAnswer}
+                >
+                  정답 확인
+                </Button>
+              </div>
+            </>
+          ) : null}
         </section>
       </div>
     </main>
   );
 }
 
-function getCorrectStreakStorageKey(sessionId: string) {
-  return `${correctStreakStoragePrefix}:${sessionId}`;
+function PlaySkeleton() {
+  return (
+    <div className="flex flex-1 flex-col gap-5">
+      <Skeleton className="h-5 w-20" />
+      <Skeleton className="h-20 w-full" />
+      <div className="mt-auto space-y-3">
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+      </div>
+    </div>
+  );
 }
 
-function readCorrectStreak(sessionId: string) {
-  const rawValue = window.localStorage.getItem(getCorrectStreakStorageKey(sessionId));
-  const value = Number(rawValue ?? 0);
-
-  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
-}
-
-function updateCorrectStreak(sessionId: string, questionIndex: number, correct: boolean) {
-  const previousStreak = questionIndex === 0 ? 0 : readCorrectStreak(sessionId);
-  const nextStreak = correct ? previousStreak + 1 : 0;
-
-  window.localStorage.setItem(getCorrectStreakStorageKey(sessionId), String(nextStreak));
-
-  return nextStreak;
-}
-
-type QuestionRendererProps = {
+function QuestionRenderer({
+  draft,
+  isLocked,
+  onDraftChange,
+  quiz,
+}: {
   draft: AnswerDraft;
   isLocked: boolean;
   onDraftChange: (draft: AnswerDraft) => void;
-  question: PlayQuestion;
-};
-
-function QuestionRenderer({ draft, isLocked, onDraftChange, question }: QuestionRendererProps) {
+  quiz: QuizNextResponse;
+}) {
   return (
     <div className="flex flex-1 flex-col">
       <div>
         <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
-          {getQuestionKindLabel(question.kind)}
+          {getQuestionKindLabel(quiz.type)}
         </p>
-        <h2 className="mt-2 text-2xl font-black leading-8">{question.prompt}</h2>
+        <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
       </div>
 
       <div className="mt-auto space-y-4 pt-6">
-        {question.kind === "ox" ? (
+        {quiz.type === "OX" ? (
           <fieldset className="grid grid-cols-2 gap-3" aria-label="O 또는 X 선택">
             <OxButton
               disabled={isLocked}
               label="O"
-              name={question.id}
+              name={String(quiz.quizId)}
               selected={draft === true}
               tone="yes"
               onClick={() => onDraftChange(true)}
@@ -174,7 +239,7 @@ function QuestionRenderer({ draft, isLocked, onDraftChange, question }: Question
             <OxButton
               disabled={isLocked}
               label="X"
-              name={question.id}
+              name={String(quiz.quizId)}
               selected={draft === false}
               tone="no"
               onClick={() => onDraftChange(false)}
@@ -182,67 +247,45 @@ function QuestionRenderer({ draft, isLocked, onDraftChange, question }: Question
           </fieldset>
         ) : null}
 
-        {question.kind === "multiple-choice" ? (
+        {quiz.type === "MULTIPLE_CHOICE" ? (
           <>
-            {question.code ? (
-              <CodeBlock code={question.code.source} languageLabel={question.code.language} />
-            ) : null}
+            {quiz.codeSnippet ? <CodeBlock code={quiz.codeSnippet} languageLabel="ts" /> : null}
             <fieldset className="space-y-3" aria-label="사지선다 선택지">
-              {question.options.map((option, index) => (
+              {(quiz.choices ?? []).map((choice, index) => (
                 <label
                   className={`flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition ${
-                    draft === option.id
+                    draft === String(choice.choiceId)
                       ? "border-primary bg-surface shadow-card"
                       : "border-border bg-surface"
                   }`}
-                  key={option.id}
+                  key={choice.choiceId}
                 >
                   <input
-                    checked={draft === option.id}
+                    checked={draft === String(choice.choiceId)}
                     className="sr-only"
                     disabled={isLocked}
-                    name={question.id}
-                    onChange={() => onDraftChange(option.id)}
+                    name={String(quiz.quizId)}
+                    onChange={() => onDraftChange(String(choice.choiceId))}
                     type="radio"
                   />
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-chip bg-ink text-xs text-primary-fg">
-                    {optionLabels[index]}
+                    {optionLabels[index] ?? index + 1}
                   </span>
-                  <span>{option.label}</span>
+                  <span>{choice.content}</span>
                 </label>
               ))}
             </fieldset>
           </>
         ) : null}
 
-        {question.kind === "keyword-blank" ? (
-          <>
-            {question.code ? (
-              <CodeBlankBlock
-                after={question.code.after}
-                before={question.code.before}
-                value={typeof draft === "string" ? draft : ""}
-                onChange={(value) => onDraftChange(value)}
-                disabled={isLocked}
-                label={question.blankLabel}
-              />
-            ) : null}
-            {!question.code ? (
-              <label className="block">
-                <span className="text-sm font-bold text-ink">{question.blankLabel}</span>
-                <input
-                  autoCapitalize="off"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  className="mt-2 min-h-12 w-full rounded-control border border-border bg-surface px-4 text-base font-semibold outline-none transition focus:border-primary disabled:text-ink-muted"
-                  disabled={isLocked}
-                  onChange={(event) => onDraftChange(event.target.value)}
-                  placeholder="키워드를 입력하세요"
-                  value={typeof draft === "string" ? draft : ""}
-                />
-              </label>
-            ) : null}
-          </>
+        {quiz.type === "KEYWORD_BLANK" ? (
+          <KeywordBlankAnswer
+            blankCount={quiz.blankCount ?? 1}
+            codeSnippet={quiz.codeSnippet}
+            disabled={isLocked}
+            draft={Array.isArray(draft) ? draft : []}
+            onDraftChange={onDraftChange}
+          />
         ) : null}
       </div>
     </div>
@@ -288,52 +331,105 @@ function OxButton({
   );
 }
 
-function CodeBlankBlock({
-  after,
-  before,
+function KeywordBlankAnswer({
+  blankCount,
+  codeSnippet,
   disabled,
-  label,
-  onChange,
-  value,
+  draft,
+  onDraftChange,
 }: {
-  after: string;
-  before: string;
+  blankCount: number;
+  codeSnippet: string | null;
   disabled: boolean;
-  label: string;
-  onChange: (value: string) => void;
-  value: string;
+  draft: string[];
+  onDraftChange: (draft: AnswerDraft) => void;
 }) {
+  function updateAnswer(index: number, value: string) {
+    const nextDraft = Array.from(
+      { length: blankCount },
+      (_, draftIndex) => draft[draftIndex] ?? "",
+    );
+    nextDraft[index] = value;
+    onDraftChange(nextDraft);
+  }
+
   return (
-    <div className="overflow-hidden rounded-control border border-border bg-ink text-primary-fg">
-      <div className="border-border/20 border-b px-4 py-2 text-xs font-semibold text-primary-fg/70 uppercase">
-        pseudo code
-      </div>
-      <div className="overflow-x-auto px-4 py-4 font-mono text-sm leading-6">
-        <pre className="inline whitespace-pre-wrap">{before}</pre>
-        <input
-          aria-label={label}
-          autoCapitalize="off"
-          autoComplete="off"
-          autoCorrect="off"
-          className="mx-1 inline-block min-h-8 w-32 rounded-control border border-primary-fg/30 bg-ink px-2 font-mono text-primary-fg outline-none focus:border-primary-fg disabled:text-primary-fg/50"
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          value={value}
-        />
-        <pre className="inline whitespace-pre-wrap">{after}</pre>
-      </div>
-    </div>
+    <>
+      {codeSnippet ? <CodeBlock code={codeSnippet} languageLabel="pseudo" /> : null}
+      <fieldset className="space-y-3" aria-label="키워드 빈칸 답안">
+        {getBlankSlots(blankCount).map((slot) => (
+          <label className="block" key={`blank-${slot}`}>
+            <span className="text-sm font-bold text-ink">핵심 키워드 {slot}</span>
+            <input
+              aria-label={`핵심 키워드 ${slot}`}
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+              className="mt-2 min-h-12 w-full rounded-control border border-border bg-surface px-4 text-base font-semibold outline-none transition focus:border-primary disabled:text-ink-muted"
+              disabled={disabled}
+              onChange={(event) => updateAnswer(slot - 1, event.target.value)}
+              placeholder="키워드를 입력하세요"
+              value={draft[slot - 1] ?? ""}
+            />
+          </label>
+        ))}
+      </fieldset>
+    </>
   );
 }
 
-function getQuestionKindLabel(kind: PlayQuestion["kind"]) {
-  if (kind === "ox") {
-    return "OX";
+function getBlankSlots(blankCount: number) {
+  return Array.from({ length: blankCount }, (_, index) => index + 1);
+}
+
+const getQuestionKindLabel = getPlayQuestionKindLabel;
+
+function canSubmitAnswer(quiz: QuizNextResponse, draft: AnswerDraft) {
+  if (quiz.type === "OX") {
+    return typeof draft === "boolean";
   }
 
-  if (kind === "multiple-choice") {
-    return "사지선다";
+  if (quiz.type === "MULTIPLE_CHOICE") {
+    return typeof draft === "string" && draft.length > 0;
   }
 
-  return "키워드 빈칸";
+  return (
+    Array.isArray(draft) &&
+    draft.length === (quiz.blankCount ?? 1) &&
+    draft.every((answer) => answer.trim().length > 0)
+  );
+}
+
+function getSubmittedAnswers(quiz: QuizNextResponse, draft: AnswerDraft) {
+  if (quiz.type === "OX") {
+    return [draft === true ? "O" : "X"];
+  }
+
+  if (quiz.type === "MULTIPLE_CHOICE") {
+    return [String(draft ?? "")];
+  }
+
+  return Array.isArray(draft) ? draft.map((answer) => answer.trim()) : [];
+}
+
+function getCorrectStreakStorageKey(stepOrder: number) {
+  return `${correctStreakStorageKeyPrefix}:${stepOrder}`;
+}
+
+function resetCorrectStreak(stepOrder: number) {
+  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), "0");
+}
+
+function readCorrectStreak(stepOrder: number) {
+  const value = Number(window.localStorage.getItem(getCorrectStreakStorageKey(stepOrder)) ?? 0);
+
+  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+
+function updateCorrectStreak(stepOrder: number, correct: boolean) {
+  const nextStreak = correct ? readCorrectStreak(stepOrder) + 1 : 0;
+
+  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), String(nextStreak));
+
+  return nextStreak;
 }

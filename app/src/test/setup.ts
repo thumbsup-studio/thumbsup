@@ -2,6 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
 
+process.env.NEXT_PUBLIC_API_URL = "https://thumbsup-api.duckdns.org";
+
 class MockIntersectionObserver implements IntersectionObserver {
   readonly root: Element | Document | null = null;
   readonly rootMargin = "";

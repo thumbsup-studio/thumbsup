@@ -45,6 +45,7 @@ describe("apiRequest", () => {
     const data = await apiRequest<{ quizId: number }>("/quizzes/42");
 
     expect(data).toEqual({ quizId: 42 });
+    expect(fetchMock.mock.calls[0][0]).toBe("https://thumbsup-api.duckdns.org/api/v1/quizzes/42");
     expect(callInit(fetchMock, 0).headers.Authorization).toBeUndefined();
   });
 

@@ -1,9 +1,21 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InsightPage } from "@/features/play/components/insight-page";
-import { mockPlaySession } from "@/features/play/mock-play-session";
+import { getQuizExplanation } from "@/lib/api/quiz";
+
+const mockRouter = vi.hoisted(() => ({
+  replace: vi.fn(),
+}));
 
 const lottieCompleteListeners = vi.hoisted(() => new Set<() => void>());
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => mockRouter,
+}));
+
+vi.mock("@/lib/api/quiz", () => ({
+  getQuizExplanation: vi.fn(),
+}));
 
 vi.mock("@lottiefiles/dotlottie-react", async () => {
   const React = await import("react");
@@ -43,104 +55,148 @@ vi.mock("@lottiefiles/dotlottie-react", async () => {
   };
 });
 
+const explanation = {
+  quizId: 7,
+  questionText: "프로세스는 자원을 독립적으로 가진다.",
+  type: "OX" as const,
+  difficulty: "EASY" as const,
+  currentNumber: 2,
+  totalCount: 5,
+  courseTitle: "운영체제",
+  unitTitle: "프로세스와 스레드",
+  explanationSummary: [
+    {
+      text: "프로세스는 독립된 자원 단위다.",
+      highlights: [{ keyword: "프로세스", start: 0, end: 4 }],
+    },
+    {
+      text: "스레드는 프로세스 안의 실행 흐름이다.",
+      highlights: [
+        { keyword: "스레드", start: 0, end: 3 },
+        { keyword: "프로세스", start: 5, end: 9 },
+      ],
+    },
+  ],
+  explanationExample: {
+    text: "브라우저 탭은 프로세스로 격리될 수 있다.\n탭 내부 작업은 스레드로 나뉜다.",
+    highlights: [
+      { keyword: "프로세스", start: 8, end: 12 },
+      { keyword: "스레드", start: 31, end: 34 },
+    ],
+  },
+  wrongAnswerExplanation: {
+    text: "스레드는 같은 프로세스의 자원을 공유한다.",
+    highlights: [
+      { keyword: "스레드", start: 0, end: 3 },
+      { keyword: "프로세스", start: 8, end: 12 },
+    ],
+  },
+  keywords: [
+    { keyword: "프로세스", description: "운영체제가 자원을 관리하는 실행 단위" },
+    { keyword: "스레드", description: "프로세스 안의 실행 흐름" },
+  ],
+  followUpQuestions: ["스레드가 자원을 공유하면 어떤 문제가 생길까요?"],
+};
+
 describe("InsightPage", () => {
-  it("renders the current question explanation and links back to the next play question", () => {
-    render(<InsightPage correct questionIndex={0} session={mockPlaySession} />);
-
-    expect(screen.getByText("정답")).toBeInTheDocument();
-    expect(screen.getByText("+10P")).toBeInTheDocument();
-    expect(screen.getByText("문제 해설")).toBeInTheDocument();
-    expect(screen.getByText("핵심 3줄")).toBeInTheDocument();
-    expect(screen.getByText("OS process model")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute(
-      "href",
-      "/play?question=1",
-    );
+  beforeEach(() => {
+    mockRouter.replace.mockClear();
+    vi.mocked(getQuizExplanation).mockReset();
+    lottieCompleteListeners.clear();
   });
 
-  it("links the follow-up CTA to the primary follow-up question id", () => {
-    render(<InsightPage correct correctStreak={2} questionIndex={0} session={mockPlaySession} />);
+  it("loads explanation by quiz id and renders quiz context", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    expect(screen.getByRole("link", { name: "꼬리 질문 풀기" })).toHaveAttribute(
-      "href",
-      "/follow-up?question=0&correct=true&streak=2&fq=1",
-    );
+    render(<InsightPage correct quizId={7} correctStreak={0} />);
+
+    expect(await screen.findByText("운영체제")).toBeInTheDocument();
+    expect(screen.getByText("프로세스와 스레드")).toBeInTheDocument();
+    expect(screen.getByText("2/5")).toBeInTheDocument();
+    expect(screen.getByText("난이도 하")).toBeInTheDocument();
+    expect(screen.getByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute("href", "/play");
   });
 
-  it("shows a disabled 준비 중 notice instead of a CTA link when there is no follow-up question", () => {
-    render(<InsightPage correct questionIndex={3} session={mockPlaySession} />);
+  it("renders every server summary line without hard-coding three items", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    expect(screen.getByRole("button", { name: "꼬리 질문 준비 중" })).toBeDisabled();
-    expect(screen.queryByRole("link", { name: "꼬리 질문 풀기" })).not.toBeInTheDocument();
-  });
+    render(<InsightPage correct quizId={7} />);
 
-  it("renders the summary as exactly three numbered items", () => {
-    render(<InsightPage correct questionIndex={0} session={mockPlaySession} />);
+    const summary = await screen.findByRole("list", { name: "핵심 정리" });
 
-    const summary = screen.getByRole("list", { name: "핵심 3줄" });
-
-    expect(within(summary).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(summary).getAllByRole("listitem")).toHaveLength(2);
     expect(within(summary).getByText("1")).toBeInTheDocument();
     expect(within(summary).getByText("2")).toBeInTheDocument();
-    expect(within(summary).getByText("3")).toBeInTheDocument();
+    expect(within(summary).queryByText("3")).not.toBeInTheDocument();
   });
 
-  it("shows inline keyword tooltip content one keyword at a time", () => {
-    render(<InsightPage correct questionIndex={0} session={mockPlaySession} />);
+  it("uses server highlight offsets for keyword tooltips", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "프로세스 설명 보기" })[0]);
+    render(<InsightPage correct quizId={7} />);
 
-    expect(screen.getByRole("tooltip")).toHaveTextContent(
-      "운영체제가 자원을 독립적으로 관리하는 실행 단위",
-    );
+    const processButtons = await screen.findAllByRole("button", { name: "프로세스 설명 보기" });
+    fireEvent.click(processButtons[0]);
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("운영체제가 자원을 관리하는 실행 단위");
 
     fireEvent.click(screen.getAllByRole("button", { name: "스레드 설명 보기" })[0]);
 
-    expect(screen.getByRole("tooltip")).toHaveTextContent("프로세스 안에서 나뉘는 실행 흐름");
+    expect(screen.getByRole("dialog")).toHaveTextContent("프로세스 안의 실행 흐름");
   });
 
-  it("closes inline keyword tooltip with Escape", () => {
-    render(<InsightPage correct questionIndex={0} session={mockPlaySession} />);
+  it("shows keyword descriptions in a centered dimmed dialog that stays inside the mobile viewport", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "프로세스 설명 보기" })[0]);
-    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    render(<InsightPage correct quizId={7} />);
 
-    fireEvent.keyDown(document, { key: "Escape" });
+    const processButtons = await screen.findAllByRole("button", { name: "프로세스 설명 보기" });
+    fireEvent.click(processButtons[0]);
 
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    const tooltip = screen.getByRole("dialog");
+
+    expect(tooltip).toHaveClass("fixed", "top-1/2", "right-4", "left-4", "max-w-md");
+    expect(tooltip).toHaveTextContent("프로세스");
+    expect(tooltip).toHaveTextContent("운영체제가 자원을 관리하는 실행 단위");
+    expect(document.querySelector('[aria-hidden="true"].fixed.inset-0')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "툴팁 닫기" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("renders code application and real-world usage sections", () => {
-    render(<InsightPage correct questionIndex={2} session={mockPlaySession} />);
+  it("renders incorrect-only explanation and hides points", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    expect(screen.getByText("코드 적용 예시")).toBeInTheDocument();
-    expect(screen.getByText("실무 사용처")).toBeInTheDocument();
-    expect(screen.getByText("ts")).toBeInTheDocument();
-    expect(screen.getByText("코드 적용 예시").closest("div")).toHaveTextContent("락이나 원자 연산");
-  });
+    render(<InsightPage correct={false} quizId={7} />);
 
-  it("renders incorrect-only explanation without points", () => {
-    render(<InsightPage correct={false} questionIndex={1} session={mockPlaySession} />);
-
-    expect(screen.getByText("오답")).toBeInTheDocument();
+    expect(await screen.findByText("오답")).toBeInTheDocument();
     expect(screen.getByText("왜 틀렸는지")).toBeInTheDocument();
     expect(screen.queryByText("+10P")).not.toBeInTheDocument();
   });
 
-  it("shows fanfare only from the third consecutive correct answer and hides it on completion", () => {
-    const { rerender } = render(
-      <InsightPage correct correctStreak={2} questionIndex={2} session={mockPlaySession} />,
-    );
+  it("renders the optional explanation example when present", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+    render(<InsightPage correct quizId={7} />);
 
-    rerender(<InsightPage correct correctStreak={3} questionIndex={2} session={mockPlaySession} />);
+    expect(await screen.findByText("적용 예시")).toBeInTheDocument();
+    expect(screen.getByText(/브라우저 탭은/)).toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId("lottie-fanfare")).toHaveAttribute(
+  it("shows fanfare from the third consecutive correct answer and hides it on completion", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct quizId={7} correctStreak={3} />);
+
+    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
       "data-src",
       "/lottie/fanfare.lottie",
     );
-    expect(screen.getByTestId("lottie-fanfare")).toHaveClass("fixed", "inset-0");
+    await waitFor(() => {
+      expect(lottieCompleteListeners.size).toBeGreaterThan(0);
+    });
 
     act(() => {
       for (const listener of lottieCompleteListeners) {
@@ -148,13 +204,27 @@ describe("InsightPage", () => {
       }
     });
 
-    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+    });
   });
 
-  it("links the last question insight back home", () => {
-    render(<InsightPage correct={false} questionIndex={4} session={mockPlaySession} />);
+  it("redirects to login when the explanation API reports an unauthorized session", async () => {
+    vi.mocked(getQuizExplanation).mockRejectedValue({ status: 401 });
 
-    expect(screen.getByText("오답")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "홈으로 돌아가기" })).toHaveAttribute("href", "/");
+    render(<InsightPage correct quizId={7} />);
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith("/login");
+    });
+  });
+
+  it("does not show fanfare while the explanation API is in an error state", async () => {
+    vi.mocked(getQuizExplanation).mockRejectedValue(new Error("network"));
+
+    render(<InsightPage correct quizId={7} correctStreak={3} />);
+
+    expect(await screen.findByText("해설을 불러오지 못했어요.")).toBeInTheDocument();
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
 });

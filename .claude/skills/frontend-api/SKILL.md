@@ -18,13 +18,13 @@ FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서*
 - FE API 계층(fetch 래퍼·토큰 저장·refresh 인터셉터)은 **#1(로그인/회원가입)에서 `app/src/lib/api`에 구축**됨(`client.ts`·`auth.ts`·`token-store.ts`·`errors.ts`). 새 API 소비는 이 계층을 재사용한다.
 - **토큰 저장 = localStorage** (#1에서 결정, 근거는 `token-store.ts` 주석). httpOnly cookie는 전체 BFF 프록시가 필요해 범위 밖 — 하드닝 단계에서 재검토.
 - 데이터 페칭 라이브러리 없음 → 순수 `fetch` 기반.
-- `NEXT_PUBLIC_API_URL` 미설정 시 클라이언트는 prod 백엔드(`https://thumbsup-api.duckdns.org`)로 폴백한다. 로컬 개발은 `.env.local`에 `http://localhost:8080` 설정.
+- `NEXT_PUBLIC_API_URL` 미설정 시 클라이언트는 prod 백엔드(`https://thumbsup-api.duckdns.org`)로 폴백한다. 로컬 서버를 직접 띄우는 경우에만 `.env.local`에 `http://localhost:8080`을 설정한다.
 
 ## 베이스 URL·접속
 
 - prod API: `https://thumbsup-api.duckdns.org` + 공통 경로 prefix `/api/v1`
 - local 서버: `http://localhost:8080` (포트 8080)
-- **CORS 현실**: 로컬 FE(3000) → prod 서버 호출은 의도적으로 차단. 로컬에서 API가 필요하면 서버를 로컬로 띄운다. Vercel preview(`*-thumbsup.vercel.app`)는 prod API를 바라봄.
+- **CORS 현실**: 로컬 FE(3000) → prod 서버 호출을 허용한다. 서버를 로컬에 띄우지 못하는 FE 개발자는 기본값 그대로 prod API를 쓰고, 서버를 직접 띄우는 개발자만 `.env.local`로 local 서버를 지정한다. Vercel preview(`*-thumbsup.vercel.app`)도 prod API를 바라봄.
 
 ## 현재 실제로 있는 엔드포인트
 
@@ -66,5 +66,5 @@ type ApiResponse<T> = { code: string; message: string; data: T | null; meta: Cur
 - `userId`를 body/query로 전송 — 서버가 토큰에서 식별(IDOR 방지).
 - 204/No-Content 기대 — 삭제도 200 + `data:null`.
 - offset 페이지네이션 가정 — 커서 방식만.
-- 로컬 FE → prod 서버 직접 호출 (CORS 차단).
+- 로컬 서버가 필요하다고 가정하고 `localhost:8080`을 기본값으로 박아두기. local 서버 사용은 `.env.local` override로만 처리한다.
 - 기존 `src/lib/api` 계층을 우회한 임시 `fetch` 남발 — envelope 언랩·Bearer·refresh 재발급이 빠진다.
