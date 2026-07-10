@@ -8,6 +8,12 @@ import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  isLastReviewSlot,
+  type ReviewContext,
+  reviewDoneHref,
+  reviewNextPlayHref,
+} from "@/features/history/review-params";
+import {
   getKeywordDescriptionMap,
   KeywordTooltipText,
 } from "@/features/play/components/keyword-tooltip-text";
@@ -29,9 +35,11 @@ type InsightPageProps = {
   correct: boolean;
   correctStreak?: number;
   quizId: number | null;
+  /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 꼬리질문 대신 다음 슬롯/완료로 진행한다. */
+  review?: ReviewContext | null;
 };
 
-export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageProps) {
+export function InsightPage({ correct, correctStreak = 0, quizId, review }: InsightPageProps) {
   const router = useRouter();
   const [explanation, setExplanation] = useState<QuizExplanationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +51,7 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
   const fanfareKey =
     quizId !== null && correct && correctStreak >= 3 ? `${quizId}:${correctStreak}` : null;
   const showFanfare =
+    review == null &&
     fanfareKey !== null &&
     dismissedFanfareKey !== fanfareKey &&
     !isLoading &&
@@ -57,6 +66,11 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
     [explanation],
   );
   const primaryFollowUpQuestion = getPrimaryFollowUpQuestion(explanation?.followUpQuestions ?? []);
+  const reviewNextHref = review
+    ? isLastReviewSlot(review)
+      ? reviewDoneHref(review)
+      : reviewNextPlayHref(review)
+    : null;
 
   useEffect(() => {
     if (quizId === null) {
@@ -144,9 +158,9 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
         <header className="rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between gap-3">
             <a
-              aria-label="문제로 돌아가기"
+              aria-label={review ? "복습 목록으로 돌아가기" : "문제로 돌아가기"}
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              href="/play"
+              href={review ? "/history" : "/play"}
             >
               ‹
             </a>
@@ -270,36 +284,47 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
               ) : null}
 
               <div className="mt-auto flex flex-col gap-2.5 pt-5">
-                {primaryFollowUpQuestion ? (
+                {review && reviewNextHref ? (
                   <a
-                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-                    href={`/follow-up?quizId=${quizId ?? ""}&correct=${
-                      correct ? "true" : "false"
-                    }&streak=${correctStreak}&fq=${primaryFollowUpQuestion.followUpQuestionId}`}
+                    className="flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                    href={reviewNextHref}
                   >
-                    <HelpCircleIcon className="h-5 w-5" />
-                    꼬리 질문 풀기
+                    {isLastReviewSlot(review) ? "복습 완료" : "다음 문제"}
                   </a>
                 ) : (
-                  <button
-                    className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-control border border-border bg-surface-muted px-5 py-3 font-bold text-ink-muted"
-                    disabled
-                    type="button"
-                  >
-                    <HelpCircleIcon className="h-5 w-5" />
-                    꼬리 질문 준비 중
-                  </button>
+                  <>
+                    {primaryFollowUpQuestion ? (
+                      <a
+                        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                        href={`/follow-up?quizId=${quizId ?? ""}&correct=${
+                          correct ? "true" : "false"
+                        }&streak=${correctStreak}&fq=${primaryFollowUpQuestion.followUpQuestionId}`}
+                      >
+                        <HelpCircleIcon className="h-5 w-5" />
+                        꼬리 질문 풀기
+                      </a>
+                    ) : (
+                      <button
+                        className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-control border border-border bg-surface-muted px-5 py-3 font-bold text-ink-muted"
+                        disabled
+                        type="button"
+                      >
+                        <HelpCircleIcon className="h-5 w-5" />
+                        꼬리 질문 준비 중
+                      </button>
+                    )}
+                    <a
+                      className={
+                        primaryFollowUpQuestion
+                          ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
+                          : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                      }
+                      href="/play"
+                    >
+                      다음 문제 풀기
+                    </a>
+                  </>
                 )}
-                <a
-                  className={
-                    primaryFollowUpQuestion
-                      ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
-                      : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-                  }
-                  href="/play"
-                >
-                  다음 문제 풀기
-                </a>
               </div>
             </>
           ) : null}

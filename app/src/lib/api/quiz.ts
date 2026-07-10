@@ -65,8 +65,30 @@ export type QuizExplanationResponse = {
   followUpQuestions: QuizFollowUpQuestion[];
 };
 
+export type CompletedStep = {
+  stepOrder: number;
+  topic: string;
+};
+
+export type CompletedStepsResponse = {
+  steps: CompletedStep[];
+};
+
 export function getNextQuiz(): Promise<QuizNextResponse> {
   return apiRequest<QuizNextResponse>("/quizzes/next");
+}
+
+/** 유저가 완료한(현재 진행 스텝보다 이전) 스텝 목록 — 히스토리 복습 화면용. */
+export function getCompletedSteps(): Promise<CompletedStepsResponse> {
+  return apiRequest<CompletedStepsResponse>("/quizzes/steps/completed");
+}
+
+/**
+ * 지정한 스텝·슬롯의 문제 1개. `/quizzes/next`와 동일 계약이지만 시도 여부와 무관하게
+ * 항상 슬롯 순서로 준다(완료 스텝 재풀이용).
+ */
+export function getStepQuiz(stepOrder: number, slotOrder: number): Promise<QuizNextResponse> {
+  return apiRequest<QuizNextResponse>(`/quizzes/steps/${stepOrder}/${slotOrder}`);
 }
 
 export function submitQuizAnswer(quizId: number, answers: string[]): Promise<AnswerSubmitResponse> {
