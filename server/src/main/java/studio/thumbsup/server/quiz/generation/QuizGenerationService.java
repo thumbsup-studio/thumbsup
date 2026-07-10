@@ -121,8 +121,8 @@ public class QuizGenerationService {
 
     /**
      * #43(해설 조회 API)이 해설 본문에서 키워드 위치를 찾을 수 있도록, 생성 시점에 [[키워드]] 마커를 심는다.
-     * keywords에 등록된 모든 용어가 explanationSummary·explanationExample·wrongAnswerExplanation 중
-     * 최소 한 곳에 마킹돼 있어야 하고, 마커 문자열은 오타 없이 keywords와 정확히 일치해야 한다.
+     * keywords에 등록된 모든 용어가 explanationSummary·explanationExample·wrongAnswerExplanation 전체에서
+     * 정확히 한 번 마킹돼 있어야 하고, 마커 문자열은 오타 없이 keywords와 정확히 일치해야 한다.
      */
     private void validateKeywordMarkers(String location, GeneratedQuizSet.GeneratedQuiz quiz) {
         Set<String> registeredKeywords = quiz.keywords().stream()
@@ -130,14 +130,30 @@ public class QuizGenerationService {
                 .collect(Collectors.toSet());
 
         Set<String> coveredKeywords = new HashSet<>();
-        coveredKeywords.addAll(KeywordMarkerValidator.validateField(
-                location, "explanationSummary", quiz.explanationSummary(), registeredKeywords));
-        coveredKeywords.addAll(KeywordMarkerValidator.validateField(
-                location, "explanationExample", quiz.explanationExample(), registeredKeywords));
-        coveredKeywords.addAll(KeywordMarkerValidator.validateField(
-                location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation(), registeredKeywords));
+        validateExplanationField(
+                location, "explanationSummary", quiz.explanationSummary(), registeredKeywords, coveredKeywords);
+        validateExplanationField(
+                location, "explanationExample", quiz.explanationExample(), registeredKeywords, coveredKeywords);
+        validateExplanationField(
+                location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation(), registeredKeywords, coveredKeywords);
 
         KeywordMarkerValidator.requireAllCovered(location, registeredKeywords, coveredKeywords, "해설 3개 컬럼");
+    }
+
+    private void validateExplanationField(
+            String location, String field, String text, Set<String> registeredKeywords, Set<String> coveredKeywords) {
+        Set<String> fieldKeywords = KeywordMarkerValidator.validateField(location, field, text, registeredKeywords);
+        Set<String> duplicatedKeywords = new HashSet<>(coveredKeywords);
+        duplicatedKeywords.retainAll(fieldKeywords);
+        if (!duplicatedKeywords.isEmpty()) {
+            String duplicatedMarkers = duplicatedKeywords.stream()
+                    .sorted()
+                    .map(keyword -> "[[%s]]".formatted(keyword))
+                    .collect(Collectors.joining(", "));
+            throw new QuizGenerationException(
+                    "%s의 해설 3개 컬럼에서 같은 키워드가 두 번 이상 마킹됐습니다: %s".formatted(location, duplicatedMarkers));
+        }
+        coveredKeywords.addAll(fieldKeywords);
     }
 
     /**

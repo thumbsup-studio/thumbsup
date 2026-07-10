@@ -14,9 +14,9 @@ final class QuizGenerationPromptBuilder {
                   "difficulty": "EASY | MEDIUM | HARD",
                   "questionText": "문제 본문",
                   "codeSnippet": "코드 지문(없으면 null)",
-                  "explanationSummary": "핵심 3줄 요약 해설 — keywords 용어 첫 등장에 [[용어]] 마커",
-                  "explanationExample": "실무 적용/코드 예시(없으면 null) — keywords 용어 첫 등장에 [[용어]] 마커",
-                  "wrongAnswerExplanation": "오답 해설(왜 틀렸는지) — keywords 용어 첫 등장에 [[용어]] 마커",
+                  "explanationSummary": "핵심 3줄 요약 해설 — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
+                  "explanationExample": "실무 적용/코드 예시(없으면 null) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
+                  "wrongAnswerExplanation": "오답 해설(왜 틀렸는지) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
                   "correctAnswer": "OX 전용 정답 \\"O\\" 또는 \\"X\\"(그 외 유형은 null)",
                   "choices": [{"content": "선택지 내용", "isCorrect": true}],
                   "answerKeywords": [["빈칸1 정답", "빈칸1과 같은 뜻의 동의어(있으면)"], ["빈칸2 정답"]],
@@ -87,7 +87,10 @@ final class QuizGenerationPromptBuilder {
               예: "[[프로세스]]는 실행 중인 프로그램이다."
             - 마커 안 문자열은 keyword 값과 공백·대소문자까지 정확히 일치해야 한다.
               조사(은/는/이/가/을/를 등)는 마커 밖에 둔다. 올바름: [[프로세스]]는 / 잘못됨: [[프로세스는]]
-            - 같은 용어를 한 필드 안에서 두 번 이상 마킹하지 마라 — 첫 등장 1회만 마킹한다.
+            - 문제 keywords의 각 용어는 해설 3개 컬럼 전체에서 정확히 한 번만 마킹한다.
+              같은 용어가 여러 컬럼에 등장하면 explanationSummary → explanationExample → wrongAnswerExplanation 우선순위로
+              한 곳만 골라 마킹하고, 나머지 컬럼의 같은 용어는 마커 없는 평문으로 둔다.
+            - 꼬리질문에서는 같은 용어를 한 필드 안에서 두 번 이상 마킹하지 마라 — 첫 등장 1회만 마킹한다.
               blocks는 블록 하나하나가 각각 별개의 필드다.
             - 마커를 중첩하거나 겹치게 쓰지 마라 (예: [[가상 [[메모리]]]] 금지).
             - 커버리지: 문제의 keywords는 해설 3개 컬럼 중 최소 한 곳에, 꼬리질문의 keywords는 그 꼬리질문의
