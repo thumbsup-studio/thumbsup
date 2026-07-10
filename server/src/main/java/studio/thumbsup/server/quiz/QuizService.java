@@ -14,6 +14,7 @@ import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
+import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
 /**
  * ⚠️ 클래스 레벨 {@code @Transactional(readOnly = true)}는 조회 전용 기본값이다.
@@ -73,6 +74,33 @@ public class QuizService {
     }
 
     /**
+     * 유저가 완료한 스텝(현재 진행 스텝보다 이전) 목록을 스텝번호 오름차순으로 반환한다 — 히스토리 화면(#10).
+     * 진행 기록이 없으면(1스텝도 완료 전) 빈 목록을 반환한다.
+     */
+    public QuizStepHistoryResponse getCompletedSteps(Long userId) {
+        int currentStepOrder = quizProgressRepository
+                .findByUserId(userId)
+                .map(QuizProgress::getCurrentStepOrder)
+                .orElse(INITIAL_STEP_ORDER);
+        List<QuizStep> completedSteps =
+                quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(INITIAL_STEP_ORDER, currentStepOrder - 1);
+        return QuizStepHistoryResponse.from(completedSteps);
+    }
+
+    /**
+     * 완료한 스텝의 문제를 슬롯 지정으로 다시 조회한다(#151, 히스토리 재풀이). 시도 이력을 보지 않고
+     * 항상 그 슬롯의 문제를 그대로 반환한다 — {@link #getNextQuiz}와 달리 "미시도만"이 아니다.
+     * 접근 제어는 {@link #submitAnswer}와 동일하게 현재 진행 스텝 이하만 허용한다.
+     */
+    public QuizNextResponse getStepQuiz(Long userId, int stepOrder, int slotOrder) {
+        validateAccessible(userId, stepOrder);
+        Quiz quiz = quizRepository
+                .findByStepOrderAndSlotOrder(stepOrder, slotOrder)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        return QuizNextResponse.from(quiz);
+    }
+
+    /**
      * 문제 하나의 해설을 조회한다 — 해설 화면(S4)이 그리는 콘텐츠 전부를 한 번에 내려준다.
      *
      * <p>해설은 quizId만으로 정해지는 정적 콘텐츠라 채점 결과에 의존하지 않는다. 그래서 정답 제출(#42)이
@@ -119,11 +147,15 @@ public class QuizService {
      * quizId를 추측해 앞선 스텝을 건너뛰는 것을 막는다. 현재 스텝과 과거 스텝은 허용한다(복습 여지).
      */
     private void validateAccessible(Long userId, Quiz quiz) {
+        validateAccessible(userId, quiz.getStepOrder());
+    }
+
+    private void validateAccessible(Long userId, int stepOrder) {
         int currentStepOrder = quizProgressRepository
                 .findByUserId(userId)
                 .map(QuizProgress::getCurrentStepOrder)
                 .orElse(INITIAL_STEP_ORDER);
-        if (quiz.getStepOrder() > currentStepOrder) {
+        if (stepOrder > currentStepOrder) {
             throw new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE);
         }
     }

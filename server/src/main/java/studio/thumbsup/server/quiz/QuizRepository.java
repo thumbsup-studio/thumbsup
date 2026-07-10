@@ -10,6 +10,9 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     /** 한 스텝(5문제)을 출제 순서대로 조회한다. */
     List<Quiz> findByStepOrderOrderBySlotOrderAsc(int stepOrder);
 
+    /** 스텝·슬롯 지정 조회(#151) — 재풀이용이라 시도 여부와 무관하게 그 자리 문제를 그대로 준다. */
+    Optional<Quiz> findByStepOrderAndSlotOrder(int stepOrder, int slotOrder);
+
     /** 해설 화면의 진행 표시를 위해 해당 스텝에 실제 저장된 문제 수를 센다. */
     long countByStepOrder(int stepOrder);
 
