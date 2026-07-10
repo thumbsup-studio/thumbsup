@@ -40,7 +40,7 @@ import studio.thumbsup.server.common.config.JpaAuditingConfig;
 class QuizFollowUpMarkerMigrationTest {
 
     private static final Pattern HIGHLIGHT_MARKER_PATTERN = Pattern.compile("\\[\\[([^\\[\\]]+)\\]\\]");
-    private static final String MIGRATION_PATH = "db/migration/V20260711120000__dedupe_follow_up_highlight_markers.sql";
+    private static final String MIGRATION_PATH = "db/migration/V20260711135000__dedupe_follow_up_highlight_markers.sql";
     private static final int BASELINE_DETAILED_FOLLOW_UP_COUNT = 123;
     private static final int BASELINE_FOLLOW_UP_KEYWORD_COUNT = 420;
     private static final long ONE_LINE_PRIORITY_ID = 9_162_001L;
@@ -334,7 +334,7 @@ class QuizFollowUpMarkerMigrationTest {
                 SELECT COUNT(*)
                 FROM information_schema.tables
                 WHERE table_schema = DATABASE()
-                  AND table_name = 'migration_20260711120000_follow_up_marker'
+                  AND table_name = 'migration_20260711135000_follow_up_marker'
                 """, Long.class);
     }
 
