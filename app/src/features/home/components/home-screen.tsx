@@ -49,7 +49,7 @@ export function HomeScreen() {
   if (state.status === "error") {
     return (
       <main className="flex min-h-screen flex-col justify-center bg-bg px-4 py-6 text-ink sm:px-6">
-        <div className="mx-auto w-full max-w-md">
+        <div className="mx-auto w-full max-w-md" role="alert">
           <EmptyState
             title="홈 정보를 불러오지 못했어요"
             description="잠시 후 다시 시도해 주세요."
