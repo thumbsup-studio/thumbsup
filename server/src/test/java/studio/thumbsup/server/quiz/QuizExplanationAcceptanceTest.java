@@ -151,7 +151,7 @@ class QuizExplanationAcceptanceTest {
                             .value(quiz.getDifficulty().name()))
                     .andExpect(jsonPath("$.data.currentNumber").value(quiz.getSlotOrder()))
                     .andExpect(jsonPath("$.data.totalCount").value(5))
-                    .andExpect(jsonPath("$.data.courseTitle").value("CS 기초"))
+                    .andExpect(jsonPath("$.data.courseTitle").value("운영체제"))
                     .andExpect(jsonPath("$.data.unitTitle").value("OS 개요와 역할(커널·시스템콜·인터럽트)"))
                     .andExpect(jsonPath("$.data.keywords[0].keyword").value("커널"))
                     .andExpect(jsonPath("$.data.keywords[0].description").isNotEmpty())
