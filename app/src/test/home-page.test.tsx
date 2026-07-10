@@ -64,7 +64,8 @@ describe("HomePage", () => {
 
     expect(screen.getByText("운영체제")).toBeInTheDocument();
     expect(screen.getByText("프로세스와 스레드")).toBeInTheDocument();
-    expect(screen.getByText("3/8")).toBeInTheDocument();
+    expect(screen.getByText("총 8개 중 3개 코스 진행중")).toBeInTheDocument();
+    expect(screen.getByText("코스 진행중")).toBeInTheDocument();
     expect(screen.getByText("3분이면 끝나요")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/play");
   });

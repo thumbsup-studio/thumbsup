@@ -3,6 +3,7 @@
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { HelpCircleIcon } from "@/components/icons";
 import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -268,18 +269,33 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
                 </div>
               ) : null}
 
-              {primaryFollowUpQuestion ? (
-                <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
-                  <p className="text-sm font-bold text-ink">대표 꼬리질문</p>
-                  <p className="mt-2 text-sm leading-6 text-ink-muted">
-                    {primaryFollowUpQuestion.content}
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="mt-auto pt-5">
+              <div className="mt-auto flex flex-col gap-2.5 pt-5">
+                {primaryFollowUpQuestion ? (
+                  <a
+                    className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                    href={`/follow-up?correct=${
+                      correct ? "true" : "false"
+                    }&streak=${correctStreak}&fq=${primaryFollowUpQuestion.followUpQuestionId}`}
+                  >
+                    <HelpCircleIcon className="h-5 w-5" />
+                    꼬리 질문 풀기
+                  </a>
+                ) : (
+                  <button
+                    className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-control border border-border bg-surface-muted px-5 py-3 font-bold text-ink-muted"
+                    disabled
+                    type="button"
+                  >
+                    <HelpCircleIcon className="h-5 w-5" />
+                    꼬리 질문 준비 중
+                  </button>
+                )}
                 <a
-                  className="flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                  className={
+                    primaryFollowUpQuestion
+                      ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
+                      : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                  }
                   href="/play"
                 >
                   다음 문제 풀기
