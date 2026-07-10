@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -199,6 +200,27 @@ class QuizRepositoryTest {
         }
 
         @Test
+        @DisplayName("스텝·슬롯을 지정해 문제 1개를 조회한다(#151 재풀이용)")
+        void finds_quiz_by_step_and_slot() {
+            saveStep(101);
+            QuizFixture.step(101).forEach(quizRepository::save);
+
+            Optional<Quiz> found = quizRepository.findByStepOrderAndSlotOrder(101, 3);
+
+            assertThat(found).isPresent();
+            assertThat(found.get().getSlotOrder()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 스텝·슬롯 조합이면 빈 값을 반환한다")
+        void returns_empty_when_step_slot_missing() {
+            saveStep(101);
+            QuizFixture.step(101).forEach(quizRepository::save);
+
+            assertThat(quizRepository.findByStepOrderAndSlotOrder(101, 9)).isEmpty();
+        }
+
+        @Test
         @DisplayName("정식 커리큘럼(step_order > 0)의 최댓값을 조회한다 — 0은 제외")
         void finds_max_step_order_excluding_placeholder() {
             quizRepository.save(QuizFixture.oxQuiz()); // step_order 기본값 0(placeholder)
@@ -308,6 +330,28 @@ class QuizRepositoryTest {
             // 원본 예외를 그대로 보고 싶으면 entityManager 네이티브 쿼리를 써야 한다(다른 테스트 참고).
             assertThatThrownBy(() -> quizRepository.saveAndFlush(quiz))
                     .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("범위 내 스텝을 스텝번호 오름차순으로 조회한다")
+        void finds_steps_between_range_in_order() {
+            quizStepRepository.save(QuizStep.create(103, "셋째", 5));
+            quizStepRepository.save(QuizStep.create(101, "첫째", 5));
+            quizStepRepository.save(QuizStep.create(102, "둘째", 5));
+
+            List<QuizStep> found = quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(101, 102);
+
+            assertThat(found).extracting(QuizStep::getTopic).containsExactly("첫째", "둘째");
+        }
+
+        @Test
+        @DisplayName("시작값이 끝값보다 크면 빈 목록을 반환한다")
+        void returns_empty_when_start_greater_than_end() {
+            quizStepRepository.save(QuizStep.create(101, "첫째", 5));
+
+            List<QuizStep> found = quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(101, 100);
+
+            assertThat(found).isEmpty();
         }
     }
 }

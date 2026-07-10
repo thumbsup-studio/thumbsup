@@ -15,6 +15,7 @@ import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
+import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
 /**
  * 컨트롤러는 얇게 — 검증·호출·envelope 감싸기만 한다.
@@ -38,6 +39,28 @@ public class QuizController {
     @GetMapping("/next")
     public ApiResponse<QuizNextResponse> getNextQuiz(@AuthenticationPrincipal Long userId) {
         return ApiResponse.success(quizService.getNextQuiz(userId));
+    }
+
+    @Operation(summary = "완료한 스텝 이력 조회", description = "유저가 완료한 스텝(현재 진행 스텝보다 이전)을 스텝번호·주제명으로 반환한다")
+    @GetMapping("/steps/completed")
+    public ApiResponse<QuizStepHistoryResponse> getCompletedSteps(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.success(quizService.getCompletedSteps(userId));
+    }
+
+    @Operation(
+            summary = "스텝 내 문제 재조회(재풀이)",
+            description = "지정한 스텝의 지정한 슬롯(1~5) 문제를 시도 여부와 무관하게 반환한다. " + "히스토리에서 완료한 스텝을 다시 풀 때, 슬롯 1부터 순서대로 호출한다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404",
+            description = "code=QUIZ_NOT_FOUND — 존재하지 않는 스텝/슬롯")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "code=QUIZ_NOT_ACCESSIBLE — 아직 진행하지 않은 미래 스텝")
+    @GetMapping("/steps/{stepOrder}/{slotOrder}")
+    public ApiResponse<QuizNextResponse> getStepQuiz(
+            @AuthenticationPrincipal Long userId, @PathVariable int stepOrder, @PathVariable int slotOrder) {
+        return ApiResponse.success(quizService.getStepQuiz(userId, stepOrder, slotOrder));
     }
 
     @Operation(

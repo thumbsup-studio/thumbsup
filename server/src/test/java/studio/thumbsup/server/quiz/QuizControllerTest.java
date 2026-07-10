@@ -30,6 +30,7 @@ import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
+import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
 /** Controller 슬라이스 테스트 — standalone MockMvc로 요청/응답 계약만 검증한다 (피라미드 2층). */
 @ExtendWith(MockitoExtension.class)
@@ -88,6 +89,83 @@ class QuizControllerTest {
             mockMvc.perform(get("/api/v1/quizzes/next"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("QUIZ_STEP_COMPLETED"));
+        }
+    }
+
+    @Nested
+    @DisplayName("완료한 스텝 이력 조회")
+    class GetCompletedSteps {
+
+        @Test
+        @DisplayName("성공하면 200과 완료한 스텝 목록을 반환한다")
+        void returns_200_with_completed_steps() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getCompletedSteps(eq(7L)))
+                    .willReturn(new QuizStepHistoryResponse(List.of(
+                            new QuizStepHistoryResponse.Item(1, "프로세스와 스레드"),
+                            new QuizStepHistoryResponse.Item(2, "CPU 스케줄링"))));
+
+            mockMvc.perform(get("/api/v1/quizzes/steps/completed"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.steps.length()").value(2))
+                    .andExpect(jsonPath("$.data.steps[0].stepOrder").value(1))
+                    .andExpect(jsonPath("$.data.steps[0].topic").value("프로세스와 스레드"));
+        }
+
+        @Test
+        @DisplayName("완료한 스텝이 없으면 빈 배열을 반환한다")
+        void returns_empty_array_when_no_completed_steps() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getCompletedSteps(eq(7L))).willReturn(new QuizStepHistoryResponse(List.of()));
+
+            mockMvc.perform(get("/api/v1/quizzes/steps/completed"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.steps.length()").value(0));
+        }
+    }
+
+    @Nested
+    @DisplayName("스텝 내 문제 재조회")
+    class GetStepQuiz {
+
+        @Test
+        @DisplayName("성공하면 200과 지정한 슬롯의 문제를 반환한다")
+        void returns_200_with_slot_quiz() throws Exception {
+            authenticateAs(7L);
+            QuizNextResponse response = new QuizNextResponse(
+                    30L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 3);
+            given(quizService.getStepQuiz(eq(7L), eq(1), eq(3))).willReturn(response);
+
+            mockMvc.perform(get("/api/v1/quizzes/steps/1/3"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.quizId").value(30))
+                    .andExpect(jsonPath("$.data.slotOrder").value(3));
+        }
+
+        @Test
+        @DisplayName("미래 스텝이면 403 QUIZ_NOT_ACCESSIBLE을 반환한다")
+        void returns_403_when_step_not_accessible() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getStepQuiz(eq(7L), eq(5), eq(1)))
+                    .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE));
+
+            mockMvc.perform(get("/api/v1/quizzes/steps/5/1"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_ACCESSIBLE"));
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 스텝·슬롯이면 404 QUIZ_NOT_FOUND를 반환한다")
+        void returns_404_when_slot_not_found() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getStepQuiz(eq(7L), eq(1), eq(9)))
+                    .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+
+            mockMvc.perform(get("/api/v1/quizzes/steps/1/9"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_FOUND"));
         }
     }
 
