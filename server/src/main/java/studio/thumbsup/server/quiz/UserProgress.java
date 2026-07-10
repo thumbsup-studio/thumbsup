@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +39,8 @@ public class UserProgress extends BaseEntity {
     @Column(nullable = false)
     private int points;
 
+    private LocalDate lastCompletedDate;
+
     private UserProgress(Long userId, int streak, int points) {
         this.userId = userId;
         this.streak = streak;
@@ -46,5 +49,29 @@ public class UserProgress extends BaseEntity {
 
     public static UserProgress create(Long userId, int streak, int points) {
         return new UserProgress(userId, streak, points);
+    }
+
+    /**
+     * 오늘의 학습(1스텝)을 처음 완료했을 때 호출한다. 같은 날 두 번 불려도 안전(멱등) — 스트릭이
+     * 두 번 오르지 않는다. 어제까지 이어졌으면 +1, 하루라도 건너뛰었으면 1로 리셋한다.
+     */
+    public void recordCompletion(LocalDate today) {
+        if (today.equals(lastCompletedDate)) {
+            return;
+        }
+        boolean continuedFromYesterday = lastCompletedDate != null && lastCompletedDate.equals(today.minusDays(1));
+        streak = continuedFromYesterday ? streak + 1 : 1;
+        lastCompletedDate = today;
+    }
+
+    /**
+     * 화면 표시용 스트릭. DB는 건드리지 않는다 — "끊긴 상태"를 저장하지 않고 조회 시점에 계산해서
+     * 이틀 이상 건너뛰었으면 0으로 보여준다.
+     */
+    public int getEffectiveStreak(LocalDate today) {
+        if (lastCompletedDate == null || lastCompletedDate.isBefore(today.minusDays(1))) {
+            return 0;
+        }
+        return streak;
     }
 }

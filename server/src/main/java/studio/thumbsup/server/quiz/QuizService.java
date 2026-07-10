@@ -1,5 +1,7 @@
 package studio.thumbsup.server.quiz;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.common.time.TimeZones;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
@@ -31,18 +34,24 @@ public class QuizService {
     private final QuizStepRepository quizStepRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizProgressRepository quizProgressRepository;
+    private final UserProgressService userProgressService;
+    private final Clock clock;
 
     public QuizService(
             QuizRepository quizRepository,
             CourseRepository courseRepository,
             QuizStepRepository quizStepRepository,
             QuizAttemptRepository quizAttemptRepository,
-            QuizProgressRepository quizProgressRepository) {
+            QuizProgressRepository quizProgressRepository,
+            UserProgressService userProgressService,
+            Clock clock) {
         this.quizRepository = quizRepository;
         this.courseRepository = courseRepository;
         this.quizStepRepository = quizStepRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.quizProgressRepository = quizProgressRepository;
+        this.userProgressService = userProgressService;
+        this.clock = clock;
     }
 
     /**
@@ -249,6 +258,7 @@ public class QuizService {
         if (progress.getCurrentStepOrder() == stepOrder) {
             progress.advanceToNextStep();
             quizProgressRepository.save(progress);
+            userProgressService.recordStepCompletion(userId, LocalDate.now(clock.withZone(TimeZones.KST)));
         }
     }
 

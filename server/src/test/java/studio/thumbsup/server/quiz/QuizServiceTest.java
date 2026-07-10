@@ -7,6 +7,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -40,13 +43,23 @@ class QuizServiceTest {
     @Mock
     private QuizProgressRepository quizProgressRepository;
 
+    @Mock
+    private UserProgressService userProgressService;
+
     private QuizService quizService;
 
     private static final Long USER_ID = 1L;
+    private static final Instant NOW = Instant.parse("2026-07-11T00:00:00Z");
 
     private QuizService service() {
         return new QuizService(
-                quizRepository, courseRepository, quizStepRepository, quizAttemptRepository, quizProgressRepository);
+                quizRepository,
+                courseRepository,
+                quizStepRepository,
+                quizAttemptRepository,
+                quizProgressRepository,
+                userProgressService,
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static Quiz quizWithId(Long id, int stepOrder, int slotOrder) {
@@ -346,7 +359,6 @@ class QuizServiceTest {
         void throws_quiz_not_found_when_quiz_missing() {
             quizService = service();
             given(quizRepository.findById(999L)).willReturn(Optional.empty());
-
             assertThatThrownBy(() -> quizService.submitAnswer(USER_ID, 999L, new AnswerSubmitRequest(List.of("O"))))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
@@ -360,7 +372,6 @@ class QuizServiceTest {
             Quiz futureQuiz = quizWithId(10L, 2, 1);
             given(quizRepository.findById(10L)).willReturn(Optional.of(futureQuiz));
             given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(QuizProgress.create(USER_ID)));
-
             assertThatThrownBy(() -> quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O"))))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
@@ -379,7 +390,6 @@ class QuizServiceTest {
             given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(pastQuiz.getId()));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
-
             AnswerSubmitResponse response =
                     quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 

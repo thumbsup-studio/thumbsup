@@ -63,8 +63,8 @@ class HomeControllerTest {
         @DisplayName("성공하면 200과 스트릭·포인트·오늘의 학습 데이터를 반환한다")
         void returns_200_with_home_data_on_success() throws Exception {
             authenticateAs(7L);
-            HomeResponse response =
-                    new HomeResponse(5, 320, new HomeResponse.TodayLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3));
+            HomeResponse response = new HomeResponse(
+                    5, 320, true, new HomeResponse.TodayLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3));
             given(homeService.getHome(eq(7L))).willReturn(response);
 
             mockMvc.perform(get("/api/v1/home"))
@@ -74,7 +74,8 @@ class HomeControllerTest {
                     .andExpect(jsonPath("$.data.points").value(320))
                     .andExpect(jsonPath("$.data.today.courseTitle").value("CS 기초"))
                     .andExpect(jsonPath("$.data.today.unitTitle").value("스택과 큐"))
-                    .andExpect(jsonPath("$.data.today.totalCount").value(3));
+                    .andExpect(jsonPath("$.data.today.totalCount").value(3))
+                    .andExpect(jsonPath("$.data.todayCompleted").value(true));
         }
 
         @Test
