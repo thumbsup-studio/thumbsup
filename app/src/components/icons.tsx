@@ -165,10 +165,7 @@ const MOUTH_PATH: Record<CharacterMood, string> = {
 };
 
 /** 홈 캐릭터 '보리' 얼굴 — 웜톤 강아지, 색은 character 전용 토큰 고정 사용. */
-export function DogIcon({
-  mood = "neutral",
-  ...props
-}: IconProps & { mood?: CharacterMood }) {
+export function DogIcon({ mood = "neutral", ...props }: IconProps & { mood?: CharacterMood }) {
   return (
     <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" {...props}>
       <path d="M10,32 Q7,10 25,19 Q22,29 10,32 Z" className="fill-character-fur" />
@@ -180,8 +177,18 @@ export function DogIcon({
 
       {mood === "hungry" && (
         <>
-          <path d="M20,24 L27,27" className="stroke-character-nose" strokeLinecap="round" strokeWidth={2} />
-          <path d="M44,24 L37,27" className="stroke-character-nose" strokeLinecap="round" strokeWidth={2} />
+          <path
+            d="M20,24 L27,27"
+            className="stroke-character-nose"
+            strokeLinecap="round"
+            strokeWidth={2}
+          />
+          <path
+            d="M44,24 L37,27"
+            className="stroke-character-nose"
+            strokeLinecap="round"
+            strokeWidth={2}
+          />
         </>
       )}
 

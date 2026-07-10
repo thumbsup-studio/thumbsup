@@ -20,11 +20,7 @@ export function CharacterBlock({ name, fullness }: CharacterBlockProps) {
       className="flex flex-col items-center gap-3 rounded-card border border-border bg-surface p-6 text-center shadow-card"
     >
       <div className="relative flex size-36 items-center justify-center">
-        <svg
-          aria-hidden="true"
-          className="absolute inset-0 size-36 -rotate-90"
-          viewBox="0 0 64 64"
-        >
+        <svg aria-hidden="true" className="absolute inset-0 size-36 -rotate-90" viewBox="0 0 64 64">
           <circle
             className="stroke-surface-muted"
             cx={32}
