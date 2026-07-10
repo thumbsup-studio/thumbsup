@@ -23,6 +23,22 @@
 - 공유 `model`에 JPA 엔티티 금지 — 순수 값타입/enum만.
 - 지금 모양이 같다고 공유하지 않는다 — **중복이 잘못된 결합보다 낫다** (WET > 성급한 DRY).
 
+### 중첩 record를 복제할 땐 Swagger 스키마 이름을 나눈다
+
+springdoc은 스키마 이름을 **단순 클래스명**으로 짓는다. 두 응답 DTO가 같은 이름의 중첩 record를 가지면
+(예: `QuizExplanationResponse.AnnotatedText`와 `FollowUpQuestionDetailResponse.AnnotatedText`)
+`/v3/api-docs`에서 **하나의 스키마로 조용히 병합된다.** 지금은 구조가 같아 명세가 맞아 보이지만,
+한쪽에 필드를 추가하는 순간 다른 쪽 명세가 틀린 채로 배포된다 — Swagger는 FE 계약의 정본이다.
+
+복제한 중첩 record에는 `@Schema(name = ...)`으로 고유 이름을 준다.
+
+```java
+@Schema(name = "FollowUpAnnotatedText", description = "평문과 그 안의 키워드 하이라이트 구간")
+public record AnnotatedText(String text, List<Highlight> highlights) {}
+```
+
+PR 전에 `/v3/api-docs`의 `components.schemas` 키 목록을 확인해 의도치 않은 병합이 없는지 본다.
+
 ## 2. 크로스 도메인 조회 조합 패턴
 
 도메인 경계를 넘는 참조는 JPA 연관관계가 아니라 **ID 값**으로만 한다
