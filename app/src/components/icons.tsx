@@ -285,3 +285,72 @@ export function DisconnectedNodesIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="m9 18 6-6-6-6" />
+    </StrokeIcon>
+  );
+}
+
+/** 로그아웃(문 밖으로 나가는 화살표). */
+export function LogOutIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" x2="9" y1="12" y2="12" />
+    </StrokeIcon>
+  );
+}
+
+/** 계정 설정(사람). */
+export function UserIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </StrokeIcon>
+  );
+}
+
+/** 알림(종). */
+export function BellIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </StrokeIcon>
+  );
+}
+
+/** 학습 목표(과녁). */
+export function TargetIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </StrokeIcon>
+  );
+}
+
+/** 완료(원 안의 체크) — 로그아웃 완료 화면 등. */
+export function CircleCheckIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <path d="m9 11 3 3L22 4" />
+    </StrokeIcon>
+  );
+}
+
+/** 의견 보내기(말풍선). */
+export function MessageSquareIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </StrokeIcon>
+  );
+}

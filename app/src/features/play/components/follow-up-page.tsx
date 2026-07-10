@@ -129,7 +129,7 @@ export function FollowUpPage({
   const { data } = state;
 
   return (
-    <main className="flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+    <main className="flex min-h-dvh flex-col bg-bg px-4 py-5 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
         <header className="rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between gap-3">

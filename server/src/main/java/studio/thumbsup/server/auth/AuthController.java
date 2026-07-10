@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import studio.thumbsup.server.auth.dto.AuthTokenResponse;
 import studio.thumbsup.server.auth.dto.LoginRequest;
+import studio.thumbsup.server.auth.dto.MeResponse;
 import studio.thumbsup.server.auth.dto.RefreshRequest;
 import studio.thumbsup.server.auth.dto.SignupRequest;
 import studio.thumbsup.server.common.response.ApiResponse;
@@ -62,5 +64,14 @@ public class AuthController {
     public ApiResponse<Void> logout(@AuthenticationPrincipal Long userId) {
         authService.logout(userId);
         return ApiResponse.success();
+    }
+
+    @Operation(summary = "내 정보 조회", description = "실패 시 code=USER_NOT_FOUND (404)")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404",
+            description = "code=USER_NOT_FOUND — 존재하지 않는 유저")
+    @GetMapping("/me")
+    public ApiResponse<MeResponse> getMe(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.success(authService.getMe(userId));
     }
 }

@@ -3,6 +3,7 @@ package studio.thumbsup.server.auth;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import studio.thumbsup.server.auth.dto.AuthTokenResponse;
 import studio.thumbsup.server.auth.dto.LoginRequest;
+import studio.thumbsup.server.auth.dto.MeResponse;
 import studio.thumbsup.server.auth.dto.RefreshRequest;
 import studio.thumbsup.server.auth.dto.SignupRequest;
 import studio.thumbsup.server.common.exception.BusinessException;
@@ -152,5 +154,28 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data").doesNotExist());
 
         verify(authService).logout(7L);
+    }
+
+    @Test
+    void 내_정보_조회시_토큰의_userId로_서비스를_호출하고_이메일을_반환한다() throws Exception {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(7L, null, List.of()));
+        given(authService.getMe(7L)).willReturn(new MeResponse("a@test.com"));
+
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.email").value("a@test.com"));
+    }
+
+    @Test
+    void 없는_유저의_내_정보_조회는_404_USER_NOT_FOUND() throws Exception {
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(99L, null, List.of()));
+        given(authService.getMe(99L)).willThrow(new BusinessException(AuthErrorType.USER_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 }

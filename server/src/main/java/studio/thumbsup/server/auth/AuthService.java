@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.auth.dto.AuthTokenResponse;
 import studio.thumbsup.server.auth.dto.LoginRequest;
+import studio.thumbsup.server.auth.dto.MeResponse;
 import studio.thumbsup.server.auth.dto.RefreshRequest;
 import studio.thumbsup.server.auth.dto.SignupRequest;
 import studio.thumbsup.server.common.exception.BusinessException;
@@ -78,6 +79,12 @@ public class AuthService {
     @Transactional
     public void logout(Long userId) {
         refreshTokenRepository.deleteByUserId(userId);
+    }
+
+    public MeResponse getMe(Long userId) {
+        User user =
+                userRepository.findById(userId).orElseThrow(() -> new BusinessException(AuthErrorType.USER_NOT_FOUND));
+        return MeResponse.from(user);
     }
 
     private AuthTokenResponse issueTokens(Long userId) {

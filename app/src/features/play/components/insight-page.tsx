@@ -53,7 +53,7 @@ export function InsightPage({
   }, [fanfareKey, fanfarePlayer]);
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+    <main className="relative flex min-h-dvh flex-col bg-bg px-4 py-5 text-ink sm:px-6">
       {showFanfare ? (
         <div
           aria-hidden="true"
@@ -63,7 +63,7 @@ export function InsightPage({
         >
           <DotLottieReact
             autoplay
-            className="h-screen w-screen"
+            className="h-full w-full"
             dotLottieRefCallback={setFanfarePlayer}
             loop={false}
             src={FANFARE_SRC}
