@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ComponentType, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 import {
   BellIcon,
   ChevronLeftIcon,
@@ -56,6 +56,14 @@ export function ProfilePage({ data }: { data: ProfileData }) {
   const [loggedOut, setLoggedOut] = useState(false);
 
   const initial = data.email.trim().charAt(0).toUpperCase() || "?";
+
+  const doneRef = useRef<HTMLDivElement>(null);
+  // 로그아웃 완료 오버레이가 뜨면 그 안의 버튼으로 포커스를 옮긴다(가려진 배경 컨트롤 탐색 방지).
+  useEffect(() => {
+    if (loggedOut) {
+      doneRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    }
+  }, [loggedOut]);
 
   const confirmLogout = async () => {
     setLoggingOut(true);
@@ -170,8 +178,11 @@ export function ProfilePage({ data }: { data: ProfileData }) {
 
       {loggedOut ? (
         <div
+          ref={doneRef}
+          aria-label="로그아웃 완료"
+          aria-modal="true"
           className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg px-8 text-center motion-safe:animate-overlay-fade"
-          role="status"
+          role="dialog"
         >
           <div
             aria-hidden="true"

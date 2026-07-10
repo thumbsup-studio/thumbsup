@@ -27,6 +27,31 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
+        return;
+      }
+      // Tab 포커스를 시트 내부에 가둔다(aria-modal만으로는 배경으로 새어 나간다).
+      if (event.key !== "Tab" || !sheetRef.current) {
+        return;
+      }
+      const focusable = sheetRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        sheetRef.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey) {
+        if (active === first || active === sheetRef.current) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (active === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener("keydown", onKeyDown);
