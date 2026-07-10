@@ -8,7 +8,7 @@ import studio.thumbsup.server.quiz.QuizStep;
  * 필드명은 앱 홈(#2/#52)이 이미 쓰는 courseTitle/unitTitle/streakDays와 정렬한다
  * (app/src/features/play/types.ts, app/src/features/home/types.ts 참조).
  */
-public record HomeResponse(int streakDays, int points, TodayLearning today) {
+public record HomeResponse(int streakDays, int points, boolean todayCompleted, TodayLearning today) {
 
     /** 오늘의 학습 카드에 필요한 진입점 정보 — 정답을 맞히는 데 필요한 문제 본문은 담지 않는다(퀴즈 조회 API 몫). */
     public record TodayLearning(
@@ -34,8 +34,10 @@ public record HomeResponse(int streakDays, int points, TodayLearning today) {
         }
     }
 
-    public static HomeResponse from(int streakDays, int points, Course course, QuizStep current, int totalCount) {
+    public static HomeResponse from(
+            int streakDays, int points, boolean todayCompleted, Course course, QuizStep current, int totalCount) {
         int completedCount = current.getStepOrder() - 1;
-        return new HomeResponse(streakDays, points, TodayLearning.of(course, current, completedCount, totalCount));
+        return new HomeResponse(
+                streakDays, points, todayCompleted, TodayLearning.of(course, current, completedCount, totalCount));
     }
 }

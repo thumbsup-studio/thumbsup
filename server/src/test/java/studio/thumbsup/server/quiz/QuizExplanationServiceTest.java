@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,9 +52,18 @@ class QuizExplanationServiceTest {
     @Mock
     private QuizProgressRepository quizProgressRepository;
 
+    @Mock
+    private UserProgressService userProgressService;
+
     private QuizService service() {
         return new QuizService(
-                quizRepository, courseRepository, quizStepRepository, quizAttemptRepository, quizProgressRepository);
+                quizRepository,
+                courseRepository,
+                quizStepRepository,
+                quizAttemptRepository,
+                quizProgressRepository,
+                userProgressService,
+                Clock.fixed(Instant.parse("2026-07-11T00:00:00Z"), ZoneOffset.UTC));
     }
 
     private static Quiz annotatedQuizWithId(Long id) {

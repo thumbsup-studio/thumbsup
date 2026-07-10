@@ -1,5 +1,6 @@
 package studio.thumbsup.server.quiz;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -12,9 +13,10 @@ public final class QuizFixture {
         return course;
     }
 
-    public static UserProgress userProgress(Long id, Long userId, int streak, int points) {
+    public static UserProgress userProgress(Long id, Long userId, int streak, int points, LocalDate lastCompletedDate) {
         UserProgress progress = UserProgress.create(userId, streak, points);
         ReflectionTestUtils.setField(progress, "id", id);
+        ReflectionTestUtils.setField(progress, "lastCompletedDate", lastCompletedDate);
         return progress;
     }
 

@@ -3,6 +3,9 @@ package studio.thumbsup.server.quiz;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -32,11 +35,20 @@ class QuizStepHistoryServiceTest {
     @Mock
     private QuizProgressRepository quizProgressRepository;
 
+    @Mock
+    private UserProgressService userProgressService;
+
     private static final Long USER_ID = 1L;
 
     private QuizService service() {
         return new QuizService(
-                quizRepository, courseRepository, quizStepRepository, quizAttemptRepository, quizProgressRepository);
+                quizRepository,
+                courseRepository,
+                quizStepRepository,
+                quizAttemptRepository,
+                quizProgressRepository,
+                userProgressService,
+                Clock.fixed(Instant.parse("2026-07-11T00:00:00Z"), ZoneOffset.UTC));
     }
 
     @Nested

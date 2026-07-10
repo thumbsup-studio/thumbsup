@@ -3,6 +3,7 @@ package studio.thumbsup.server.quiz;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -98,6 +99,19 @@ class CourseAndUserProgressRepositoryTest {
 
             assertThatThrownBy(() -> userProgressRepository.saveAndFlush(UserProgress.create(1L, 1, 10)))
                     .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("완료일(lastCompletedDate)을 저장·조회한다")
+        void persists_last_completed_date() {
+            UserProgress progress = UserProgress.create(1L, 1, 0);
+            progress.recordCompletion(LocalDate.of(2026, 7, 11));
+
+            userProgressRepository.saveAndFlush(progress);
+
+            Optional<UserProgress> found = userProgressRepository.findByUserId(1L);
+            assertThat(found).isPresent();
+            assertThat(found.get().getLastCompletedDate()).isEqualTo(LocalDate.of(2026, 7, 11));
         }
     }
 

@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,9 +37,16 @@ class HomeServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final Long COURSE_ID = 1L;
+    private static final Instant NOW = Instant.parse("2026-07-11T00:00:00Z");
+    private static final LocalDate TODAY_KST = LocalDate.of(2026, 7, 11);
 
     private HomeService service() {
-        return new HomeService(courseRepository, quizStepRepository, quizProgressRepository, userProgressRepository);
+        return new HomeService(
+                courseRepository,
+                quizStepRepository,
+                quizProgressRepository,
+                userProgressRepository,
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static QuizStep step(int stepOrder, String topic, int estimatedMinutes) {
@@ -55,7 +66,7 @@ class HomeServiceTest {
             given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
             given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
             given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320)));
+                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID);
@@ -84,6 +95,7 @@ class HomeServiceTest {
             assertThat(response.points()).isZero();
             assertThat(response.today().order()).isEqualTo(1);
             assertThat(response.today().completedCount()).isZero();
+            assertThat(response.todayCompleted()).isFalse();
         }
 
         @Test
@@ -95,7 +107,7 @@ class HomeServiceTest {
             given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
             given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(99)));
             given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 10, 1000)));
+                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 10, 1000, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(3)).willReturn(Optional.of(step(3, "해시 테이블", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID);
@@ -113,12 +125,65 @@ class HomeServiceTest {
             given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
             given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(3)));
             given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320)));
+                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(3)).willReturn(Optional.of(step(3, "해시 테이블", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID);
 
             assertThat(response.today().completedCount()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("오늘 이미 완료했으면 todayCompleted=true를 반환한다")
+        void returns_today_completed_true_when_completed_today() {
+            homeService = service();
+            Course course = QuizFixture.course(COURSE_ID);
+            given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
+            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
+            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(userProgressRepository.findByUserId(USER_ID))
+                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
+            given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
+
+            HomeResponse response = homeService.getHome(USER_ID);
+
+            assertThat(response.todayCompleted()).isTrue();
+        }
+
+        @Test
+        @DisplayName("어제 완료하고 오늘은 아직이면 todayCompleted=false지만 스트릭은 유지된다")
+        void returns_today_completed_false_when_not_completed_today() {
+            homeService = service();
+            Course course = QuizFixture.course(COURSE_ID);
+            given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
+            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
+            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(userProgressRepository.findByUserId(USER_ID))
+                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST.minusDays(1))));
+            given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
+
+            HomeResponse response = homeService.getHome(USER_ID);
+
+            assertThat(response.todayCompleted()).isFalse();
+            assertThat(response.streakDays()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("이틀 이상 스트릭이 끊겼으면 streakDays를 0으로 보여준다(DB 값은 그대로 둔다)")
+        void returns_zero_streak_when_stale() {
+            homeService = service();
+            Course course = QuizFixture.course(COURSE_ID);
+            given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
+            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
+            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(userProgressRepository.findByUserId(USER_ID))
+                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 7, 320, TODAY_KST.minusDays(3))));
+            given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
+
+            HomeResponse response = homeService.getHome(USER_ID);
+
+            assertThat(response.streakDays()).isZero();
+            assertThat(response.todayCompleted()).isFalse();
         }
 
         @Test
