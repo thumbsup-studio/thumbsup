@@ -123,7 +123,7 @@ describe("InsightPage", () => {
     expect(screen.getByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "꼬리 질문 풀기" })).toHaveAttribute(
       "href",
-      "/follow-up?correct=true&streak=0&fq=10",
+      "/follow-up?quizId=7&correct=true&streak=0&fq=10",
     );
     expect(screen.getByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute("href", "/play");
   });
