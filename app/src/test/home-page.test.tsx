@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 
 const baseData: HomeData = {
   streakDays: 12,
+  todayCompleted: false,
   character: {
     name: "보리",
     fullness: 62,
@@ -92,5 +93,19 @@ describe("HomePage", () => {
     );
 
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/play");
+  });
+
+  it("hides the start link and shows a completed state when today's course is already done", () => {
+    render(
+      <AppToastProvider>
+        <HomePage
+          data={{ ...baseData, todayCompleted: true }}
+          now={new Date("2026-07-08T08:00:00+09:00")}
+        />
+      </AppToastProvider>,
+    );
+
+    expect(screen.queryByRole("link", { name: "시작하기" })).not.toBeInTheDocument();
+    expect(screen.getByText("오늘 학습 완료!")).toBeInTheDocument();
   });
 });
