@@ -1,12 +1,10 @@
 package studio.thumbsup.server.quiz.generation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -23,7 +21,9 @@ public class QuizGenerationService {
     private static final int EXPECTED_QUIZ_COUNT = 5;
     private static final int EXPECTED_CHOICE_COUNT = 4;
     private static final int EXPECTED_SUMMARY_LINES = 3;
-    private static final Pattern MARKER_PATTERN = Pattern.compile("\\[\\[([^\\[\\]]*)]]");
+    /** 첫 블록만 고정한다 — 그 뒤 블록의 개수·라벨은 문제 성격에 맞게 모델이 정한다(#133 팀 결정). */
+    private static final String FIRST_BLOCK_LABEL = "해설";
+
     private static final List<Expected> EXPECTED_SLOTS = List.of(
             new Expected(QuizType.OX, QuizDifficulty.EASY),
             new Expected(QuizType.OX, QuizDifficulty.EASY),
@@ -95,16 +95,17 @@ public class QuizGenerationService {
     }
 
     private void validateCommonFields(int slotOrder, GeneratedQuizSet.GeneratedQuiz quiz) {
-        requireNonBlank(slotOrder, "questionText", quiz.questionText());
-        requireNonBlank(slotOrder, "explanationSummary", quiz.explanationSummary());
-        requireNonBlank(slotOrder, "wrongAnswerExplanation", quiz.wrongAnswerExplanation());
-        requirePrimaryFollowUpQuestion(slotOrder, quiz.followUpQuestions());
-        requireNonEmpty(slotOrder, "derivedConcepts", quiz.derivedConcepts());
+        String location = "슬롯 %d".formatted(slotOrder);
+        requireNonBlank(location, "questionText", quiz.questionText());
+        requireNonBlank(location, "explanationSummary", quiz.explanationSummary());
+        requireNonBlank(location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation());
+        requireNonEmpty(location, "derivedConcepts", quiz.derivedConcepts());
         if (quiz.keywords() == null || quiz.keywords().isEmpty()) {
-            throw new QuizGenerationException("슬롯 %d의 keywords가 비어 있습니다.".formatted(slotOrder));
+            throw new QuizGenerationException("%s의 keywords가 비어 있습니다.".formatted(location));
         }
         validateExplanationSummaryLineCount(slotOrder, quiz.explanationSummary());
-        validateKeywordMarkers(slotOrder, quiz);
+        validateKeywordMarkers(location, quiz);
+        validateFollowUpQuestions(location, quiz.followUpQuestions());
     }
 
     /** explanationSummary는 #43(해설 조회 API)의 "핵심 3줄, 줄 끝 공백 없음" 계약이라 이를 엄격히 검증한다. */
@@ -123,62 +124,86 @@ public class QuizGenerationService {
      * keywords에 등록된 모든 용어가 explanationSummary·explanationExample·wrongAnswerExplanation 중
      * 최소 한 곳에 마킹돼 있어야 하고, 마커 문자열은 오타 없이 keywords와 정확히 일치해야 한다.
      */
-    private void validateKeywordMarkers(int slotOrder, GeneratedQuizSet.GeneratedQuiz quiz) {
+    private void validateKeywordMarkers(String location, GeneratedQuizSet.GeneratedQuiz quiz) {
         Set<String> registeredKeywords = quiz.keywords().stream()
                 .map(GeneratedQuizSet.GeneratedKeyword::keyword)
                 .collect(Collectors.toSet());
 
         Set<String> coveredKeywords = new HashSet<>();
-        coveredKeywords.addAll(
-                validateMarkersInField(slotOrder, "explanationSummary", quiz.explanationSummary(), registeredKeywords));
-        coveredKeywords.addAll(
-                validateMarkersInField(slotOrder, "explanationExample", quiz.explanationExample(), registeredKeywords));
-        coveredKeywords.addAll(validateMarkersInField(
-                slotOrder, "wrongAnswerExplanation", quiz.wrongAnswerExplanation(), registeredKeywords));
+        coveredKeywords.addAll(KeywordMarkerValidator.validateField(
+                location, "explanationSummary", quiz.explanationSummary(), registeredKeywords));
+        coveredKeywords.addAll(KeywordMarkerValidator.validateField(
+                location, "explanationExample", quiz.explanationExample(), registeredKeywords));
+        coveredKeywords.addAll(KeywordMarkerValidator.validateField(
+                location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation(), registeredKeywords));
 
-        Set<String> uncovered = new HashSet<>(registeredKeywords);
-        uncovered.removeAll(coveredKeywords);
-        if (!uncovered.isEmpty()) {
-            throw new QuizGenerationException(
-                    "슬롯 %d의 키워드가 해설 3개 컬럼 어디에도 마킹되지 않았습니다: %s".formatted(slotOrder, uncovered));
+        KeywordMarkerValidator.requireAllCovered(location, registeredKeywords, coveredKeywords, "해설 3개 컬럼");
+    }
+
+    /**
+     * 꼬리질문은 상세(난이도·한 줄 답·블록·키워드)를 함께 갖춰야 한다(#133) — 하나라도 비면 조회 API가
+     * 그 꼬리질문을 응답에서 감춰버리므로, 저장 전에 여기서 막지 않으면 조용히 사라진다.
+     */
+    private void validateFollowUpQuestions(
+            String location, List<GeneratedQuizSet.GeneratedFollowUpQuestion> followUpQuestions) {
+        requirePrimaryFollowUpQuestion(location, followUpQuestions);
+        int index = 1;
+        for (GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion : followUpQuestions) {
+            validateFollowUpQuestion("%s의 꼬리질문 %d".formatted(location, index++), followUpQuestion);
         }
     }
 
-    private Set<String> validateMarkersInField(
-            int slotOrder, String field, String text, Set<String> registeredKeywords) {
-        List<String> markers = extractMarkers(slotOrder, field, text);
-        Set<String> seenInField = new HashSet<>();
-        for (String marker : markers) {
-            if (!registeredKeywords.contains(marker)) {
-                throw new QuizGenerationException(
-                        "슬롯 %d의 %s에 keywords에 없는 마커가 있습니다(오타 의심): [[%s]]".formatted(slotOrder, field, marker));
-            }
-            if (!seenInField.add(marker)) {
-                throw new QuizGenerationException(
-                        "슬롯 %d의 %s에서 같은 키워드가 두 번 이상 마킹됐습니다(첫 등장만 허용): [[%s]]".formatted(slotOrder, field, marker));
-            }
+    private void validateFollowUpQuestion(
+            String location, GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion) {
+        requireNonBlank(location, "content", followUpQuestion.content());
+        // 질문 본문은 서버가 평문으로 그대로 내려준다 — 마커가 섞이면 화면에 [[ ]]가 그대로 보인다.
+        KeywordMarkerValidator.requireNoMarker(location, "content", followUpQuestion.content());
+        requireNonBlank(location, "oneLineAnswer", followUpQuestion.oneLineAnswer());
+        if (followUpQuestion.difficulty() == null) {
+            throw new QuizGenerationException("%s의 difficulty가 비어 있습니다.".formatted(location));
         }
-        return seenInField;
+        if (followUpQuestion.keywords() == null || followUpQuestion.keywords().isEmpty()) {
+            throw new QuizGenerationException("%s의 keywords가 비어 있습니다.".formatted(location));
+        }
+        validateFollowUpBlocks(location, followUpQuestion.blocks());
+        validateFollowUpMarkers(location, followUpQuestion);
     }
 
-    private List<String> extractMarkers(int slotOrder, String field, String text) {
-        if (text == null) {
-            return List.of();
+    private void validateFollowUpBlocks(String location, List<GeneratedQuizSet.GeneratedFollowUpBlock> blocks) {
+        if (blocks == null || blocks.isEmpty()) {
+            throw new QuizGenerationException("%s의 blocks가 비어 있습니다.".formatted(location));
         }
-        List<String> markers = new ArrayList<>();
-        Matcher matcher = MARKER_PATTERN.matcher(text);
-        while (matcher.find()) {
-            markers.add(matcher.group(1));
+        if (!FIRST_BLOCK_LABEL.equals(blocks.get(0).label())) {
+            throw new QuizGenerationException("%s의 첫 블록 label은 \"%s\"여야 합니다: %s"
+                    .formatted(location, FIRST_BLOCK_LABEL, blocks.get(0).label()));
         }
-        String withoutMarkers = MARKER_PATTERN.matcher(text).replaceAll("");
-        if (withoutMarkers.contains("[[") || withoutMarkers.contains("]]")) {
-            throw new QuizGenerationException("슬롯 %d의 %s에 마커 괄호 짝이 맞지 않습니다.".formatted(slotOrder, field));
+        int index = 1;
+        for (GeneratedQuizSet.GeneratedFollowUpBlock block : blocks) {
+            requireNonBlank(location, "blocks[%d].label".formatted(index), block.label());
+            requireNonBlank(location, "blocks[%d].content".formatted(index), block.content());
+            index++;
         }
-        return markers;
+    }
+
+    /** 사전은 꼬리질문마다 다르다 — 부모 문제의 keywords를 쓰지 않는다. 블록은 한 칸씩 따로 넘겨 블록별로 첫 등장 1회를 강제한다. */
+    private void validateFollowUpMarkers(String location, GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion) {
+        Set<String> registeredKeywords = followUpQuestion.keywords().stream()
+                .map(GeneratedQuizSet.GeneratedKeyword::keyword)
+                .collect(Collectors.toSet());
+
+        Set<String> coveredKeywords = new HashSet<>(KeywordMarkerValidator.validateField(
+                location, "oneLineAnswer", followUpQuestion.oneLineAnswer(), registeredKeywords));
+        int index = 1;
+        for (GeneratedQuizSet.GeneratedFollowUpBlock block : followUpQuestion.blocks()) {
+            coveredKeywords.addAll(KeywordMarkerValidator.validateField(
+                    location, "blocks[%d].content".formatted(index++), block.content(), registeredKeywords));
+        }
+
+        KeywordMarkerValidator.requireAllCovered(location, registeredKeywords, coveredKeywords, "한 줄 답과 상세 정리 블록");
     }
 
     private void requirePrimaryFollowUpQuestion(
-            int slotOrder, List<GeneratedQuizSet.GeneratedFollowUpQuestion> followUpQuestions) {
+            String location, List<GeneratedQuizSet.GeneratedFollowUpQuestion> followUpQuestions) {
         long primaryCount = followUpQuestions == null
                 ? 0
                 : followUpQuestions.stream()
@@ -186,7 +211,7 @@ public class QuizGenerationService {
                         .count();
         if (primaryCount != 1) {
             throw new QuizGenerationException(
-                    "슬롯 %d의 followUpQuestions는 대표(isPrimary=true) 1개를 포함해야 합니다.".formatted(slotOrder));
+                    "%s의 followUpQuestions는 대표(isPrimary=true) 1개를 포함해야 합니다.".formatted(location));
         }
     }
 
@@ -243,15 +268,15 @@ public class QuizGenerationService {
         }
     }
 
-    private void requireNonBlank(int slotOrder, String field, String value) {
+    private void requireNonBlank(String location, String field, String value) {
         if (value == null || value.isBlank()) {
-            throw new QuizGenerationException("슬롯 %d의 %s가 비어 있습니다.".formatted(slotOrder, field));
+            throw new QuizGenerationException("%s의 %s가 비어 있습니다.".formatted(location, field));
         }
     }
 
-    private void requireNonEmpty(int slotOrder, String field, List<String> values) {
+    private void requireNonEmpty(String location, String field, List<String> values) {
         if (values == null || values.isEmpty()) {
-            throw new QuizGenerationException("슬롯 %d의 %s가 비어 있습니다.".formatted(slotOrder, field));
+            throw new QuizGenerationException("%s의 %s가 비어 있습니다.".formatted(location, field));
         }
     }
 

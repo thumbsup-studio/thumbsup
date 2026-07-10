@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz.generation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -13,9 +14,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import studio.thumbsup.server.quiz.FollowUpBlockType;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizChoice;
 import studio.thumbsup.server.quiz.QuizDifficulty;
+import studio.thumbsup.server.quiz.QuizFollowUpBlock;
+import studio.thumbsup.server.quiz.QuizFollowUpKeyword;
+import studio.thumbsup.server.quiz.QuizFollowUpQuestion;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
@@ -34,7 +39,21 @@ class QuizPersisterTest {
         return new QuizPersister(quizRepository, quizStepRepository);
     }
 
+    private static GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion() {
+        return new GeneratedQuizSet.GeneratedFollowUpQuestion(
+                "꼬리질문",
+                true,
+                QuizDifficulty.MEDIUM,
+                "한 줄 답",
+                List.of(new GeneratedQuizSet.GeneratedFollowUpBlock("해설", "블록 본문")),
+                List.of(new GeneratedQuizSet.GeneratedKeyword("LIFO", "설명")));
+    }
+
     private static GeneratedQuizSet.GeneratedQuiz oxQuiz() {
+        return oxQuizWith(followUpQuestion());
+    }
+
+    private static GeneratedQuizSet.GeneratedQuiz oxQuizWith(GeneratedQuizSet.GeneratedFollowUpQuestion followUp) {
         return new GeneratedQuizSet.GeneratedQuiz(
                 QuizType.OX,
                 QuizDifficulty.EASY,
@@ -46,7 +65,7 @@ class QuizPersisterTest {
                 "O", // correctAnswer
                 null, // choices
                 null, // answerKeywords
-                List.of(new GeneratedQuizSet.GeneratedFollowUpQuestion("꼬리질문", true)),
+                List.of(followUp),
                 List.of("개념1"),
                 List.of(new GeneratedQuizSet.GeneratedKeyword("키워드1", "설명")));
     }
@@ -63,7 +82,7 @@ class QuizPersisterTest {
                 null, // correctAnswer
                 null, // choices
                 List.of(List.of("LIFO", "Last In First Out")), // answerKeywords
-                List.of(new GeneratedQuizSet.GeneratedFollowUpQuestion("꼬리질문", true)),
+                List.of(followUpQuestion()),
                 List.of("개념1"),
                 List.of(new GeneratedQuizSet.GeneratedKeyword("LIFO", "설명")));
     }
@@ -126,6 +145,40 @@ class QuizPersisterTest {
     }
 
     @Test
+    @DisplayName("꼬리질문의 상세·블록·키워드를 함께 저장하고, 블록에 표시 순서를 1부터 부여한다")
+    void saves_follow_up_question_detail_with_ordered_blocks() {
+        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
+        GeneratedQuizSet.GeneratedFollowUpQuestion detailed = new GeneratedQuizSet.GeneratedFollowUpQuestion(
+                "큐와 스택의 차이는?",
+                true,
+                QuizDifficulty.HARD,
+                "스택은 [[LIFO]]입니다.",
+                List.of(
+                        new GeneratedQuizSet.GeneratedFollowUpBlock("해설", "한쪽 끝에서만 넣고 뺀다."),
+                        new GeneratedQuizSet.GeneratedFollowUpBlock("실무 사용처", "함수 호출 스택이 대표적이다.")),
+                List.of(new GeneratedQuizSet.GeneratedKeyword("LIFO", "마지막에 넣은 데이터가 먼저 나오는 순서")));
+        GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuizWith(detailed)));
+
+        persister().persist("자료구조", generated);
+
+        ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
+        verify(quizRepository).save(captor.capture());
+        QuizFollowUpQuestion saved = captor.getValue().getFollowUpQuestions().get(0);
+
+        assertThat(saved.hasDetail()).isTrue();
+        assertThat(saved.getDifficulty()).isEqualTo(QuizDifficulty.HARD);
+        assertThat(saved.getOneLineAnswer()).isEqualTo("스택은 [[LIFO]]입니다.");
+        assertThat(saved.getBlocks())
+                .extracting(QuizFollowUpBlock::getLabel, QuizFollowUpBlock::getDisplayOrder)
+                .containsExactly(tuple("해설", 1), tuple("실무 사용처", 2));
+        assertThat(saved.getBlocks())
+                .allSatisfy(block -> assertThat(block.getType()).isEqualTo(FollowUpBlockType.TEXT));
+        assertThat(saved.getKeywords())
+                .extracting(QuizFollowUpKeyword::getKeyword)
+                .containsExactly("LIFO");
+    }
+
+    @Test
     @DisplayName("사지선다는 선택지를 정답 여부·순서와 함께 저장한다")
     void saves_multiple_choice_with_choices() {
         given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
@@ -142,7 +195,7 @@ class QuizPersisterTest {
                         new GeneratedQuizSet.GeneratedChoice("a", false),
                         new GeneratedQuizSet.GeneratedChoice("b", true)), // choices
                 null, // answerKeywords
-                List.of(new GeneratedQuizSet.GeneratedFollowUpQuestion("꼬리질문", true)),
+                List.of(followUpQuestion()),
                 List.of("개념1"),
                 List.of(new GeneratedQuizSet.GeneratedKeyword("키워드1", "설명")));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(mc));
