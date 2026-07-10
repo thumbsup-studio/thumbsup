@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { getProgressPercent } from "@/features/play/play-logic";
 import {
@@ -97,6 +98,9 @@ export function PlayPage() {
     try {
       const result = await submitQuizAnswer(quiz.quizId, getSubmittedAnswers(quiz, draft));
       const nextStreak = updateCorrectStreak(quiz.stepOrder, result.isCorrect);
+      if (currentNumber === totalCount) {
+        void feedMascot().catch(() => {});
+      }
       router.push(
         `/insight?quizId=${quiz.quizId}&correct=${result.isCorrect ? "true" : "false"}&streak=${nextStreak}`,
       );
@@ -113,7 +117,7 @@ export function PlayPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+    <main className="flex min-h-dvh flex-col bg-bg px-4 py-5 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
         <header className="sticky top-4 z-10 rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between gap-3">

@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { FollowUpKeyword } from "@/features/play/types";
 import type { AnnotatedText, QuizKeyword } from "@/lib/api/quiz";
 
 type KeywordTooltipTextProps = {
   dict: Map<string, string>;
   node: AnnotatedText;
+};
+
+type AnnotatedTooltipTextProps = {
+  annotated: AnnotatedText;
+  keywords: FollowUpKeyword[];
 };
 
 const tooltipOpenEventName = "thumbsup:keyword-tooltip-open";
@@ -24,9 +30,7 @@ type TextPart =
     };
 
 export function getKeywordDescriptionMap(keywords: QuizKeyword[]) {
-  return new Map(
-    keywords.map((keyword) => [keyword.keyword, keyword.description]),
-  );
+  return new Map(keywords.map((keyword) => [keyword.keyword, keyword.description]));
 }
 
 function getTextParts(node: AnnotatedText): TextPart[] {
@@ -59,12 +63,23 @@ function getTextParts(node: AnnotatedText): TextPart[] {
     });
   }
 
-  return parts.length > 0
-    ? parts
-    : [{ kind: "text", key: "text-0", value: node.text }];
+  return parts.length > 0 ? parts : [{ kind: "text", key: "text-0", value: node.text }];
 }
 
 export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
+  return <TooltipParts dict={dict} node={node} />;
+}
+
+export function AnnotatedTooltipText({ annotated, keywords }: AnnotatedTooltipTextProps) {
+  const dict = useMemo(
+    () => new Map(keywords.map((keyword) => [keyword.keyword, keyword.description])),
+    [keywords],
+  );
+
+  return <TooltipParts dict={dict} node={annotated} />;
+}
+
+function TooltipParts({ dict, node }: KeywordTooltipTextProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [openKeyword, setOpenKeyword] = useState<{
     description: string;
@@ -112,10 +127,7 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener(
-        tooltipOpenEventName,
-        closeWhenAnotherTooltipOpens,
-      );
+      window.removeEventListener(tooltipOpenEventName, closeWhenAnotherTooltipOpens);
     };
   }, []);
 
@@ -146,9 +158,7 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
                   return;
                 }
 
-                window.dispatchEvent(
-                  new CustomEvent(tooltipOpenEventName, { detail: tooltipId }),
-                );
+                window.dispatchEvent(new CustomEvent(tooltipOpenEventName, { detail: tooltipId }));
                 setOpenId(tooltipId);
                 setOpenKeyword({
                   description,
@@ -176,10 +186,7 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
                   id={tooltipId}
                   role="dialog"
                 >
-                  <span
-                    className="block text-base font-black text-ink"
-                    id={tooltipTitleId}
-                  >
+                  <span className="block text-base font-black text-ink" id={tooltipTitleId}>
                     {openKeyword?.label}
                   </span>
                   <span className="mt-2 block text-sm font-semibold leading-6 text-ink-muted">
