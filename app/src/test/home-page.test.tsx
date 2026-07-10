@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("HomePage", () => {
-  it("hides the streak block when streakDays is zero", () => {
+  it("shows the start-streak prompt instead of a day count when streakDays is zero", () => {
     render(
       <AppToastProvider>
         <HomePage
@@ -39,7 +39,9 @@ describe("HomePage", () => {
       </AppToastProvider>,
     );
 
-    expect(screen.queryByLabelText("연속 학습")).not.toBeInTheDocument();
+    const streak = screen.getByLabelText("연속 학습");
+    expect(streak).toHaveTextContent("오늘 시작");
+    expect(streak).not.toHaveTextContent("0일");
   });
 
   it("renders the character block with name and fullness", () => {

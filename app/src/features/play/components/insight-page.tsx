@@ -2,6 +2,7 @@
 
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { useEffect, useState } from "react";
+import { HelpCircleIcon } from "@/components/icons";
 import { Progress } from "@/components/ui/progress";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { KeywordTooltipText } from "@/features/play/components/keyword-tooltip-text";
@@ -208,9 +209,24 @@ export function InsightPage({
             <span className="font-semibold text-ink">{question.insight.referenceLabel}</span>
           </div>
 
-          <div className="mt-auto pt-5">
+          <div className="mt-auto flex flex-col gap-2.5 pt-5">
+            {question.followUp ? (
+              <a
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                href={`/follow-up?question=${questionIndex}&correct=${
+                  correct ? "true" : "false"
+                }&streak=${correctStreak}`}
+              >
+                <HelpCircleIcon className="h-5 w-5" />
+                꼬리 질문 풀기
+              </a>
+            ) : null}
             <a
-              className="flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+              className={
+                question.followUp
+                  ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
+                  : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+              }
               href={nextHref}
             >
               {isLastQuestion ? "홈으로 돌아가기" : "다음 문제 풀기"}

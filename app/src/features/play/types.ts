@@ -2,6 +2,23 @@ export type Difficulty = "low" | "medium" | "high";
 
 export type QuestionKind = "ox" | "multiple-choice" | "keyword-blank";
 
+/**
+ * 해설에서 이어지는 꼬리 질문. 본 문제(PlayQuestion) 1개당 1개. API 미확정이라 목업으로 채운다.
+ * oneLineAnswer·explanation·usageExample 안의 keyword.term은 KeywordTooltipText로 하이라이트된다.
+ */
+export type FollowUpQuestion = {
+  category: string;
+  difficulty: Difficulty;
+  question: string;
+  oneLineAnswer: string;
+  explanation: string;
+  usageExample: string;
+  keywords: {
+    term: string;
+    description: string;
+  }[];
+};
+
 type BaseQuestion = {
   id: string;
   difficulty: Difficulty;
@@ -22,6 +39,7 @@ type BaseQuestion = {
     }[];
     referenceLabel: string;
   };
+  followUp?: FollowUpQuestion;
 };
 
 export type OxQuestion = BaseQuestion & {

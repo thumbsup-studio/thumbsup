@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { BottomTabBar } from "@/features/home/components/bottom-tab-bar";
+import { AppTabBar } from "@/components/app-tab-bar";
 import { CharacterBlock } from "@/features/home/components/character-block";
 import { StreakBlock } from "@/features/home/components/streak-block";
 import { TodayCourseCard } from "@/features/home/components/today-course-card";
 import { WelcomeBlock } from "@/features/home/components/welcome-block";
 import type { HomeData } from "@/features/home/types";
-import { useAppToast } from "@/providers/app-toast-provider";
 
 type HomePageProps = {
   data: HomeData;
@@ -15,8 +13,6 @@ type HomePageProps = {
 };
 
 export function HomePage({ data, now }: HomePageProps) {
-  const { showToast } = useAppToast();
-  const router = useRouter();
   const currentDate = typeof now === "string" ? new Date(now) : now;
 
   return (
@@ -35,16 +31,8 @@ export function HomePage({ data, now }: HomePageProps) {
 
         <TodayCourseCard course={data.todayCourse} startHref="/play" />
 
-        <div className="mt-auto pt-1">
-          <BottomTabBar
-            activeTab="home"
-            onHistoryClick={() => {
-              router.push("/history");
-            }}
-            onProfileClick={() => {
-              showToast({ message: "프로필은 준비 중입니다." });
-            }}
-          />
+        <div className="sticky bottom-4 mt-auto pt-1">
+          <AppTabBar activeTab="home" />
         </div>
       </div>
     </main>

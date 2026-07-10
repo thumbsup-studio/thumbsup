@@ -1,11 +1,23 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
-import { BottomTabBar } from "@/features/home/components/bottom-tab-bar";
+import { AppTabBar } from "@/components/app-tab-bar";
+import { AppToastProvider } from "@/providers/app-toast-provider";
 
-describe("BottomTabBar", () => {
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+
+function renderTabBar(activeTab: "home" | "history" | "profile") {
+  return render(
+    <AppToastProvider>
+      <AppTabBar activeTab={activeTab} />
+    </AppToastProvider>,
+  );
+}
+
+describe("AppTabBar", () => {
   it("uses the full home png icon when the home tab is active", () => {
-    render(<BottomTabBar activeTab="home" onHistoryClick={() => {}} onProfileClick={() => {}} />);
+    renderTabBar("home");
 
     const homeTab = screen.getByRole("button", { name: "홈" });
     const historyTab = screen.getByRole("button", { name: "히스토리" });
@@ -28,9 +40,7 @@ describe("BottomTabBar", () => {
   });
 
   it("uses the full history png icon when the history tab is active", () => {
-    render(
-      <BottomTabBar activeTab="history" onHistoryClick={() => {}} onProfileClick={() => {}} />,
-    );
+    renderTabBar("history");
 
     const historyTab = screen.getByRole("button", { name: "히스토리" });
     const profileTab = screen.getByRole("button", { name: "프로필" });
@@ -44,5 +54,23 @@ describe("BottomTabBar", () => {
       "full",
     );
     expect(historyIcon).toHaveAttribute("src", "/icons/tabs/history-full.png");
+  });
+
+  it("routes to /history when the history tab is pressed from another tab", () => {
+    pushMock.mockClear();
+    renderTabBar("home");
+
+    fireEvent.click(screen.getByRole("button", { name: "히스토리" }));
+
+    expect(pushMock).toHaveBeenCalledWith("/history");
+  });
+
+  it("does not navigate when the already-active tab is pressed", () => {
+    pushMock.mockClear();
+    renderTabBar("history");
+
+    fireEvent.click(screen.getByRole("button", { name: "히스토리" }));
+
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
