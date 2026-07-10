@@ -31,7 +31,7 @@ export function HomePage({ data, now }: HomePageProps) {
 
         <TodayCourseCard course={data.todayCourse} startHref="/play" />
 
-        <div className="mt-auto pt-1">
+        <div className="sticky bottom-4 mt-auto pt-1">
           <AppTabBar activeTab="home" />
         </div>
       </div>

@@ -112,7 +112,7 @@ export function AtlasPage({ data }: AtlasPageProps) {
           />
         ) : null}
 
-        <div className="mt-auto pt-1">
+        <div className="sticky bottom-4 mt-auto pt-1">
           <AppTabBar activeTab="history" />
         </div>
       </div>
