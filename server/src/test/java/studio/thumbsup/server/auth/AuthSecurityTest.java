@@ -1,6 +1,7 @@
 package studio.thumbsup.server.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,6 +68,17 @@ class AuthSecurityTest {
             mockMvc.perform(post("/api/v1/auth/logout").header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/auth/me")
+    class Me {
+
+        @Test
+        @DisplayName("Authorization 헤더가 없으면 필터체인이 401로 막는다")
+        void without_token_returns_401() throws Exception {
+            mockMvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized());
         }
     }
 

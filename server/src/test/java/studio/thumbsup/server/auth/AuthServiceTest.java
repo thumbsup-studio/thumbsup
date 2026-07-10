@@ -210,4 +210,21 @@ class AuthServiceTest {
 
         verify(refreshTokenRepository).deleteByUserId(7L);
     }
+
+    @Test
+    void 내_정보_조회시_토큰의_userId로_유저를_찾아_이메일을_반환한다() {
+        given(userRepository.findById(7L)).willReturn(Optional.of(AuthFixture.user(7L, "a@test.com", "hashed")));
+
+        assertThat(authService.getMe(7L).email()).isEqualTo("a@test.com");
+    }
+
+    @Test
+    void 없는_유저의_내_정보_조회는_USER_NOT_FOUND() {
+        given(userRepository.findById(99L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.getMe(99L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e ->
+                        assertThat(((BusinessException) e).getErrorType()).isEqualTo(AuthErrorType.USER_NOT_FOUND));
+    }
 }
