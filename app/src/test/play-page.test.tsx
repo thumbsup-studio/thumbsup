@@ -6,14 +6,21 @@ import { mockPlaySession } from "@/features/play/mock-play-session";
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
 }));
+const { feedMascotMock } = vi.hoisted(() => ({
+  feedMascotMock: vi.fn().mockResolvedValue({ name: "보리", fullness: 100 }),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
+}));
+vi.mock("@/features/home/api", () => ({
+  feedMascot: feedMascotMock,
 }));
 
 describe("PlayPage", () => {
   beforeEach(() => {
     mockRouter.push.mockClear();
+    feedMascotMock.mockClear();
     window.localStorage.clear();
   });
 
@@ -126,5 +133,39 @@ describe("PlayPage", () => {
       "href",
       "/play?question=0",
     );
+  });
+
+  it("feeds the mascot when the last (5th) question is submitted", async () => {
+    vi.useFakeTimers();
+
+    render(<PlayPage initialQuestionIndex={4} session={mockPlaySession} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "핵심 키워드" }), {
+      target: { value: "critical section" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+    await act(async () => {
+      vi.advanceTimersByTime(240);
+    });
+
+    expect(feedMascotMock).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it("does not feed the mascot before the last question", async () => {
+    vi.useFakeTimers();
+
+    render(<PlayPage session={mockPlaySession} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "O" }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+    await act(async () => {
+      vi.advanceTimersByTime(240);
+    });
+
+    expect(feedMascotMock).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 });
