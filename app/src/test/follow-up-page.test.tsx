@@ -114,4 +114,15 @@ describe("FollowUpPage", () => {
 
     expect(await screen.findByText(detail.question)).toBeInTheDocument();
   });
+
+  it("keeps a quizId-preserving 해설로 돌아가기 link in the error state", async () => {
+    fetchFollowUpQuestion.mockRejectedValue(new Error("network"));
+    renderFollowUp();
+
+    expect(await screen.findByText("꼬리 질문을 불러오지 못했어요")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "해설로 돌아가기" })).toHaveAttribute(
+      "href",
+      "/insight?quizId=100&correct=true&streak=2",
+    );
+  });
 });

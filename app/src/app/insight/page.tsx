@@ -13,8 +13,9 @@ type InsightRouteProps = {
 
 export default async function Insight({ searchParams }: InsightRouteProps) {
   const params = await searchParams;
+  // 소수 quizId가 다른 퀴즈로 절삭되지 않도록 양의 정수만 허용(follow-up 라우트와 동일 규약).
   const rawQuizId = Number(params?.quizId);
-  const quizId = Number.isFinite(rawQuizId) && rawQuizId > 0 ? Math.trunc(rawQuizId) : null;
+  const quizId = Number.isInteger(rawQuizId) && rawQuizId > 0 ? rawQuizId : null;
   const rawStreak = Number(params?.streak ?? 0);
   const correctStreak = Number.isFinite(rawStreak) ? Math.max(0, Math.trunc(rawStreak)) : 0;
 

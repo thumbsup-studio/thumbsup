@@ -117,9 +117,17 @@ export function FollowUpPage({
         <div className="mx-auto w-full max-w-md" role="alert">
           <EmptyState
             action={
-              <Button onClick={() => void load()} variant="secondary">
-                다시 시도
-              </Button>
+              <div className="flex flex-col items-center gap-2.5">
+                <Button onClick={() => void load()} variant="secondary">
+                  다시 시도
+                </Button>
+                <a
+                  className="flex min-h-12 items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
+                  href={insightHref}
+                >
+                  해설로 돌아가기
+                </a>
+              </div>
             }
             description="잠시 후 다시 시도해 주세요."
             title="꼬리 질문을 불러오지 못했어요"
