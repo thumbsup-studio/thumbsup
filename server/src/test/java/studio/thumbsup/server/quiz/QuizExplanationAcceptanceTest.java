@@ -42,6 +42,7 @@ class QuizExplanationAcceptanceTest {
 
     private static final long TEST_USER_ID = 999L;
     private static final int FORMAL_STEP_ORDER = 1;
+    private static final int PROCESS_STEP_ORDER = 2;
     private static final int SAMPLE_STEP_ORDER = 0;
     /** 픽스처 전용 스텝 — 시드가 쓰는 어떤 스텝과도 겹치지 않는다(server/docs 관례: 101/102). */
     private static final int FIXTURE_STEP_ORDER = 101;
@@ -79,6 +80,14 @@ class QuizExplanationAcceptanceTest {
     private Quiz seededOxQuiz() {
         return quizRepository.findByStepOrderOrderBySlotOrderAsc(FORMAL_STEP_ORDER).stream()
                 .filter(quiz -> quiz.getSlotOrder() == 1 && quiz.getType() == QuizType.OX)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /** QA에서 동일 키워드가 세 영역에 중복 강조된 프로세스·문맥 전환 문제. */
+    private Quiz seededContextSwitchQuiz() {
+        return quizRepository.findByStepOrderOrderBySlotOrderAsc(PROCESS_STEP_ORDER).stream()
+                .filter(quiz -> quiz.getSlotOrder() == 5 && quiz.getType() == QuizType.KEYWORD_BLANK)
                 .findFirst()
                 .orElseThrow();
     }
@@ -235,9 +244,36 @@ class QuizExplanationAcceptanceTest {
         }
 
         @Test
-        @DisplayName("키워드는 해설 본문뿐 아니라 오답 해설에서도 하이라이트된다")
-        void highlights_keywords_outside_the_summary() throws Exception {
-            JsonNode data = fetchExplanationData(seededOxQuiz().getId());
+        @DisplayName("같은 키워드는 해설 세 영역 전체에서 한 번만 하이라이트된다")
+        void highlights_each_keyword_once_across_all_explanation_fields() throws Exception {
+            JsonNode data = fetchExplanationData(seededContextSwitchQuiz().getId());
+
+            List<JsonNode> contextSwitchHighlights = annotatedTexts(data).stream()
+                    .flatMap(annotated -> {
+                        List<JsonNode> highlights = new ArrayList<>();
+                        annotated.path("highlights").forEach(highlights::add);
+                        return highlights.stream();
+                    })
+                    .filter(highlight ->
+                            "문맥 전환".equals(highlight.path("keyword").asText()))
+                    .toList();
+
+            assertThat(contextSwitchHighlights).hasSize(1);
+            JsonNode summary = data.path("explanationSummary").path(0);
+            JsonNode highlight = summary.path("highlights").path(0);
+            assertThat(highlight.path("keyword").asText()).isEqualTo("문맥 전환");
+            assertThat(summary.path("text")
+                            .asText()
+                            .substring(
+                                    highlight.path("start").asInt(),
+                                    highlight.path("end").asInt()))
+                    .isEqualTo("문맥 전환");
+        }
+
+        @Test
+        @DisplayName("요약에 없는 키워드는 오답 해설에서 한 번 하이라이트된다")
+        void highlights_keyword_authored_only_in_wrong_answer_explanation() throws Exception {
+            JsonNode data = fetchExplanationData(placeholderQuiz().getId());
 
             List<String> wrongAnswerKeywords = new ArrayList<>();
             data.path("wrongAnswerExplanation")
@@ -245,7 +281,7 @@ class QuizExplanationAcceptanceTest {
                     .forEach(highlight ->
                             wrongAnswerKeywords.add(highlight.path("keyword").asText()));
 
-            assertThat(wrongAnswerKeywords).contains("커널", "사용자 모드", "커널 모드");
+            assertThat(wrongAnswerKeywords).containsExactly("비연결형");
         }
 
         @Test

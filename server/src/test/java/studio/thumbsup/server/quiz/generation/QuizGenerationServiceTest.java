@@ -65,6 +65,22 @@ class QuizGenerationServiceTest {
             assertThat(service().generateStep("운영체제")).isEqualTo(1);
             verify(quizPersister).persist(any(), any());
         }
+
+        @Test
+        @DisplayName("서로 다른 키워드를 해설 3개 컬럼에 나눠 한 번씩 마킹하면 저장한다")
+        void accepts_distinct_keywords_distributed_across_explanation_fields() {
+            String distributedMarkers = oxQuizJson()
+                    .replace("\"explanationExample\": null", "\"explanationExample\": \"[[페이지 폴트]] 적용 예시\"")
+                    .replace(
+                            "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}]",
+                            "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}, "
+                                    + "{\"keyword\": \"페이지 폴트\", \"description\": \"설명\"}]");
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(distributedMarkers));
+            given(quizPersister.persist(any(), any())).willReturn(1);
+
+            assertThat(service().generateStep("운영체제")).isEqualTo(1);
+            verify(quizPersister).persist(any(), any());
+        }
     }
 
     @Nested
@@ -252,6 +268,20 @@ class QuizGenerationServiceTest {
             assertThatThrownBy(() -> service().generateStep("운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("어디에도 마킹되지 않았습니다");
+        }
+
+        @Test
+        @DisplayName("같은 키워드를 해설 3개 컬럼 사이에서 중복 마킹하면 예외")
+        void rejects_duplicate_keyword_marker_across_explanation_fields() {
+            String duplicatedAcrossFields =
+                    oxQuizJson().replace("\"explanationExample\": null", "\"explanationExample\": \"[[PCB]] 적용 예시\"");
+            given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(duplicatedAcrossFields));
+
+            assertThatThrownBy(() -> service().generateStep("운영체제"))
+                    .isInstanceOf(QuizGenerationException.class)
+                    .hasMessageContaining("해설 3개 컬럼에서 같은 키워드가 두 번 이상 마킹됐습니다")
+                    .hasMessageContaining("[[PCB]]");
+            verify(quizPersister, never()).persist(any(), any());
         }
 
         @Test
