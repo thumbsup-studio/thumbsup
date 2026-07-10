@@ -1,9 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AtlasPage } from "@/features/atlas/components/atlas-page";
 import type { AtlasData } from "@/features/atlas/types";
 import { AppToastProvider } from "@/providers/app-toast-provider";
+
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 
 const baseData: AtlasData = {
   stats: { learnedNodeCount: 46, connectionCount: 112, weeklyGrowth: 7 },
