@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useAppToast } from "@/providers/app-toast-provider";
 
 type TabKey = "home" | "history" | "profile";
 
@@ -62,12 +61,11 @@ function getTabClassName(isActive: boolean) {
 }
 
 /**
- * 앱 하단 탭 내비게이션 — 홈·히스토리·프로필. 라우팅을 내부화해 화면(홈·히스토리)이
- * `activeTab`만 넘기면 어디서든 동일하게 렌더/이동한다. 프로필은 아직 준비 중이라 토스트로 안내한다.
+ * 앱 하단 탭 내비게이션 — 홈·히스토리·프로필. 라우팅을 내부화해 화면이
+ * `activeTab`만 넘기면 어디서든 동일하게 렌더/이동한다.
  */
 export function AppTabBar({ activeTab }: AppTabBarProps) {
   const router = useRouter();
-  const { showToast } = useAppToast();
 
   function handleSelect(key: TabKey) {
     if (key === activeTab) {
@@ -84,7 +82,7 @@ export function AppTabBar({ activeTab }: AppTabBarProps) {
       return;
     }
 
-    showToast({ message: "프로필은 준비 중입니다." });
+    router.push("/profile");
   }
 
   return (
