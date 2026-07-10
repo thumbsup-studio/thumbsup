@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { AppTabBar } from "@/components/app-tab-bar";
 import { DisconnectedNodesIcon, PlayIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -110,6 +111,10 @@ export function AtlasPage({ data }: AtlasPageProps) {
             onReview={() => showToast({ message: "복습은 준비 중입니다." })}
           />
         ) : null}
+
+        <div className="mt-auto pt-1">
+          <AppTabBar activeTab="history" />
+        </div>
       </div>
     </main>
   );
