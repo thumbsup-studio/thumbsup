@@ -146,6 +146,26 @@ describe("InsightPage", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("프로세스 안의 실행 흐름");
   });
 
+  it("shows keyword descriptions in a dimmed fixed sheet that stays inside the mobile viewport", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct quizId={7} />);
+
+    const processButtons = await screen.findAllByRole("button", { name: "프로세스 설명 보기" });
+    fireEvent.click(processButtons[0]);
+
+    const tooltip = screen.getByRole("tooltip");
+
+    expect(tooltip).toHaveClass("fixed", "right-4", "left-4", "bottom-5", "max-w-md");
+    expect(tooltip).toHaveTextContent("프로세스");
+    expect(tooltip).toHaveTextContent("운영체제가 자원을 관리하는 실행 단위");
+    expect(document.querySelector('[aria-hidden="true"].fixed.inset-0')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "확인" }));
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
   it("renders incorrect-only explanation and hides points", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 

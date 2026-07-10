@@ -62,27 +62,43 @@ function getTextParts(node: AnnotatedText): TextPart[] {
 
 export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openKeyword, setOpenKeyword] = useState<{
+    description: string;
+    label: string;
+  } | null>(null);
   const instanceId = useId();
   const rootRef = useRef<HTMLSpanElement>(null);
   const parts = useMemo(() => getTextParts(node), [node]);
 
   useEffect(() => {
+    function closeTooltip() {
+      setOpenId(null);
+      setOpenKeyword(null);
+    }
+
     function closeOnOutsideClick(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        setOpenId(null);
+        closeTooltip();
       }
     }
 
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setOpenId(null);
+        closeTooltip();
       }
     }
 
     function closeWhenAnotherTooltipOpens(event: Event) {
       const openedId = (event as CustomEvent<string>).detail;
 
-      setOpenId((currentId) => (currentId && currentId !== openedId ? null : currentId));
+      setOpenId((currentId) => {
+        if (currentId && currentId !== openedId) {
+          setOpenKeyword(null);
+          return null;
+        }
+
+        return currentId;
+      });
     }
 
     document.addEventListener("pointerdown", closeOnOutsideClick);
@@ -112,29 +128,58 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
             <button
               aria-describedby={isOpen ? tooltipId : undefined}
               aria-expanded={isOpen}
+              aria-haspopup="dialog"
               aria-label={`${part.keyword} 설명 보기`}
               className="inline border-0 bg-transparent p-0 font-bold text-primary underline decoration-primary underline-offset-4"
               onClick={() => {
                 if (isOpen) {
                   setOpenId(null);
+                  setOpenKeyword(null);
                   return;
                 }
 
                 window.dispatchEvent(new CustomEvent(tooltipOpenEventName, { detail: tooltipId }));
                 setOpenId(tooltipId);
+                setOpenKeyword({
+                  description,
+                  label: part.keyword,
+                });
               }}
               type="button"
             >
               {part.value}
             </button>
             {isOpen ? (
-              <span
-                className="absolute left-0 top-full z-20 mt-2 w-64 rounded-control border border-border bg-surface px-3 py-2 text-xs font-semibold leading-5 text-ink shadow-card"
-                id={tooltipId}
-                role="tooltip"
-              >
-                {description}
-              </span>
+              <>
+                <span
+                  aria-hidden="true"
+                  className="fixed inset-0 z-40 block bg-ink/45"
+                  onPointerDown={() => {
+                    setOpenId(null);
+                    setOpenKeyword(null);
+                  }}
+                />
+                <span
+                  className="fixed right-4 bottom-5 left-4 z-50 mx-auto block max-w-md rounded-card border border-border bg-surface p-5 text-left text-sm leading-6 text-ink shadow-card"
+                  id={tooltipId}
+                  role="tooltip"
+                >
+                  <span className="block text-base font-black text-ink">{openKeyword?.label}</span>
+                  <span className="mt-2 block text-sm font-semibold leading-6 text-ink-muted">
+                    {openKeyword?.description}
+                  </span>
+                  <button
+                    className="mt-4 flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-4 py-3 text-sm font-bold text-primary-fg"
+                    onClick={() => {
+                      setOpenId(null);
+                      setOpenKeyword(null);
+                    }}
+                    type="button"
+                  >
+                    확인
+                  </button>
+                </span>
+              </>
             ) : null}
           </span>
         );
