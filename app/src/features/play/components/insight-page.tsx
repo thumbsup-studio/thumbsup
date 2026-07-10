@@ -55,6 +55,7 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
     () => getSummaryItems(explanation?.explanationSummary ?? []),
     [explanation],
   );
+  const primaryFollowUpQuestion = getPrimaryFollowUpQuestion(explanation?.followUpQuestions ?? []);
 
   useEffect(() => {
     if (quizId === null) {
@@ -267,11 +268,11 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
                 </div>
               ) : null}
 
-              {explanation.followUpQuestions.length > 0 ? (
+              {primaryFollowUpQuestion ? (
                 <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
                   <p className="text-sm font-bold text-ink">대표 꼬리질문</p>
                   <p className="mt-2 text-sm leading-6 text-ink-muted">
-                    {explanation.followUpQuestions[0]}
+                    {primaryFollowUpQuestion.content}
                   </p>
                 </div>
               ) : null}
@@ -333,4 +334,14 @@ function getSummaryItems(lines: AnnotatedText[]) {
       position: index + 1,
     };
   });
+}
+
+function getPrimaryFollowUpQuestion(
+  followUpQuestions: QuizExplanationResponse["followUpQuestions"],
+) {
+  return (
+    followUpQuestions.find((followUpQuestion) => followUpQuestion.isPrimary) ??
+    followUpQuestions[0] ??
+    null
+  );
 }

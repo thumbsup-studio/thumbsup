@@ -95,7 +95,13 @@ const explanation = {
     { keyword: "프로세스", description: "운영체제가 자원을 관리하는 실행 단위" },
     { keyword: "스레드", description: "프로세스 안의 실행 흐름" },
   ],
-  followUpQuestions: ["스레드가 자원을 공유하면 어떤 문제가 생길까요?"],
+  followUpQuestions: [
+    {
+      followUpQuestionId: 10,
+      content: "스레드가 자원을 공유하면 어떤 문제가 생길까요?",
+      isPrimary: true,
+    },
+  ],
 };
 
 describe("InsightPage", () => {
@@ -115,6 +121,7 @@ describe("InsightPage", () => {
     expect(screen.getByText("2/5")).toBeInTheDocument();
     expect(screen.getByText("난이도 하")).toBeInTheDocument();
     expect(screen.getByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
+    expect(screen.getByText("스레드가 자원을 공유하면 어떤 문제가 생길까요?")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute("href", "/play");
   });
 
