@@ -10,7 +10,7 @@
 -- 쓰고 마지막에 제거한다. 실패 후 Flyway repair/retry도 가능하도록 남은 helper는 재사용하되 비운다.
 -- 실제 시드의 질문당 distinct keyword 최댓값은 4개로 기본 cte_max_recursion_depth(1000) 이하다.
 
-CREATE TABLE IF NOT EXISTS migration_20260711120000_follow_up_marker
+CREATE TABLE IF NOT EXISTS migration_20260711135000_follow_up_marker
 (
     follow_up_question_id BIGINT       NOT NULL,
     marker_order          INT          NOT NULL,
@@ -22,11 +22,11 @@ CREATE TABLE IF NOT EXISTS migration_20260711120000_follow_up_marker
     PRIMARY KEY (follow_up_question_id, marker_order)
 ) ENGINE = InnoDB;
 
-TRUNCATE TABLE migration_20260711120000_follow_up_marker;
+TRUNCATE TABLE migration_20260711135000_follow_up_marker;
 
 -- exact duplicate 사전 행이 있어도 같은 marker는 한 번만 처리한다. marker 자체가 binary collation이라
 -- case/accent variant는 서로 다른 사전 항목으로 유지된다.
-INSERT INTO migration_20260711120000_follow_up_marker
+INSERT INTO migration_20260711135000_follow_up_marker
     (follow_up_question_id, marker_order, keyword_count, keyword, marker)
 SELECT follow_up_question_id,
        ROW_NUMBER() OVER (
@@ -45,7 +45,7 @@ FROM (SELECT DISTINCT follow_up_question_id,
 
 -- one_line_answer가 NULL인 상세 없는 질문도 0으로 취급한다. 블록 keeper는 display_order가 가장
 -- 빠른 블록이며, 손상 데이터에서 order가 겹쳐도 id로 결과를 결정적으로 만든다.
-UPDATE migration_20260711120000_follow_up_marker AS keyword
+UPDATE migration_20260711135000_follow_up_marker AS keyword
 JOIN quiz_follow_up_question AS question
   ON question.id = keyword.follow_up_question_id
 SET keyword.one_line_has_marker =
@@ -80,7 +80,7 @@ WITH RECURSIVE rewritten_answer AS (
     FROM quiz_follow_up_question AS question
     JOIN (SELECT follow_up_question_id,
                  MAX(keyword_count) AS keyword_count
-          FROM migration_20260711120000_follow_up_marker
+          FROM migration_20260711135000_follow_up_marker
           GROUP BY follow_up_question_id) AS target
       ON target.follow_up_question_id = question.id
 
@@ -117,7 +117,7 @@ WITH RECURSIVE rewritten_answer AS (
                rewritten.content
            ) AS content
     FROM rewritten_answer AS rewritten
-    JOIN migration_20260711120000_follow_up_marker AS keyword
+    JOIN migration_20260711135000_follow_up_marker AS keyword
       ON keyword.follow_up_question_id = rewritten.follow_up_question_id
      AND keyword.marker_order = rewritten.marker_order + 1
 )
@@ -140,7 +140,7 @@ WITH RECURSIVE rewritten_block AS (
     FROM quiz_follow_up_block AS block
     JOIN (SELECT follow_up_question_id,
                  MAX(keyword_count) AS keyword_count
-          FROM migration_20260711120000_follow_up_marker
+          FROM migration_20260711135000_follow_up_marker
           GROUP BY follow_up_question_id) AS target
       ON target.follow_up_question_id = block.follow_up_question_id
 
@@ -189,7 +189,7 @@ WITH RECURSIVE rewritten_block AS (
                )
            END AS content
     FROM rewritten_block AS rewritten
-    JOIN migration_20260711120000_follow_up_marker AS keyword
+    JOIN migration_20260711135000_follow_up_marker AS keyword
       ON keyword.follow_up_question_id = rewritten.follow_up_question_id
      AND keyword.marker_order = rewritten.marker_order + 1
 )
@@ -199,4 +199,4 @@ JOIN rewritten_block AS rewritten
  AND rewritten.marker_order = rewritten.keyword_count
 SET block.content = rewritten.content;
 
-DROP TABLE migration_20260711120000_follow_up_marker;
+DROP TABLE migration_20260711135000_follow_up_marker;
