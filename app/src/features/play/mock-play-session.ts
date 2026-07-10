@@ -45,6 +45,31 @@ process.memory = isolated_address_space`,
         ],
         referenceLabel: "OS process model",
       },
+      followUp: {
+        category: "프로세스",
+        difficulty: "medium",
+        question: "독립된 메모리 공간을 쓴다면, 프로세스끼리는 어떻게 데이터를 주고받을까?",
+        oneLineAnswer:
+          "서로의 메모리에 직접 접근할 수 없어, 운영체제가 중개하는 IPC로 주고받습니다.",
+        explanation:
+          "프로세스는 주소 공간이 분리돼 있어 상대 메모리를 직접 읽지 못합니다. 그래서 파이프·소켓 같은 IPC 수단으로 통신하는데, 공유 메모리는 빠른 대신 동기화가 필요하고 메시지 전달은 안전한 대신 복사 비용이 듭니다.",
+        usageExample:
+          "브라우저의 탭 프로세스와 메인 프로세스는 IPC 채널로 메시지를 주고받아 탭을 격리한 채 협력합니다.",
+        keywords: [
+          {
+            term: "IPC",
+            description: "서로 격리된 프로세스가 데이터를 주고받는 프로세스 간 통신 방식입니다.",
+          },
+          {
+            term: "공유 메모리",
+            description: "여러 프로세스가 같은 메모리 영역을 나눠 빠르게 주고받는 IPC 방식입니다.",
+          },
+          {
+            term: "메시지 전달",
+            description: "데이터를 복사해 메시지로 주고받는 안전한 IPC 방식입니다.",
+          },
+        ],
+      },
     },
     {
       id: "q-02-thread-memory",
@@ -86,6 +111,26 @@ threadB.cache = shared_heap.cache`,
           },
         ],
         referenceLabel: "Thread memory layout",
+      },
+      followUp: {
+        category: "스레드",
+        difficulty: "medium",
+        question: "스레드가 힙을 공유한다면, 여러 스레드가 같은 변수를 동시에 바꾸면 어떻게 될까?",
+        oneLineAnswer: "동기화 없이 동시에 접근하면 경쟁 상태가 생겨 값이 유실될 수 있습니다.",
+        explanation:
+          "공유 힙은 통신을 가볍게 해주지만, 두 스레드가 같은 변수를 동시에 읽고 쓰면 경쟁 상태가 발생합니다. 이를 막으려면 뮤텍스 같은 동기화 장치로 한 번에 한 스레드만 접근하게 해야 합니다.",
+        usageExample:
+          "여러 요청 스레드가 공유 카운터를 올릴 때 뮤텍스로 보호하지 않으면, 집계가 실제보다 작게 나옵니다.",
+        keywords: [
+          {
+            term: "경쟁 상태",
+            description: "여러 스레드의 실행 순서에 따라 결과가 달라지는 동시성 버그입니다.",
+          },
+          {
+            term: "뮤텍스",
+            description: "한 번에 하나의 스레드만 공유 자원에 접근하도록 잠그는 동기화 장치입니다.",
+          },
+        ],
       },
     },
     {
@@ -147,6 +192,28 @@ try {
         ],
         referenceLabel: "Race condition",
       },
+      followUp: {
+        category: "동시성",
+        difficulty: "high",
+        question: "경쟁 상태를 막으려고 락을 여러 개 걸면, 이번엔 어떤 문제가 생길까?",
+        oneLineAnswer:
+          "여러 락을 서로 다른 순서로 잡으면 서로를 기다리는 데드락에 빠질 수 있습니다.",
+        explanation:
+          "락은 경쟁 상태를 막지만, 두 스레드가 락 A·B를 반대 순서로 잡으면 서로 상대의 락을 기다리며 멈추는 데드락이 생깁니다. 락 획득 순서를 통일하거나 타임아웃을 두어 예방합니다.",
+        usageExample:
+          "계좌 이체에서 두 계좌의 락을 항상 계좌번호가 작은 쪽부터 잡도록 순서를 고정하면 데드락을 피할 수 있습니다.",
+        keywords: [
+          {
+            term: "데드락",
+            description:
+              "둘 이상이 서로가 가진 자원을 기다리며 아무도 진행하지 못하는 교착 상태입니다.",
+          },
+          {
+            term: "락",
+            description: "공유 자원에 한 번에 하나만 접근하도록 막는 동기화 장치입니다.",
+          },
+        ],
+      },
     },
     {
       id: "q-04-context-switch",
@@ -196,6 +263,28 @@ run(next)`,
           },
         ],
         referenceLabel: "Context switching",
+      },
+      followUp: {
+        category: "스케줄링",
+        difficulty: "medium",
+        question: "컨텍스트 스위칭 비용이 크다면, 스레드를 요청마다 새로 만드는 건 괜찮을까?",
+        oneLineAnswer:
+          "생성·소멸 비용이 커서, 미리 만들어 둔 스레드 풀로 재사용하는 편이 낫습니다.",
+        explanation:
+          "스레드를 요청마다 새로 만들면 생성·소멸 비용과 잦은 컨텍스트 스위칭이 겹칩니다. 스레드 풀은 일정 수의 스레드를 미리 만들어 재사용하므로, 생성 비용을 줄이고 동시 실행 수를 제어해 스위칭 과부하도 막습니다.",
+        usageExample:
+          "웹 서버는 스레드 풀 크기로 동시 처리량을 제한해, 요청이 몰려도 과도한 컨텍스트 스위칭으로 느려지지 않게 합니다.",
+        keywords: [
+          {
+            term: "스레드 풀",
+            description:
+              "미리 만들어 둔 스레드를 재사용해 생성 비용과 동시 실행 수를 관리하는 기법입니다.",
+          },
+          {
+            term: "컨텍스트 스위칭",
+            description: "CPU가 실행 대상을 바꾸며 상태를 저장·복원하는 과정으로 비용이 듭니다.",
+          },
+        ],
       },
     },
     {
@@ -250,6 +339,31 @@ finally:
           },
         ],
         referenceLabel: "Critical section",
+      },
+      followUp: {
+        category: "동기화",
+        difficulty: "high",
+        question: "임계 구역을 한 번에 하나가 아니라, 정해진 수만큼 동시에 허용하려면?",
+        oneLineAnswer: "뮤텍스 대신 허용 개수를 세는 세마포어로 동시 진입 수를 제한합니다.",
+        explanation:
+          "뮤텍스는 한 번에 하나만 들어가게 하지만, 세마포어는 카운터로 동시에 들어갈 수 있는 수를 정합니다. 카운트가 1이면 뮤텍스처럼 동작하고, N이면 최대 N개가 임계 구역에 동시에 들어갑니다.",
+        usageExample:
+          "DB 커넥션 풀은 세마포어로 동시 연결 수를 상한선까지만 허용해 자원 고갈을 막습니다.",
+        keywords: [
+          {
+            term: "세마포어",
+            description: "동시에 자원에 접근할 수 있는 수를 카운터로 제한하는 동기화 장치입니다.",
+          },
+          {
+            term: "뮤텍스",
+            description:
+              "한 번에 하나의 실행 흐름만 접근하게 하는 잠금(카운트 1의 세마포어)입니다.",
+          },
+          {
+            term: "임계 구역",
+            description: "동시에 실행되면 안 되는 공유 자원 접근 코드 영역입니다.",
+          },
+        ],
       },
     },
   ],
