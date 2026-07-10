@@ -58,6 +58,22 @@ describe("InsightPage", () => {
     );
   });
 
+  it("links the follow-up CTA to the primary follow-up question id", () => {
+    render(<InsightPage correct correctStreak={2} questionIndex={0} session={mockPlaySession} />);
+
+    expect(screen.getByRole("link", { name: "꼬리 질문 풀기" })).toHaveAttribute(
+      "href",
+      "/follow-up?question=0&correct=true&streak=2&fq=1",
+    );
+  });
+
+  it("shows a disabled 준비 중 notice instead of a CTA link when there is no follow-up question", () => {
+    render(<InsightPage correct questionIndex={3} session={mockPlaySession} />);
+
+    expect(screen.getByRole("button", { name: "꼬리 질문 준비 중" })).toBeDisabled();
+    expect(screen.queryByRole("link", { name: "꼬리 질문 풀기" })).not.toBeInTheDocument();
+  });
+
   it("renders the summary as exactly three numbered items", () => {
     render(<InsightPage correct questionIndex={0} session={mockPlaySession} />);
 

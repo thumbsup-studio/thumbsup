@@ -210,20 +210,29 @@ export function InsightPage({
           </div>
 
           <div className="mt-auto flex flex-col gap-2.5 pt-5">
-            {question.followUp ? (
+            {question.followUpQuestions.length > 0 ? (
               <a
                 className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
                 href={`/follow-up?question=${questionIndex}&correct=${
                   correct ? "true" : "false"
-                }&streak=${correctStreak}`}
+                }&streak=${correctStreak}&fq=${question.followUpQuestions[0].followUpQuestionId}`}
               >
                 <HelpCircleIcon className="h-5 w-5" />
                 꼬리 질문 풀기
               </a>
-            ) : null}
+            ) : (
+              <button
+                className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-control border border-border bg-surface-muted px-5 py-3 font-bold text-ink-muted"
+                disabled
+                type="button"
+              >
+                <HelpCircleIcon className="h-5 w-5" />
+                꼬리 질문 준비 중
+              </button>
+            )}
             <a
               className={
-                question.followUp
+                question.followUpQuestions.length > 0
                   ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
                   : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
               }
