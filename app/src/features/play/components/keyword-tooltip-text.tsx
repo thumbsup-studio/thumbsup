@@ -24,7 +24,9 @@ type TextPart =
     };
 
 export function getKeywordDescriptionMap(keywords: QuizKeyword[]) {
-  return new Map(keywords.map((keyword) => [keyword.keyword, keyword.description]));
+  return new Map(
+    keywords.map((keyword) => [keyword.keyword, keyword.description]),
+  );
 }
 
 function getTextParts(node: AnnotatedText): TextPart[] {
@@ -57,7 +59,9 @@ function getTextParts(node: AnnotatedText): TextPart[] {
     });
   }
 
-  return parts.length > 0 ? parts : [{ kind: "text", key: "text-0", value: node.text }];
+  return parts.length > 0
+    ? parts
+    : [{ kind: "text", key: "text-0", value: node.text }];
 }
 
 export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
@@ -108,7 +112,10 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
     return () => {
       document.removeEventListener("pointerdown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener(tooltipOpenEventName, closeWhenAnotherTooltipOpens);
+      window.removeEventListener(
+        tooltipOpenEventName,
+        closeWhenAnotherTooltipOpens,
+      );
     };
   }, []);
 
@@ -121,12 +128,13 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
 
         const description = dict.get(part.keyword) ?? "";
         const tooltipId = `${instanceId}-${part.key}`;
+        const tooltipTitleId = `${tooltipId}-title`;
         const isOpen = openId === tooltipId;
 
         return (
           <span className="relative inline-flex" key={tooltipId}>
             <button
-              aria-describedby={isOpen ? tooltipId : undefined}
+              aria-controls={isOpen ? tooltipId : undefined}
               aria-expanded={isOpen}
               aria-haspopup="dialog"
               aria-label={`${part.keyword} 설명 보기`}
@@ -138,7 +146,9 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
                   return;
                 }
 
-                window.dispatchEvent(new CustomEvent(tooltipOpenEventName, { detail: tooltipId }));
+                window.dispatchEvent(
+                  new CustomEvent(tooltipOpenEventName, { detail: tooltipId }),
+                );
                 setOpenId(tooltipId);
                 setOpenKeyword({
                   description,
@@ -160,23 +170,31 @@ export function KeywordTooltipText({ dict, node }: KeywordTooltipTextProps) {
                   }}
                 />
                 <span
-                  className="fixed right-4 bottom-5 left-4 z-50 mx-auto block max-w-md rounded-card border border-border bg-surface p-5 text-left text-sm leading-6 text-ink shadow-card"
+                  aria-labelledby={tooltipTitleId}
+                  aria-modal="true"
+                  className="fixed top-1/2 right-4 left-4 z-50 mx-auto block max-w-md -translate-y-1/2 rounded-card border border-border bg-surface p-5 pr-14 text-left text-sm leading-6 text-ink shadow-card"
                   id={tooltipId}
-                  role="tooltip"
+                  role="dialog"
                 >
-                  <span className="block text-base font-black text-ink">{openKeyword?.label}</span>
+                  <span
+                    className="block text-base font-black text-ink"
+                    id={tooltipTitleId}
+                  >
+                    {openKeyword?.label}
+                  </span>
                   <span className="mt-2 block text-sm font-semibold leading-6 text-ink-muted">
                     {openKeyword?.description}
                   </span>
                   <button
-                    className="mt-4 flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-4 py-3 text-sm font-bold text-primary-fg"
+                    aria-label="툴팁 닫기"
+                    className="absolute top-4 right-4 grid place-items-center border-0 bg-transparent p-0 text-2xl font-light leading-none text-ink-muted"
                     onClick={() => {
                       setOpenId(null);
                       setOpenKeyword(null);
                     }}
                     type="button"
                   >
-                    확인
+                    ×
                   </button>
                 </span>
               </>
