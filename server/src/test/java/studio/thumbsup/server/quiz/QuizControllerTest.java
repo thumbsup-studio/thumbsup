@@ -158,6 +158,13 @@ class QuizControllerTest {
         private QuizExplanationResponse explanationResponse() {
             return new QuizExplanationResponse(
                     1L,
+                    "TCP는 연결 지향 프로토콜이다.",
+                    QuizType.OX,
+                    QuizDifficulty.EASY,
+                    1,
+                    5,
+                    "CS 기초",
+                    "네트워크 기초",
                     List.of(new QuizExplanationResponse.AnnotatedText(
                             "TCP는 연결 지향 프로토콜이다.", List.of(new QuizExplanationResponse.Highlight("연결 지향", 5, 10)))),
                     null,
@@ -175,6 +182,13 @@ class QuizControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
                     .andExpect(jsonPath("$.data.quizId").value(1))
+                    .andExpect(jsonPath("$.data.questionText").value("TCP는 연결 지향 프로토콜이다."))
+                    .andExpect(jsonPath("$.data.type").value("OX"))
+                    .andExpect(jsonPath("$.data.difficulty").value("EASY"))
+                    .andExpect(jsonPath("$.data.currentNumber").value(1))
+                    .andExpect(jsonPath("$.data.totalCount").value(5))
+                    .andExpect(jsonPath("$.data.courseTitle").value("CS 기초"))
+                    .andExpect(jsonPath("$.data.unitTitle").value("네트워크 기초"))
                     .andExpect(jsonPath("$.data.explanationSummary[0].text").value("TCP는 연결 지향 프로토콜이다."))
                     .andExpect(jsonPath("$.data.explanationSummary[0].highlights[0].keyword")
                             .value("연결 지향"))
@@ -193,6 +207,17 @@ class QuizControllerTest {
             mockMvc.perform(get("/api/v1/quizzes/999/explanation"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("QUIZ_NOT_FOUND"));
+        }
+
+        @Test
+        @DisplayName("기본 코스가 없으면 404 COURSE_NOT_FOUND를 반환한다")
+        void returns_404_when_course_is_absent() throws Exception {
+            given(quizService.getExplanation(eq(1L)))
+                    .willThrow(new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
+
+            mockMvc.perform(get("/api/v1/quizzes/1/explanation"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
         }
     }
 }

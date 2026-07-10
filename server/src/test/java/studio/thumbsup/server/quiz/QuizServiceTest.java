@@ -29,6 +29,12 @@ class QuizServiceTest {
     private QuizRepository quizRepository;
 
     @Mock
+    private CourseRepository courseRepository;
+
+    @Mock
+    private QuizStepRepository quizStepRepository;
+
+    @Mock
     private QuizAttemptRepository quizAttemptRepository;
 
     @Mock
@@ -39,7 +45,8 @@ class QuizServiceTest {
     private static final Long USER_ID = 1L;
 
     private QuizService service() {
-        return new QuizService(quizRepository, quizAttemptRepository, quizProgressRepository);
+        return new QuizService(
+                quizRepository, courseRepository, quizStepRepository, quizAttemptRepository, quizProgressRepository);
     }
 
     private static Quiz quizWithId(Long id, int stepOrder, int slotOrder) {

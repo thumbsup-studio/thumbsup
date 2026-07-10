@@ -26,9 +26,20 @@ class QuizExplanationServiceTest {
 
     private static final Long QUIZ_ID = 10L;
     private static final Long ABSENT_QUIZ_ID = 999L;
+    private static final int STEP_ORDER = 7;
+    private static final int SLOT_ORDER = 3;
+    private static final long TOTAL_COUNT = 5L;
+    private static final String COURSE_TITLE = "운영체제";
+    private static final String UNIT_TITLE = "동기화 심화";
 
     @Mock
     private QuizRepository quizRepository;
+
+    @Mock
+    private CourseRepository courseRepository;
+
+    @Mock
+    private QuizStepRepository quizStepRepository;
 
     @Mock
     private QuizAttemptRepository quizAttemptRepository;
@@ -37,29 +48,48 @@ class QuizExplanationServiceTest {
     private QuizProgressRepository quizProgressRepository;
 
     private QuizService service() {
-        return new QuizService(quizRepository, quizAttemptRepository, quizProgressRepository);
+        return new QuizService(
+                quizRepository, courseRepository, quizStepRepository, quizAttemptRepository, quizProgressRepository);
     }
 
     private static Quiz annotatedQuizWithId(Long id) {
         Quiz quiz = QuizFixture.annotatedExplanationQuiz();
+        quiz.assignPosition(STEP_ORDER, SLOT_ORDER);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
     }
 
     private static Quiz plainQuizWithId(Long id) {
         Quiz quiz = QuizFixture.oxQuiz();
+        quiz.assignPosition(STEP_ORDER, SLOT_ORDER);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
+    }
+
+    private void givenExplanationContext(Quiz quiz) {
+        given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
+        given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(Course.create(COURSE_TITLE, "CS")));
+        given(quizStepRepository.findByStepOrder(STEP_ORDER))
+                .willReturn(Optional.of(QuizStep.create(STEP_ORDER, UNIT_TITLE, 5)));
+        given(quizRepository.countByStepOrder(STEP_ORDER)).willReturn(TOTAL_COUNT);
     }
 
     @Test
     @DisplayName("마커를 제거한 본문과 하이라이트 구간을 함께 반환한다")
     void returns_summary_with_highlights() {
-        given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(annotatedQuizWithId(QUIZ_ID)));
+        Quiz quiz = annotatedQuizWithId(QUIZ_ID);
+        givenExplanationContext(quiz);
 
         QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
 
         assertThat(response.quizId()).isEqualTo(QUIZ_ID);
+        assertThat(response.questionText()).isEqualTo(quiz.getQuestionText());
+        assertThat(response.type()).isEqualTo(QuizType.OX);
+        assertThat(response.difficulty()).isEqualTo(QuizDifficulty.EASY);
+        assertThat(response.currentNumber()).isEqualTo(SLOT_ORDER);
+        assertThat(response.totalCount()).isEqualTo(TOTAL_COUNT);
+        assertThat(response.courseTitle()).isEqualTo(COURSE_TITLE);
+        assertThat(response.unitTitle()).isEqualTo(UNIT_TITLE);
         assertThat(response.explanationSummary()).hasSize(2);
 
         QuizExplanationResponse.AnnotatedText firstLine =
@@ -71,7 +101,7 @@ class QuizExplanationServiceTest {
     @Test
     @DisplayName("해설 본문에 없는 키워드도 오답 해설에서 하이라이트된다")
     void highlights_keyword_found_only_in_wrong_answer_explanation() {
-        given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(annotatedQuizWithId(QUIZ_ID)));
+        givenExplanationContext(annotatedQuizWithId(QUIZ_ID));
 
         QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
 
@@ -84,7 +114,7 @@ class QuizExplanationServiceTest {
     @Test
     @DisplayName("대표 꼬리질문을 저작 순서와 무관하게 맨 앞에 둔다")
     void puts_primary_follow_up_question_first() {
-        given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(annotatedQuizWithId(QUIZ_ID)));
+        givenExplanationContext(annotatedQuizWithId(QUIZ_ID));
 
         QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
 
@@ -94,7 +124,7 @@ class QuizExplanationServiceTest {
     @Test
     @DisplayName("예시가 없으면 null이고, 마커가 없는 본문은 하이라이트 없이 내려간다")
     void returns_null_example_and_no_highlights_without_markers() {
-        given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(plainQuizWithId(QUIZ_ID)));
+        givenExplanationContext(plainQuizWithId(QUIZ_ID));
 
         QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
 
@@ -113,5 +143,18 @@ class QuizExplanationServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex ->
                         assertThat(((BusinessException) ex).getErrorType()).isEqualTo(QuizErrorType.QUIZ_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("기본 코스가 없으면 COURSE_NOT_FOUND")
+    void throws_course_not_found_when_course_is_absent() {
+        given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(annotatedQuizWithId(QUIZ_ID)));
+        given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.empty());
+
+        QuizService quizService = service();
+        assertThatThrownBy(() -> quizService.getExplanation(QUIZ_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
+                        .isEqualTo(LearningErrorType.COURSE_NOT_FOUND));
     }
 }

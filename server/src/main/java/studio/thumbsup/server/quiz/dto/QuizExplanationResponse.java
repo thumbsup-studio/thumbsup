@@ -7,19 +7,37 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import studio.thumbsup.server.quiz.ExplanationTextParser;
 import studio.thumbsup.server.quiz.Quiz;
+import studio.thumbsup.server.quiz.QuizDifficulty;
 import studio.thumbsup.server.quiz.QuizFollowUpQuestion;
 import studio.thumbsup.server.quiz.QuizKeyword;
+import studio.thumbsup.server.quiz.QuizType;
 
 /**
- * "해설 조회" 응답 — 해설 화면(S4)이 그리는 데 필요한 콘텐츠만 담는다.
+ * "해설 조회" 응답 — 해설 화면(S4)이 문제 정보와 해설을 함께 그리는 데 필요한 콘텐츠를 담는다.
  *
  * <p>채점 결과(isCorrect)와 정답은 담지 않는다. 해설은 quizId만으로 정해지는 정적 콘텐츠라
  * 채점 이벤트와 무관하고, 여기에 정답 여부를 실으면 이 조회가 정답 제출(#42)이 쓴 행을 읽어야 해서
  * 순서에 묶인다. 정답 여부는 채점 주체인 {@link AnswerSubmitResponse}가 반환한다.
  */
-@Schema(description = "문제 해설 — 핵심 정리, 예시, 오답 해설, 키워드 툴팁, 꼬리질문")
+@Schema(description = "문제 정보와 해설 — 문제 맥락, 핵심 정리, 예시, 오답 해설, 키워드 툴팁, 꼬리질문")
 public record QuizExplanationResponse(
         Long quizId,
+
+        @Schema(description = "문제 본문") String questionText,
+
+        @Schema(description = "문제 유형") QuizType type,
+
+        @Schema(description = "문제 난이도") QuizDifficulty difficulty,
+
+        @Schema(description = "현재 스텝 내 문제 순번", example = "1")
+        int currentNumber,
+
+        @Schema(description = "현재 스텝에 실제 저장된 전체 문제 수", example = "5")
+        long totalCount,
+
+        @Schema(description = "대주제 제목. MVP 기본 Course의 제목") String courseTitle,
+
+        @Schema(description = "소주제 제목. QuizStep의 주제(topic)") String unitTitle,
 
         @Schema(description = "핵심 N줄 정리 — 저장된 본문을 개행으로 나눈 줄 목록")
         List<AnnotatedText> explanationSummary,
@@ -74,12 +92,19 @@ public record QuizExplanationResponse(
                     QuizFollowUpQuestion::isPrimary, Comparator.reverseOrder())
             .thenComparingInt(QuizFollowUpQuestion::getDisplayOrder);
 
-    public static QuizExplanationResponse from(Quiz quiz) {
+    public static QuizExplanationResponse from(Quiz quiz, long totalCount, String courseTitle, String unitTitle) {
         Set<String> knownKeywords =
                 quiz.getKeywords().stream().map(QuizKeyword::getKeyword).collect(Collectors.toSet());
 
         return new QuizExplanationResponse(
                 quiz.getId(),
+                quiz.getQuestionText(),
+                quiz.getType(),
+                quiz.getDifficulty(),
+                quiz.getSlotOrder(),
+                totalCount,
+                courseTitle,
+                unitTitle,
                 ExplanationTextParser.parseLines(quiz.getExplanationSummary(), knownKeywords).stream()
                         .map(AnnotatedText::from)
                         .toList(),

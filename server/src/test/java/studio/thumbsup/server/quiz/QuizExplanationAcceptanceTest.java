@@ -41,10 +41,7 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
 class QuizExplanationAcceptanceTest {
 
     private static final long TEST_USER_ID = 999L;
-
-    /** 시드 마이그레이션의 OX 문제(TCP) — 해설 3줄, 키워드 3건, 예시는 NULL. */
-    private static final long SEEDED_OX_QUIZ_ID = 1L;
-
+    private static final int FORMAL_STEP_ORDER = 1;
     private static final long ABSENT_QUIZ_ID = 999_999L;
 
     @Container
@@ -54,18 +51,29 @@ class QuizExplanationAcceptanceTest {
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
+    private final QuizRepository quizRepository;
 
     QuizExplanationAcceptanceTest(
             @Autowired MockMvc mockMvc,
             @Autowired JwtTokenProvider jwtTokenProvider,
-            @Autowired ObjectMapper objectMapper) {
+            @Autowired ObjectMapper objectMapper,
+            @Autowired QuizRepository quizRepository) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.objectMapper = objectMapper;
+        this.quizRepository = quizRepository;
     }
 
     private String bearerToken() {
         return "Bearer " + jwtTokenProvider.createAccessToken(TEST_USER_ID);
+    }
+
+    /** placeholder(id=1)가 아니라 정식 커리큘럼 1스텝의 첫 OX 문제를 조회한다. */
+    private Quiz seededOxQuiz() {
+        return quizRepository.findByStepOrderOrderBySlotOrderAsc(FORMAL_STEP_ORDER).stream()
+                .filter(quiz -> quiz.getSlotOrder() == 1 && quiz.getType() == QuizType.OX)
+                .findFirst()
+                .orElseThrow();
     }
 
     private JsonNode fetchExplanationData(long quizId) throws Exception {
@@ -96,36 +104,48 @@ class QuizExplanationAcceptanceTest {
     class GetExplanation {
 
         @Test
-        @DisplayName("해설·키워드 설명·꼬리질문을 한 번의 호출로 반환한다")
+        @DisplayName("문제 맥락·해설·키워드 설명·꼬리질문을 한 번의 호출로 반환한다")
         void returns_full_explanation_payload() throws Exception {
-            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", SEEDED_OX_QUIZ_ID)
+            Quiz quiz = seededOxQuiz();
+
+            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", quiz.getId())
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
-                    .andExpect(jsonPath("$.data.quizId").value(SEEDED_OX_QUIZ_ID))
-                    .andExpect(jsonPath("$.data.keywords[0].keyword").value("연결 지향"))
+                    .andExpect(jsonPath("$.data.quizId").value(quiz.getId()))
+                    .andExpect(jsonPath("$.data.questionText").value(quiz.getQuestionText()))
+                    .andExpect(jsonPath("$.data.type").value(quiz.getType().name()))
+                    .andExpect(jsonPath("$.data.difficulty")
+                            .value(quiz.getDifficulty().name()))
+                    .andExpect(jsonPath("$.data.currentNumber").value(quiz.getSlotOrder()))
+                    .andExpect(jsonPath("$.data.totalCount").value(5))
+                    .andExpect(jsonPath("$.data.courseTitle").value("CS 기초"))
+                    .andExpect(jsonPath("$.data.unitTitle").value("OS 개요와 역할(커널·시스템콜·인터럽트)"))
+                    .andExpect(jsonPath("$.data.keywords[0].keyword").value("커널"))
                     .andExpect(jsonPath("$.data.keywords[0].description").isNotEmpty())
-                    .andExpect(jsonPath("$.data.followUpQuestions[0]").value("UDP와 TCP의 핵심 차이는 무엇인가요?"))
+                    .andExpect(jsonPath("$.data.followUpQuestions[0]").value("사용자 모드와 커널 모드의 가장 큰 차이는 무엇인가?"))
                     .andExpect(jsonPath("$.data.wrongAnswerExplanation.text").isNotEmpty());
         }
 
         @Test
         @DisplayName("핵심 정리는 개행 기준으로 나뉜 여러 줄로 내려간다 (핵심 N줄 정리 UI용)")
         void returns_summary_split_into_lines() throws Exception {
-            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", SEEDED_OX_QUIZ_ID)
+            mockMvc.perform(get(
+                                    "/api/v1/quizzes/{quizId}/explanation",
+                                    seededOxQuiz().getId())
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.explanationSummary").isArray())
                     .andExpect(jsonPath("$.data.explanationSummary.length()").value(3))
                     .andExpect(jsonPath("$.data.explanationSummary[0].text").isNotEmpty())
                     .andExpect(jsonPath("$.data.explanationSummary[0].highlights[0].keyword")
-                            .value("연결 지향"));
+                            .value("커널"));
         }
 
         @Test
         @DisplayName("본문에서 마커는 제거되고, 하이라이트 구간이 정확히 그 키워드를 가리킨다")
         void strips_markers_and_anchors_highlights() throws Exception {
-            JsonNode data = fetchExplanationData(SEEDED_OX_QUIZ_ID);
+            JsonNode data = fetchExplanationData(seededOxQuiz().getId());
 
             List<JsonNode> texts = annotatedTexts(data);
             assertThat(texts).isNotEmpty();
@@ -149,7 +169,7 @@ class QuizExplanationAcceptanceTest {
         @Test
         @DisplayName("키워드는 해설 본문뿐 아니라 오답 해설에서도 하이라이트된다")
         void highlights_keywords_outside_the_summary() throws Exception {
-            JsonNode data = fetchExplanationData(SEEDED_OX_QUIZ_ID);
+            JsonNode data = fetchExplanationData(seededOxQuiz().getId());
 
             List<String> wrongAnswerKeywords = new ArrayList<>();
             data.path("wrongAnswerExplanation")
@@ -157,22 +177,31 @@ class QuizExplanationAcceptanceTest {
                     .forEach(highlight ->
                             wrongAnswerKeywords.add(highlight.path("keyword").asText()));
 
-            assertThat(wrongAnswerKeywords).contains("비연결형");
+            assertThat(wrongAnswerKeywords).contains("커널", "사용자 모드", "커널 모드");
         }
 
         @Test
-        @DisplayName("예시가 없는 문제는 explanationExample이 null로 내려간다")
-        void returns_null_example_when_absent() throws Exception {
-            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", SEEDED_OX_QUIZ_ID)
+        @DisplayName("기존 placeholder 문제도 순번과 전체 개수를 포함한 해설을 반환한다")
+        void returns_explanation_for_placeholder_quiz() throws Exception {
+            Quiz placeholder = quizRepository.findByStepOrderOrderBySlotOrderAsc(0).stream()
+                    .findFirst()
+                    .orElseThrow();
+
+            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", placeholder.getId())
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.explanationExample").isEmpty());
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.explanationExample").isEmpty())
+                    .andExpect(jsonPath("$.data.currentNumber").value(1))
+                    .andExpect(jsonPath("$.data.totalCount").value(3));
         }
 
         @Test
         @DisplayName("채점 결과와 정답은 담지 않는다 — 정답 확인 API(#42)의 몫이다")
         void does_not_expose_grading_result() throws Exception {
-            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", SEEDED_OX_QUIZ_ID)
+            mockMvc.perform(get(
+                                    "/api/v1/quizzes/{quizId}/explanation",
+                                    seededOxQuiz().getId())
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.isCorrect").doesNotExist())
@@ -191,7 +220,9 @@ class QuizExplanationAcceptanceTest {
         @Test
         @DisplayName("Authorization 헤더가 없으면 필터체인이 401로 막는다")
         void returns_401_without_token() throws Exception {
-            mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", SEEDED_OX_QUIZ_ID))
+            mockMvc.perform(get(
+                            "/api/v1/quizzes/{quizId}/explanation",
+                            seededOxQuiz().getId()))
                     .andExpect(status().isUnauthorized());
         }
     }
