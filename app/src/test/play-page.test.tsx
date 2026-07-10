@@ -1,171 +1,168 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
-import { mockPlaySession } from "@/features/play/mock-play-session";
+import { getNextQuiz, submitQuizAnswer } from "@/lib/api/quiz";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
-}));
-const { feedMascotMock } = vi.hoisted(() => ({
-  feedMascotMock: vi.fn().mockResolvedValue({ name: "보리", fullness: 100 }),
+  replace: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
 }));
-vi.mock("@/features/home/api", () => ({
-  feedMascot: feedMascotMock,
+
+vi.mock("@/lib/api/quiz", () => ({
+  getNextQuiz: vi.fn(),
+  submitQuizAnswer: vi.fn(),
 }));
+
+const oxQuiz = {
+  quizId: 7,
+  type: "OX" as const,
+  difficulty: "LOW" as const,
+  questionText: "프로세스는 자원을 독립적으로 가진다.",
+  codeSnippet: null,
+  choices: null,
+  blankCount: null,
+  stepOrder: 1,
+  slotOrder: 1,
+};
+
+const multipleChoiceQuiz = {
+  quizId: 8,
+  type: "MULTIPLE_CHOICE" as const,
+  difficulty: "MEDIUM" as const,
+  questionText: "경쟁 상태를 막는 동기화 도구는?",
+  codeSnippet: "if (locked) wait();",
+  choices: [
+    { choiceId: 11, content: "뮤텍스", displayOrder: 1 },
+    { choiceId: 12, content: "캐시", displayOrder: 2 },
+    { choiceId: 13, content: "스택", displayOrder: 3 },
+    { choiceId: 14, content: "힙", displayOrder: 4 },
+  ],
+  blankCount: null,
+  stepOrder: 1,
+  slotOrder: 2,
+};
+
+const keywordBlankQuiz = {
+  quizId: 9,
+  type: "KEYWORD_BLANK" as const,
+  difficulty: "HIGH" as const,
+  questionText: "동시에 접근하면 문제가 생기는 코드 영역은?",
+  codeSnippet: "enter(lock)\n  ____\nleave(lock)",
+  choices: null,
+  blankCount: 1,
+  stepOrder: 1,
+  slotOrder: 3,
+};
 
 describe("PlayPage", () => {
   beforeEach(() => {
     mockRouter.push.mockClear();
-    feedMascotMock.mockClear();
+    mockRouter.replace.mockClear();
+    vi.mocked(getNextQuiz).mockReset();
+    vi.mocked(submitQuizAnswer).mockReset();
     window.localStorage.clear();
   });
 
-  it("renders the low difficulty ox question first and links to insight after grading", async () => {
-    vi.useFakeTimers();
-    const onInsightNavigate = vi.fn();
+  it("loads the next quiz from the API and submits an OX answer", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
 
-    render(<PlayPage onInsightNavigate={onInsightNavigate} session={mockPlaySession} />);
+    render(<PlayPage />);
 
+    expect(await screen.findByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
     expect(screen.getByText("1/5")).toBeInTheDocument();
     expect(screen.getByText("난이도 하")).toBeInTheDocument();
-    expect(screen.queryByText("하")).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "O" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "정답 확인" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("radio", { name: "O" }));
     fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-    await act(async () => {
-      vi.advanceTimersByTime(240);
+
+    await waitFor(() => {
+      expect(submitQuizAnswer).toHaveBeenCalledWith(7, ["O"]);
     });
-
-    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=0&correct=true&streak=1");
-    expect(screen.queryByText("정답입니다")).not.toBeInTheDocument();
-
-    vi.useRealTimers();
+    expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=7&correct=true&streak=1");
   });
 
-  it("renders the multiple choice code question with four choices", () => {
-    render(
-      <PlayPage session={{ ...mockPlaySession, questions: [mockPlaySession.questions[2]] }} />,
-    );
+  it("renders multiple choice choices and submits the selected choice id", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: false });
 
-    expect(screen.getByText("사지선다")).toBeInTheDocument();
+    render(<PlayPage />);
+
+    expect(await screen.findByText("경쟁 상태를 막는 동기화 도구는?")).toBeInTheDocument();
     expect(screen.getByText("ts")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "사지선다 선택지" })).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(4);
+
+    fireEvent.click(screen.getByRole("radio", { name: /뮤텍스/ }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+    await waitFor(() => {
+      expect(submitQuizAnswer).toHaveBeenCalledWith(8, ["11"]);
+    });
+    expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=8&correct=false&streak=0");
   });
 
-  it("renders the keyword blank input and accepts a normalized answer", async () => {
-    vi.useFakeTimers();
-    const onInsightNavigate = vi.fn();
+  it("renders keyword blank input and submits entered answers", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue(keywordBlankQuiz);
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
 
-    render(
-      <PlayPage
-        onInsightNavigate={onInsightNavigate}
-        session={{ ...mockPlaySession, questions: [mockPlaySession.questions[4]] }}
-      />,
-    );
+    render(<PlayPage />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "핵심 키워드" }), {
+    expect(
+      await screen.findByText("동시에 접근하면 문제가 생기는 코드 영역은?"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "핵심 키워드 1" }), {
       target: { value: "critical section" },
     });
     fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-    await act(async () => {
-      vi.advanceTimersByTime(240);
+
+    await waitFor(() => {
+      expect(submitQuizAnswer).toHaveBeenCalledWith(9, ["critical section"]);
     });
-
-    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=0&correct=true&streak=1");
-
-    vi.useRealTimers();
   });
 
   it("passes the updated consecutive correct streak to insight", async () => {
-    vi.useFakeTimers();
-    const onInsightNavigate = vi.fn();
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz", "2");
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, quizId: 10 });
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
 
-    window.localStorage.setItem("thumbsup:insight-correct-streak:mock-os-process-thread", "2");
+    render(<PlayPage />);
 
-    render(
-      <PlayPage
-        initialQuestionIndex={2}
-        onInsightNavigate={onInsightNavigate}
-        session={mockPlaySession}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("radio", { name: /경쟁 상태/ }));
+    fireEvent.click(await screen.findByRole("radio", { name: "O" }));
     fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-    await act(async () => {
-      vi.advanceTimersByTime(240);
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=10&correct=true&streak=3");
     });
-
-    expect(onInsightNavigate).toHaveBeenCalledWith("/insight?question=2&correct=true&streak=3");
-
-    vi.useRealTimers();
   });
 
-  it("uses Next router push when no navigation override is provided", async () => {
-    vi.useFakeTimers();
+  it("shows an error state and retries loading the quiz", async () => {
+    vi.mocked(getNextQuiz)
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce(oxQuiz);
 
-    render(<PlayPage session={mockPlaySession} />);
+    render(<PlayPage />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "O" }));
-    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-    await act(async () => {
-      vi.advanceTimersByTime(240);
-    });
+    expect(await screen.findByText("문제를 불러오지 못했어요.")).toBeInTheDocument();
 
-    expect(mockRouter.push).toHaveBeenCalledWith("/insight?question=0&correct=true&streak=1");
+    fireEvent.click(screen.getByRole("button", { name: "재시도" }));
 
-    vi.useRealTimers();
+    expect(await screen.findByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
+    expect(getNextQuiz).toHaveBeenCalledTimes(2);
   });
 
-  it("can start from a later question index", () => {
-    render(<PlayPage initialQuestionIndex={1} session={mockPlaySession} />);
+  it("redirects to login when the API reports an unauthorized session", async () => {
+    vi.mocked(getNextQuiz).mockRejectedValue({ status: 401 });
 
-    expect(screen.getByText("2/5")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "X" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "이전 문제로 돌아가기" })).toHaveAttribute(
-      "href",
-      "/play?question=0",
-    );
-  });
+    render(<PlayPage />);
 
-  it("feeds the mascot when the last (5th) question is submitted", async () => {
-    vi.useFakeTimers();
-
-    render(<PlayPage initialQuestionIndex={4} session={mockPlaySession} />);
-
-    fireEvent.change(screen.getByRole("textbox", { name: "핵심 키워드" }), {
-      target: { value: "critical section" },
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith("/login");
     });
-    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-    await act(async () => {
-      vi.advanceTimersByTime(240);
-    });
-
-    expect(feedMascotMock).toHaveBeenCalledTimes(1);
-
-    vi.useRealTimers();
-  });
-
-  it("does not feed the mascot before the last question", async () => {
-    vi.useFakeTimers();
-
-    render(<PlayPage session={mockPlaySession} />);
-
-    fireEvent.click(screen.getByRole("radio", { name: "O" }));
-    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-    await act(async () => {
-      vi.advanceTimersByTime(240);
-    });
-
-    expect(feedMascotMock).not.toHaveBeenCalled();
-
-    vi.useRealTimers();
   });
 });

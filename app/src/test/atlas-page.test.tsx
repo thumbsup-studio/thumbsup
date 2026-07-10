@@ -5,8 +5,11 @@ import { AtlasPage } from "@/features/atlas/components/atlas-page";
 import type { AtlasData } from "@/features/atlas/types";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
-const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
 
 const baseData: AtlasData = {
   stats: { learnedNodeCount: 46, connectionCount: 112, weeklyGrowth: 7 },
