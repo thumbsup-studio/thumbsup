@@ -155,6 +155,72 @@ export function PlayIcon(props: IconProps) {
   );
 }
 
+/** 포만감 구간별 보리 표정 — home-logic의 getCharacterMood가 fullness로부터 계산한다. */
+export type CharacterMood = "happy" | "neutral" | "hungry";
+
+const MOUTH_PATH: Record<CharacterMood, string> = {
+  happy: "M26,44 Q32,50 38,44",
+  neutral: "M28,45 Q32,47 36,45",
+  hungry: "M28,47 Q32,43 36,47",
+};
+
+/** 홈 캐릭터 '보리' 얼굴 — 웜톤 강아지, 색은 character 전용 토큰 고정 사용. */
+export function DogIcon({
+  mood = "neutral",
+  ...props
+}: IconProps & { mood?: CharacterMood }) {
+  return (
+    <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" {...props}>
+      <path d="M10,32 Q7,10 25,19 Q22,29 10,32 Z" className="fill-character-fur" />
+      <path d="M54,32 Q57,10 39,19 Q42,29 54,32 Z" className="fill-character-fur" />
+      <circle cx={32} cy={34} r={21} className="fill-character-fur" />
+      <circle cx={18} cy={38} r={3} className="fill-character-blush" opacity={0.8} />
+      <circle cx={46} cy={38} r={3} className="fill-character-blush" opacity={0.8} />
+      <ellipse cx={32} cy={41} rx={13} ry={10} className="fill-character-muzzle" />
+
+      {mood === "hungry" && (
+        <>
+          <path d="M20,24 L27,27" className="stroke-character-nose" strokeLinecap="round" strokeWidth={2} />
+          <path d="M44,24 L37,27" className="stroke-character-nose" strokeLinecap="round" strokeWidth={2} />
+        </>
+      )}
+
+      {mood === "happy" ? (
+        <>
+          <path
+            d="M21,30 Q24,26 27,30"
+            className="stroke-character-nose"
+            fill="none"
+            strokeLinecap="round"
+            strokeWidth={2}
+          />
+          <path
+            d="M37,30 Q40,26 43,30"
+            className="stroke-character-nose"
+            fill="none"
+            strokeLinecap="round"
+            strokeWidth={2}
+          />
+        </>
+      ) : (
+        <>
+          <circle cx={24} cy={30} r={2.2} className="fill-character-nose" />
+          <circle cx={40} cy={30} r={2.2} className="fill-character-nose" />
+        </>
+      )}
+
+      <ellipse cx={32} cy={37} rx={3.5} ry={3} className="fill-character-nose" />
+      <path
+        d={MOUTH_PATH[mood]}
+        fill="none"
+        className="stroke-character-nose"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function DisconnectedNodesIcon(props: IconProps) {
   return (
     <svg aria-hidden="true" fill="none" height={56} viewBox="0 0 56 56" width={56} {...props}>

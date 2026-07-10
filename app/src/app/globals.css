@@ -31,6 +31,12 @@
   --color-graph-fg: #ffffff; /* 다크 위 흰 텍스트(학습중 노드 라벨) */
   --color-graph-fg-muted: #b8c2da; /* 다크 위 보조 텍스트(미학습 라벨·범례) — bg 위 AA 4.5:1↑ */
 
+  /* 홈 캐릭터 '보리' 일러스트 전용 — 카드·게이지는 surface/primary 등 공통 토큰 재사용, 강아지 털색만 별도 */
+  --color-character-fur: #c99b72; /* 강아지 털(귀·얼굴) */
+  --color-character-muzzle: #f0e1c8; /* 주둥이 밝은 패치 */
+  --color-character-nose: #3b2a20; /* 코 */
+  --color-character-blush: #f3b9ac; /* 볼 홍조 */
+
   /* radius */
   --radius-card: 2rem;
   --radius-control: 1rem;
