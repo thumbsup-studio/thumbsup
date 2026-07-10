@@ -11,6 +11,7 @@ export {
   type QuizChoice,
   type QuizDifficulty,
   type QuizExplanationResponse,
+  type QuizFollowUpQuestion,
   type QuizKeyword,
   type QuizNextResponse,
   type QuizType,

@@ -43,6 +43,12 @@ export type QuizKeyword = {
   description: string;
 };
 
+export type QuizFollowUpQuestion = {
+  followUpQuestionId: number;
+  content: string;
+  isPrimary: boolean;
+};
+
 export type QuizExplanationResponse = {
   quizId: number;
   questionText: string;
@@ -56,7 +62,7 @@ export type QuizExplanationResponse = {
   explanationExample: AnnotatedText | null;
   wrongAnswerExplanation: AnnotatedText;
   keywords: QuizKeyword[];
-  followUpQuestions: string[];
+  followUpQuestions: QuizFollowUpQuestion[];
 };
 
 export function getNextQuiz(): Promise<QuizNextResponse> {

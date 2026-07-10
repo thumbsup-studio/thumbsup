@@ -93,7 +93,13 @@ describe("quiz api", () => {
             { keyword: "프로세스", description: "운영체제가 자원을 관리하는 실행 단위" },
             { keyword: "스레드", description: "프로세스 안의 실행 흐름" },
           ],
-          followUpQuestions: ["스레드가 자원을 공유하면 어떤 문제가 생길까요?"],
+          followUpQuestions: [
+            {
+              followUpQuestionId: 10,
+              content: "스레드가 자원을 공유하면 어떤 문제가 생길까요?",
+              isPrimary: true,
+            },
+          ],
         }),
       ),
     );
@@ -105,6 +111,11 @@ describe("quiz api", () => {
       keyword: "프로세스",
       start: 0,
       end: 4,
+    });
+    expect(explanation.followUpQuestions[0]).toEqual({
+      followUpQuestionId: 10,
+      content: "스레드가 자원을 공유하면 어떤 문제가 생길까요?",
+      isPrimary: true,
     });
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/quizzes/7/explanation");
   });
