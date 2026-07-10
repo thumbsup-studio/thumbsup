@@ -8,12 +8,14 @@ import {
   ChevronRightIcon,
   CircleCheckIcon,
   LogOutIcon,
+  MessageSquareIcon,
   SpinnerIcon,
   TargetIcon,
   UserIcon,
 } from "@/components/icons";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
+import { FeedbackSheet } from "@/features/profile/components/feedback-sheet";
 import type { ProfileData } from "@/features/profile/types";
 import { logout } from "@/lib/api";
 import { useAppToast } from "@/providers/app-toast-provider";
@@ -52,6 +54,7 @@ export function ProfilePage({ data }: { data: ProfileData }) {
   const router = useRouter();
   const { showToast } = useAppToast();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [loggedOut, setLoggedOut] = useState(false);
 
@@ -64,6 +67,22 @@ export function ProfilePage({ data }: { data: ProfileData }) {
       doneRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
     }
   }, [loggedOut]);
+
+  // 준비 중 항목(토스트) + 의견 보내기(시트)를 한 리스트로 렌더한다.
+  const settingRows = [
+    ...SETTING_ITEMS.map((item) => ({
+      key: item.key,
+      label: item.label,
+      icon: item.icon,
+      onClick: () => showToast({ message: item.pendingMessage }),
+    })),
+    {
+      key: "feedback",
+      label: "의견 보내기",
+      icon: MessageSquareIcon,
+      onClick: () => setFeedbackOpen(true),
+    },
+  ];
 
   const confirmLogout = async () => {
     setLoggingOut(true);
@@ -103,19 +122,19 @@ export function ProfilePage({ data }: { data: ProfileData }) {
 
         {/* 설정 리스트 — 미구현 항목은 준비 중 토스트 */}
         <section className="overflow-hidden rounded-card border border-border/80 bg-surface shadow-card">
-          {SETTING_ITEMS.map((item, index) => {
-            const Icon = item.icon;
+          {settingRows.map((row, index) => {
+            const Icon = row.icon;
             return (
               <button
-                key={item.key}
+                key={row.key}
                 type="button"
-                onClick={() => showToast({ message: item.pendingMessage })}
+                onClick={row.onClick}
                 className={`flex min-h-14 w-full items-center gap-3.5 px-5 py-4 text-left transition-colors hover:bg-surface-muted ${
-                  index < SETTING_ITEMS.length - 1 ? "border-b border-border" : ""
+                  index < settingRows.length - 1 ? "border-b border-border" : ""
                 }`}
               >
                 <Icon className="size-5 text-ink-muted" />
-                <span className="flex-1 text-base font-semibold text-ink">{item.label}</span>
+                <span className="flex-1 text-base font-semibold text-ink">{row.label}</span>
                 <ChevronRightIcon className="size-4.5 text-ink-muted" />
               </button>
             );
@@ -175,6 +194,8 @@ export function ProfilePage({ data }: { data: ProfileData }) {
           </div>
         </div>
       </BottomSheet>
+
+      <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       {loggedOut ? (
         <div
