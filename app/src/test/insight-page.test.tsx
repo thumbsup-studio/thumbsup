@@ -121,7 +121,10 @@ describe("InsightPage", () => {
     expect(screen.getByText("2/5")).toBeInTheDocument();
     expect(screen.getByText("난이도 하")).toBeInTheDocument();
     expect(screen.getByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
-    expect(screen.getByText("스레드가 자원을 공유하면 어떤 문제가 생길까요?")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "꼬리 질문 풀기" })).toHaveAttribute(
+      "href",
+      "/follow-up?correct=true&streak=0&fq=10",
+    );
     expect(screen.getByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute("href", "/play");
   });
 
