@@ -94,20 +94,38 @@ JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는
 모든 문제 공통 요구사항:
 - explanationSummary: 정확히 개행(\n) 3줄로 된 핵심 요약. 줄 끝 공백·빈 줄 없이 정확히 3줄이어야 한다.
 - wrongAnswerExplanation: 이 문제를 틀렸을 때 보여줄, 왜 틀렸는지 설명하는 해설
-- followUpQuestions: 1개 이상, 그중 정확히 1개는 isPrimary=true
+- followUpQuestions: 1개 이상, 그중 정확히 1개는 isPrimary=true. 각 꼬리질문은 아래 "꼬리질문 상세"를
+  빠짐없이 갖춰야 한다
 - derivedConcepts: 1개 이상
 - keywords: 지문 속에서 학습자가 어려워할 만한 용어 1개 이상과 그 설명
 
-키워드 하이라이트 마커 (explanationSummary·explanationExample·wrongAnswerExplanation 전용 —
-questionText·codeSnippet에는 절대 넣지 마라):
-- keywords에 등록한 각 용어가 처음 등장하는 위치를 [[용어]]로 감싸라.
+꼬리질문 상세 (followUpQuestions의 각 원소):
+- 꼬리질문 화면은 읽기 전용이다 — 학습자가 다시 풀거나 채점받지 않고 읽기만 한다. 그러니 방금 푼
+  문제에서 한 걸음 더 들어가는 질문을 쓰고, 그 답과 정리를 같은 원소 안에 함께 담아라.
+- content: 질문 본문. 여기엔 마커를 넣지 마라 — 서버가 평문 그대로 내려준다.
+- difficulty: 이 꼬리질문 자체의 난이도. 부모 문제의 난이도와 무관하다(HARD 문제의 꼬리질문이 EASY일 수 있다).
+- oneLineAnswer: 질문에 답하는 한 문장. 500자 이내.
+- blocks: 상세 정리. 첫 블록의 label은 반드시 "해설"이다. 그 뒤로는 문제 성격에 맞는 블록을 필요한 만큼
+  덧붙여라(예: "실무 사용처", "흔한 오해", "비교"). label은 50자 이내.
+- keywords: 이 꼬리질문 전용 용어 사전. 부모 문제의 keywords와 별개이며, 부모 지문에 없던 용어를
+  새로 등록해도 된다. 1개 이상.
+
+키워드 하이라이트 마커:
+- 마커를 넣는 곳은 두 묶음뿐이고, 묶음마다 사전이 다르다.
+  (1) 해설 3개 컬럼(explanationSummary·explanationExample·wrongAnswerExplanation) — 그 문제의 keywords를 사전으로 쓴다.
+  (2) 각 꼬리질문의 oneLineAnswer와 blocks의 content — 그 꼬리질문의 keywords를 사전으로 쓴다.
+      부모 문제의 keywords가 아니다.
+- questionText·codeSnippet·followUpQuestions의 content에는 절대 넣지 마라.
+- 사전에 등록한 각 용어가 처음 등장하는 위치를 [[용어]]로 감싸라.
   예: "[[프로세스]]는 실행 중인 프로그램이다."
-- 마커 안 문자열은 keywords[].keyword 값과 공백·대소문자까지 정확히 일치해야 한다.
+- 마커 안 문자열은 keyword 값과 공백·대소문자까지 정확히 일치해야 한다.
   조사(은/는/이/가/을/를 등)는 마커 밖에 둔다. 올바름: [[프로세스]]는 / 잘못됨: [[프로세스는]]
-- 같은 용어를 한 컬럼 안에서 두 번 이상 마킹하지 마라 — 첫 등장 1회만 마킹한다.
+- 같은 용어를 한 필드 안에서 두 번 이상 마킹하지 마라 — 첫 등장 1회만 마킹한다.
+  blocks는 블록 하나하나가 각각 별개의 필드다.
 - 마커를 중첩하거나 겹치게 쓰지 마라 (예: [[가상 [[메모리]]]] 금지).
-- keywords에 등록한 용어는 반드시 이 3개 컬럼 중 최소 한 곳에 자연스러운 문장으로 등장하고
-  마킹돼야 한다. 본문에 자연스럽게 넣을 수 없는 용어는 keywords 목록에 아예 넣지 마라.
+- 커버리지: 문제의 keywords는 해설 3개 컬럼 중 최소 한 곳에, 꼬리질문의 keywords는 그 꼬리질문의
+  oneLineAnswer나 blocks의 content 중 최소 한 곳에 자연스러운 문장으로 등장하고 마킹돼야 한다.
+  본문에 자연스럽게 넣을 수 없는 용어는 keywords 목록에 아예 넣지 마라.
 
 JSON 스키마:
 {
@@ -123,7 +141,18 @@ JSON 스키마:
       "correctAnswer": "OX 전용 정답 \"O\" 또는 \"X\"(그 외 유형은 null)",
       "choices": [{"content": "선택지 내용", "isCorrect": true}],
       "answerKeywords": [["빈칸1 정답", "빈칸1과 같은 뜻의 동의어(있으면)"], ["빈칸2 정답"]],
-      "followUpQuestions": [{"content": "꼬리질문", "isPrimary": true}],
+      "followUpQuestions": [
+        {
+          "content": "꼬리질문 본문 — 마커를 넣지 않는 평문",
+          "isPrimary": true,
+          "difficulty": "EASY | MEDIUM | HARD — 이 꼬리질문 자체의 난이도",
+          "oneLineAnswer": "한 줄 답 — 이 꼬리질문 keywords 용어 첫 등장에 [[용어]] 마커",
+          "blocks": [
+            {"label": "해설", "content": "블록 본문 — 이 꼬리질문 keywords 용어 첫 등장에 [[용어]] 마커"}
+          ],
+          "keywords": [{"keyword": "이 꼬리질문의 어려운 용어", "description": "그 용어의 설명"}]
+        }
+      ],
       "derivedConcepts": ["관련 파생 개념 이름"],
       "keywords": [{"keyword": "지문 속 어려운 용어", "description": "그 용어의 설명"}]
     }
@@ -131,11 +160,15 @@ JSON 스키마:
 }
 ```
 
+`blocks[].type`은 모델에게 받지 않는다 — `FollowUpBlockType`에 `TEXT`뿐이라 고를 여지를 주면 잘못된 값만 늘어난다.
+`QuizPersister`가 `TEXT`로 고정해 저장한다.
+
 ### 프롬프트 설계에서 겪은 실패와 그에 대한 대응
 
 - **동의어를 빈칸으로 착각**: 초기 버전은 "동의어도 인정하고 싶으면 어떻게 하라"는 지시가 없었다 — 모델이 "PCB"와 "Process Control Block"을 별도 빈칸 2개로 쪼개 `answerKeywords` 길이가 실제 빈칸(`___`) 개수와 안 맞는 응답을 냈다. 위 5번 규칙(동의어는 같은 원소 안에)과 `validateAnswerKeywords`의 개수 대조 검증을 함께 추가해 해결.
 - **마커 위치 오탐**: 마커 규칙 없이 요청하면 한국어 조사 때문에 "정렬"이 "정렬되지 않은"의 부분 문자열로 오매칭되는 문제가 있었다(서버 측 문자열 검색 방식일 때). 저작 시점에 `[[키워드]]`로 위치를 명시하는 방식으로 전환하면서 프롬프트에도 "조사는 마커 밖" 규칙을 명시했다.
 - **키워드가 본문에 없음**: 모델이 `keywords` 목록만 만들고 본문에 마킹을 빼먹는 경우가 있어 "커버리지" 문장("반드시 이 3개 컬럼 중 최소 한 곳에 …")을 프롬프트에 넣고, 서버 검증(`validateKeywordMarkers`)으로 이중 방어했다 — 프롬프트만 믿지 않는다.
+- **상세 없는 꼬리질문은 화면에서 사라진다**(#133): 조회 API가 `hasDetail()`로 거르기 때문에, 꼬리질문 상세를 빠뜨린 생성물은 에러 없이 조용히 누락된다. 그래서 프롬프트에 상세 필드를 넣는 데 그치지 않고 `validateFollowUpQuestions`로 저장 전에 막는다.
 
 ## 검증 규칙 (`QuizGenerationService#validate`)
 
@@ -146,14 +179,23 @@ JSON 스키마:
 - `followUpQuestions` 1개 이상, 그중 정확히 1개만 `isPrimary=true`
 - `derivedConcepts`·`keywords` 1개 이상
 - `explanationSummary` 정확히 3줄, 빈 줄·줄 끝 공백 없음
-- 마커 괄호 짝 검증, 마커 문자열이 `keywords`에 등록된 것과 정확히 일치(오타 감지), 같은 필드 내 중복 마킹 금지, 등록된 키워드 전부가 최소 한 컬럼에 마킹돼 있는지(커버리지)
 - 타입별: OX는 `correctAnswer`가 `O`/`X`, 사지선다는 선택지 정확히 4개 중 정답 1개, 키워드 빈칸은 `answerKeywords` 배열 길이가 `questionText`의 실제 빈칸(`___`) 개수와 일치
+- **꼬리질문마다**: `content` 비어있지 않고 마커 없음 · `difficulty` non-null · `oneLineAnswer` 비어있지 않음 · `keywords` 1개 이상 · `blocks` 1개 이상이고 첫 블록 `label`이 `해설`
+
+### 마커 검증 (`KeywordMarkerValidator`)
+
+괄호 짝 · 마커 문자열이 사전에 등록된 것과 정확히 일치(오타 감지) · 같은 필드 안에서 중복 마킹 금지 · 등록된 키워드 전부가 최소 한 곳에 마킹돼 있는지(커버리지).
+
+**사전이 무엇이냐는 호출자가 정한다.** 해설 3개 컬럼은 그 문제의 `keywords`를, 꼬리질문의 `oneLineAnswer`·`blocks[].content`는 **그 꼬리질문의** `keywords`를 쓴다. 그래서 `validateKeywordMarkers`(문제용)와 `validateFollowUpMarkers`(꼬리질문용)가 갈라져 있다.
+
+"첫 등장 1회"는 **필드 단위** 규칙이다. `blocks`는 블록 하나가 곧 한 필드이므로, 서로 다른 블록에서 같은 키워드를 한 번씩 마킹하는 것은 허용된다. 블록들을 이어붙여 한 번에 검사하면 규칙의 의미가 달라진다.
 
 ## 영속화 (`QuizPersister`)
 
 - `stepOrder`는 `quizRepository.findMaxStepOrder() + 1`로 자동 이어붙인다(수동 지정 없음) — 실행할 때마다 다음 빈 스텝에 채워진다.
 - `QuizStep`(스텝 번호 + 주제명, `step_order` UNIQUE) 먼저 저장 후 5문제를 `slotOrder` 1~5로 배정.
 - `quiz.step_order`는 `quiz_step.step_order`를 FK로 참조 — 커리큘럼 구조 무결성이 DB 레벨에서 강제된다.
+- 꼬리질문은 `attachDetail`(난이도·한 줄 답) → `addBlock`(`display_order` 1부터) → `addKeyword` 순으로 상세를 함께 저장한다. `difficulty`와 `one_line_answer`는 DB CHECK 제약(`ck_quiz_follow_up_question_detail`)이 짝으로만 존재하도록 강제한다.
 
 ## 환경설정
 
@@ -170,8 +212,18 @@ JSON 스키마:
 
 직접 prod API를 호출해 생성하지 않는 이유: 검수 없이 LLM 원본이 바로 서비스에 노출되는 걸 막고, Flyway 마이그레이션 파일 자체가 "무엇이 언제 반영됐는지"의 감사 기록(정본)이 되게 하기 위함.
 
+### 이미 있는 문제에 콘텐츠만 덧붙일 때
+
+문제·해설을 그대로 두고 자식 행만 채우는 경우다(#133의 꼬리질문 상세 백필이 그 예).
+
+- `LAST_INSERT_ID()`를 쓸 수 없다. 대신 **업무상 좌표**로 찾는다: `(step_order, slot_order)` → `quiz_id` → `(quiz_id, display_order)` → `follow_up_question_id`. auto-increment id는 로컬과 prod가 다르다.
+- 좌표가 어긋나 변수가 `NULL`이 되면 이어지는 `INSERT`가 `NOT NULL` 제약에 걸려 마이그레이션 전체가 실패한다 — 조용히 넘어가지 않는 게 의도다.
+- **적용된 마이그레이션 파일은 절대 수정하지 않는다.** 새 파일로 낸다.
+- 실물 예시: `V20260710174600__seed_follow_up_question_detail.sql`(샘플 3건, 손저작), `V20260710213249__backfill_follow_up_question_detail.sql`(커리큘럼 120건, 스크립트 생성).
+
 ## 알려진 주의사항
 
 - 마커가 없는(구버전) 시드 데이터는 해설 조회 API에서 `highlights`가 빈 배열로 나간다 — 에러 아님, 정상.
 - Testcontainers 통합 테스트는 seed 마이그레이션까지 전부 적용되므로, 테스트 픽스처의 `step_order`는 실제 커리큘럼 범위와 겹치지 않는 값(예: 101/102)을 쓴다.
 - 생성 실패는 스텝 단위로 전부 롤백된다(부분 저장 없음) — 재시도는 같은 주제로 다시 실행하면 된다(단, `stepOrder`가 자동 증가하므로 실패한 시도가 스텝 번호를 소비하지는 않는다 — 저장 자체가 안 됐으므로).
+- **상세 없는 꼬리질문은 시드에 더 이상 없다**(#133 백필 이후). "상세가 없을 때 404" 같은 경로를 테스트하려면 픽스처를 직접 만들어야 한다 — 시드에서 주워 쓰면 `orElseThrow()`에서 터진다.
