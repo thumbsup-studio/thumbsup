@@ -9,23 +9,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { getProgressPercent } from "@/features/play/play-logic";
 import {
-  getNextQuiz,
-  type QuizDifficulty,
-  type QuizNextResponse,
-  submitQuizAnswer,
-} from "@/lib/api/quiz";
+  difficultyLabels,
+  getPlayQuestionKindLabel,
+  isUnauthorized,
+} from "@/features/play/quiz-shared";
+import { getNextQuiz, type QuizNextResponse, submitQuizAnswer } from "@/lib/api/quiz";
 
 type AnswerDraft = boolean | string | string[] | null;
 
 const optionLabels = ["A", "B", "C", "D"];
-const correctStreakStorageKey = "thumbsup:insight-correct-streak:api-quiz";
+const correctStreakStorageKeyPrefix = "thumbsup:insight-correct-streak:api-quiz";
 const defaultStepTotal = 5;
-
-const difficultyLabels: Record<QuizDifficulty, string> = {
-  LOW: "난이도 하",
-  MEDIUM: "난이도 중",
-  HIGH: "난이도 상",
-};
 
 export function PlayPage() {
   const router = useRouter();
@@ -64,6 +58,9 @@ export function PlayPage() {
       try {
         const nextQuiz = await getNextQuiz();
         if (!ignore) {
+          if (nextQuiz.slotOrder === 1) {
+            resetCorrectStreak(nextQuiz.stepOrder);
+          }
           setQuiz(nextQuiz);
         }
       } catch (loadError) {
@@ -99,7 +96,7 @@ export function PlayPage() {
 
     try {
       const result = await submitQuizAnswer(quiz.quizId, getSubmittedAnswers(quiz, draft));
-      const nextStreak = updateCorrectStreak(result.isCorrect);
+      const nextStreak = updateCorrectStreak(quiz.stepOrder, result.isCorrect);
       router.push(
         `/insight?quizId=${quiz.quizId}&correct=${result.isCorrect ? "true" : "false"}&streak=${nextStreak}`,
       );
@@ -381,17 +378,7 @@ function getBlankSlots(blankCount: number) {
   return Array.from({ length: blankCount }, (_, index) => index + 1);
 }
 
-function getQuestionKindLabel(type: QuizNextResponse["type"]) {
-  if (type === "OX") {
-    return "OX";
-  }
-
-  if (type === "MULTIPLE_CHOICE") {
-    return "사지선다";
-  }
-
-  return "키워드 빈칸";
-}
+const getQuestionKindLabel = getPlayQuestionKindLabel;
 
 function canSubmitAnswer(quiz: QuizNextResponse, draft: AnswerDraft) {
   if (quiz.type === "OX") {
@@ -418,23 +405,27 @@ function getSubmittedAnswers(quiz: QuizNextResponse, draft: AnswerDraft) {
     return [String(draft ?? "")];
   }
 
-  return Array.isArray(draft) ? draft : [];
+  return Array.isArray(draft) ? draft.map((answer) => answer.trim()) : [];
 }
 
-function readCorrectStreak() {
-  const value = Number(window.localStorage.getItem(correctStreakStorageKey) ?? 0);
+function getCorrectStreakStorageKey(stepOrder: number) {
+  return `${correctStreakStorageKeyPrefix}:${stepOrder}`;
+}
+
+function resetCorrectStreak(stepOrder: number) {
+  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), "0");
+}
+
+function readCorrectStreak(stepOrder: number) {
+  const value = Number(window.localStorage.getItem(getCorrectStreakStorageKey(stepOrder)) ?? 0);
 
   return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
 }
 
-function updateCorrectStreak(correct: boolean) {
-  const nextStreak = correct ? readCorrectStreak() + 1 : 0;
+function updateCorrectStreak(stepOrder: number, correct: boolean) {
+  const nextStreak = correct ? readCorrectStreak(stepOrder) + 1 : 0;
 
-  window.localStorage.setItem(correctStreakStorageKey, String(nextStreak));
+  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), String(nextStreak));
 
   return nextStreak;
-}
-
-function isUnauthorized(error: unknown) {
-  return typeof error === "object" && error !== null && "status" in error && error.status === 401;
 }

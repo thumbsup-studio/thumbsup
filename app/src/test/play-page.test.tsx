@@ -20,7 +20,7 @@ vi.mock("@/lib/api/quiz", () => ({
 const oxQuiz = {
   quizId: 7,
   type: "OX" as const,
-  difficulty: "LOW" as const,
+  difficulty: "EASY" as const,
   questionText: "프로세스는 자원을 독립적으로 가진다.",
   codeSnippet: null,
   choices: null,
@@ -49,7 +49,7 @@ const multipleChoiceQuiz = {
 const keywordBlankQuiz = {
   quizId: 9,
   type: "KEYWORD_BLANK" as const,
-  difficulty: "HIGH" as const,
+  difficulty: "HARD" as const,
   questionText: "동시에 접근하면 문제가 생기는 코드 영역은?",
   codeSnippet: "enter(lock)\n  ____\nleave(lock)",
   choices: null,
@@ -106,7 +106,7 @@ describe("PlayPage", () => {
     expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=8&correct=false&streak=0");
   });
 
-  it("renders keyword blank input and submits entered answers", async () => {
+  it("renders keyword blank input and submits trimmed answers", async () => {
     vi.mocked(getNextQuiz).mockResolvedValue(keywordBlankQuiz);
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
 
@@ -117,7 +117,7 @@ describe("PlayPage", () => {
     ).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("textbox", { name: "핵심 키워드 1" }), {
-      target: { value: "critical section" },
+      target: { value: "  critical section  " },
     });
     fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
@@ -127,8 +127,8 @@ describe("PlayPage", () => {
   });
 
   it("passes the updated consecutive correct streak to insight", async () => {
-    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz", "2");
-    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, quizId: 10 });
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:1", "2");
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, quizId: 10, slotOrder: 3 });
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
 
     render(<PlayPage />);
@@ -138,6 +138,21 @@ describe("PlayPage", () => {
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=10&correct=true&streak=3");
+    });
+  });
+
+  it("resets the consecutive correct streak when a step starts from slot one", async () => {
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:1", "4");
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, quizId: 11, slotOrder: 1 });
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
+
+    render(<PlayPage />);
+
+    fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=11&correct=true&streak=1");
     });
   });
 

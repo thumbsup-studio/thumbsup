@@ -59,7 +59,7 @@ const explanation = {
   quizId: 7,
   questionText: "프로세스는 자원을 독립적으로 가진다.",
   type: "OX" as const,
-  difficulty: "LOW" as const,
+  difficulty: "EASY" as const,
   currentNumber: 2,
   totalCount: 5,
   courseTitle: "운영체제",
@@ -174,6 +174,9 @@ describe("InsightPage", () => {
       "data-src",
       "/lottie/fanfare.lottie",
     );
+    await waitFor(() => {
+      expect(lottieCompleteListeners.size).toBeGreaterThan(0);
+    });
 
     act(() => {
       for (const listener of lottieCompleteListeners) {
@@ -181,7 +184,9 @@ describe("InsightPage", () => {
       }
     });
 
-    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+    });
   });
 
   it("redirects to login when the explanation API reports an unauthorized session", async () => {
@@ -192,5 +197,14 @@ describe("InsightPage", () => {
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith("/login");
     });
+  });
+
+  it("does not show fanfare while the explanation API is in an error state", async () => {
+    vi.mocked(getQuizExplanation).mockRejectedValue(new Error("network"));
+
+    render(<InsightPage correct quizId={7} correctStreak={3} />);
+
+    expect(await screen.findByText("해설을 불러오지 못했어요.")).toBeInTheDocument();
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
 });

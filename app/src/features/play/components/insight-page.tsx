@@ -12,11 +12,14 @@ import {
 } from "@/features/play/components/keyword-tooltip-text";
 import { getProgressPercent } from "@/features/play/play-logic";
 import {
+  difficultyLabels,
+  getInsightQuestionKindLabel,
+  isUnauthorized,
+} from "@/features/play/quiz-shared";
+import {
   type AnnotatedText,
   getQuizExplanation,
-  type QuizDifficulty,
   type QuizExplanationResponse,
-  type QuizType,
 } from "@/lib/api/quiz";
 
 const FANFARE_SRC = "/lottie/fanfare.lottie";
@@ -25,12 +28,6 @@ type InsightPageProps = {
   correct: boolean;
   correctStreak?: number;
   quizId: number | null;
-};
-
-const difficultyLabels: Record<QuizDifficulty, string> = {
-  LOW: "난이도 하",
-  MEDIUM: "난이도 중",
-  HIGH: "난이도 상",
 };
 
 export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageProps) {
@@ -44,7 +41,12 @@ export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageP
 
   const fanfareKey =
     quizId !== null && correct && correctStreak >= 3 ? `${quizId}:${correctStreak}` : null;
-  const showFanfare = fanfareKey !== null && dismissedFanfareKey !== fanfareKey;
+  const showFanfare =
+    fanfareKey !== null &&
+    dismissedFanfareKey !== fanfareKey &&
+    !isLoading &&
+    !error &&
+    explanation !== null;
   const keywordDict = useMemo(
     () => getKeywordDescriptionMap(explanation?.keywords ?? []),
     [explanation],
@@ -316,17 +318,7 @@ function AnnotatedParagraph({
   );
 }
 
-function getQuestionKindLabel(type: QuizType) {
-  if (type === "OX") {
-    return "OX 해설";
-  }
-
-  if (type === "MULTIPLE_CHOICE") {
-    return "사지선다 해설";
-  }
-
-  return "키워드 빈칸 해설";
-}
+const getQuestionKindLabel = getInsightQuestionKindLabel;
 
 function getSummaryItems(lines: AnnotatedText[]) {
   const occurrences = new Map<string, number>();
@@ -341,8 +333,4 @@ function getSummaryItems(lines: AnnotatedText[]) {
       position: index + 1,
     };
   });
-}
-
-function isUnauthorized(error: unknown) {
-  return typeof error === "object" && error !== null && "status" in error && error.status === 401;
 }

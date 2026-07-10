@@ -1,7 +1,7 @@
 import { apiRequest } from "./client";
 
 export type QuizType = "OX" | "MULTIPLE_CHOICE" | "KEYWORD_BLANK";
-export type QuizDifficulty = "LOW" | "MEDIUM" | "HIGH";
+export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD";
 
 export type QuizChoice = {
   choiceId: number;

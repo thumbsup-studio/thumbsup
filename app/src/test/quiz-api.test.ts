@@ -31,7 +31,7 @@ describe("quiz api", () => {
         envelope("SUCCESS", {
           quizId: 7,
           type: "OX",
-          difficulty: "LOW",
+          difficulty: "EASY",
           questionText: "프로세스는 자원을 독립적으로 가진다.",
           codeSnippet: null,
           choices: null,
@@ -73,7 +73,7 @@ describe("quiz api", () => {
           quizId: 7,
           questionText: "프로세스는 자원을 독립적으로 가진다.",
           type: "OX",
-          difficulty: "LOW",
+          difficulty: "EASY",
           currentNumber: 2,
           totalCount: 5,
           courseTitle: "운영체제",
