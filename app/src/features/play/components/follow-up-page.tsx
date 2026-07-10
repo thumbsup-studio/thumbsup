@@ -199,9 +199,10 @@ export function FollowUpPage({
             <p className="px-1 text-sm font-bold text-ink">상세 정리</p>
 
             {data.blocks.map((block) => (
+              // label은 서버 섹션 제목이라 중복 가능성이 있어 내용 일부를 더해 고유 key를 만든다.
               <div
                 className="mt-2.5 rounded-control border border-border bg-surface px-4 py-4"
-                key={block.label}
+                key={`${block.label}-${block.content.text.slice(0, 32)}`}
               >
                 <p className="text-sm font-bold text-ink">{block.label}</p>
                 {revealed ? (

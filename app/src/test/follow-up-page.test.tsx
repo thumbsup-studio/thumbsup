@@ -93,4 +93,16 @@ describe("FollowUpPage", () => {
       expect(mockRouter.replace).toHaveBeenCalledWith("/login");
     });
   });
+
+  it("shows an error state with retry when the fetch fails generically", async () => {
+    fetchFollowUpQuestion.mockRejectedValueOnce(new Error("network"));
+    renderFollowUp();
+
+    expect(await screen.findByText("꼬리 질문을 불러오지 못했어요")).toBeInTheDocument();
+
+    fetchFollowUpQuestion.mockResolvedValueOnce(detail);
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+
+    expect(await screen.findByText(detail.question)).toBeInTheDocument();
+  });
 });
