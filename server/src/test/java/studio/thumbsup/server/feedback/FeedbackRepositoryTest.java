@@ -2,6 +2,8 @@ package studio.thumbsup.server.feedback;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -37,18 +39,30 @@ class FeedbackRepositoryTest {
         this.feedbackRepository = feedbackRepository;
     }
 
-    @Test
-    void 저장하면_id가_채번된다() {
-        Feedback saved = feedbackRepository.save(Feedback.create(7L, "좋아요"));
+    @Nested
+    @DisplayName("의견 저장")
+    class SaveFeedback {
 
-        assertThat(saved.getId()).isNotNull();
+        @Test
+        @DisplayName("id가 채번된다")
+        void assigns_id_on_save() {
+            Feedback saved = feedbackRepository.save(Feedback.create(7L, "좋아요"));
+
+            assertThat(saved.getId()).isNotNull();
+        }
     }
 
-    @Test
-    void 감사_필드는_저장_시_자동으로_채워진다() {
-        Feedback saved = feedbackRepository.save(Feedback.create(7L, "좋아요"));
+    @Nested
+    @DisplayName("감사 필드")
+    class AuditFields {
 
-        assertThat(saved.getCreatedAt()).isNotNull(); // Flyway NOT NULL 컬럼 + Auditing 동작 확인
-        assertThat(saved.getUpdatedAt()).isNotNull();
+        @Test
+        @DisplayName("저장 시 자동으로 채워진다")
+        void populated_on_save() {
+            Feedback saved = feedbackRepository.save(Feedback.create(7L, "좋아요"));
+
+            assertThat(saved.getCreatedAt()).isNotNull(); // Flyway NOT NULL 컬럼 + Auditing 동작 확인
+            assertThat(saved.getUpdatedAt()).isNotNull();
+        }
     }
 }

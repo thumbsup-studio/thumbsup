@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -53,44 +55,53 @@ class FeedbackControllerTest {
         SecurityContextHolder.clearContext();
     }
 
-    @Test
-    void 의견_생성_성공시_201과_id를_반환한다() throws Exception {
-        given(feedbackService.create(eq(7L), any())).willReturn(new FeedbackCreateResponse(1L));
+    @Nested
+    @DisplayName("의견 생성")
+    class CreateFeedback {
 
-        mockMvc.perform(post("/api/v1/feedbacks")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new FeedbackCreateRequest("좋아요"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.id").value(1));
-    }
+        @Test
+        @DisplayName("성공하면 201과 id를 반환한다")
+        void returns_201_with_id_on_success() throws Exception {
+            given(feedbackService.create(eq(7L), any())).willReturn(new FeedbackCreateResponse(1L));
 
-    @Test
-    void content가_공백이면_INVALID_INPUT() throws Exception {
-        mockMvc.perform(post("/api/v1/feedbacks")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new FeedbackCreateRequest("   "))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-    }
+            mockMvc.perform(post("/api/v1/feedbacks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new FeedbackCreateRequest("좋아요"))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.id").value(1));
+        }
 
-    @Test
-    void content가_비어있으면_INVALID_INPUT() throws Exception {
-        mockMvc.perform(post("/api/v1/feedbacks")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new FeedbackCreateRequest(""))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-    }
+        @Test
+        @DisplayName("content가 공백이면 400 INVALID_INPUT을 반환한다")
+        void returns_400_when_content_is_blank() throws Exception {
+            mockMvc.perform(post("/api/v1/feedbacks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new FeedbackCreateRequest("   "))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
 
-    @Test
-    void content가_1000자를_초과하면_INVALID_INPUT() throws Exception {
-        String tooLong = "가".repeat(1001);
+        @Test
+        @DisplayName("content가 비어있으면 400 INVALID_INPUT을 반환한다")
+        void returns_400_when_content_is_empty() throws Exception {
+            mockMvc.perform(post("/api/v1/feedbacks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new FeedbackCreateRequest(""))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
 
-        mockMvc.perform(post("/api/v1/feedbacks")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new FeedbackCreateRequest(tooLong))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        @Test
+        @DisplayName("content가 1000자를 초과하면 400 INVALID_INPUT을 반환한다")
+        void returns_400_when_content_exceeds_max_length() throws Exception {
+            String tooLong = "가".repeat(1001);
+
+            mockMvc.perform(post("/api/v1/feedbacks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new FeedbackCreateRequest(tooLong))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
     }
 }
