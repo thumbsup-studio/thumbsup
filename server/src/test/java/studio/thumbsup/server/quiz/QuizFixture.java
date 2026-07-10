@@ -1,9 +1,22 @@
 package studio.thumbsup.server.quiz;
 
 import java.util.List;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /** 퀴즈 테스트 픽스처 — feature 소유. 영속화 전 완전한 aggregate를 만들어 반환한다. */
 public final class QuizFixture {
+
+    public static Course course(Long id) {
+        Course course = Course.create("CS 기초", "CS");
+        ReflectionTestUtils.setField(course, "id", id);
+        return course;
+    }
+
+    public static UserProgress userProgress(Long id, Long userId, int streak, int points) {
+        UserProgress progress = UserProgress.create(userId, streak, points);
+        ReflectionTestUtils.setField(progress, "id", id);
+        return progress;
+    }
 
     public static Quiz oxQuiz() {
         Quiz quiz = Quiz.create(

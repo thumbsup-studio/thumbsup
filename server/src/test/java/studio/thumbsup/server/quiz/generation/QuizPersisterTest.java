@@ -107,6 +107,7 @@ class QuizPersisterTest {
         verify(quizStepRepository).save(captor.capture());
         assertThat(captor.getValue().getStepOrder()).isEqualTo(4);
         assertThat(captor.getValue().getTopic()).isEqualTo("CPU 스케줄링 기초");
+        assertThat(captor.getValue().getEstimatedMinutes()).isEqualTo(3);
     }
 
     @Test

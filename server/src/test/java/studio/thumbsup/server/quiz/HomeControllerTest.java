@@ -1,4 +1,4 @@
-package studio.thumbsup.server.learning;
+package studio.thumbsup.server.quiz;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.exception.GlobalExceptionHandler;
-import studio.thumbsup.server.learning.dto.HomeResponse;
+import studio.thumbsup.server.quiz.dto.HomeResponse;
 
 /** Controller 슬라이스 테스트 — standalone MockMvc로 요청/응답 계약만 검증한다 (피라미드 2층). */
 @ExtendWith(MockitoExtension.class)

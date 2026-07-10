@@ -31,12 +31,17 @@ public class QuizStep extends BaseEntity {
     @Column(nullable = false)
     private String topic;
 
-    private QuizStep(int stepOrder, String topic) {
+    /** 홈 화면 "오늘의 학습" 카드에 표시하는 예상 소요 시간(분) — 원래 learning.Unit이 갖던 필드다(#117). */
+    @Column(nullable = false)
+    private int estimatedMinutes;
+
+    private QuizStep(int stepOrder, String topic, int estimatedMinutes) {
         this.stepOrder = stepOrder;
         this.topic = topic;
+        this.estimatedMinutes = estimatedMinutes;
     }
 
-    public static QuizStep create(int stepOrder, String topic) {
-        return new QuizStep(stepOrder, topic);
+    public static QuizStep create(int stepOrder, String topic, int estimatedMinutes) {
+        return new QuizStep(stepOrder, topic, estimatedMinutes);
     }
 }

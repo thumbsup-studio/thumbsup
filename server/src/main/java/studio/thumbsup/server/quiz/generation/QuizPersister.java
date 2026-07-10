@@ -17,6 +17,9 @@ import studio.thumbsup.server.quiz.QuizType;
 @Service
 class QuizPersister {
 
+    /** 생성 파이프라인은 소요 시간을 산출하지 않는다 — 콘텐츠 저작 시 수동 조정 예정인 MVP 기본값(#117). */
+    private static final int DEFAULT_ESTIMATED_MINUTES = 3;
+
     private final QuizRepository quizRepository;
     private final QuizStepRepository quizStepRepository;
 
@@ -30,7 +33,7 @@ class QuizPersister {
         int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
 
         // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
-        quizStepRepository.save(QuizStep.create(stepOrder, courseTopic));
+        quizStepRepository.save(QuizStep.create(stepOrder, courseTopic, DEFAULT_ESTIMATED_MINUTES));
 
         int slotOrder = 1;
         for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
