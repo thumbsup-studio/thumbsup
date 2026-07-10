@@ -132,9 +132,9 @@ CORS의 기준은 "서버 위치"가 아니라 **브라우저에 떠 있는 FE �
 | 서버 프로파일 | 허용 Origin | 커버하는 상황 |
 |------|-------------|--------------|
 | local | `http://localhost:3000` (Next.js 개발 서버 기본 포트 — FE 확인 필요) | 개발자(FE든 서버든)가 **자기 로컬에 띄운 서버**를 로컬 FE에서 호출 |
-| prod | `https://thumbsup-app.vercel.app`, `https://*-thumbsup.vercel.app` | Vercel main 배포 및 PR preview → 운영 서버 |
+| prod | `http://localhost:3000`, `https://thumbsup-app.vercel.app`, `https://*-thumbsup.vercel.app` | 로컬 FE, Vercel main 배포 및 PR preview → 운영 서버 |
 
-- 로컬 FE(3000) → **prod 서버** 호출은 의도적으로 막힌다 (로컬 개발이 운영 데이터를 건드리는 사고 방지). 개발 중 API가 필요하면 서버를 로컬에서 띄운다 — 실행 방법은 서버 README 참조.
+- 로컬 FE(3000) → **prod 서버** 호출을 허용한다. 서버를 로컬에 띄우지 못하는 FE 개발자는 배포 API를 기본으로 쓰고, 로컬 서버를 직접 띄우는 개발자는 `NEXT_PUBLIC_API_URL=http://localhost:8080`으로 override한다.
 - 인증 쿠키/세션 호환을 위해 서버는 Spring `allowedOriginPatterns`와 `allowCredentials(true)`를 사용한다. `allowCredentials(true)`에서는 `allowedOrigins=*`를 쓰지 않는다.
 - 허용 메서드: `GET, POST, PUT, PATCH, DELETE`. `Authorization`, `Content-Type`, `X-Request-Id` 헤더 허용.
 

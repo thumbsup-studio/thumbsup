@@ -24,16 +24,14 @@ const SUCCESS_CODE = "SUCCESS";
 
 /**
  * API 베이스 URL.
- * - 로컬 개발(`next dev`): env 미설정 시 로컬 서버(:8080)가 기본(비밀 아님).
- * - 배포(Vercel preview·prod): `NEXT_PUBLIC_API_URL` 필수 — 운영 API 주소를 소스에 하드코딩하지 않는다.
- *   미설정 시 첫 API 요청에서 throw 한다(빌드/CI 게이트를 깨지 않도록 모듈 로드가 아닌 요청 시점 검사).
- *   (주의: NEXT_PUBLIC_ 값은 빌드 시 클라이언트 번들에 인라인되므로 배포 산출물엔 노출된다 —
- *    이 처리는 '공개 소스 레포에 주소를 남기지 않는' 목적이지 브라우저에서 숨기는 게 아니다.)
+ * - env 미설정 시 배포 API를 기본으로 쓴다. 백엔드 CORS가 로컬 FE origin을 허용하므로
+ *   서버를 로컬에 띄우지 못하는 FE 개발자도 `next dev`만으로 API를 붙일 수 있다.
+ * - 로컬 서버를 직접 띄우는 개발자는 `.env.local`의 `NEXT_PUBLIC_API_URL=http://localhost:8080`
+ *   으로 명시해서 override한다.
+ * - `NEXT_PUBLIC_` 값은 클라이언트 번들에 인라인되므로 공개 가능한 API origin만 넣는다.
  */
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development" ? "http://localhost:8080" : "")
-).replace(/\/+$/, ""); // 끝 슬래시 제거 — env 값에 trailing slash가 있어도 `//api/v1` 더블 슬래시 방지
+const DEFAULT_API_URL = "https://thumbsup-api.duckdns.org";
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/+$/, ""); // 끝 슬래시 제거 — env 값에 trailing slash가 있어도 `//api/v1` 더블 슬래시 방지
 
 const PREFIX = "/api/v1";
 
@@ -98,9 +96,7 @@ async function doRefresh(): Promise<boolean> {
 
 export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   if (!BASE_URL) {
-    throw new Error(
-      "NEXT_PUBLIC_API_URL이 설정되지 않았습니다 — 배포 환경 변수에 API 베이스 URL을 등록하세요.",
-    );
+    throw new Error("API 베이스 URL이 비어 있습니다.");
   }
   const { method = "GET", body, auth = true, _retried = false } = opts;
 
