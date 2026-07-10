@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { type ReviewContext, reviewInsightHref } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { getProgressPercent } from "@/features/play/play-logic";
@@ -14,7 +15,7 @@ import {
   getPlayQuestionKindLabel,
   isUnauthorized,
 } from "@/features/play/quiz-shared";
-import { getNextQuiz, type QuizNextResponse, submitQuizAnswer } from "@/lib/api/quiz";
+import { getNextQuiz, getStepQuiz, type QuizNextResponse, submitQuizAnswer } from "@/lib/api/quiz";
 
 type AnswerDraft = boolean | string | string[] | null;
 
@@ -22,7 +23,12 @@ const optionLabels = ["A", "B", "C", "D"];
 const correctStreakStorageKeyPrefix = "thumbsup:insight-correct-streak:api-quiz";
 const defaultStepTotal = 5;
 
-export function PlayPage() {
+type PlayPageProps = {
+  /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 문제를 슬롯 순서로 받아 진행한다. */
+  review?: ReviewContext | null;
+};
+
+export function PlayPage({ review }: PlayPageProps) {
   const router = useRouter();
   const [quiz, setQuiz] = useState<QuizNextResponse | null>(null);
   const [draft, setDraft] = useState<AnswerDraft>(null);
@@ -30,6 +36,9 @@ export function PlayPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  const reviewStep = review?.step ?? null;
+  const reviewSlot = review?.slot ?? null;
 
   const totalCount = quiz?.totalCount ?? defaultStepTotal;
   const currentNumber = quiz?.slotOrder ?? 1;
@@ -57,9 +66,13 @@ export function PlayPage() {
       setDraft(null);
 
       try {
-        const nextQuiz = await getNextQuiz();
+        const nextQuiz =
+          reviewStep !== null && reviewSlot !== null
+            ? await getStepQuiz(reviewStep, reviewSlot)
+            : await getNextQuiz();
         if (!ignore) {
-          if (nextQuiz.slotOrder === 1) {
+          // 스트릭(연속 정답)은 일반 학습 세션에서만 추적 — 복습은 세션 진행으로 치지 않는다.
+          if (reviewStep === null && nextQuiz.slotOrder === 1) {
             resetCorrectStreak(nextQuiz.stepOrder);
           }
           setQuiz(nextQuiz);
@@ -85,7 +98,7 @@ export function PlayPage() {
     return () => {
       ignore = true;
     };
-  }, [reloadKey, router]);
+  }, [reloadKey, router, reviewStep, reviewSlot]);
 
   async function submitAnswer() {
     if (!quiz || !submitEnabled) {
@@ -97,6 +110,14 @@ export function PlayPage() {
 
     try {
       const result = await submitQuizAnswer(quiz.quizId, getSubmittedAnswers(quiz, draft));
+
+      if (review) {
+        // 복습: 스트릭·보리 포만감은 건드리지 않고, 정답 누계만 이어받아 해설로.
+        const correctAfter = review.correct + (result.isCorrect ? 1 : 0);
+        router.push(reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter));
+        return;
+      }
+
       const nextStreak = updateCorrectStreak(quiz.stepOrder, result.isCorrect);
       if (currentNumber === totalCount) {
         void feedMascot().catch(() => {});
@@ -123,14 +144,18 @@ export function PlayPage() {
           <div className="flex items-center justify-between gap-3">
             <a
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              aria-label="홈으로 돌아가기"
-              href="/"
+              aria-label={review ? "복습 목록으로 돌아가기" : "홈으로 돌아가기"}
+              href={review ? "/history" : "/"}
             >
               ‹
             </a>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-ink-muted">오늘의 학습</p>
-              <h1 className="truncate text-base font-bold">문제 풀기</h1>
+              <p className="truncate text-xs font-semibold text-ink-muted">
+                {review ? "복습" : "오늘의 학습"}
+              </p>
+              <h1 className="truncate text-base font-bold">
+                {review ? review.topic || "문제 다시 풀기" : "문제 풀기"}
+              </h1>
             </div>
           </div>
           <div className="mt-4">

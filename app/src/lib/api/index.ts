@@ -5,8 +5,12 @@ export { sendFeedback } from "./feedback";
 export {
   type AnnotatedText,
   type AnswerSubmitResponse,
+  type CompletedStep,
+  type CompletedStepsResponse,
+  getCompletedSteps,
   getNextQuiz,
   getQuizExplanation,
+  getStepQuiz,
   type Highlight,
   type QuizChoice,
   type QuizDifficulty,
