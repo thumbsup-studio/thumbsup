@@ -1,4 +1,4 @@
-package studio.thumbsup.server.learning;
+package studio.thumbsup.server.quiz;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

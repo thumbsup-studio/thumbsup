@@ -1,7 +1,7 @@
-package studio.thumbsup.server.learning.dto;
+package studio.thumbsup.server.quiz.dto;
 
-import studio.thumbsup.server.learning.Course;
-import studio.thumbsup.server.learning.Unit;
+import studio.thumbsup.server.quiz.Course;
+import studio.thumbsup.server.quiz.QuizStep;
 
 /**
  * 홈 화면 조회 응답 — 스트릭·포인트·오늘의 학습 진입점을 한 번에 담는다.
@@ -10,7 +10,7 @@ import studio.thumbsup.server.learning.Unit;
  */
 public record HomeResponse(int streakDays, int points, TodayLearning today) {
 
-    /** 오늘의 학습 카드에 필요한 진입점 정보 — 정답을 맞히는 데 필요한 문제 본문은 담지 않는다(quiz 도메인 몫). */
+    /** 오늘의 학습 카드에 필요한 진입점 정보 — 정답을 맞히는 데 필요한 문제 본문은 담지 않는다(퀴즈 조회 API 몫). */
     public record TodayLearning(
             Long courseId,
             String courseTitle,
@@ -21,21 +21,21 @@ public record HomeResponse(int streakDays, int points, TodayLearning today) {
             int totalCount,
             int estimatedMinutes) {
 
-        static TodayLearning of(Course course, Unit current, int completedCount, int totalCount) {
+        static TodayLearning of(Course course, QuizStep current, int completedCount, int totalCount) {
             return new TodayLearning(
                     course.getId(),
                     course.getTitle(),
                     current.getId(),
-                    current.getTitle(),
-                    current.getOrderIndex(),
+                    current.getTopic(),
+                    current.getStepOrder(),
                     completedCount,
                     totalCount,
                     current.getEstimatedMinutes());
         }
     }
 
-    public static HomeResponse from(int streakDays, int points, Course course, Unit current, int totalCount) {
-        int completedCount = current.getOrderIndex() - 1;
+    public static HomeResponse from(int streakDays, int points, Course course, QuizStep current, int totalCount) {
+        int completedCount = current.getStepOrder() - 1;
         return new HomeResponse(streakDays, points, TodayLearning.of(course, current, completedCount, totalCount));
     }
 }
