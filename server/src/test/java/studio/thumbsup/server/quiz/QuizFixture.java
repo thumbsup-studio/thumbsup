@@ -107,8 +107,9 @@ public final class QuizFixture {
     /**
      * 해설 조회(#43)용 — 본문에 {@code [[키워드]]} 마커가 저작돼 있다.
      *
-     * <p>실제 생성물의 두 가지 특성을 재현한다: (1) 키워드 '비연결형'은 해설 본문이 아니라 오답 해설에만
+     * <p>실제 생성물의 세 가지 특성을 재현한다: (1) 키워드 '비연결형'은 해설 본문이 아니라 오답 해설에만
      * 등장한다. (2) 대표 꼬리질문이 저작 순서상 뒤에 있어, 응답에서 앞으로 끌어올려야 한다.
+     * (3) 상세가 아직 저작되지 않은 꼬리질문이 섞여 있어, 응답에서 걸러져야 한다(#108).
      */
     public static Quiz annotatedExplanationQuiz() {
         Quiz quiz = Quiz.create(
@@ -120,12 +121,49 @@ public final class QuizFixture {
                 "웹 브라우저도 접속 전에 [[3-way handshake]]를 거친다.",
                 "UDP는 [[비연결형]]이라 handshake가 없다.");
         quiz.assignCorrectAnswer("O");
-        quiz.addFollowUpQuestion("보조 질문입니다.", false, 2);
-        quiz.addFollowUpQuestion("대표 질문입니다.", true, 1);
+        withDetail(quiz.addFollowUpQuestion("보조 질문입니다.", false, 2), 20L);
+        withDetail(quiz.addFollowUpQuestion("대표 질문입니다.", true, 1), 10L);
+        quiz.addFollowUpQuestion("상세가 없는 질문입니다.", false, 3);
         quiz.addKeyword("연결 지향", "통신 전에 연결을 먼저 수립하는 방식");
         quiz.addKeyword("3-way handshake", "세 단계로 패킷을 주고받아 연결을 맺는 절차");
         quiz.addKeyword("비연결형", "연결을 수립하지 않고 곧바로 전송하는 방식");
         return quiz;
+    }
+
+    /**
+     * 상세 콘텐츠가 저작된 꼬리질문 — 꼬리질문 상세 조회(#108)용.
+     *
+     * <p>출처 문제를 스텝 내 3번 슬롯에 두어 응답의 {@code sourceQuizNumber}가 3이 되게 한다
+     * ("3번 문제에서 이어짐"). 키워드 '해시셋'은 한 줄 답이 아니라 블록에만 등장한다.
+     */
+    public static QuizFollowUpQuestion detailedFollowUpQuestion(Long followUpQuestionId, Long sourceQuizId) {
+        Quiz quiz = oxQuiz();
+        ReflectionTestUtils.setField(quiz, "id", sourceQuizId);
+        quiz.assignPosition(1, 3);
+
+        QuizFollowUpQuestion followUpQuestion = quiz.addFollowUpQuestion("정렬되어 있지 않은 배열이라면 어떻게 찾아야 할까?", true, 2);
+        ReflectionTestUtils.setField(followUpQuestion, "id", followUpQuestionId);
+
+        followUpQuestion.attachDetail(QuizDifficulty.MEDIUM, "정렬이 안 됐다면 이진 탐색은 못 써요. [[선형 탐색]]이 기본입니다.");
+        followUpQuestion.addKeyword("선형 탐색", "앞에서부터 하나씩 확인하는 탐색 방법");
+        followUpQuestion.addKeyword("해시셋", "값의 존재 여부를 평균 O(1)에 확인하는 자료구조");
+        followUpQuestion.addBlock("해설", FollowUpBlockType.TEXT, "[[선형 탐색]]은 정렬 여부와 무관하게 O(n)이다.", 1);
+        followUpQuestion.addBlock("실무 사용처", FollowUpBlockType.TEXT, "반복 조회라면 [[해시셋]]으로 미리 인덱싱한다.", 2);
+        return followUpQuestion;
+    }
+
+    /** 상세가 아직 저작되지 않은 꼬리질문 — 생성 파이프라인(#26) 백필 전의 실제 데이터 상태. */
+    public static QuizFollowUpQuestion followUpQuestionWithoutDetail(Long followUpQuestionId) {
+        Quiz quiz = oxQuiz();
+        ReflectionTestUtils.setField(quiz, "id", 1L);
+        QuizFollowUpQuestion followUpQuestion = quiz.addFollowUpQuestion("아직 준비되지 않은 질문입니다.", true, 2);
+        ReflectionTestUtils.setField(followUpQuestion, "id", followUpQuestionId);
+        return followUpQuestion;
+    }
+
+    private static void withDetail(QuizFollowUpQuestion followUpQuestion, Long id) {
+        ReflectionTestUtils.setField(followUpQuestion, "id", id);
+        followUpQuestion.attachDetail(QuizDifficulty.EASY, "한 줄 답입니다.");
     }
 
     /** 한 스텝(5문제: 하2·중2·상1)을 slot_order 1~5로 조립한다. */

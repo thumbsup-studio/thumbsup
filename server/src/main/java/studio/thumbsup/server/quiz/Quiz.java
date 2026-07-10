@@ -146,8 +146,11 @@ public class Quiz extends BaseEntity {
         answerKeywords.add(QuizAnswerKeyword.create(this, slotOrder, keyword));
     }
 
-    public void addFollowUpQuestion(String content, boolean isPrimary, int displayOrder) {
-        followUpQuestions.add(QuizFollowUpQuestion.create(this, content, isPrimary, displayOrder));
+    /** 생성된 꼬리질문을 돌려준다 — 상세 콘텐츠(난이도·한 줄 답·블록·키워드)를 이어서 붙일 수 있도록. */
+    public QuizFollowUpQuestion addFollowUpQuestion(String content, boolean isPrimary, int displayOrder) {
+        QuizFollowUpQuestion followUpQuestion = QuizFollowUpQuestion.create(this, content, isPrimary, displayOrder);
+        followUpQuestions.add(followUpQuestion);
+        return followUpQuestion;
     }
 
     public void addDerivedConcept(String name, int displayOrder) {

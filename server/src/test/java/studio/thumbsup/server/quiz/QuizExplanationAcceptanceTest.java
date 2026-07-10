@@ -76,6 +76,13 @@ class QuizExplanationAcceptanceTest {
                 .orElseThrow();
     }
 
+    /** 커리큘럼 밖 샘플 문제 — 꼬리질문 상세가 저작돼 있는 유일한 시드다. */
+    private Quiz placeholderQuiz() {
+        return quizRepository.findByStepOrderOrderBySlotOrderAsc(0).stream()
+                .findFirst()
+                .orElseThrow();
+    }
+
     private JsonNode fetchExplanationData(long quizId) throws Exception {
         String body = mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", quizId)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken()))
@@ -104,7 +111,7 @@ class QuizExplanationAcceptanceTest {
     class GetExplanation {
 
         @Test
-        @DisplayName("문제 맥락·해설·키워드 설명·꼬리질문을 한 번의 호출로 반환한다")
+        @DisplayName("문제 맥락·해설·키워드 설명을 한 번의 호출로 반환한다")
         void returns_full_explanation_payload() throws Exception {
             Quiz quiz = seededOxQuiz();
 
@@ -123,8 +130,28 @@ class QuizExplanationAcceptanceTest {
                     .andExpect(jsonPath("$.data.unitTitle").value("OS 개요와 역할(커널·시스템콜·인터럽트)"))
                     .andExpect(jsonPath("$.data.keywords[0].keyword").value("커널"))
                     .andExpect(jsonPath("$.data.keywords[0].description").isNotEmpty())
-                    .andExpect(jsonPath("$.data.followUpQuestions[0]").value("사용자 모드와 커널 모드의 가장 큰 차이는 무엇인가?"))
                     .andExpect(jsonPath("$.data.wrongAnswerExplanation.text").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("상세 콘텐츠가 저작되지 않은 꼬리질문은 응답에서 제외된다 — 탭해도 그릴 것이 없기 때문")
+        void omits_follow_up_questions_without_detail() throws Exception {
+            JsonNode data = fetchExplanationData(seededOxQuiz().getId());
+
+            assertThat(data.path("followUpQuestions").isArray()).isTrue();
+            assertThat(data.path("followUpQuestions").size()).isZero();
+        }
+
+        @Test
+        @DisplayName("상세가 저작된 꼬리질문은 상세 조회용 ID와 대표 여부를 함께 내려준다")
+        void exposes_follow_up_question_id_for_routing() throws Exception {
+            JsonNode followUpQuestion = fetchExplanationData(placeholderQuiz().getId())
+                    .path("followUpQuestions")
+                    .path(0);
+
+            assertThat(followUpQuestion.path("followUpQuestionId").asLong()).isPositive();
+            assertThat(followUpQuestion.path("content").asText()).isNotBlank();
+            assertThat(followUpQuestion.path("isPrimary").asBoolean()).isTrue();
         }
 
         @Test
@@ -183,9 +210,7 @@ class QuizExplanationAcceptanceTest {
         @Test
         @DisplayName("기존 placeholder 문제도 순번과 전체 개수를 포함한 해설을 반환한다")
         void returns_explanation_for_placeholder_quiz() throws Exception {
-            Quiz placeholder = quizRepository.findByStepOrderOrderBySlotOrderAsc(0).stream()
-                    .findFirst()
-                    .orElseThrow();
+            Quiz placeholder = placeholderQuiz();
 
             mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", placeholder.getId())
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))

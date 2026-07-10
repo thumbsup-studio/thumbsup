@@ -50,7 +50,8 @@ public record QuizExplanationResponse(
         @Schema(description = "키워드 툴팁 사전. highlights의 keyword로 이 목록을 조회한다")
         List<KeywordItem> keywords,
 
-        @Schema(description = "꼬리질문 — 대표 질문이 맨 앞에 온다") List<String> followUpQuestions) {
+        @Schema(description = "꼬리질문 — 대표 질문이 맨 앞에 온다. 상세 콘텐츠가 없는 질문은 담기지 않으므로 빈 배열일 수 있다")
+        List<FollowUpQuestionItem> followUpQuestions) {
 
     /** 마커가 제거된 평문과, 그 평문 안에서 키워드가 차지하는 구간. */
     @Schema(description = "평문과 그 안의 키워드 하이라이트 구간")
@@ -84,6 +85,21 @@ public record QuizExplanationResponse(
         }
     }
 
+    /** 탭하면 꼬리질문 상세 조회 API로 이어지는 식별자를 함께 내려준다 — 본문 텍스트만으로는 갈 곳이 없다(#108). */
+    @Schema(description = "꼬리질문 목록 항목")
+    public record FollowUpQuestionItem(
+            @Schema(description = "꼬리질문 상세 조회에 쓰는 ID") Long followUpQuestionId,
+            @Schema(description = "질문 본문") String content,
+
+            @Schema(description = "대표 질문 여부 — 해설 화면 하단에 노출되는 한 건")
+            boolean isPrimary) {
+
+        static FollowUpQuestionItem from(QuizFollowUpQuestion followUpQuestion) {
+            return new FollowUpQuestionItem(
+                    followUpQuestion.getId(), followUpQuestion.getContent(), followUpQuestion.isPrimary());
+        }
+    }
+
     /**
      * 대표 질문(isPrimary)을 맨 앞에 두고 나머지는 저작 순서를 따른다.
      * 엔티티의 {@code @OrderBy}는 DB에서 읽을 때만 적용되므로, 응답 순서는 여기서 확정한다.
@@ -112,8 +128,9 @@ public record QuizExplanationResponse(
                 annotate(quiz.getWrongAnswerExplanation(), knownKeywords),
                 quiz.getKeywords().stream().map(KeywordItem::from).toList(),
                 quiz.getFollowUpQuestions().stream()
+                        .filter(QuizFollowUpQuestion::hasDetail)
                         .sorted(PRIMARY_FIRST)
-                        .map(QuizFollowUpQuestion::getContent)
+                        .map(FollowUpQuestionItem::from)
                         .toList());
     }
 

@@ -10,7 +10,9 @@ import studio.thumbsup.server.common.exception.ErrorType;
 public enum QuizErrorType implements ErrorType {
     QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 퀴즈입니다."),
     QUIZ_STEP_COMPLETED(HttpStatus.NOT_FOUND, "현재 스텝의 문제를 모두 풀었습니다."),
-    QUIZ_NOT_ACCESSIBLE(HttpStatus.FORBIDDEN, "아직 진행할 수 없는 문제입니다.");
+    QUIZ_NOT_ACCESSIBLE(HttpStatus.FORBIDDEN, "아직 진행할 수 없는 문제입니다."),
+    FOLLOW_UP_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 꼬리질문입니다."),
+    FOLLOW_UP_DETAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "아직 준비되지 않은 꼬리질문입니다.");
 
     private final HttpStatus status;
     private final String message;
