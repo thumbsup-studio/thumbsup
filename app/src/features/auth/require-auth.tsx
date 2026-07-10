@@ -22,5 +22,5 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
-  return authorized ? <>{children}</> : null;
+  return authorized ? children : null;
 }

@@ -21,5 +21,5 @@ export function RedirectIfAuthenticated({ children }: { children: ReactNode }) {
     }
   }, [router]);
 
-  return showChildren ? <>{children}</> : null;
+  return showChildren ? children : null;
 }

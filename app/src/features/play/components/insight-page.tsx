@@ -1,40 +1,105 @@
 "use client";
 
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useEffect, useState } from "react";
-import { HelpCircleIcon } from "@/components/icons";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
-import { CodeBlock } from "@/features/play/components/code-block";
-import { KeywordTooltipText } from "@/features/play/components/keyword-tooltip-text";
-import { getDifficultyLabel, getProgressPercent } from "@/features/play/play-logic";
-import type { PlayQuestion, PlaySession } from "@/features/play/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  getKeywordDescriptionMap,
+  KeywordTooltipText,
+} from "@/features/play/components/keyword-tooltip-text";
+import { getProgressPercent } from "@/features/play/play-logic";
+import {
+  type AnnotatedText,
+  getQuizExplanation,
+  type QuizDifficulty,
+  type QuizExplanationResponse,
+  type QuizType,
+} from "@/lib/api/quiz";
 
 const FANFARE_SRC = "/lottie/fanfare.lottie";
 
 type InsightPageProps = {
   correct: boolean;
   correctStreak?: number;
-  questionIndex: number;
-  session: PlaySession;
+  quizId: number | null;
 };
 
-export function InsightPage({
-  correct,
-  correctStreak = 0,
-  questionIndex,
-  session,
-}: InsightPageProps) {
+const difficultyLabels: Record<QuizDifficulty, string> = {
+  LOW: "난이도 하",
+  MEDIUM: "난이도 중",
+  HIGH: "난이도 상",
+};
+
+export function InsightPage({ correct, correctStreak = 0, quizId }: InsightPageProps) {
+  const router = useRouter();
+  const [explanation, setExplanation] = useState<QuizExplanationResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [fanfarePlayer, setFanfarePlayer] = useState<DotLottie | null>(null);
   const [dismissedFanfareKey, setDismissedFanfareKey] = useState<string | null>(null);
-  const question = session.questions[questionIndex];
-  // 대표 꼬리질문은 isPrimary로 고른다 — 배열 순서에만 의존하면 비대표로 라우팅될 수 있다.
-  const primaryFollowUp = question.followUpQuestions.find((followUp) => followUp.isPrimary);
-  const total = session.questions.length;
-  const isLastQuestion = questionIndex === total - 1;
-  const nextHref = isLastQuestion ? "/" : `/play?question=${questionIndex + 1}`;
-  const fanfareKey = correct && correctStreak >= 3 ? `${questionIndex}:${correctStreak}` : null;
+
+  const fanfareKey =
+    quizId !== null && correct && correctStreak >= 3 ? `${quizId}:${correctStreak}` : null;
   const showFanfare = fanfareKey !== null && dismissedFanfareKey !== fanfareKey;
-  const summaryItems = getSummaryItems(question.insight.summary.slice(0, 3));
+  const keywordDict = useMemo(
+    () => getKeywordDescriptionMap(explanation?.keywords ?? []),
+    [explanation],
+  );
+  const summaryItems = useMemo(
+    () => getSummaryItems(explanation?.explanationSummary ?? []),
+    [explanation],
+  );
+
+  useEffect(() => {
+    if (quizId === null) {
+      setIsLoading(false);
+      setError("해설을 불러오지 못했어요.");
+      return;
+    }
+
+    let ignore = false;
+    const explanationQuizId = quizId;
+    const requestKey = reloadKey;
+
+    if (requestKey < 0) {
+      return undefined;
+    }
+
+    async function loadExplanation() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const nextExplanation = await getQuizExplanation(explanationQuizId);
+        if (!ignore) {
+          setExplanation(nextExplanation);
+        }
+      } catch (loadError) {
+        if (isUnauthorized(loadError)) {
+          router.replace("/login");
+          return;
+        }
+
+        if (!ignore) {
+          setError("해설을 불러오지 못했어요.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadExplanation();
+
+    return () => {
+      ignore = true;
+    };
+  }, [quizId, reloadKey, router]);
 
   useEffect(() => {
     if (!fanfarePlayer) {
@@ -53,7 +118,7 @@ export function InsightPage({
   }, [fanfareKey, fanfarePlayer]);
 
   return (
-    <main className="relative flex min-h-dvh flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+    <main className="relative flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
       {showFanfare ? (
         <div
           aria-hidden="true"
@@ -63,7 +128,7 @@ export function InsightPage({
         >
           <DotLottieReact
             autoplay
-            className="h-full w-full"
+            className="h-screen w-screen"
             dotLottieRefCallback={setFanfarePlayer}
             loop={false}
             src={FANFARE_SRC}
@@ -77,13 +142,17 @@ export function InsightPage({
             <a
               aria-label="문제로 돌아가기"
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              href={`/play?question=${questionIndex}`}
+              href="/play"
             >
               ‹
             </a>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-ink-muted">{session.courseTitle}</p>
-              <h1 className="truncate text-base font-bold">문제 해설</h1>
+              <p className="truncate text-xs font-semibold text-ink-muted">
+                {explanation?.courseTitle ?? "오늘의 학습"}
+              </p>
+              <h1 className="truncate text-base font-bold">
+                {explanation?.unitTitle ?? "문제 해설"}
+              </h1>
             </div>
             <span
               className={`rounded-chip px-3 py-1.5 text-xs font-bold ${
@@ -95,183 +164,185 @@ export function InsightPage({
           </div>
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-muted">
-              <span>
-                {questionIndex + 1}/{total}
-              </span>
-              <span>{getDifficultyLabel(question.difficulty)}</span>
+              {explanation ? (
+                <>
+                  <span>
+                    {explanation.currentNumber}/{explanation.totalCount}
+                  </span>
+                  <span>{difficultyLabels[explanation.difficulty]}</span>
+                </>
+              ) : (
+                <span>해설을 준비하고 있어요</span>
+              )}
             </div>
             <Progress
               label="해설 진행률"
               max={100}
-              value={getProgressPercent(questionIndex, total)}
+              value={
+                explanation
+                  ? getProgressPercent(explanation.currentNumber - 1, explanation.totalCount)
+                  : 0
+              }
             />
           </div>
         </header>
 
         <section className="flex flex-1 flex-col rounded-card border border-border bg-surface-muted p-5 shadow-card">
-          <div
-            className={`rounded-control border px-4 py-4 ${
-              correct
-                ? "border-success/20 bg-success/10 text-success"
-                : "border-danger/20 bg-danger/10 text-danger"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-black">{correct ? "정답이에요" : "오답이에요"}</p>
-                <p className="mt-1 text-sm font-semibold leading-6 text-ink-muted">
-                  {correct
-                    ? "핵심을 잘 짚었어요. 바로 개념을 정리해볼게요."
-                    : "괜찮아요. 틀린 지점을 먼저 짚고 넘어갈게요."}
-                </p>
+          {isLoading ? <InsightSkeleton /> : null}
+          {!isLoading && error ? (
+            <Feedback tone="error" onRetry={() => setReloadKey((key) => key + 1)}>
+              {error}
+            </Feedback>
+          ) : null}
+          {!isLoading && !error && explanation ? (
+            <>
+              <div
+                className={`rounded-control border px-4 py-4 ${
+                  correct
+                    ? "border-success/20 bg-success/10 text-success"
+                    : "border-danger/20 bg-danger/10 text-danger"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black">{correct ? "정답이에요" : "오답이에요"}</p>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-ink-muted">
+                      {correct
+                        ? "핵심을 잘 짚었어요. 바로 개념을 정리해볼게요."
+                        : "괜찮아요. 틀린 지점을 먼저 짚고 넘어갈게요."}
+                    </p>
+                  </div>
+                  {correct ? (
+                    <span className="rounded-chip bg-surface px-3 py-1.5 text-xs font-black text-success">
+                      +10P
+                    </span>
+                  ) : null}
+                </div>
               </div>
-              {correct ? (
-                <span className="rounded-chip bg-surface px-3 py-1.5 text-xs font-black text-success">
-                  +10P
-                </span>
+
+              {!correct ? (
+                <div className="mt-4 rounded-control border border-danger/20 bg-surface px-4 py-4">
+                  <p className="text-sm font-bold text-danger">왜 틀렸는지</p>
+                  <AnnotatedParagraph
+                    className="mt-2 text-sm leading-6 text-ink-muted whitespace-pre-line"
+                    dict={keywordDict}
+                    node={explanation.wrongAnswerExplanation}
+                  />
+                </div>
               ) : null}
-            </div>
-          </div>
 
-          {!correct ? (
-            <div className="mt-4 rounded-control border border-danger/20 bg-surface px-4 py-4">
-              <p className="text-sm font-bold text-danger">왜 틀렸는지</p>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">
-                <KeywordTooltipText
-                  keywords={question.insight.keywords}
-                  text={question.insight.wrongReason}
-                />
-              </p>
-            </div>
-          ) : null}
-
-          <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
-            <p className="text-sm font-bold text-ink">핵심 3줄</p>
-            <ol aria-label="핵심 3줄" className="mt-3 space-y-2">
-              {summaryItems.map((item) => (
-                <li className="flex gap-3 text-sm leading-6 text-ink-muted" key={item.key}>
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-chip bg-ink text-xs font-black text-primary-fg">
-                    {item.position}
-                  </span>
-                  <span>
-                    <KeywordTooltipText keywords={question.insight.keywords} text={item.line} />
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="mt-4">
-            <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
-              {getQuestionKindLabel(question)}
-            </p>
-            <h2 className="mt-2 text-2xl font-black leading-8">{question.prompt}</h2>
-          </div>
-
-          <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
-            <p className="text-sm font-bold text-ink">해설</p>
-            <p className="mt-2 text-sm leading-6 text-ink-muted">
-              <KeywordTooltipText
-                keywords={question.insight.keywords}
-                text={question.explanation}
-              />
-            </p>
-          </div>
-
-          {question.insight.codeExample ? (
-            <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
-              <p className="text-sm font-bold text-ink">코드 적용 예시</p>
-              <div className="mt-3">
-                <CodeBlock
-                  code={question.insight.codeExample.source}
-                  languageLabel={question.insight.codeExample.language}
-                />
+              <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
+                <p className="text-sm font-bold text-ink">핵심 정리</p>
+                <ol aria-label="핵심 정리" className="mt-3 space-y-2">
+                  {summaryItems.map((summary) => (
+                    <li className="flex gap-3 text-sm leading-6 text-ink-muted" key={summary.key}>
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-chip bg-ink text-xs font-black text-primary-fg">
+                        {summary.position}
+                      </span>
+                      <span>
+                        <KeywordTooltipText dict={keywordDict} node={summary.node} />
+                      </span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-              <p className="mt-3 text-sm leading-6 text-ink-muted">
-                <KeywordTooltipText
-                  keywords={question.insight.keywords}
-                  text={question.insight.codeExample.description}
-                />
-              </p>
-            </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
+                  {getQuestionKindLabel(explanation.type)}
+                </p>
+                <h2 className="mt-2 text-2xl font-black leading-8">{explanation.questionText}</h2>
+              </div>
+
+              {explanation.explanationExample ? (
+                <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
+                  <p className="text-sm font-bold text-ink">적용 예시</p>
+                  <AnnotatedParagraph
+                    className="mt-2 text-sm leading-6 text-ink-muted whitespace-pre-line"
+                    dict={keywordDict}
+                    node={explanation.explanationExample}
+                  />
+                </div>
+              ) : null}
+
+              {explanation.followUpQuestions.length > 0 ? (
+                <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
+                  <p className="text-sm font-bold text-ink">대표 꼬리질문</p>
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">
+                    {explanation.followUpQuestions[0]}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="mt-auto pt-5">
+                <a
+                  className="flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
+                  href="/play"
+                >
+                  다음 문제 풀기
+                </a>
+              </div>
+            </>
           ) : null}
-
-          <div className="mt-4 rounded-control border border-border bg-surface px-4 py-4">
-            <p className="text-sm font-bold text-ink">실무 사용처</p>
-            <p className="mt-2 text-sm leading-6 text-ink-muted">
-              <KeywordTooltipText
-                keywords={question.insight.keywords}
-                text={question.insight.usageExample}
-              />
-            </p>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between rounded-control border border-dashed border-border px-4 py-3 text-sm text-ink-muted">
-            <span>레퍼런스</span>
-            <span className="font-semibold text-ink">{question.insight.referenceLabel}</span>
-          </div>
-
-          <div className="mt-auto flex flex-col gap-2.5 pt-5">
-            {primaryFollowUp ? (
-              <a
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-                href={`/follow-up?question=${questionIndex}&correct=${
-                  correct ? "true" : "false"
-                }&streak=${correctStreak}&fq=${primaryFollowUp.followUpQuestionId}`}
-              >
-                <HelpCircleIcon className="h-5 w-5" />
-                꼬리 질문 풀기
-              </a>
-            ) : (
-              <button
-                className="flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-control border border-border bg-surface-muted px-5 py-3 font-bold text-ink-muted"
-                disabled
-                type="button"
-              >
-                <HelpCircleIcon className="h-5 w-5" />
-                꼬리 질문 준비 중
-              </button>
-            )}
-            <a
-              className={
-                primaryFollowUp
-                  ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
-                  : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-              }
-              href={nextHref}
-            >
-              {isLastQuestion ? "홈으로 돌아가기" : "다음 문제 풀기"}
-            </a>
-          </div>
         </section>
       </div>
     </main>
   );
 }
 
-function getQuestionKindLabel(question: PlayQuestion) {
-  if (question.kind === "ox") {
+function InsightSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col gap-4">
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  );
+}
+
+function AnnotatedParagraph({
+  className,
+  dict,
+  node,
+}: {
+  className: string;
+  dict: Map<string, string>;
+  node: AnnotatedText;
+}) {
+  return (
+    <p className={className}>
+      <KeywordTooltipText dict={dict} node={node} />
+    </p>
+  );
+}
+
+function getQuestionKindLabel(type: QuizType) {
+  if (type === "OX") {
     return "OX 해설";
   }
 
-  if (question.kind === "multiple-choice") {
+  if (type === "MULTIPLE_CHOICE") {
     return "사지선다 해설";
   }
 
   return "키워드 빈칸 해설";
 }
 
-function getSummaryItems(lines: string[]) {
-  const occurrenceByLine = new Map<string, number>();
+function getSummaryItems(lines: AnnotatedText[]) {
+  const occurrences = new Map<string, number>();
 
-  return lines.map((line, index) => {
-    const occurrence = occurrenceByLine.get(line) ?? 0;
-    occurrenceByLine.set(line, occurrence + 1);
+  return lines.map((node, index) => {
+    const count = occurrences.get(node.text) ?? 0;
+    occurrences.set(node.text, count + 1);
 
     return {
-      key: `${line}-${occurrence}`,
-      line,
+      key: `${node.text}:${count}`,
+      node,
       position: index + 1,
     };
   });
+}
+
+function isUnauthorized(error: unknown) {
+  return typeof error === "object" && error !== null && "status" in error && error.status === 401;
 }
