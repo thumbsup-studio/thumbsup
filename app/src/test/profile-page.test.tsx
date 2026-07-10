@@ -4,14 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfilePage } from "@/features/profile/components/profile-page";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
-const { backMock, replaceMock, logoutMock } = vi.hoisted(() => ({
-  backMock: vi.fn(),
+const { replaceMock, logoutMock } = vi.hoisted(() => ({
   replaceMock: vi.fn(),
   logoutMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ back: backMock, replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock }),
 }));
 vi.mock("@/lib/api", () => ({ logout: logoutMock }));
 
@@ -24,7 +23,6 @@ function renderProfile(email = "jiyeon.kim@example.com") {
 }
 
 afterEach(() => {
-  backMock.mockClear();
   replaceMock.mockClear();
   logoutMock.mockClear();
 });
@@ -69,12 +67,5 @@ describe("ProfilePage", () => {
 
     expect(logoutMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  it("헤더의 뒤로가기 버튼은 router.back을 호출한다", () => {
-    renderProfile();
-
-    fireEvent.click(screen.getByRole("button", { name: "뒤로" }));
-    expect(backMock).toHaveBeenCalledTimes(1);
   });
 });

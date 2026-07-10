@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { type ComponentType, useEffect, useRef, useState } from "react";
+import { AppTabBar } from "@/components/app-tab-bar";
 import {
   BellIcon,
-  ChevronLeftIcon,
   ChevronRightIcon,
   CircleCheckIcon,
   LogOutIcon,
@@ -94,21 +94,8 @@ export function ProfilePage({ data }: { data: ProfileData }) {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-bg text-ink">
-      <header className="sticky top-0 z-10 flex items-center justify-between bg-bg/90 px-2 py-2 backdrop-blur">
-        <button
-          type="button"
-          aria-label="뒤로"
-          onClick={() => router.back()}
-          className="flex size-11 items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-muted"
-        >
-          <ChevronLeftIcon className="size-6" />
-        </button>
-        <h1 className="text-lg font-bold text-ink">프로필</h1>
-        <span aria-hidden="true" className="size-11" />
-      </header>
-
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pt-2 pb-7 sm:px-6">
+    <main className="flex min-h-dvh flex-col bg-bg text-ink">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pt-6 pb-7 sm:px-6">
         {/* 신원 카드 — 서버에 이름/아바타가 없어 이메일 이니셜 + 이메일로 구성 */}
         <section className="flex flex-col items-center rounded-card border border-border/80 bg-surface p-6 text-center shadow-card">
           <div
@@ -145,13 +132,17 @@ export function ProfilePage({ data }: { data: ProfileData }) {
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control border border-danger/30 bg-surface text-base font-bold text-danger transition-colors hover:bg-danger/5"
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-control bg-danger text-base font-bold text-primary-fg transition-colors hover:bg-danger/90"
         >
           <LogOutIcon className="size-5" />
           로그아웃
         </button>
 
         <p className="text-center text-xs text-ink-muted">Thumbs Up</p>
+
+        <div className="sticky bottom-4 mt-auto pt-1">
+          <AppTabBar activeTab="profile" />
+        </div>
       </div>
 
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="로그아웃 확인">
