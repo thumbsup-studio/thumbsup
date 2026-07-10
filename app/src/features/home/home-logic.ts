@@ -32,6 +32,10 @@ export function formatStreakDays(streakDays: number): string {
   return `${streakDays}일`;
 }
 
+export function formatDuration(estimatedMinutes: number): string {
+  return `${estimatedMinutes}분이면 끝나요`;
+}
+
 export function getWelcomeCopy(date: Date) {
   const variant = getWelcomeVariant(date);
 
