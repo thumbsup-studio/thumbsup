@@ -34,7 +34,10 @@ public record QuizNextResponse(
                 ? quiz.getChoices().stream().map(ChoiceItem::from).toList()
                 : null;
         Integer blankCount = quiz.getType() == QuizType.KEYWORD_BLANK
-                ? quiz.getAnswerKeywords().size()
+                ? Math.toIntExact(quiz.getAnswerKeywords().stream()
+                        .mapToInt(answerKeyword -> answerKeyword.getSlotOrder())
+                        .distinct()
+                        .count())
                 : null;
         return new QuizNextResponse(
                 quiz.getId(),
