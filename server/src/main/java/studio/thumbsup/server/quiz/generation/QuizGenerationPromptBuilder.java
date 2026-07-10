@@ -13,7 +13,7 @@ final class QuizGenerationPromptBuilder {
                   "type": "OX | MULTIPLE_CHOICE | KEYWORD_BLANK",
                   "difficulty": "EASY | MEDIUM | HARD",
                   "questionText": "문제 본문",
-                  "codeSnippet": "코드 지문(없으면 null)",
+                  "codeSnippet": "실제 코드 또는 실행 흐름이 명확한 의사코드(필요하지 않으면 null)",
                   "explanationSummary": "핵심 3줄 요약 해설 — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
                   "explanationExample": "실무 적용/코드 예시(없으면 null) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
                   "wrongAnswerExplanation": "오답 해설(왜 틀렸는지) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
@@ -45,7 +45,7 @@ final class QuizGenerationPromptBuilder {
             2. EASY(OX) — 위와 같은 유형, 다른 소재.
             3. MEDIUM(MULTIPLE_CHOICE) — 4지선다, choices 배열에 정확히 4개, 그중 정답 1개만 isCorrect=true.
                correctAnswer와 answerKeywords는 null.
-            4. MEDIUM(MULTIPLE_CHOICE) — 위와 같은 유형, 다른 소재. 가능하면 코드 지문(codeSnippet) 포함.
+            4. MEDIUM(MULTIPLE_CHOICE) — 위와 같은 유형, 다른 소재.
             5. HARD(KEYWORD_BLANK) — 빈칸 채우기. questionText에 빈칸(___)을 포함하고, answerKeywords는
                "빈칸 개수만큼의 배열"이어야 한다 — 배열 원소 하나가 빈칸 하나다. 빈칸이 1개면 answerKeywords도
                원소 1개짜리 배열이다. 절대로 같은 뜻의 다른 표현(동의어·약어/전체 이름 등)을 별도 빈칸으로
@@ -57,6 +57,9 @@ final class QuizGenerationPromptBuilder {
 
     private static final String COMMON_REQUIREMENTS = """
             모든 문제 공통 요구사항:
+            - codeSnippet: 실제 코드나 실행 흐름이 명확한 의사코드가 문제 풀이에 필요할 때만 작성한다.
+              코드/의사코드가 아니면 codeSnippet은 반드시 null로 두고, 자연어 상황 설명·표·조건 목록은 questionText에 작성한다.
+              변수명에 리터럴 입력값만 대입해 나열한 데이터도 코드가 아니므로 questionText에 문장으로 작성한다.
             - explanationSummary: 정확히 개행(\\n) 3줄로 된 핵심 요약. 줄 끝 공백·빈 줄 없이 정확히 3줄이어야 한다.
             - wrongAnswerExplanation: 이 문제를 틀렸을 때 보여줄, 왜 틀렸는지 설명하는 해설
             - followUpQuestions: 1개 이상, 그중 정확히 1개는 isPrimary=true. 각 꼬리질문은 아래 "꼬리질문 상세"를

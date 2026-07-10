@@ -97,6 +97,7 @@ public class QuizGenerationService {
     private void validateCommonFields(int slotOrder, GeneratedQuizSet.GeneratedQuiz quiz) {
         String location = "슬롯 %d".formatted(slotOrder);
         requireNonBlank(location, "questionText", quiz.questionText());
+        CodeSnippetValidator.validate(location, quiz.codeSnippet());
         requireNonBlank(location, "explanationSummary", quiz.explanationSummary());
         requireNonBlank(location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation());
         requireNonEmpty(location, "derivedConcepts", quiz.derivedConcepts());
