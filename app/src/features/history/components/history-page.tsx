@@ -60,6 +60,17 @@ export function HistoryPage() {
     };
   }, [reloadKey, router]);
 
+  // 상태 전환을 스크린리더에 알린다(play-page의 liveText 패턴과 동일).
+  const liveText = isLoading
+    ? "복습할 스텝을 불러오는 중"
+    : error
+      ? error
+      : steps
+        ? steps.length === 0
+          ? "완료한 스텝이 없어요"
+          : `복습할 스텝 ${steps.length}개`
+        : "";
+
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
@@ -72,6 +83,10 @@ export function HistoryPage() {
             <p className="mt-2 text-sm font-medium text-ink-muted">완료한 스텝 {steps.length}개</p>
           ) : null}
         </div>
+
+        <p aria-live="polite" className="sr-only">
+          {liveText}
+        </p>
 
         {isLoading ? <HistorySkeleton /> : null}
 
