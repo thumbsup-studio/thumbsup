@@ -7,7 +7,7 @@ const mockRouter = vi.hoisted(() => ({
   replace: vi.fn(),
 }));
 
-const lottieCompleteListeners = vi.hoisted(() => new Set<() => void>());
+const lottieCompleteListenersBySrc = vi.hoisted(() => new Map<string, Set<() => void>>());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
@@ -23,6 +23,7 @@ vi.mock("@lottiefiles/dotlottie-react", async () => {
   return {
     DotLottieReact: ({
       dotLottieRefCallback,
+      src,
     }: {
       dotLottieRefCallback?: (
         player: {
@@ -30,17 +31,20 @@ vi.mock("@lottiefiles/dotlottie-react", async () => {
           removeEventListener: (eventName: string, listener: () => void) => void;
         } | null,
       ) => void;
+      src: string;
     }) => {
       React.useEffect(() => {
         const player = {
           addEventListener: (eventName: string, listener: () => void) => {
             if (eventName === "complete") {
-              lottieCompleteListeners.add(listener);
+              const listeners = lottieCompleteListenersBySrc.get(src) ?? new Set<() => void>();
+              listeners.add(listener);
+              lottieCompleteListenersBySrc.set(src, listeners);
             }
           },
           removeEventListener: (eventName: string, listener: () => void) => {
             if (eventName === "complete") {
-              lottieCompleteListeners.delete(listener);
+              lottieCompleteListenersBySrc.get(src)?.delete(listener);
             }
           },
         };
@@ -48,12 +52,16 @@ vi.mock("@lottiefiles/dotlottie-react", async () => {
         dotLottieRefCallback?.(player);
 
         return undefined;
-      }, [dotLottieRefCallback]);
+      }, [dotLottieRefCallback, src]);
 
-      return <canvas data-testid="dotlottie-canvas" />;
+      return <canvas data-src={src} data-testid="dotlottie-canvas" />;
     },
   };
 });
+
+function getLottieListeners(src: string) {
+  return lottieCompleteListenersBySrc.get(src) ?? new Set<() => void>();
+}
 
 const explanation = {
   quizId: 7,
@@ -108,7 +116,7 @@ describe("InsightPage", () => {
   beforeEach(() => {
     mockRouter.replace.mockClear();
     vi.mocked(getQuizExplanation).mockReset();
-    lottieCompleteListeners.clear();
+    lottieCompleteListenersBySrc.clear();
   });
 
   it("loads explanation by quiz id and renders quiz context", async () => {
@@ -215,15 +223,15 @@ describe("InsightPage", () => {
     render(<InsightPage correct quizId={7} correctStreak={3} />);
 
     expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
-      "data-src",
+      "data-sources",
       "/lottie/fanfare.lottie",
     );
     await waitFor(() => {
-      expect(lottieCompleteListeners.size).toBeGreaterThan(0);
+      expect(getLottieListeners("/lottie/fanfare.lottie").size).toBeGreaterThan(0);
     });
 
     act(() => {
-      for (const listener of lottieCompleteListeners) {
+      for (const listener of getLottieListeners("/lottie/fanfare.lottie")) {
         listener();
       }
     });
@@ -231,6 +239,96 @@ describe("InsightPage", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
     });
+  });
+
+  it("uses vertical fanfare only for the fourth consecutive correct answer", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct quizId={7} correctStreak={4} />);
+
+    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
+      "data-sources",
+      "/lottie/fanfare-vertical.lottie",
+    );
+    expect(screen.getAllByTestId("dotlottie-canvas")).toHaveLength(1);
+    expect(screen.getByTestId("dotlottie-canvas")).toHaveAttribute(
+      "data-src",
+      "/lottie/fanfare-vertical.lottie",
+    );
+  });
+
+  it("overlays both fanfares from the fifth consecutive correct answer and dismisses on vertical completion", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct quizId={7} correctStreak={5} />);
+
+    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
+      "data-sources",
+      "/lottie/fanfare.lottie,/lottie/fanfare-vertical.lottie",
+    );
+    expect(screen.getAllByTestId("dotlottie-canvas")).toHaveLength(2);
+
+    act(() => {
+      for (const listener of getLottieListeners("/lottie/fanfare.lottie")) {
+        listener();
+      }
+    });
+
+    expect(screen.getByTestId("lottie-fanfare")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(getLottieListeners("/lottie/fanfare-vertical.lottie").size).toBeGreaterThan(0);
+    });
+
+    act(() => {
+      for (const listener of getLottieListeners("/lottie/fanfare-vertical.lottie")) {
+        listener();
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows fanfare in review mode when the review streak reaches three and keeps review completion CTA", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue({
+      ...explanation,
+      currentNumber: 5,
+      totalCount: 5,
+    });
+
+    render(
+      <InsightPage
+        correct
+        quizId={7}
+        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환" }}
+      />,
+    );
+
+    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
+      "data-sources",
+      "/lottie/fanfare.lottie",
+    );
+    expect(screen.getByRole("link", { name: "복습 완료" })).toHaveAttribute(
+      "href",
+      "/history/done?step=2&slot=5&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98",
+    );
+  });
+
+  it("does not show fanfare in review mode below the review streak threshold", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <InsightPage
+        correct
+        quizId={7}
+        review={{ step: 2, slot: 2, correct: 2, streak: 2, topic: "문맥 전환" }}
+      />,
+    );
+
+    expect(await screen.findByText("운영체제")).toBeInTheDocument();
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
 
   it("redirects to login when the explanation API reports an unauthorized session", async () => {
