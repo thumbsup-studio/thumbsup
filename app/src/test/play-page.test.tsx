@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
-import { getNextQuiz, submitQuizAnswer } from "@/lib/api/quiz";
+import { getNextQuiz, getStepQuiz, submitQuizAnswer } from "@/lib/api/quiz";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/api/quiz", () => ({
   getNextQuiz: vi.fn(),
+  getStepQuiz: vi.fn(),
   submitQuizAnswer: vi.fn(),
 }));
 
@@ -63,6 +64,7 @@ describe("PlayPage", () => {
     mockRouter.push.mockClear();
     mockRouter.replace.mockClear();
     vi.mocked(getNextQuiz).mockReset();
+    vi.mocked(getStepQuiz).mockReset();
     vi.mocked(submitQuizAnswer).mockReset();
     window.localStorage.clear();
   });
@@ -139,6 +141,24 @@ describe("PlayPage", () => {
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=10&correct=true&streak=3");
     });
+  });
+
+  it("passes review correct count and review streak to insight without touching daily streak", async () => {
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:1", "4");
+    vi.mocked(getStepQuiz).mockResolvedValue({ ...oxQuiz, quizId: 12, slotOrder: 3 });
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
+
+    render(<PlayPage review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환" }} />);
+
+    fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        "/insight?step=2&slot=3&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98&quizId=12&correct=true",
+      );
+    });
+    expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:1")).toBe("4");
   });
 
   it("resets the consecutive correct streak when a step starts from slot one", async () => {

@@ -48,10 +48,12 @@ export function InsightPage({ correct, correctStreak = 0, quizId, review }: Insi
   const [fanfarePlayer, setFanfarePlayer] = useState<DotLottie | null>(null);
   const [dismissedFanfareKey, setDismissedFanfareKey] = useState<string | null>(null);
 
+  const rewardStreak = review?.streak ?? correctStreak;
   const fanfareKey =
-    quizId !== null && correct && correctStreak >= 3 ? `${quizId}:${correctStreak}` : null;
+    quizId !== null && correct && rewardStreak >= 3
+      ? `${review ? "review" : "daily"}:${quizId}:${rewardStreak}`
+      : null;
   const showFanfare =
-    review == null &&
     fanfareKey !== null &&
     dismissedFanfareKey !== fanfareKey &&
     !isLoading &&

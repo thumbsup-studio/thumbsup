@@ -233,6 +233,46 @@ describe("InsightPage", () => {
     });
   });
 
+  it("shows fanfare in review mode when the review streak reaches three and keeps review completion CTA", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue({
+      ...explanation,
+      currentNumber: 5,
+      totalCount: 5,
+    });
+
+    render(
+      <InsightPage
+        correct
+        quizId={7}
+        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환" }}
+      />,
+    );
+
+    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
+      "data-src",
+      "/lottie/fanfare.lottie",
+    );
+    expect(screen.getByRole("link", { name: "복습 완료" })).toHaveAttribute(
+      "href",
+      "/history/done?step=2&slot=5&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98",
+    );
+  });
+
+  it("does not show fanfare in review mode below the review streak threshold", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <InsightPage
+        correct
+        quizId={7}
+        review={{ step: 2, slot: 2, correct: 2, streak: 2, topic: "문맥 전환" }}
+      />,
+    );
+
+    expect(await screen.findByText("운영체제")).toBeInTheDocument();
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+  });
+
   it("redirects to login when the explanation API reports an unauthorized session", async () => {
     vi.mocked(getQuizExplanation).mockRejectedValue({ status: 401 });
 

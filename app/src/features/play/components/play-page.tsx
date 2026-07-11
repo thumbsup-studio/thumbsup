@@ -112,9 +112,12 @@ export function PlayPage({ review }: PlayPageProps) {
       const result = await submitQuizAnswer(quiz.quizId, getSubmittedAnswers(quiz, draft));
 
       if (review) {
-        // 복습: 스트릭·보리 포만감은 건드리지 않고, 정답 누계만 이어받아 해설로.
+        // 복습: 오늘의 학습 스트릭·보리 포만감은 건드리지 않고, 복습 상태만 URL로 이어받는다.
         const correctAfter = review.correct + (result.isCorrect ? 1 : 0);
-        router.push(reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter));
+        const streakAfter = result.isCorrect ? review.streak + 1 : 0;
+        router.push(
+          reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter),
+        );
         return;
       }
 
