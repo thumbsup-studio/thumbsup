@@ -30,6 +30,7 @@ import {
 } from "@/lib/api/quiz";
 
 const FANFARE_SRC = "/lottie/fanfare.lottie";
+const FANFARE_VERTICAL_SRC = "/lottie/fanfare-vertical.lottie";
 
 type InsightPageProps = {
   correct: boolean;
@@ -53,8 +54,13 @@ export function InsightPage({ correct, correctStreak = 0, quizId, review }: Insi
     quizId !== null && correct && rewardStreak >= 3
       ? `${review ? "review" : "daily"}:${quizId}:${rewardStreak}`
       : null;
+  const fanfareSources = getFanfareSources(rewardStreak);
+  const fanfareCompleteSource = fanfareSources.includes(FANFARE_VERTICAL_SRC)
+    ? FANFARE_VERTICAL_SRC
+    : fanfareSources[0];
   const showFanfare =
     fanfareKey !== null &&
+    fanfareCompleteSource !== undefined &&
     dismissedFanfareKey !== fanfareKey &&
     !isLoading &&
     !error &&
@@ -144,16 +150,19 @@ export function InsightPage({ correct, correctStreak = 0, quizId, review }: Insi
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-0 z-50"
-          data-src={FANFARE_SRC}
+          data-sources={fanfareSources.join(",")}
           data-testid="lottie-fanfare"
         >
-          <DotLottieReact
-            autoplay
-            className="h-screen w-screen"
-            dotLottieRefCallback={setFanfarePlayer}
-            loop={false}
-            src={FANFARE_SRC}
-          />
+          {fanfareSources.map((source) => (
+            <DotLottieReact
+              autoplay
+              className="absolute inset-0 h-screen w-screen"
+              dotLottieRefCallback={source === fanfareCompleteSource ? setFanfarePlayer : undefined}
+              key={source}
+              loop={false}
+              src={source}
+            />
+          ))}
         </div>
       ) : null}
 
@@ -388,4 +397,20 @@ function getPrimaryFollowUpQuestion(
     followUpQuestions[0] ??
     null
   );
+}
+
+function getFanfareSources(streak: number) {
+  if (streak >= 5) {
+    return [FANFARE_SRC, FANFARE_VERTICAL_SRC];
+  }
+
+  if (streak === 4) {
+    return [FANFARE_VERTICAL_SRC];
+  }
+
+  if (streak === 3) {
+    return [FANFARE_SRC];
+  }
+
+  return [];
 }
