@@ -128,6 +128,20 @@ describe("InsightPage", () => {
     expect(screen.getByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute("href", "/play");
   });
 
+  it("shows a home CTA after the last quiz in the step", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue({
+      ...explanation,
+      currentNumber: 5,
+      totalCount: 5,
+    });
+
+    render(<InsightPage correct quizId={7} correctStreak={0} />);
+
+    expect(await screen.findByText("5/5")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "홈으로 가기" })).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("link", { name: "다음 문제 풀기" })).not.toBeInTheDocument();
+  });
+
   it("renders every server summary line without hard-coding three items", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 

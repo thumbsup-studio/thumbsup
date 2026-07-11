@@ -71,6 +71,7 @@ export function InsightPage({ correct, correctStreak = 0, quizId, review }: Insi
       ? reviewDoneHref(review)
       : reviewNextPlayHref(review)
     : null;
+  const isLastQuestion = explanation ? explanation.currentNumber >= explanation.totalCount : false;
 
   useEffect(() => {
     if (quizId === null) {
@@ -319,9 +320,9 @@ export function InsightPage({ correct, correctStreak = 0, quizId, review }: Insi
                           ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
                           : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
                       }
-                      href="/play"
+                      href={isLastQuestion ? "/" : "/play"}
                     >
-                      다음 문제 풀기
+                      {isLastQuestion ? "홈으로 가기" : "다음 문제 풀기"}
                     </a>
                   </>
                 )}
