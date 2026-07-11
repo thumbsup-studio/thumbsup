@@ -36,14 +36,14 @@ class MascotServiceTest {
     class GetMascot {
 
         @Test
-        @DisplayName("행이 없는 신규 유저는 만실(100%) 기본값을 반환한다")
-        void returns_full_default_for_new_user() {
+        @DisplayName("행이 없는 신규 유저는 보통(50%) 기본값을 반환한다")
+        void returns_neutral_default_for_new_user() {
             given(mascotRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
 
             MascotResponse response = service(FED_AT).getMascot(USER_ID);
 
             assertThat(response.name()).isEqualTo("보리");
-            assertThat(response.fullness()).isEqualTo(100);
+            assertThat(response.fullness()).isEqualTo(50);
         }
 
         @Test
@@ -101,14 +101,14 @@ class MascotServiceTest {
         }
 
         @Test
-        @DisplayName("행이 없는 최초 호출은 새로 만들어(100% 기본) 먹인다")
+        @DisplayName("행이 없는 최초 호출은 새로 만들어(50% 기본) 먹인다")
         void creates_row_on_first_feed() {
             given(mascotRepository.findByUserIdForUpdate(USER_ID)).willReturn(Optional.empty());
             given(mascotRepository.saveAndFlush(any(Mascot.class))).willReturn(Mascot.create(USER_ID, FED_AT));
 
             MascotResponse response = service(FED_AT).feed(USER_ID);
 
-            assertThat(response.fullness()).isEqualTo(100); // 100 + 20 → 캡 100
+            assertThat(response.fullness()).isEqualTo(70); // 50 + 20
         }
     }
 }

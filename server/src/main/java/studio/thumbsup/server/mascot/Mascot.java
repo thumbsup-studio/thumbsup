@@ -28,6 +28,7 @@ public class Mascot extends BaseEntity {
 
     public static final int MAX_FULLNESS = 100;
     public static final int MIN_FULLNESS = 0;
+    public static final int INITIAL_FULLNESS = 50;
     private static final int DECAY_PER_DAY = 10;
     private static final int FEED_AMOUNT = 20;
 
@@ -46,11 +47,11 @@ public class Mascot extends BaseEntity {
 
     private Mascot(Long userId, Instant now) {
         this.userId = userId;
-        this.fullnessAtLastFeed = MAX_FULLNESS;
+        this.fullnessAtLastFeed = INITIAL_FULLNESS;
         this.lastFedAt = now;
     }
 
-    /** 신규 유저는 배부른 상태(100%)로 시작한다. */
+    /** 신규 유저는 보통 상태({@value #INITIAL_FULLNESS}%)로 시작한다. */
     public static Mascot create(Long userId, Instant now) {
         return new Mascot(userId, now);
     }

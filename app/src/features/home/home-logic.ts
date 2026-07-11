@@ -43,13 +43,13 @@ export function formatFullness(fullness: number): string {
   return `포만감 ${clamped}%`;
 }
 
-/** 포만감 구간 → 표정. 67%↑ 행복 · 34~66% 보통 · 33%↓ 배고픔. */
+/** 포만감 구간 → 표정. 10단위 경계 — 70%↑ 행복 · 30~69% 보통 · 29%↓ 배고픔. */
 export function getCharacterMood(fullness: number): CharacterMood {
-  if (fullness >= 67) {
+  if (fullness >= 70) {
     return "happy";
   }
 
-  if (fullness >= 34) {
+  if (fullness >= 30) {
     return "neutral";
   }
 

@@ -22,12 +22,12 @@ public class MascotService {
         this.clock = clock;
     }
 
-    /** 아직 한 번도 먹이를 준 적 없는 신규 유저는 행(row) 생성 없이 만실(100%) 기본값을 반환한다. */
+    /** 아직 한 번도 먹이를 준 적 없는 신규 유저는 행(row) 생성 없이 보통({@value Mascot#INITIAL_FULLNESS}%) 기본값을 반환한다. */
     public MascotResponse getMascot(Long userId) {
         return mascotRepository
                 .findByUserId(userId)
                 .map(mascot -> MascotResponse.from(mascot.getCurrentFullness(clock.instant())))
-                .orElseGet(() -> MascotResponse.from(Mascot.MAX_FULLNESS));
+                .orElseGet(() -> MascotResponse.from(Mascot.INITIAL_FULLNESS));
     }
 
     /**
