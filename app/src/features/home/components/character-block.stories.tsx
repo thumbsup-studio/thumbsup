@@ -3,7 +3,7 @@ import { CharacterBlock } from "./character-block";
 
 /**
  * fullness 슬라이더를 드래그하면 링·표정(happy/neutral/hungry)이 실시간으로 바뀐다 —
- * 임계값은 home-logic.ts의 getCharacterMood(67%↑ 행복 · 34~66% 보통 · 33%↓ 배고픔).
+ * 임계값은 home-logic.ts의 getCharacterMood(70%↑ 행복 · 30~69% 보통 · 29%↓ 배고픔).
  */
 const meta: Meta<typeof CharacterBlock> = {
   title: "Home/CharacterBlock",
