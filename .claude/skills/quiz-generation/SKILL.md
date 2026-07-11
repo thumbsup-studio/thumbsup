@@ -82,7 +82,7 @@ JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는
 2. EASY(OX) — 위와 같은 유형, 다른 소재.
 3. MEDIUM(MULTIPLE_CHOICE) — 4지선다, choices 배열에 정확히 4개, 그중 정답 1개만 isCorrect=true.
    correctAnswer와 answerKeywords는 null.
-4. MEDIUM(MULTIPLE_CHOICE) — 위와 같은 유형, 다른 소재. 가능하면 코드 지문(codeSnippet) 포함.
+4. MEDIUM(MULTIPLE_CHOICE) — 위와 같은 유형, 다른 소재.
 5. HARD(KEYWORD_BLANK) — 빈칸 채우기. questionText에 빈칸(___)을 포함하고, answerKeywords는
    "빈칸 개수만큼의 배열"이어야 한다 — 배열 원소 하나가 빈칸 하나다. 빈칸이 1개면 answerKeywords도
    원소 1개짜리 배열이다. 절대로 같은 뜻의 다른 표현(동의어·약어/전체 이름 등)을 별도 빈칸으로
@@ -92,6 +92,9 @@ JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는
    choices와 correctAnswer는 null.
 
 모든 문제 공통 요구사항:
+- codeSnippet: 실제 코드나 실행 흐름이 명확한 의사코드가 문제 풀이에 필요할 때만 작성한다.
+  코드/의사코드가 아니면 반드시 null로 두고, 자연어 상황 설명·표·조건 목록은 questionText에 작성한다.
+  변수명에 리터럴 입력값만 대입해 나열한 데이터도 코드가 아니므로 questionText에 문장으로 작성한다.
 - explanationSummary: 정확히 개행(\n) 3줄로 된 핵심 요약. 줄 끝 공백·빈 줄 없이 정확히 3줄이어야 한다.
 - wrongAnswerExplanation: 이 문제를 틀렸을 때 보여줄, 왜 틀렸는지 설명하는 해설
 - followUpQuestions: 1개 이상, 그중 정확히 1개는 isPrimary=true. 각 꼬리질문은 아래 "꼬리질문 상세"를
@@ -138,7 +141,7 @@ JSON 스키마:
       "type": "OX | MULTIPLE_CHOICE | KEYWORD_BLANK",
       "difficulty": "EASY | MEDIUM | HARD",
       "questionText": "문제 본문",
-      "codeSnippet": "코드 지문(없으면 null)",
+      "codeSnippet": "실제 코드 또는 실행 흐름이 명확한 의사코드(필요하지 않으면 null)",
       "explanationSummary": "핵심 3줄 요약 해설 — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
       "explanationExample": "실무 적용/코드 예시(없으면 null) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
       "wrongAnswerExplanation": "오답 해설(왜 틀렸는지) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
@@ -175,6 +178,7 @@ JSON 스키마:
 - **해설 영역마다 같은 키워드가 중복 하이라이트됨**(#147): 필드별 첫 등장 규칙만 두면 같은 용어가 요약·예시·오답 해설에서 각각 마킹될 수 있다. 문제 해설은 3개 컬럼을 하나의 범위로 검증해 등록 키워드마다 정확히 1회만 허용하고, 프롬프트에 컬럼 우선순위도 명시한다.
 - **꼬리질문 영역마다 같은 키워드가 중복 하이라이트됨**(#162): 한 줄 답과 블록을 각각 검사하면 같은 용어가 여러 영역에서 반복 마킹될 수 있다. 꼬리질문 하나의 `oneLineAnswer`와 모든 `blocks[].content`를 한 범위로 검증하고, 한 줄 답 뒤에는 블록의 표시 순서를 우선순위로 삼는다.
 - **상세 없는 꼬리질문은 화면에서 사라진다**(#133): 조회 API가 `hasDetail()`로 거르기 때문에, 꼬리질문 상세를 빠뜨린 생성물은 에러 없이 조용히 누락된다. 그래서 프롬프트에 상세 필드를 넣는 데 그치지 않고 `validateFollowUpQuestions`로 저장 전에 막는다.
+- **자연어가 코드 블록으로 노출된다**(#157): Slot 4에 코드 지문을 권장했더니 모델이 코드가 필요하지 않은 문제에서도 자연어 상황·조건 목록을 `codeSnippet`에 채웠다. 코드 지문을 선택 사항으로 바꾸고, `CodeSnippetValidator`가 실행 구조의 근거가 없는 값을 저장 전에 거부한다.
 
 ## 검증 규칙 (`QuizGenerationService#validate`)
 
@@ -185,6 +189,7 @@ JSON 스키마:
 - `followUpQuestions` 1개 이상, 그중 정확히 1개만 `isPrimary=true`
 - `derivedConcepts`·`keywords` 1개 이상
 - `explanationSummary` 정확히 3줄, 빈 줄·줄 끝 공백 없음
+- `codeSnippet`은 null이거나 모든 유효 줄이 코드 형태이고 실행 구조를 입증하는 줄을 1개 이상 포함 — 빈 문자열, 주석뿐인 값, 자연어·표·조건 목록, 리터럴 대입만 나열한 입력 데이터, 500자를 초과하는 한 줄은 거부
 - 타입별: OX는 `correctAnswer`가 `O`/`X`, 사지선다는 선택지 정확히 4개 중 정답 1개, 키워드 빈칸은 `answerKeywords` 배열 길이가 `questionText`의 실제 빈칸(`___`) 개수와 일치
 - **꼬리질문마다**: `content` 비어있지 않고 마커 없음 · `difficulty` non-null · `oneLineAnswer` 비어있지 않음 · `keywords` 1개 이상 · `blocks` 1개 이상이고 첫 블록 `label`이 `해설`
 
@@ -213,7 +218,7 @@ JSON 스키마:
 이 파이프라인은 **로컬 DB에만 쓴다.** prod에 반영하는 흐름은 다음과 같다:
 
 1. 로컬에서 생성 (`--topicsFile`로 스텝 여러 개 한 번에)
-2. **사람이 전 문제를 검수** — 정답·해설·키워드 커버리지·문제 해설 3개 컬럼 전체와 각 꼬리질문 전체의 키워드별 마커 1회까지 전부 눈으로 확인. LLM 생성물이라 신뢰하지 않는다.
+2. **사람이 전 문제를 검수** — 정답·해설·키워드 커버리지·문제 해설 3개 컬럼 전체와 각 꼬리질문 전체의 키워드별 마커 1회까지 전부 눈으로 확인한다. `codeSnippet`이 있으면 실제 코드 또는 실행 흐름이 분명한 의사코드인지 확인하고, 자연어 상황·표·조건 목록이면 `questionText`로 옮긴 뒤 null로 바꾼다. LLM 생성물이라 신뢰하지 않는다.
 3. 검수 통과분만 **Flyway 마이그레이션으로 prod 반영** — 로컬 DB의 실제 저장값을 스크립트로 뽑아 SQL을 생성한다(수기 전사 금지 — 손으로 옮겨 적으면 내용이 미묘하게 바뀔 위험이 있다).
 4. 마이그레이션은 `INSERT ... ; SET @qid = LAST_INSERT_ID(); INSERT INTO quiz_follow_up_question (quiz_id, ...) VALUES (@qid, ...);` 패턴으로 부모(quiz)-자식(꼬리질문·파생개념·키워드) 관계를 auto-increment ID로 연결한다. id는 로컬 값과 무관하게 prod에서 새로 채번된다.
 
@@ -226,6 +231,7 @@ JSON 스키마:
 - `LAST_INSERT_ID()`를 쓸 수 없다. 대신 **업무상 좌표**로 찾는다: `(step_order, slot_order)` → `quiz_id` → `(quiz_id, display_order)` → `follow_up_question_id`. auto-increment id는 로컬과 prod가 다르다.
 - 좌표가 어긋나 변수가 `NULL`이 되면 이어지는 `INSERT`가 `NOT NULL` 제약에 걸려 마이그레이션 전체가 실패한다 — 조용히 넘어가지 않는 게 의도다.
 - **적용된 마이그레이션 파일은 절대 수정하지 않는다.** 새 파일로 낸다.
+- 기존 원문을 guard로 확인하는 보정 마이그레이션이 실패하면 drift 원인을 먼저 확인한다. 운영에서 `repair`를 먼저 실행하거나 적용된 파일을 고치지 말고, 트랜잭션 롤백 여부와 schema history를 확인한 뒤 필요한 수정은 새 마이그레이션으로 처리한다.
 - 실물 예시: `V20260710174600__seed_follow_up_question_detail.sql`(샘플 3건, 손저작), `V20260710213249__backfill_follow_up_question_detail.sql`(커리큘럼 120건, 스크립트 생성).
 
 ## 알려진 주의사항
@@ -234,3 +240,4 @@ JSON 스키마:
 - Testcontainers 통합 테스트는 seed 마이그레이션까지 전부 적용되므로, 테스트 픽스처의 `step_order`는 실제 커리큘럼 범위와 겹치지 않는 값(예: 101/102)을 쓴다.
 - 생성 실패는 스텝 단위로 전부 롤백된다(부분 저장 없음) — 재시도는 같은 주제로 다시 실행하면 된다(단, `stepOrder`가 자동 증가하므로 실패한 시도가 스텝 번호를 소비하지는 않는다 — 저장 자체가 안 됐으므로).
 - **상세 없는 꼬리질문은 시드에 더 이상 없다**(#133 백필 이후). "상세가 없을 때 404" 같은 경로를 테스트하려면 픽스처를 직접 만들어야 한다 — 시드에서 주워 쓰면 `orElseThrow()`에서 터진다.
+- `CodeSnippetValidator`는 컴파일러나 언어별 파서가 아니라 코드 구조를 보수적으로 확인하는 가드다. 모든 유효 줄이 코드 형태여야 하고 선언·호출·제어 흐름·계산식 같은 강한 근거가 하나 이상 있어야 한다. 그래서 리터럴 대입만 있는 입력 데이터는 거부하며, 미지원 언어 문법의 실제 코드를 거부하는 false negative는 안전 쪽 선택이다. prod 반영 전 사람의 의미 검수는 여전히 생략할 수 없다.

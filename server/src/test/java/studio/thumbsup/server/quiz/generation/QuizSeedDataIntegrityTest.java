@@ -1,0 +1,228 @@
+package studio.thumbsup.server.quiz.generation;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.IntStream;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import studio.thumbsup.server.common.config.ClockConfig;
+import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.quiz.Quiz;
+import studio.thumbsup.server.quiz.QuizChoice;
+import studio.thumbsup.server.quiz.QuizDifficulty;
+import studio.thumbsup.server.quiz.QuizRepository;
+import studio.thumbsup.server.quiz.QuizType;
+
+/** 전체 Flyway 시드의 문제 유형·정답 구조·코드 지문 품질을 운영 반영 전에 고정한다. */
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+@Import({ClockConfig.class, JpaAuditingConfig.class})
+@ActiveProfiles("test")
+class QuizSeedDataIntegrityTest {
+
+    private static final int TOTAL_QUIZ_COUNT = 63;
+    private static final int FORMAL_QUIZ_COUNT = 60;
+    private static final Pattern BLANK_PATTERN = Pattern.compile("___");
+
+    private static final Set<Coordinate> REVIEWED_CODE_SNIPPETS = Set.of(
+            new Coordinate(0, 2),
+            new Coordinate(0, 3),
+            new Coordinate(1, 4),
+            new Coordinate(3, 4),
+            new Coordinate(6, 4),
+            new Coordinate(7, 4),
+            new Coordinate(8, 4),
+            new Coordinate(9, 4),
+            new Coordinate(11, 4),
+            new Coordinate(12, 4));
+
+    @Container
+    @ServiceConnection
+    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+
+    private final QuizRepository quizRepository;
+
+    QuizSeedDataIntegrityTest(@Autowired QuizRepository quizRepository) {
+        this.quizRepository = quizRepository;
+    }
+
+    @Nested
+    @DisplayName("전체 문제 유형 감사")
+    class QuizTypeAudit {
+
+        @Test
+        @DisplayName("placeholder 3문제와 운영 커리큘럼 60문제가 정확한 슬롯 유형·난이도를 갖는다")
+        void keeps_complete_slot_contract() {
+            List<Quiz> quizzes = quizRepository.findAll();
+            List<Quiz> formal =
+                    quizzes.stream().filter(quiz -> quiz.getStepOrder() > 0).toList();
+
+            assertThat(quizzes).hasSize(TOTAL_QUIZ_COUNT);
+            assertThat(formal).hasSize(FORMAL_QUIZ_COUNT);
+            assertPlaceholderContract(quizzes);
+
+            IntStream.rangeClosed(1, 12).forEach(stepOrder -> assertFormalStep(formal, stepOrder));
+        }
+
+        @Test
+        @DisplayName("모든 문제는 답안 유형에 맞는 정답 필드와 자식 구조를 갖는다")
+        void keeps_type_specific_answer_structure() {
+            quizRepository.findAll().forEach(QuizSeedDataIntegrityTest.this::assertTypeSpecificFields);
+        }
+    }
+
+    @Nested
+    @DisplayName("코드 지문 감사")
+    class CodeSnippetAudit {
+
+        @Test
+        @DisplayName("검수된 10개 좌표에만 코드 지문이 있고 모두 코드 구조 검증을 통과한다")
+        void keeps_only_reviewed_code_snippets() {
+            List<Quiz> quizzesWithCode = quizRepository.findAll().stream()
+                    .filter(quiz -> quiz.getCodeSnippet() != null)
+                    .toList();
+
+            assertThat(quizzesWithCode)
+                    .extracting(quiz -> new Coordinate(quiz.getStepOrder(), quiz.getSlotOrder()))
+                    .containsExactlyInAnyOrderElementsOf(REVIEWED_CODE_SNIPPETS);
+            quizzesWithCode.forEach(
+                    quiz -> assertThatCode(() -> CodeSnippetValidator.validate(location(quiz), quiz.getCodeSnippet()))
+                            .doesNotThrowAnyException());
+        }
+
+        @Test
+        @DisplayName("오분류 네 문제는 상황을 본문에 보존하고 코드 지문을 비운다")
+        void moves_non_code_context_into_question_text() {
+            assertCorrectedQuiz(
+                    2,
+                    "단일 CPU 환경에서 CPU를 사용 중인 프로세스 P에 타이머 인터럽트가 발생했다. "
+                            + "P는 종료되거나 입출력을 요청하지 않았으며, 운영체제는 P의 실행 정보를 저장한 뒤 "
+                            + "다른 프로세스에 CPU를 넘겼다. 이때 P의 상태 전이로 가장 알맞은 것을 고르시오.",
+                    "Running → Ready");
+            assertCorrectedQuiz(
+                    4,
+                    "세 프로세스 P1(우선순위 3), P2(우선순위 1), P3(우선순위 2)가 모두 같은 시각에 준비 상태가 된다. "
+                            + "숫자가 작을수록 우선순위가 높으며, 비선점형 우선순위 스케줄링을 사용한다. "
+                            + "이 상황에 대한 설명으로 옳은 것을 고르시오.",
+                    "P2가 먼저 실행된다.");
+            assertCorrectedQuiz(
+                    5,
+                    "프로세스 A(우선순위 3, 버스트 시간 5), B(우선순위 1, 버스트 시간 8), "
+                            + "C(우선순위 2, 버스트 시간 2), D(우선순위 4, 버스트 시간 1)가 모두 시각 0에 준비 큐에 있다. "
+                            + "숫자가 작을수록 우선순위가 높은 선점형 우선순위 스케줄링을 사용할 때, "
+                            + "가장 먼저 CPU를 할당받는 프로세스로 알맞은 것을 고르시오.",
+                    "Process B");
+            assertCorrectedQuiz(
+                    10,
+                    "페이지 프레임이 3개이고 페이지 참조열이 [1, 2, 3, 2, 4] 순서로 주어졌을 때, "
+                            + "LRU 알고리즘의 설명으로 가장 알맞은 것을 고르시오. 각 숫자는 페이지 번호를 의미한다.",
+                    "페이지 1이 교체된다. 가장 오래 전에 사용되었기 때문이다.");
+        }
+    }
+
+    private void assertPlaceholderContract(List<Quiz> quizzes) {
+        List<Quiz> placeholders = quizzes.stream()
+                .filter(quiz -> quiz.getStepOrder() == 0)
+                .sorted(Comparator.comparingInt(Quiz::getSlotOrder))
+                .toList();
+
+        assertThat(placeholders).hasSize(3);
+        assertThat(placeholders).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3);
+        assertSlot(placeholders.get(0), QuizType.OX, QuizDifficulty.EASY);
+        assertSlot(placeholders.get(1), QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM);
+        assertSlot(placeholders.get(2), QuizType.KEYWORD_BLANK, QuizDifficulty.HARD);
+    }
+
+    private void assertFormalStep(List<Quiz> formal, int stepOrder) {
+        List<Quiz> step = formal.stream()
+                .filter(quiz -> quiz.getStepOrder() == stepOrder)
+                .sorted(Comparator.comparingInt(Quiz::getSlotOrder))
+                .toList();
+
+        assertThat(step).hasSize(5);
+        assertThat(step).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3, 4, 5);
+        assertSlot(step.get(0), QuizType.OX, QuizDifficulty.EASY);
+        assertSlot(step.get(1), QuizType.OX, QuizDifficulty.EASY);
+        assertSlot(step.get(2), QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM);
+        assertSlot(step.get(3), QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM);
+        assertSlot(step.get(4), QuizType.KEYWORD_BLANK, QuizDifficulty.HARD);
+    }
+
+    private void assertSlot(Quiz quiz, QuizType type, QuizDifficulty difficulty) {
+        assertThat(quiz.getType()).as(location(quiz)).isEqualTo(type);
+        assertThat(quiz.getDifficulty()).as(location(quiz)).isEqualTo(difficulty);
+    }
+
+    private void assertTypeSpecificFields(Quiz quiz) {
+        assertThat(quiz.getQuestionText()).as(location(quiz)).isNotBlank();
+        assertThat(quiz.getExplanationSummary()).as(location(quiz)).isNotBlank();
+        assertThat(quiz.getWrongAnswerExplanation()).as(location(quiz)).isNotBlank();
+        if (quiz.getCodeSnippet() != null) {
+            assertThat(quiz.getCodeSnippet()).as(location(quiz)).isNotBlank();
+        }
+
+        if (quiz.getType() == QuizType.OX) {
+            assertThat(quiz.getCorrectAnswer()).as(location(quiz)).isIn("O", "X");
+            assertThat(quiz.getChoices()).as(location(quiz)).isEmpty();
+            assertThat(quiz.getAnswerKeywords()).as(location(quiz)).isEmpty();
+        } else if (quiz.getType() == QuizType.MULTIPLE_CHOICE) {
+            assertThat(quiz.getCorrectAnswer()).as(location(quiz)).isNull();
+            assertThat(quiz.getChoices()).as(location(quiz)).hasSize(4);
+            assertThat(quiz.getChoices())
+                    .as(location(quiz))
+                    .filteredOn(QuizChoice::isCorrect)
+                    .hasSize(1);
+            assertThat(quiz.getAnswerKeywords()).as(location(quiz)).isEmpty();
+        } else {
+            assertThat(quiz.getCorrectAnswer()).as(location(quiz)).isNull();
+            assertThat(quiz.getChoices()).as(location(quiz)).isEmpty();
+            long blankCount =
+                    BLANK_PATTERN.matcher(quiz.getQuestionText()).results().count();
+            List<Integer> answerSlots = quiz.getAnswerKeywords().stream()
+                    .mapToInt(answer -> answer.getSlotOrder())
+                    .distinct()
+                    .sorted()
+                    .boxed()
+                    .toList();
+            assertThat(blankCount).as(location(quiz)).isPositive();
+            assertThat(answerSlots)
+                    .as(location(quiz))
+                    .containsExactlyElementsOf(IntStream.rangeClosed(1, Math.toIntExact(blankCount))
+                            .boxed()
+                            .toList());
+        }
+    }
+
+    private void assertCorrectedQuiz(int stepOrder, String questionText, String correctChoice) {
+        Quiz quiz = quizRepository.findByStepOrderAndSlotOrder(stepOrder, 4).orElseThrow();
+
+        assertThat(quiz.getQuestionText()).isEqualTo(questionText);
+        assertThat(quiz.getCodeSnippet()).isNull();
+        assertThat(quiz.getChoices())
+                .filteredOn(QuizChoice::isCorrect)
+                .extracting(QuizChoice::getContent)
+                .containsExactly(correctChoice);
+    }
+
+    private String location(Quiz quiz) {
+        return "step %d / slot %d".formatted(quiz.getStepOrder(), quiz.getSlotOrder());
+    }
+
+    private record Coordinate(int stepOrder, int slotOrder) {}
+}
