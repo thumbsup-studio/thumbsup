@@ -31,7 +31,14 @@ export async function runLogin(configPath: string = CONFIG_PATH): Promise<void> 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    const envelope = (await res.json()) as { code: string; message: string; data: { accessToken: string; refreshToken: string } };
+    const text = await res.text();
+    let envelope: { code: string; message: string; data: { accessToken: string; refreshToken: string } };
+    try {
+      envelope = JSON.parse(text);
+    } catch {
+      // 배포 중 Nginx가 502/503 HTML을 줄 수 있다 — 원본 SyntaxError 대신 친절한 메시지로 감싼다.
+      throw new Error(`로그인 응답을 처리하지 못했습니다(예상치 못한 형식): ${text.slice(0, 200) || "(빈 응답)"}`);
+    }
     if (!res.ok) {
       throw new Error(`로그인에 실패했습니다: ${envelope.message}`);
     }

@@ -1,7 +1,7 @@
 import { createServer, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
-export type FakeResponse = { status: number; body: unknown };
+export type FakeResponse = { status: number; body?: unknown; rawBody?: string };
 export type FakeHandler = (req: {
   method: string;
   path: string;
@@ -60,7 +60,14 @@ export class FakeServer {
       res.end(JSON.stringify({ code: "NOT_FOUND", message: `핸들러 없음: ${key}`, data: null }));
       return;
     }
-    const { status, body: resBody } = await handler({ method, path, headers: req.headers, body });
+    const { status, body: resBody, rawBody } = await handler({ method, path, headers: req.headers, body });
+    // rawBody가 있으면 JSON.stringify 없이 그대로 응답 — 배포 중 Nginx가 주는 502/503 HTML 같은
+    // 비JSON 응답을 흉내낼 때 쓴다(JSON.stringify는 문자열도 JSON 문자열 리터럴로 감싸버려 흉내가 안 됨).
+    if (rawBody !== undefined) {
+      res.writeHead(status, { "Content-Type": "text/html" });
+      res.end(rawBody);
+      return;
+    }
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(resBody));
   }

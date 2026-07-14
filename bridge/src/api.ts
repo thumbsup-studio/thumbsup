@@ -17,6 +17,19 @@ export class ApiError extends Error {
 }
 
 /**
+ * 응답 본문을 먼저 텍스트로 받아 파싱한다. 배포 중 Nginx가 주는 502/503 HTML처럼
+ * JSON이 아닌 응답이 오면 원본 SyntaxError 대신 ApiError(INVALID_RESPONSE)로 감싸 던진다.
+ */
+async function parseEnvelope<T>(res: Response): Promise<Envelope<T>> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as Envelope<T>;
+  } catch {
+    throw new ApiError("INVALID_RESPONSE", res.status, text.slice(0, 200) || "(빈 응답)");
+  }
+}
+
+/**
  * bridge용 서버 API 클라이언트. 엔벨로프 {code,message,data} 언랩, 401+TOKEN_EXPIRED는
  * refresh 후 1회 재시도(회전 토큰쌍을 persist 콜백으로 저장)한다.
  * 리프레시 요청/응답 형태는 app/src/lib/api/client.ts의 doRefresh()를 미러링한다.
@@ -55,7 +68,7 @@ export class BridgeApi {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.config.accessToken}` },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
-    const envelope = (await res.json()) as Envelope<T>;
+    const envelope = await parseEnvelope<T>(res);
     if (res.ok) return envelope.data;
     if (res.status === 401 && envelope.code === "TOKEN_EXPIRED" && !init.retried) {
       await this.refresh();
@@ -71,7 +84,7 @@ export class BridgeApi {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: this.config.refreshToken }),
     });
-    const envelope = (await res.json()) as Envelope<{ accessToken: string; refreshToken: string }>;
+    const envelope = await parseEnvelope<{ accessToken: string; refreshToken: string }>(res);
     if (!res.ok) {
       throw new ApiError(envelope.code, res.status, envelope.message);
     }

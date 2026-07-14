@@ -187,6 +187,30 @@ describe("runOnce", () => {
     const logsReq = server.received.find((r) => r.path === "/api/v1/authoring/bridge/jobs/4/logs");
     expect((logsReq?.body as { lines: string[] }).lines).toContain("마지막 로그 라인");
   });
+
+  it("postResult가 throw하면 postFail을 시도하고, postFail도 실패해도 'failed'를 반환한다", async () => {
+    server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+      status: 200,
+      body: {
+        code: "SUCCESS",
+        message: "",
+        data: { jobId: 6, kind: "GENERATE", prompt: "P", outputSchema: {} },
+      },
+    }));
+    server.on("POST", "/api/v1/authoring/bridge/jobs/6/result", () => ({
+      status: 500,
+      body: { code: "INTERNAL_ERROR", message: "일시적 오류", data: null },
+    }));
+    server.on("POST", "/api/v1/authoring/bridge/jobs/6/fail", () => ({
+      status: 500,
+      body: { code: "INTERNAL_ERROR", message: "이것도 실패", data: null },
+    }));
+
+    // postResult(500)도, 그 뒤 시도하는 postFail(500)도 둘 다 서버 오류지만
+    // runOnce 밖으로 예외가 새어나가지 않고 "failed"로 정상 반환돼야 한다.
+    const outcome = await runOnce({ api, adapter: fakeClaudeAdapter, logFlushMs: 10 });
+    expect(outcome).toBe("failed");
+  });
 });
 
 describe("runLoop", () => {
@@ -227,5 +251,28 @@ describe("runLoop", () => {
     await loopPromise;
 
     expect(listenerCountBeforeAbort).toBeLessThanOrEqual(1);
+  });
+
+  it("nextJob이 throw해도 runLoop가 죽지 않고 다음 사이클을 계속한다", async () => {
+    server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+      status: 500,
+      body: { code: "INTERNAL_ERROR", message: "일시적 서버 오류", data: null },
+    }));
+    // 이후 호출들은 정상(idle)으로 회복됐다고 가정.
+    for (let i = 0; i < 10; i++) {
+      server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+        status: 200,
+        body: { code: "SUCCESS", message: "", data: null },
+      }));
+    }
+
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 60);
+    // runLoop 자체가 reject하면(=예외가 새어나가면) await가 곧바로 throw해 테스트가 실패한다.
+    await runLoop({ api, adapter: fakeClaudeAdapter, pollIntervalMs: 10 }, controller.signal);
+
+    const nextCalls = server.received.filter((r) => r.path === "/api/v1/authoring/bridge/jobs/next");
+    // 첫 호출이 500으로 실패한 뒤에도 폴링을 계속했다는 증거로 최소 2회 이상 호출됐어야 한다.
+    expect(nextCalls.length).toBeGreaterThanOrEqual(2);
   });
 });

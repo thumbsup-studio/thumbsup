@@ -54,7 +54,16 @@ export async function runOnce(deps: RunnerDeps): Promise<"idle" | "done" | "fail
     // postFail 이전에도 마찬가지로 RUNNING 상태에서 남은 로그를 먼저 보낸다.
     clearInterval(interval);
     await scheduleFlush();
-    await api.postFail(job.jobId, message);
+    try {
+      await api.postFail(job.jobId, message);
+    } catch (postFailError) {
+      // postFail 자체가 실패해도(네트워크 오류·서버 재배포 중 등) 데몬을 죽이지 않는다 — 로그만 남기고 넘어간다.
+      // 서버 잡이 RUNNING에 고착될 수 있지만, 여기서 더 할 수 있는 게 없다(다음 폴링 사이클은 계속 진행).
+      console.error(
+        `postFail 제출 실패 (jobId=${job.jobId}):`,
+        postFailError instanceof Error ? postFailError.message : postFailError,
+      );
+    }
     return "failed";
   } finally {
     // 안전망 — 위 두 경로에서 이미 정리됐다면 clearInterval은 무해한 재호출, scheduleFlush는 버퍼가 비어 즉시 반환.
@@ -85,11 +94,20 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** idle일 때만 pollIntervalMs만큼 쉬며 계속 폴링한다. signal이 abort되면 현재 잡을 마친 뒤 멈춘다. */
+/**
+ * idle일 때만 pollIntervalMs만큼 쉬며 계속 폴링한다. signal이 abort되면 현재 잡을 마친 뒤 멈춘다.
+ * runOnce 자체가 throw해도(WiFi 끊김·노트북 sleep/wake·서버 재배포 중 502 등) 데몬 전체가 죽지 않도록
+ * 여기서 잡아 로그만 남기고 pollIntervalMs만큼 backoff한 뒤 다음 사이클을 계속한다.
+ */
 export async function runLoop(deps: RunnerDeps, signal: AbortSignal): Promise<void> {
   const pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   while (!signal.aborted) {
-    const outcome = await runOnce(deps);
-    if (outcome === "idle") await sleep(pollIntervalMs, signal);
+    try {
+      const outcome = await runOnce(deps);
+      if (outcome === "idle") await sleep(pollIntervalMs, signal);
+    } catch (error) {
+      console.error("잡 처리 중 예외 발생 — 다음 사이클로 계속:", error instanceof Error ? error.message : error);
+      await sleep(pollIntervalMs, signal);
+    }
   }
 }

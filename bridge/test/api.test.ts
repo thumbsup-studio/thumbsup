@@ -95,4 +95,17 @@ describe("BridgeApi", () => {
     const outcome = await api.postResult(5, "CLAUDE", '{"quizzes":[]}');
     expect(outcome).toEqual({ jobId: 5, status: "FAILED", error: "검증 실패" });
   });
+
+  it("서버가 JSON이 아닌 응답(배포 중 Nginx 502 HTML 등)을 주면 ApiError(INVALID_RESPONSE)를 던진다", async () => {
+    server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+      status: 502,
+      rawBody: "<html><body><h1>502 Bad Gateway</h1></body></html>",
+    }));
+
+    const error = await api.nextJob().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).code).toBe("INVALID_RESPONSE");
+    expect((error as ApiError).status).toBe(502);
+    expect((error as ApiError).message).toContain("502 Bad Gateway");
+  });
 });
