@@ -38,6 +38,11 @@ const PREFIX = "/api/v1";
 /** 응답이 오지 않을 때 무한 대기하지 않도록 요청 타임아웃(초과 시 abort → NetworkError). */
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/** apiRequest를 거치지 않는 요청(SSE 등)이 동일한 base URL 규칙으로 절대경로를 만들 때 사용. */
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${PREFIX}${path}`;
+}
+
 export type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
