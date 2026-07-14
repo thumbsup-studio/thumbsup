@@ -1,12 +1,16 @@
 package studio.thumbsup.server.quiz.authoring;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.quiz.Quiz;
+import studio.thumbsup.server.quiz.authoring.dto.DraftDetailResponse;
+import studio.thumbsup.server.quiz.authoring.dto.DraftListResponse;
+import studio.thumbsup.server.quiz.authoring.dto.DraftSummaryResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.QuizGenerationException;
 
@@ -97,11 +101,37 @@ public class AuthoringDraftService {
         return quizDraftRepository.existsBySourceQuizIdAndStatus(sourceQuizId, QuizDraftStatus.DRAFT);
     }
 
+    /** 컨트롤러(#174 T7)가 엔티티를 직접 만지지 않도록 목록 DTO 변환까지 여기서 끝낸다. */
+    @Transactional(readOnly = true)
+    public DraftListResponse listSummaries(QuizDraftStatus status) {
+        List<DraftSummaryResponse> summaries = list(status).stream()
+                .map(draft -> DraftSummaryResponse.from(
+                        draft, (int) quizDraftRevisionRepository.countByDraftId(draft.getId())))
+                .toList();
+        return new DraftListResponse(summaries);
+    }
+
+    /** 컨트롤러(#174 T7)가 엔티티를 직접 만지지 않도록 상세 DTO 변환까지 여기서 끝낸다. */
+    @Transactional(readOnly = true)
+    public DraftDetailResponse getDetail(Long draftId) {
+        QuizDraft draft = getOrThrow(draftId);
+        List<QuizDraftRevision> revisionList = revisions(draftId);
+        return DraftDetailResponse.from(draft, readTree(draft.getCurrentPayload()), revisionList);
+    }
+
     private String writeValueAsString(GeneratedQuizSet set) {
         try {
             return objectMapper.writeValueAsString(set);
         } catch (JsonProcessingException e) {
             throw new QuizGenerationException("draft payload를 JSON으로 직렬화하지 못했습니다.", e);
+        }
+    }
+
+    private JsonNode readTree(String json) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (JsonProcessingException e) {
+            throw new QuizGenerationException("draft payload를 JSON으로 파싱하지 못했습니다.", e);
         }
     }
 }

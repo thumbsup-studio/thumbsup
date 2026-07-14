@@ -7,6 +7,7 @@ import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizErrorType;
 import studio.thumbsup.server.quiz.QuizRepository;
+import studio.thumbsup.server.quiz.authoring.dto.ApproveResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
 import studio.thumbsup.server.quiz.generation.QuizPersister;
@@ -58,6 +59,13 @@ public class AuthoringApprovalService {
 
         draft.approve(userId, clock.instant());
         return draft;
+    }
+
+    /** 컨트롤러(#174 T7)가 엔티티를 직접 만지지 않도록 승인 결과를 DTO로 감싸 돌려준다. */
+    @Transactional
+    public ApproveResponse approveForResponse(Long userId, Long draftId) {
+        QuizDraft draft = approve(userId, draftId);
+        return new ApproveResponse(draft.getId(), draft.getStatus().name());
     }
 
     private void materializeImprove(QuizDraft draft, GeneratedQuizSet set) {

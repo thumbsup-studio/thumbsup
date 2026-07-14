@@ -16,6 +16,7 @@ import studio.thumbsup.server.quiz.QuizErrorType;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
+import studio.thumbsup.server.quiz.authoring.dto.JobStatusResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
 import studio.thumbsup.server.quiz.generation.QuizGenerationException;
@@ -150,6 +151,12 @@ public class AuthoringJobService {
         GenerationJob job = findJobOrThrow(jobId);
         expireIfNeeded(job, clock.instant());
         return job;
+    }
+
+    /** 컨트롤러(#174 T7)가 엔티티를 직접 만지지 않도록 조회 결과를 DTO로 감싸 돌려준다. */
+    @Transactional
+    public JobStatusResponse getJobStatus(Long jobId) {
+        return JobStatusResponse.from(getJobWithExpiry(jobId));
     }
 
     private void handleGenerateResult(GenerationJob job, String resultJson) {
