@@ -37,10 +37,10 @@ class QuizGenerationFollowUpValidationTest {
     @Mock
     private QuizPersister quizPersister;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GeneratedQuizValidator validator = new GeneratedQuizValidator(new ObjectMapper());
 
     private QuizGenerationService service() {
-        return new QuizGenerationService(eliceClient, quizPersister, objectMapper);
+        return new QuizGenerationService(eliceClient, quizPersister, validator);
     }
 
     /** 첫 슬롯의 꼬리질문만 갈아끼운 세트를 응답으로 준다 — 나머지는 항상 유효하다. */

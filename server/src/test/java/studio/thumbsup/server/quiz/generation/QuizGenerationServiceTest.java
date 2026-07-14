@@ -34,10 +34,10 @@ class QuizGenerationServiceTest {
     @Mock
     private QuizPersister quizPersister;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GeneratedQuizValidator validator = new GeneratedQuizValidator(new ObjectMapper());
 
     private QuizGenerationService service() {
-        return new QuizGenerationService(eliceClient, quizPersister, objectMapper);
+        return new QuizGenerationService(eliceClient, quizPersister, validator);
     }
 
     @Nested

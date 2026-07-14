@@ -28,6 +28,7 @@ class QuizGenerationCodeSnippetTest {
     private QuizPersister quizPersister;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GeneratedQuizValidator validator = new GeneratedQuizValidator(objectMapper);
 
     @Nested
     @DisplayName("퀴즈 생성")
@@ -81,7 +82,7 @@ class QuizGenerationCodeSnippetTest {
     }
 
     private QuizGenerationService service() {
-        return new QuizGenerationService(eliceClient, quizPersister, objectMapper);
+        return new QuizGenerationService(eliceClient, quizPersister, validator);
     }
 
     private String setJsonWithFirstCodeSnippet(String codeSnippet) throws JsonProcessingException {

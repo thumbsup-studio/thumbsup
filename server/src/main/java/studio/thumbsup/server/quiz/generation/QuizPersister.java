@@ -17,7 +17,7 @@ import studio.thumbsup.server.quiz.QuizType;
  * 자기 자신이 호출하면 Spring AOP 프록시를 거치지 않아(self-invocation) 트랜잭션이 적용되지 않는다.
  */
 @Service
-class QuizPersister {
+public class QuizPersister {
 
     /** 생성 파이프라인은 소요 시간을 산출하지 않는다 — 콘텐츠 저작 시 수동 조정 예정인 MVP 기본값(#117). */
     private static final int DEFAULT_ESTIMATED_MINUTES = 3;
@@ -25,13 +25,13 @@ class QuizPersister {
     private final QuizRepository quizRepository;
     private final QuizStepRepository quizStepRepository;
 
-    QuizPersister(QuizRepository quizRepository, QuizStepRepository quizStepRepository) {
+    public QuizPersister(QuizRepository quizRepository, QuizStepRepository quizStepRepository) {
         this.quizRepository = quizRepository;
         this.quizStepRepository = quizStepRepository;
     }
 
     @Transactional
-    int persist(String courseTopic, GeneratedQuizSet generated) {
+    public int persist(String courseTopic, GeneratedQuizSet generated) {
         int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
 
         // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
@@ -39,23 +39,23 @@ class QuizPersister {
 
         int slotOrder = 1;
         for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
-            Quiz quiz = toEntity(g);
+            Quiz quiz = Quiz.create(
+                    g.type(),
+                    g.difficulty(),
+                    g.questionText(),
+                    g.codeSnippet(),
+                    g.explanationSummary(),
+                    g.explanationExample(),
+                    g.wrongAnswerExplanation());
+            populate(quiz, g);
             quiz.assignPosition(stepOrder, slotOrder++);
             quizRepository.save(quiz);
         }
         return stepOrder;
     }
 
-    private Quiz toEntity(GeneratedQuizSet.GeneratedQuiz g) {
-        Quiz quiz = Quiz.create(
-                g.type(),
-                g.difficulty(),
-                g.questionText(),
-                g.codeSnippet(),
-                g.explanationSummary(),
-                g.explanationExample(),
-                g.wrongAnswerExplanation());
-
+    /** 생성 결과의 자식 콘텐츠(선택지·정답 키워드·꼬리질문·파생개념·키워드)를 이미 만들어진 quiz에 채운다. */
+    public void populate(Quiz quiz, GeneratedQuizSet.GeneratedQuiz g) {
         if (g.type() == QuizType.OX) {
             quiz.assignCorrectAnswer(g.correctAnswer());
         }
@@ -68,7 +68,6 @@ class QuizPersister {
         addFollowUpQuestions(quiz, g.followUpQuestions());
         addDerivedConcepts(quiz, g.derivedConcepts());
         g.keywords().forEach(keyword -> quiz.addKeyword(keyword.keyword(), keyword.description()));
-        return quiz;
     }
 
     private void addChoices(Quiz quiz, List<GeneratedQuizSet.GeneratedChoice> choices) {

@@ -22,7 +22,7 @@ public class EliceClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration READ_TIMEOUT = Duration.ofMinutes(2); // 문제 5개 생성은 수십 초가 걸릴 수 있다
 
-    private static final String SYSTEM_PROMPT = """
+    public static final String SYSTEM_PROMPT = """
             너는 컴퓨터공학 전공 교재 수준의 정확성을 가진 CS 강사이며, 학습자의 이해도를 확인하는 퀴즈를 만든다.
 
             - 사실 기반으로만 작성한다. 확실하지 않은 내용, 검증되지 않은 수치·통계, 존재하지 않는 개념이나
