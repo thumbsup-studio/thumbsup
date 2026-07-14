@@ -17,7 +17,16 @@ export function loadConfig(path: string = CONFIG_PATH): BridgeConfig {
     throw new Error(`설정 파일을 찾을 수 없습니다: ${path}\n먼저 login 명령으로 로그인해주세요.`);
   }
 
-  const data = JSON.parse(raw) as Partial<BridgeConfig>;
+  let data: Partial<BridgeConfig>;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new Error("not an object");
+    }
+    data = parsed as Partial<BridgeConfig>;
+  } catch {
+    throw new Error(`설정 파일이 손상되었습니다: ${path}\nlogin 명령으로 다시 로그인해주세요.`);
+  }
 
   if (typeof data.serverUrl !== "string" || data.serverUrl.length === 0) {
     throw new Error("설정이 올바르지 않습니다: serverUrl이 비어있습니다.");

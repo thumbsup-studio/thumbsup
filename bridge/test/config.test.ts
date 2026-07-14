@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -19,5 +19,15 @@ describe("config", () => {
   });
   it("파일이 없으면 로그인 안내 메시지를 던진다", () => {
     expect(() => loadConfig("/nonexistent/bridge.json")).toThrow(/login/);
+  });
+  it("파일 내용이 손상된 JSON이면 친절한 한국어 메시지를 던진다", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "bridge-")), "bridge.json");
+    writeFileSync(path, "{corrupted");
+    expect(() => loadConfig(path)).toThrow(/login/);
+  });
+  it("파일 내용이 객체가 아니면(null) 친절한 한국어 메시지를 던진다", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "bridge-")), "bridge.json");
+    writeFileSync(path, "null");
+    expect(() => loadConfig(path)).toThrow(/login/);
   });
 });
