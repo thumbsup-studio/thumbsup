@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz.authoring;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
@@ -16,6 +17,8 @@ import studio.thumbsup.server.quiz.QuizErrorType;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
+import studio.thumbsup.server.quiz.authoring.dto.BridgeJobResponse;
+import studio.thumbsup.server.quiz.authoring.dto.BridgeResultResponse;
 import studio.thumbsup.server.quiz.authoring.dto.JobStatusResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
@@ -159,6 +162,37 @@ public class AuthoringJobService {
         return JobStatusResponse.from(getJobWithExpiry(jobId));
     }
 
+    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 claimNext 결과를 DTO로 감싸 돌려준다. */
+    @Transactional
+    public Optional<BridgeJobResponse> claimNextForBridge(Long userId) {
+        return claimNext(userId).map(job -> BridgeJobResponse.from(job, readOutputSchema(job.getKind())));
+    }
+
+    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 submitResult 결과를 DTO로 감싸 돌려준다. */
+    @Transactional
+    public BridgeResultResponse submitResultForBridge(Long userId, Long jobId, BridgeCli cli, String resultJson) {
+        return BridgeResultResponse.from(submitResult(userId, jobId, cli, resultJson));
+    }
+
+    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 반환값 없이 위임한다 — {@code /fail}은 항상 data:null. */
+    @Transactional
+    public void failJobForBridge(Long userId, Long jobId, String error) {
+        failJob(userId, jobId, error);
+    }
+
+    /**
+     * 로그 적재 가능 여부(#174 T8) — 잡 존재·소유권은 여기서 확인해 못 찾으면 404, 남의 잡이면 403이다.
+     * RUNNING이 아니면(이미 종결된 잡에 뒤늦게 도착한 flush 등) 예외 없이 false만 돌려준다 — 컨트롤러가
+     * 이 경우 append를 조용히 건너뛴다. 브리지의 finally 안전망 flush가 result 직후 늦게 도착해도
+     * 500/409로 브리지를 놀라게 하지 않기 위한 선택이다(브리프에 명시 없어 T8 구현 시 판단, 리포트 참고).
+     */
+    @Transactional(readOnly = true)
+    public boolean canAppendLogs(Long userId, Long jobId) {
+        GenerationJob job = findJobOrThrow(jobId);
+        guardOwnership(job, userId);
+        return job.getStatus() == GenerationJobStatus.RUNNING;
+    }
+
     private void handleGenerateResult(GenerationJob job, String resultJson) {
         GeneratedQuizSet generated = validator.parse(resultJson);
         validator.validateSet(generated);
@@ -187,6 +221,16 @@ public class AuthoringJobService {
                 .findById(draft.getSourceQuizId())
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         validator.validateSingle(quizzes.get(0), sourceQuiz.getType(), sourceQuiz.getDifficulty());
+    }
+
+    private JsonNode readOutputSchema(GenerationJobKind kind) {
+        String schema =
+                kind == GenerationJobKind.GENERATE ? AuthoringOutputSchemas.GENERATE : AuthoringOutputSchemas.REVIEW;
+        try {
+            return objectMapper.readTree(schema);
+        } catch (JsonProcessingException e) {
+            throw new QuizGenerationException("output schema를 JSON으로 파싱하지 못했습니다.", e);
+        }
     }
 
     private GenerationJob findJobOrThrow(Long jobId) {
