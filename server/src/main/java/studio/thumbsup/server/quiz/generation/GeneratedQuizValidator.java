@@ -47,7 +47,8 @@ public class GeneratedQuizValidator {
         }
     }
 
-    private String stripMarkdownFence(String raw) {
+    /** 코드펜스 제거만 필요한 호출자(REVIEW 결과의 {@code ReviewResult} 역직렬화 등)를 위해 공개한다. */
+    public String stripMarkdownFence(String raw) {
         String trimmed = raw.trim();
         if (!trimmed.startsWith("```")) {
             return trimmed;

@@ -91,6 +91,12 @@ public class AuthoringDraftService {
         return quizDraftRevisionRepository.findByDraftIdOrderByRevisionNoDesc(draftId);
     }
 
+    /** 소스 퀴즈에 이미 열린(검수 대기 중인) 개선 draft가 있는지 — 중복 개선 요청 방지 가드에 쓰인다(#174). */
+    @Transactional(readOnly = true)
+    public boolean hasOpenImproveDraft(Long sourceQuizId) {
+        return quizDraftRepository.existsBySourceQuizIdAndStatus(sourceQuizId, QuizDraftStatus.DRAFT);
+    }
+
     private String writeValueAsString(GeneratedQuizSet set) {
         try {
             return objectMapper.writeValueAsString(set);
