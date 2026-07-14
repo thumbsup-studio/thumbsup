@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Feedback } from "@/components/ui/feedback";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,8 +18,24 @@ import { useJobLogStream } from "@/features/authoring/use-job-log-stream";
  * 잡 실행 터미널 화면 — SSE로 로그를 실시간으로 밀어넣고, 종료 시 결과 액션을 보여준다.
  * SSE는 log/status 이벤트만 보내고 QUEUED→RUNNING 전이는 별도로 알려주지 않으므로,
  * "QUEUED로 시작했는데 아직 로그가 한 줄도 없다"를 브리지 대기 상태로 간주한다.
+ *
+ * jobId가 바뀌지 않는 한 재시도(스트림 재시작)가 필요할 수 있어, 실제 스트림 소비 로직은
+ * `retryKey`로 키를 준 하위 컴포넌트(JobStream)에 위임한다 — 키가 바뀌면 리마운트되어
+ * useJobLogStream의 이펙트가 처음부터 다시 실행된다(재시도 = 리마운트).
  */
 export function JobScreen({ jobId }: { jobId: number }) {
+  const [retryKey, setRetryKey] = useState(0);
+  return (
+    <JobStream
+      jobId={jobId}
+      key={`${jobId}-${retryKey}`}
+      onRetry={() => setRetryKey((k) => k + 1)}
+    />
+  );
+}
+
+function JobStream({ jobId, onRetry }: { jobId: number; onRetry: () => void }) {
+  const router = useRouter();
   const handleRef = useRef<TerminalHandle | null>(null);
   // onReady는 ref만 대입하므로 deps 없이 고정 — 매 렌더 새 함수를 넘기면 TerminalViewer가 재마운트된다.
   const handleReady = useCallback((handle: TerminalHandle) => {
@@ -51,7 +68,14 @@ export function JobScreen({ jobId }: { jobId: number }) {
     handleRef.current?.write(line);
   });
 
-  if (streamState.phase === "connecting") {
+  useEffect(() => {
+    // 재발급까지 실패한 세션 무효(401)는 로그인으로 유도(frontend-api 규칙 3).
+    if (streamState.phase === "unauthorized") {
+      router.replace("/login");
+    }
+  }, [streamState.phase, router]);
+
+  if (streamState.phase === "connecting" || streamState.phase === "unauthorized") {
     return <JobScreenSkeleton />;
   }
 
@@ -70,7 +94,7 @@ export function JobScreen({ jobId }: { jobId: number }) {
         <Feedback tone="pending">브리지 대기 중 — 브리지를 켜세요.</Feedback>
       ) : null}
 
-      <TerminalViewer onReady={handleReady} />
+      {streamState.phase === "error" ? null : <TerminalViewer onReady={handleReady} />}
 
       {streamState.phase === "done" ? (
         streamState.status === "SUCCEEDED" ? (
@@ -91,7 +115,9 @@ export function JobScreen({ jobId }: { jobId: number }) {
       ) : null}
 
       {streamState.phase === "error" ? (
-        <Feedback tone="error">로그를 불러오지 못했어요.</Feedback>
+        <Feedback onRetry={onRetry} tone="error">
+          로그를 불러오지 못했어요.
+        </Feedback>
       ) : null}
     </div>
   );

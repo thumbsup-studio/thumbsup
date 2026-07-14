@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ApiError } from "@/lib/api";
 import { getJob } from "./api";
 import { streamJobLogs } from "./sse";
 
@@ -8,9 +9,18 @@ export type JobStreamState =
   | { phase: "connecting" }
   | { phase: "streaming" }
   | { phase: "done"; status: string; draftId: number | null; error: string | null }
-  | { phase: "error" };
+  | { phase: "error" }
+  | { phase: "unauthorized" };
 
 const TERMINAL_STATUSES = new Set(["SUCCEEDED", "FAILED"]);
+
+/** 재발급까지 실패한 세션 무효(401)는 로그인으로 유도(frontend-api 규칙 3) — unauthorized로 구분해 error와 분기. */
+function phaseForError(error: unknown): JobStreamState {
+  if (error instanceof ApiError && error.status === 401) {
+    return { phase: "unauthorized" };
+  }
+  return { phase: "error" };
+}
 
 /**
  * 잡 로그 스트림 훅. 마운트 시 `getJob`을 1회 선호출해 토큰을 리프레시(apiRequest가 처리)한 뒤
@@ -26,6 +36,9 @@ export function useJobLogStream(jobId: number, onLine: (line: string) => void): 
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
+    // streamJobLogs가 onStatus/onError 둘 다 없이 반환하면(예: Nginx proxy_read_timeout으로 status
+    // 이벤트 전 연결이 조용히 끊김) "실행 중"에 영원히 갇히므로, 그 경우만 아래에서 getJob으로 재확인한다.
+    let settled = false;
     setState({ phase: "connecting" });
 
     void (async () => {
@@ -42,16 +55,34 @@ export function useJobLogStream(jobId: number, onLine: (line: string) => void): 
           {
             onLog: (entry) => onLineRef.current(entry.line),
             onStatus: (status) => {
+              settled = true;
               if (!cancelled) setState({ phase: "done", ...status });
             },
             onError: () => {
+              settled = true;
               if (!cancelled) setState({ phase: "error" });
             },
           },
           controller.signal,
         );
-      } catch {
-        if (!cancelled) setState({ phase: "error" });
+
+        if (cancelled || settled) return;
+
+        // 조용한 EOF — 서버가 실제로는 끝났을 수도, 아직 진행 중일 수도 있으니 잡 상태를 다시 물어본다.
+        const recheckedJob = await getJob(jobId);
+        if (cancelled) return;
+        setState(
+          TERMINAL_STATUSES.has(recheckedJob.status)
+            ? {
+                phase: "done",
+                status: recheckedJob.status,
+                draftId: recheckedJob.draftId,
+                error: recheckedJob.error,
+              }
+            : { phase: "error" },
+        );
+      } catch (error) {
+        if (!cancelled) setState(phaseForError(error));
       }
     })();
 

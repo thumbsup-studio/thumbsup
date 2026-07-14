@@ -1,16 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JobScreen } from "@/features/authoring/components/job-screen";
 
-const { useJobLogStreamMock, getJobMock } = vi.hoisted(() => ({
+const { useJobLogStreamMock, getJobMock, mockRouter } = vi.hoisted(() => ({
   useJobLogStreamMock: vi.fn(),
   getJobMock: vi.fn(),
+  // useRouter()가 매 렌더 새 객체를 반환하면 무한 루프를 유발한다(T4 사고 재발 방지) — 안정된 참조를 반환.
+  mockRouter: { push: vi.fn(), replace: vi.fn() },
 }));
 
 vi.mock("@/features/authoring/use-job-log-stream", () => ({
   useJobLogStream: useJobLogStreamMock,
 }));
 vi.mock("@/features/authoring/api", () => ({ getJob: getJobMock }));
+vi.mock("next/navigation", () => ({ useRouter: () => mockRouter }));
 vi.mock("@/features/authoring/components/terminal-viewer", () => ({
   TerminalViewer: ({ onReady }: { onReady: (h: { write: (line: string) => void }) => void }) => {
     onReady({ write: vi.fn() });
@@ -21,6 +24,8 @@ vi.mock("@/features/authoring/components/terminal-viewer", () => ({
 beforeEach(() => {
   useJobLogStreamMock.mockReset();
   getJobMock.mockReset();
+  mockRouter.push.mockReset();
+  mockRouter.replace.mockReset();
   getJobMock.mockResolvedValue({
     jobId: 7,
     kind: "GENERATE",
@@ -94,5 +99,27 @@ describe("JobScreen", () => {
     render(<JobScreen jobId={7} />);
 
     expect(await screen.findByText(/브리지 대기 중/)).toBeInTheDocument();
+  });
+
+  it("unauthorized 상태면 로그인 화면으로 이동한다", async () => {
+    useJobLogStreamMock.mockReturnValue({ phase: "unauthorized" });
+
+    render(<JobScreen jobId={7} />);
+
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/login"));
+  });
+
+  it("error 상태면 터미널을 숨기고 재시도 버튼을 렌더한다", async () => {
+    useJobLogStreamMock.mockReturnValue({ phase: "error" });
+
+    render(<JobScreen jobId={7} />);
+
+    expect(screen.queryByTestId("terminal-stub")).not.toBeInTheDocument();
+    const retry = await screen.findByRole("button", { name: "재시도" });
+
+    // 재시도 클릭은 스트림 훅을 리마운트로 재시작한다(같은 mock 반환값이라 상태 자체는 안 바뀌지만,
+    // 클릭 후에도 화면이 정상적으로(에러 상태 유지) 다시 렌더되는지 — 크래시 없는지 — 확인한다.
+    fireEvent.click(retry);
+    expect(await screen.findByRole("button", { name: "재시도" })).toBeInTheDocument();
   });
 });
