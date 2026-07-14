@@ -37,4 +37,23 @@ describe("createGeminiAdapter", () => {
       /exit 1.*gemini stderr line 3/s,
     );
   });
+
+  it("stderr를 실시간으로 onLog에 중계한다(프로세스 종료를 기다려 한꺼번에 쏟아내지 않는다)", async () => {
+    const adapter = createGeminiAdapter({ bin: fixturePath("fake-gemini-slow-stderr.mjs") });
+    const start = Date.now();
+    let firstLineAt: number | null = null;
+    const result = await adapter.run(
+      { prompt: "P", outputSchema: {} },
+      {
+        onLog: (l) => {
+          if (l.includes("slow line 1") && firstLineAt === null) firstLineAt = Date.now() - start;
+        },
+      },
+    );
+    expect(JSON.parse(result)).toEqual({ ok: true });
+    // 픽스처는 첫 줄 직후 150ms를 쉬고서야 둘째 줄+종료. 배치 릴레이라면 첫 줄도 150ms 이후에야
+    // onLog에 도착하므로, 훨씬 이르게(100ms 미만) 도착했는지로 실시간 중계를 검증한다.
+    expect(firstLineAt).not.toBeNull();
+    expect(firstLineAt).toBeLessThan(100);
+  });
 });
