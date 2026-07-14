@@ -1,19 +1,22 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DraftsScreen } from "@/features/authoring/components/drafts-screen";
+import { ApiError } from "@/lib/api";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
-const { getDraftsMock, generateDraftMock, pushMock } = vi.hoisted(() => ({
+const { getDraftsMock, generateDraftMock, mockRouter } = vi.hoisted(() => ({
   getDraftsMock: vi.fn(),
   generateDraftMock: vi.fn(),
-  pushMock: vi.fn(),
+  // useRouter()가 매 렌더 새 객체를 반환하면 router를 deps에 둔 useCallback이 매 렌더 재생성돼
+  // useEffect가 무한 재실행된다(follow-up-page.test.tsx 등과 동일하게 안정된 참조를 반환).
+  mockRouter: { push: vi.fn(), replace: vi.fn() },
 }));
 
 vi.mock("@/features/authoring/api", () => ({
   getDrafts: getDraftsMock,
   generateDraft: generateDraftMock,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => mockRouter }));
 
 function renderScreen() {
   render(
@@ -38,7 +41,8 @@ const DRAFTS = [
 beforeEach(() => {
   getDraftsMock.mockReset();
   generateDraftMock.mockReset();
-  pushMock.mockReset();
+  mockRouter.push.mockReset();
+  mockRouter.replace.mockReset();
 });
 
 describe("DraftsScreen", () => {
@@ -75,7 +79,7 @@ describe("DraftsScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "생성 시작" }));
 
     await waitFor(() => expect(generateDraftMock).toHaveBeenCalledWith("운영체제"));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/authoring/jobs/7"));
+    await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/authoring/jobs/7"));
   });
 
   it("API 에러 시 에러 상태와 재시도 버튼을 렌더한다", async () => {
@@ -90,5 +94,15 @@ describe("DraftsScreen", () => {
     fireEvent.click(retry);
 
     expect(await screen.findByText("운영체제")).toBeInTheDocument();
+  });
+
+  it("세션 만료(401)면 로그인 화면으로 이동한다", async () => {
+    getDraftsMock.mockRejectedValue(
+      new ApiError({ code: "UNAUTHORIZED", status: 401, message: "unauthorized" }),
+    );
+
+    renderScreen();
+
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/login"));
   });
 });

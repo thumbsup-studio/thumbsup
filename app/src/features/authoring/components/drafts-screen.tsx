@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getDrafts } from "@/features/authoring/api";
 import { GenerateSheet } from "@/features/authoring/components/generate-sheet";
 import type { DraftStatus, DraftSummary } from "@/features/authoring/types";
+import { ApiError } from "@/lib/api";
 
 type LoadState =
   | { status: "loading" }
@@ -21,6 +23,7 @@ const STATUS_LABEL: Record<DraftStatus, string> = { DRAFT: "검토중", APPROVED
 
 /** Draft 목록 화면 — status 필터(DRAFT 기본/APPROVED)로 조회, "문제 생성"으로 새 draft를 만든다. */
 export function DraftsScreen() {
+  const router = useRouter();
   const [filter, setFilter] = useState<DraftStatus>("DRAFT");
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -30,10 +33,15 @@ export function DraftsScreen() {
     try {
       const drafts = await getDrafts(filter);
       setState({ status: "success", drafts });
-    } catch {
+    } catch (error) {
+      // 재발급까지 실패한 세션 무효(401)는 로그인으로 유도(frontend-api 규칙 3). 그 외는 재시도 가능한 에러.
+      if (error instanceof ApiError && error.status === 401) {
+        router.replace("/login");
+        return;
+      }
       setState({ status: "error" });
     }
-  }, [filter]);
+  }, [filter, router]);
 
   useEffect(() => {
     void load();
