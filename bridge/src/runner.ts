@@ -44,15 +44,22 @@ export async function runOnce(deps: RunnerDeps): Promise<"idle" | "done" | "fail
       { prompt: job.prompt, outputSchema: job.outputSchema },
       { onLog: (line) => logBuffer.push(line) },
     );
+    // 서버는 RUNNING 상태 잡에만 로그를 받는다 — postResult로 상태가 바뀌기 전에 남은 로그를 먼저 보낸다.
+    clearInterval(interval);
+    await scheduleFlush();
     await api.postResult(job.jobId, adapter.cli, resultJson);
     return "done";
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // postFail 이전에도 마찬가지로 RUNNING 상태에서 남은 로그를 먼저 보낸다.
+    clearInterval(interval);
+    await scheduleFlush();
     await api.postFail(job.jobId, message);
     return "failed";
   } finally {
+    // 안전망 — 위 두 경로에서 이미 정리됐다면 clearInterval은 무해한 재호출, scheduleFlush는 버퍼가 비어 즉시 반환.
     clearInterval(interval);
-    await scheduleFlush(); // 마지막 남은 로그까지 전송(직전 flush가 진행 중이면 그 뒤에 이어서)
+    await scheduleFlush();
   }
 }
 
@@ -62,15 +69,19 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
       resolve();
       return;
     }
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
+    let timer: ReturnType<typeof setTimeout>;
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    // 타이머가 정상 완료되는(대다수) 경로에서도 abort 리스너를 반드시 제거한다.
+    // 안 지우면 같은 signal로 sleep()을 반복 호출할 때마다(runLoop의 매 idle 사이클)
+    // 리스너가 계속 쌓여 메모리 누수가 된다.
+    timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 

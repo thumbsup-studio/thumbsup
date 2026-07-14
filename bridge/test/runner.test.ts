@@ -1,8 +1,9 @@
+import { getEventListeners } from "node:events";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliAdapter } from "../src/adapters/types.js";
 import { BridgeApi } from "../src/api.js";
 import type { BridgeConfig } from "../src/config.js";
-import { runOnce } from "../src/runner.js";
+import { runLoop, runOnce } from "../src/runner.js";
 import { FakeServer } from "./fixtures/fake-server.js";
 
 const fakeClaudeAdapter: CliAdapter = {
@@ -142,5 +143,89 @@ describe("runOnce", () => {
     const outcome = await runOnce({ api, adapter: slowAdapter, logFlushMs: 10 });
     expect(outcome).toBe("done");
     expect(maxConcurrent).toBeLessThanOrEqual(1);
+  });
+
+  it("result 제출 전에 마지막 로그까지 flush된다(서버는 RUNNING 잡만 로그를 받는다)", async () => {
+    server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+      status: 200,
+      body: {
+        code: "SUCCESS",
+        message: "",
+        data: { jobId: 4, kind: "GENERATE", prompt: "P", outputSchema: {} },
+      },
+    }));
+    server.on("POST", "/api/v1/authoring/bridge/jobs/4/logs", () => ({
+      status: 200,
+      body: { code: "SUCCESS", message: "", data: null },
+    }));
+    server.on("POST", "/api/v1/authoring/bridge/jobs/4/result", () => ({
+      status: 200,
+      body: { code: "SUCCESS", message: "", data: { jobId: 4, status: "SUCCEEDED" } },
+    }));
+
+    const quickAdapter: CliAdapter = {
+      cli: "CLAUDE",
+      async run(_input, { onLog }) {
+        onLog("마지막 로그 라인");
+        return JSON.stringify({ ok: true });
+      },
+    };
+
+    // logFlushMs를 사실상 무한대로 둬서 setInterval이 도중에 절대 안 도는 상태를 만든다.
+    // 그러면 "마지막 로그 라인"이 /logs로 나가는 유일한 경로는 result 제출 직전 flush뿐이다.
+    const outcome = await runOnce({ api, adapter: quickAdapter, logFlushMs: 100_000 });
+    expect(outcome).toBe("done");
+
+    const relevantPaths = server.received
+      .filter((r) => r.path.startsWith("/api/v1/authoring/bridge/jobs/4/"))
+      .map((r) => r.path);
+    const logsIndex = relevantPaths.indexOf("/api/v1/authoring/bridge/jobs/4/logs");
+    const resultIndex = relevantPaths.indexOf("/api/v1/authoring/bridge/jobs/4/result");
+    expect(logsIndex).toBeGreaterThanOrEqual(0);
+    expect(logsIndex).toBeLessThan(resultIndex);
+
+    const logsReq = server.received.find((r) => r.path === "/api/v1/authoring/bridge/jobs/4/logs");
+    expect((logsReq?.body as { lines: string[] }).lines).toContain("마지막 로그 라인");
+  });
+});
+
+describe("runLoop", () => {
+  let server: FakeServer;
+  let config: BridgeConfig;
+  let api: BridgeApi;
+
+  beforeEach(async () => {
+    server = new FakeServer();
+    await server.listen();
+    config = { serverUrl: server.url, cli: "CLAUDE", accessToken: "a", refreshToken: "r" };
+    api = new BridgeApi(config, () => {});
+  });
+
+  afterEach(async () => {
+    await server.close();
+  });
+
+  it("idle 사이클을 여러 번 완주해도 signal의 abort 리스너가 누적되지 않는다", async () => {
+    for (let i = 0; i < 30; i++) {
+      server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+        status: 200,
+        body: { code: "SUCCESS", message: "", data: null },
+      }));
+    }
+
+    const controller = new AbortController();
+    const loopPromise = runLoop({ api, adapter: fakeClaudeAdapter, pollIntervalMs: 5 }, controller.signal);
+
+    // idle 사이클(각각 sleep() 완주)이 여러 번 지나가도록 기다린다.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    // 정상 완주하는 sleep()마다 abort 리스너를 안 지우면 여기서 여러 개가 쌓여 있어야 한다.
+    // 언제나 최대 1개(현재 진행 중인 sleep의 리스너)만 남아있어야 정상이다.
+    const listenerCountBeforeAbort = getEventListeners(controller.signal, "abort").length;
+
+    controller.abort();
+    await loopPromise;
+
+    expect(listenerCountBeforeAbort).toBeLessThanOrEqual(1);
   });
 });
