@@ -200,7 +200,8 @@ public class AuthoringJobService {
         }
     }
 
-    private void guardDraftHasNoActiveJob(Long draftId, Instant now) {
+    /** package-private — {@code AuthoringApprovalService}(T6)의 승인 가드가 재사용한다. */
+    void guardDraftHasNoActiveJob(Long draftId, Instant now) {
         List<GenerationJob> activeJobs = generationJobRepository.findByDraftIdAndStatusIn(
                 draftId, List.of(GenerationJobStatus.QUEUED, GenerationJobStatus.RUNNING));
         activeJobs.forEach(job -> expireIfNeeded(job, now));
