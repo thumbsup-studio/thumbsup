@@ -17,14 +17,14 @@ describe("createCodexAdapter", () => {
     expect(logs.some((l) => l.includes("turn.completed"))).toBe(true);
   });
 
-  it("outputSchema가 --output-schema 임시 파일에 실제로 쓰인다", async () => {
+  it("--output-schema 인자를 넘기지 않는다(OpenAI strict 스키마 규격과 비호환 — 실기기 확인)", async () => {
     const adapter = createCodexAdapter({ bin: fixturePath("fake-codex.mjs") });
     const logs: string[] = [];
     await adapter.run(
       { prompt: "P", outputSchema: { type: "object", required: ["quizzes"] } },
       { onLog: (l) => logs.push(l) },
     );
-    expect(logs.some((l) => l.includes('"required":["quizzes"]'))).toBe(true);
+    expect(logs.some((l) => l.includes("--output-schema"))).toBe(false);
   });
 
   it("자식 env에서 API 키 변수가 제거된다", async () => {
@@ -43,5 +43,13 @@ describe("createCodexAdapter", () => {
     await expect(adapter.run({ prompt: "P", outputSchema: {} }, { onLog: () => {} })).rejects.toThrow(
       /exit 1.*codex stderr line 3/s,
     );
+  });
+
+  it("error 이벤트를 만나면 메시지를 포함해 onLog로 남긴다", async () => {
+    const adapter = createCodexAdapter({ bin: fixturePath("fake-codex-error-event.mjs") });
+    const logs: string[] = [];
+    const result = await adapter.run({ prompt: "P", outputSchema: {} }, { onLog: (l) => logs.push(l) });
+    expect(JSON.parse(result)).toEqual({ ok: true });
+    expect(logs.some((l) => l.includes("[error] Invalid schema for response_format"))).toBe(true);
   });
 });
