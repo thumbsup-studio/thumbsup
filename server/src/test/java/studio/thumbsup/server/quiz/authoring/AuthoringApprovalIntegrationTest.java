@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -30,15 +29,16 @@ import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
  * 실제 MySQL에서 자식 테이블까지 올바르게 재구성되는지 확인한다. 단위 테스트(Mockito)로는 이 부분을
  * 검증할 수 없다 — orphanRemoval은 실제 Hibernate flush에서만 동작한다.
  *
- * <p>이 클래스는 (다른 {@code @SpringBootTest}와 달리, MockMvc를 쓰지 않으므로) {@code @Transactional}을
- * 켠다 — 승인 후 {@code quiz.getChoices()} 같은 지연 로딩 연관관계를 같은 세션 안에서 그대로 확인하기
- * 위해서다. 테스트 종료 시 자동 롤백되고, {@code @BeforeEach}의 {@code DatabaseCleanUp}이 그 전에도
- * 독립성을 보장한다.
+ * <p>이 레포의 다른 {@code @SpringBootTest}처럼 {@code @Transactional}을 켜지 않는다 — 켜면
+ * {@code @BeforeEach}부터 단언까지 세션 하나로 묶여, 승인 후 재조회가 실제 SELECT가 아니라 영속성
+ * 컨텍스트에 남은 같은 자바 객체를 돌려줄 수 있다(그러면 UPDATE가 DB에 닿지 않아도 테스트가 통과한다).
+ * 매 단언은 별도 트랜잭션으로 실제 재조회해야 하고, 격리는 {@code @BeforeEach}의 {@code DatabaseCleanUp}이
+ * 맡는다. choices처럼 지연 로딩 연관관계가 필요한 곳은 {@link QuizRepository#findWithChoicesById}로
+ * 같은 조회 안에서 즉시 로딩한다.
  */
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
-@Transactional
 class AuthoringApprovalIntegrationTest {
 
     @Container
@@ -97,7 +97,9 @@ class AuthoringApprovalIntegrationTest {
 
         approvalService.approve(9L, draft.getId());
 
-        Quiz updated = quizRepository.findById(targetQuiz.getId()).orElseThrow();
+        // findWithChoicesById는 approve()와 별개의 새 조회 — 여기서 관리 객체를 재사용하면
+        // UPDATE가 DB에 닿았는지 증명하지 못한다(리뷰 지적, #174).
+        Quiz updated = quizRepository.findWithChoicesById(targetQuiz.getId()).orElseThrow();
         assertThat(updated.getQuestionText()).isEqualTo("개선된 질문");
         assertThat(updated.getChoices()).hasSize(4);
         assertThat(quizDraftRepository.findById(draft.getId()).orElseThrow().getStatus())
@@ -115,9 +117,12 @@ class AuthoringApprovalIntegrationTest {
 
         GenerationJob job = generationJobRepository.save(GenerationJob.createGenerate(1L, "네트워크", "prompt"));
         GeneratedQuizSet set = objectMapper.readValue(GeneratedQuizJsonFixture.validSetJson(), GeneratedQuizSet.class);
-        QuizDraft draft = draftService.createFromGenerate(job, set);
+        QuizDraft draft = draftService.createFromGenerate(job, set); // job.attachDraft(...) — 아직 detached라 DB엔 미반영
         // 잡을 QUEUED로 남겨두면 승인 가드(활성 잡 검사)가 막는다 — 실제 흐름처럼 종결 상태로 만든다.
         job.succeed(BridgeCli.CLAUDE, Instant.now());
+        // 클래스에 @Transactional이 없어 앞선 mutation들이 같은 세션의 dirty-checking으로 자동 flush되지
+        // 않는다 — draftId·상태 변경을 한 번에 명시적으로 반영한다.
+        generationJobRepository.save(job);
 
         approvalService.approve(9L, draft.getId());
 

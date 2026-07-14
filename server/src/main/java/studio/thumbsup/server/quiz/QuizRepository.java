@@ -26,4 +26,8 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
      */
     @Query("SELECT MAX(q.stepOrder) FROM Quiz q WHERE q.stepOrder > 0")
     Optional<Integer> findMaxStepOrder();
+
+    /** choices를 즉시 로딩해 조회한다 — 세션이 끝난 뒤에도 지연 로딩 예외 없이 확인해야 하는 호출자용(#174). */
+    @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.choices WHERE q.id = :id")
+    Optional<Quiz> findWithChoicesById(Long id);
 }
