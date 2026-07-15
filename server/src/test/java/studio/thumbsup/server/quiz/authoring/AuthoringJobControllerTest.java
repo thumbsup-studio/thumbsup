@@ -30,6 +30,9 @@ class AuthoringJobControllerTest {
     @Mock
     private AuthoringJobService jobService;
 
+    @Mock
+    private JobLogStreamService jobLogStreamService;
+
     private MockMvc mockMvc;
     // standalone은 Boot 자동설정이 없어 java.time 직렬화를 명시해야 한다 — 운영 ObjectMapper와 별개 인스턴스.
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -38,7 +41,7 @@ class AuthoringJobControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthoringJobController(jobService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthoringJobController(jobService, jobLogStreamService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
