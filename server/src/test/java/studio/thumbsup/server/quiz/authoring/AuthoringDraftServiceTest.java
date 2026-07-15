@@ -172,4 +172,33 @@ class AuthoringDraftServiceTest {
                     .isEqualTo(AuthoringErrorType.AUTHORING_DRAFT_NOT_FOUND);
         }
     }
+
+    @Nested
+    @DisplayName("getForUpdate")
+    class GetForUpdate {
+
+        @Test
+        @DisplayName("존재하지 않는 draft면 AUTHORING_DRAFT_NOT_FOUND")
+        void throws_when_draft_not_found() {
+            given(quizDraftRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service().getForUpdate(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorType())
+                    .isEqualTo(AuthoringErrorType.AUTHORING_DRAFT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("잠금 조회 전용 finder(findByIdForUpdate)를 쓴다 — 일반 findById가 아니다(#174 I2)")
+        void uses_locking_finder_not_plain_findById() {
+            QuizDraft draft = QuizDraft.createNew("운영체제", "{}", 1L);
+            ReflectionTestUtils.setField(draft, "id", 1L);
+            given(quizDraftRepository.findByIdForUpdate(1L)).willReturn(Optional.of(draft));
+
+            QuizDraft result = service().getForUpdate(1L);
+
+            assertThat(result).isSameAs(draft);
+            verify(quizDraftRepository, never()).findById(any());
+        }
+    }
 }

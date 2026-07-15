@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -62,6 +63,10 @@ public class GenerationJob extends BaseEntity {
     private Instant startedAt;
 
     private Instant finishedAt;
+
+    /** 낙관적 락(#174 I1) — 만료 처리(getJobWithExpiry)와 브리지 결과 제출(submitResult)의 동시 종결 전이 충돌을 막는다. */
+    @Version
+    private Long version;
 
     private GenerationJob(
             GenerationJobKind kind, Long assigneeUserId, Long draftId, String topic, String feedback, String prompt) {

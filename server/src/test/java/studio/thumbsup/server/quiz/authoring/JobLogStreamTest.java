@@ -69,8 +69,9 @@ class JobLogStreamTest {
         databaseCleanUp.execute();
     }
 
+    /** 저작(#174) 경로는 ADMIN 전용이라(#174 C1) 토큰도 ADMIN role로 발급한다. */
     private String bearerToken() {
-        return "Bearer " + jwtTokenProvider.createAccessToken(USER_ID);
+        return "Bearer " + jwtTokenProvider.createAccessToken(USER_ID, "ADMIN");
     }
 
     private String bodyOf(MvcResult started) throws Exception {

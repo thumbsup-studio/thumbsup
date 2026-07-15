@@ -1,9 +1,12 @@
 package studio.thumbsup.server.quiz;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
@@ -30,4 +33,13 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     /** choices를 즉시 로딩해 조회한다 — 세션이 끝난 뒤에도 지연 로딩 예외 없이 확인해야 하는 호출자용(#174). */
     @Query("SELECT q FROM Quiz q LEFT JOIN FETCH q.choices WHERE q.id = :id")
     Optional<Quiz> findWithChoicesById(Long id);
+
+    /**
+     * 같은 문제에 대한 동시 개선 요청을 직렬화하는 전용 조회(#174 I2) — {@code enqueueImprove}의
+     * hasOpenImproveDraft check-then-act race(중복 improve draft 생성)를 막는다. 아직 draft가 없는
+     * 시점부터 잠가야 하므로 draft가 아니라 원본 quiz 행을 잠근다. 쓰기 트랜잭션 안에서만 호출한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM Quiz q WHERE q.id = :id")
+    Optional<Quiz> findByIdForUpdate(@Param("id") Long id);
 }

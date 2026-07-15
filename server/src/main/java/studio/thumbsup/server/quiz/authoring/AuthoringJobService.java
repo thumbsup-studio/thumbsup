@@ -77,14 +77,18 @@ public class AuthoringJobService {
 
     @Transactional
     public ImproveEnqueued enqueueImprove(Long userId, Long quizId, String instruction) {
-        Quiz sourceQuiz =
-                quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        // PESSIMISTIC_WRITE로 원본 quiz를 잠근다(#174 I2) — 아직 draft가 없는 시점부터 동시 요청을
+        // 직렬화해야 hasOpenImproveDraft check-then-act가 중복 improve draft를 만들지 않는다.
+        Quiz sourceQuiz = quizRepository
+                .findByIdForUpdate(quizId)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         if (draftService.hasOpenImproveDraft(quizId)) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_IMPROVE_DRAFT_EXISTS);
         }
 
-        QuizStep step =
-                quizStepRepository.findByStepOrder(sourceQuiz.getStepOrder()).orElseThrow();
+        QuizStep step = quizStepRepository
+                .findByStepOrder(sourceQuiz.getStepOrder())
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         QuizDraft draft = draftService.createImproveDraft(userId, sourceQuiz, step.getTopic());
 
         String prompt = improveReviewPrompt(sourceQuiz, step.getTopic(), draft.getCurrentPayload(), instruction);
@@ -95,7 +99,8 @@ public class AuthoringJobService {
 
     @Transactional
     public Long enqueueReview(Long userId, Long draftId, String feedback) {
-        QuizDraft draft = draftService.getOrThrow(draftId);
+        // PESSIMISTIC_WRITE로 draft를 잠근다(#174 I2) — 상태·활성잡 가드의 check-then-act race를 막는다.
+        QuizDraft draft = draftService.getForUpdate(draftId);
         if (draft.getStatus() == QuizDraftStatus.APPROVED) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_ALREADY_APPROVED);
         }
@@ -279,7 +284,7 @@ public class AuthoringJobService {
                     .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
             QuizStep step = quizStepRepository
                     .findByStepOrder(sourceQuiz.getStepOrder())
-                    .orElseThrow();
+                    .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
             return improveReviewPrompt(sourceQuiz, step.getTopic(), draft.getCurrentPayload(), feedback);
         }
         return AuthoringPromptFactory.reviewPrompt(draft.getTopic(), draft.getCurrentPayload(), feedback, List.of());

@@ -99,7 +99,7 @@ class AuthoringJobServiceTest {
         void rejects_duplicate_improve_draft() {
             Quiz sourceQuiz = QuizFixture.oxQuiz();
             ReflectionTestUtils.setField(sourceQuiz, "id", 7L);
-            given(quizRepository.findById(7L)).willReturn(Optional.of(sourceQuiz));
+            given(quizRepository.findByIdForUpdate(7L)).willReturn(Optional.of(sourceQuiz));
             given(draftService.hasOpenImproveDraft(7L)).willReturn(true);
 
             assertThatThrownBy(() -> service.enqueueImprove(1L, 7L, "개선해줘"))
@@ -119,7 +119,7 @@ class AuthoringJobServiceTest {
         void rejects_when_draft_already_approved() {
             QuizDraft approved = QuizDraft.createNew("운영체제", "{}", 1L);
             approved.approve(9L, NOW);
-            given(draftService.getOrThrow(5L)).willReturn(approved);
+            given(draftService.getForUpdate(5L)).willReturn(approved);
 
             assertThatThrownBy(() -> service.enqueueReview(1L, 5L, "피드백"))
                     .isInstanceOf(BusinessException.class)
@@ -133,7 +133,7 @@ class AuthoringJobServiceTest {
         void rejects_when_draft_has_active_job() {
             QuizDraft draft = QuizDraft.createNew("운영체제", "{}", 1L);
             ReflectionTestUtils.setField(draft, "id", 5L);
-            given(draftService.getOrThrow(5L)).willReturn(draft);
+            given(draftService.getForUpdate(5L)).willReturn(draft);
             GenerationJob activeJob = GenerationJob.createGenerate(1L, "운영체제", "p");
             activeJob.markRunning(NOW.minus(Duration.ofMinutes(1))); // 아직 만료 아님
             given(generationJobRepository.findByDraftIdAndStatusIn(
@@ -152,7 +152,7 @@ class AuthoringJobServiceTest {
         void succeeds_after_expiring_stale_running_job() {
             QuizDraft draft = QuizDraft.createNew("운영체제", "{}", 1L);
             ReflectionTestUtils.setField(draft, "id", 5L);
-            given(draftService.getOrThrow(5L)).willReturn(draft);
+            given(draftService.getForUpdate(5L)).willReturn(draft);
             GenerationJob staleJob = GenerationJob.createGenerate(1L, "운영체제", "p");
             staleJob.markRunning(NOW.minus(Duration.ofMinutes(11))); // 10분 초과
             given(generationJobRepository.findByDraftIdAndStatusIn(

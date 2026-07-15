@@ -36,6 +36,26 @@ class JwtTokenProviderTest {
     }
 
     @Test
+    void role_없이_발급하면_USER로_간주된다() {
+        JwtTokenProvider provider = providerAt(BASE_TIME);
+
+        String token = provider.createAccessToken(42L);
+
+        JwtTokenProvider.AccessTokenClaims claims = provider.parseClaims(token);
+        assertThat(claims.userId()).isEqualTo(42L);
+        assertThat(claims.role()).isEqualTo("USER");
+    }
+
+    @Test
+    void role을_지정해_발급하면_그대로_복원된다() {
+        JwtTokenProvider provider = providerAt(BASE_TIME);
+
+        String token = provider.createAccessToken(42L, "ADMIN");
+
+        assertThat(provider.parseClaims(token).role()).isEqualTo("ADMIN");
+    }
+
+    @Test
     void 유효기간_내에서는_시간이_지나도_검증된다() {
         String token = providerAt(BASE_TIME).createAccessToken(42L);
 

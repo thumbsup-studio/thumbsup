@@ -44,7 +44,7 @@ public class AuthoringApprovalService {
 
     @Transactional
     public QuizDraft approve(Long userId, Long draftId) {
-        QuizDraft draft = draftService.getOrThrow(draftId);
+        QuizDraft draft = draftService.getForUpdate(draftId);
         if (draft.getStatus() == QuizDraftStatus.APPROVED) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_ALREADY_APPROVED);
         }

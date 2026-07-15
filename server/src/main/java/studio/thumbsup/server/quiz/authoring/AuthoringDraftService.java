@@ -90,6 +90,17 @@ public class AuthoringDraftService {
                 .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_NOT_FOUND));
     }
 
+    /**
+     * 승인·검수 재요청 진입점 전용(#174 I2) — PESSIMISTIC_WRITE로 같은 draft에 대한 동시 write를
+     * 직렬화한다. readOnly가 아니어야 한다(MySQL이 읽기전용 트랜잭션의 FOR UPDATE를 거부한다).
+     */
+    @Transactional
+    public QuizDraft getForUpdate(Long draftId) {
+        return quizDraftRepository
+                .findByIdForUpdate(draftId)
+                .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_NOT_FOUND));
+    }
+
     @Transactional(readOnly = true)
     public List<QuizDraftRevision> revisions(Long draftId) {
         return quizDraftRevisionRepository.findByDraftIdOrderByRevisionNoDesc(draftId);

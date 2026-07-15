@@ -7,9 +7,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -46,8 +46,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private void authenticate(HttpServletRequest request, String token) {
         try {
-            Long userId = tokenProvider.parseUserId(token);
-            var authentication = new UsernamePasswordAuthenticationToken(userId, null, List.of());
+            JwtTokenProvider.AccessTokenClaims claims = tokenProvider.parseClaims(token);
+            var authorities = AuthorityUtils.createAuthorityList("ROLE_" + claims.role());
+            var authentication = new UsernamePasswordAuthenticationToken(claims.userId(), null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (ExpiredJwtException e) {
             request.setAttribute(EXPIRED_ATTRIBUTE, Boolean.TRUE);

@@ -3,6 +3,7 @@ package studio.thumbsup.server.quiz.authoring;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -44,18 +46,21 @@ class AuthoringRepositoryTest {
     private final QuizDraftRevisionRepository revisionRepository;
     private final JobLogRepository jobLogRepository;
     private final DatabaseCleanUp databaseCleanUp;
+    private final EntityManager entityManager;
 
     AuthoringRepositoryTest(
             @Autowired QuizDraftRepository quizDraftRepository,
             @Autowired GenerationJobRepository jobRepository,
             @Autowired QuizDraftRevisionRepository revisionRepository,
             @Autowired JobLogRepository jobLogRepository,
-            @Autowired DatabaseCleanUp databaseCleanUp) {
+            @Autowired DatabaseCleanUp databaseCleanUp,
+            @Autowired EntityManager entityManager) {
         this.quizDraftRepository = quizDraftRepository;
         this.jobRepository = jobRepository;
         this.revisionRepository = revisionRepository;
         this.jobLogRepository = jobLogRepository;
         this.databaseCleanUp = databaseCleanUp;
+        this.entityManager = entityManager;
     }
 
     // 다른 도메인의 Flyway 시드(quiz 샘플 등)와 id/unique 제약이 겹치지 않도록 각 테스트를 빈 테이블에서 시작시킨다.
@@ -78,6 +83,17 @@ class AuthoringRepositoryTest {
             assertThat(found.getOrigin()).isEqualTo(QuizDraftOrigin.NEW);
             assertThat(found.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
             assertThat(found.getCurrentPayload()).isEqualTo("{\"quizzes\":[]}");
+        }
+
+        @Test
+        @DisplayName("findByIdForUpdate는 PESSIMISTIC_WRITE로 잠그고 동일한 draft를 반환한다(#174 I2)")
+        void locks_and_returns_the_draft() {
+            QuizDraft saved = quizDraftRepository.save(QuizDraft.createNew("운영체제", "{\"quizzes\":[]}", 1L));
+
+            QuizDraft found =
+                    quizDraftRepository.findByIdForUpdate(saved.getId()).orElseThrow();
+
+            assertThat(found.getId()).isEqualTo(saved.getId());
         }
     }
 
@@ -110,6 +126,36 @@ class AuthoringRepositoryTest {
             Optional<GenerationJob> picked = jobRepository.pickNextQueued(1L);
 
             assertThat(picked).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("GenerationJob 낙관적 락")
+    class GenerationJobOptimisticLock {
+
+        /**
+         * 만료 처리(getJobWithExpiry)와 브리지 결과 제출(submitResult)이 같은 잡을 동시에 종결시키는
+         * 상황(#174 I1)을 재현한다 — 먼저 읽은 뒤 detach해 둔 stale 사본으로 나중에 쓰면 그 사이
+         * 다른 트랜잭션이 이미 한 번 갱신·커밋한 것으로 간주해 충돌해야 한다.
+         */
+        @Test
+        @DisplayName("먼저 읽은 뒤 오래된 버전으로 저장하면 ObjectOptimisticLockingFailureException")
+        void rejects_stale_version_write() {
+            GenerationJob saved = jobRepository.saveAndFlush(GenerationJob.createGenerate(1L, "운영체제", "P"));
+            Long id = saved.getId();
+            entityManager.clear();
+
+            GenerationJob staleCopy = jobRepository.findById(id).orElseThrow();
+            entityManager.detach(staleCopy); // 이후 findById가 새 인스턴스를 읽도록 persistence context에서 뗀다
+
+            GenerationJob current = jobRepository.findById(id).orElseThrow();
+            current.markRunning(Instant.parse("2026-07-14T00:00:00Z"));
+            jobRepository.saveAndFlush(current); // version 0 -> 1
+            entityManager.clear();
+
+            staleCopy.fail(null, "동시 만료 처리", Instant.parse("2026-07-14T00:10:00Z"));
+            assertThatThrownBy(() -> jobRepository.saveAndFlush(staleCopy))
+                    .isInstanceOf(ObjectOptimisticLockingFailureException.class);
         }
     }
 

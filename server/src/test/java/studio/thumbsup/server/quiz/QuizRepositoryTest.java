@@ -354,4 +354,19 @@ class QuizRepositoryTest {
             assertThat(found).isEmpty();
         }
     }
+
+    @Nested
+    @DisplayName("잠금 조회")
+    class LockingFinder {
+
+        @Test
+        @DisplayName("findByIdForUpdate는 PESSIMISTIC_WRITE로 잠그고 동일한 quiz를 반환한다(#174 I2)")
+        void locks_and_returns_the_quiz() {
+            Quiz saved = quizRepository.save(QuizFixture.oxQuiz());
+
+            Quiz found = quizRepository.findByIdForUpdate(saved.getId()).orElseThrow();
+
+            assertThat(found.getId()).isEqualTo(saved.getId());
+        }
+    }
 }

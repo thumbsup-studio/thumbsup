@@ -160,12 +160,13 @@ class AuthControllerTest {
     void 내_정보_조회시_토큰의_userId로_서비스를_호출하고_이메일을_반환한다() throws Exception {
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(7L, null, List.of()));
-        given(authService.getMe(7L)).willReturn(new MeResponse("a@test.com"));
+        given(authService.getMe(7L)).willReturn(new MeResponse("a@test.com", "USER"));
 
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.email").value("a@test.com"));
+                .andExpect(jsonPath("$.data.email").value("a@test.com"))
+                .andExpect(jsonPath("$.data.role").value("USER"));
     }
 
     @Test

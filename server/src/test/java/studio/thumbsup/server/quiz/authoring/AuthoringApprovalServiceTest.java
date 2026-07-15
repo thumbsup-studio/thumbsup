@@ -64,7 +64,7 @@ class AuthoringApprovalServiceTest {
         @Test
         @DisplayName("draft가 없으면 AUTHORING_DRAFT_NOT_FOUND가 그대로 전파된다")
         void propagates_draft_not_found() {
-            given(draftService.getOrThrow(1L))
+            given(draftService.getForUpdate(1L))
                     .willThrow(new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_NOT_FOUND));
 
             assertThatThrownBy(() -> approvalService.approve(9L, 1L))
@@ -78,7 +78,7 @@ class AuthoringApprovalServiceTest {
         void rejects_already_approved_draft() {
             QuizDraft approved = QuizDraft.createNew("운영체제", "{}", 1L);
             approved.approve(3L, NOW);
-            given(draftService.getOrThrow(1L)).willReturn(approved);
+            given(draftService.getForUpdate(1L)).willReturn(approved);
 
             assertThatThrownBy(() -> approvalService.approve(9L, 1L))
                     .isInstanceOf(BusinessException.class)
@@ -91,7 +91,7 @@ class AuthoringApprovalServiceTest {
         void rejects_when_draft_has_active_job() {
             QuizDraft draft = QuizDraft.createNew("운영체제", "{}", 1L);
             ReflectionTestUtils.setField(draft, "id", 1L);
-            given(draftService.getOrThrow(1L)).willReturn(draft);
+            given(draftService.getForUpdate(1L)).willReturn(draft);
             willThrow(new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_JOB_ACTIVE))
                     .given(jobService)
                     .guardDraftHasNoActiveJob(1L, NOW);
@@ -112,7 +112,7 @@ class AuthoringApprovalServiceTest {
         void materializes_new_draft_via_persist() {
             QuizDraft draft = QuizDraft.createNew("운영체제", "{\"quizzes\":[]}", 1L);
             ReflectionTestUtils.setField(draft, "id", 1L);
-            given(draftService.getOrThrow(1L)).willReturn(draft);
+            given(draftService.getForUpdate(1L)).willReturn(draft);
             GeneratedQuizSet set = new GeneratedQuizSet(List.of());
             given(validator.parse("{\"quizzes\":[]}")).willReturn(set);
 
@@ -128,7 +128,7 @@ class AuthoringApprovalServiceTest {
         void materializes_improve_draft_in_place() {
             QuizDraft draft = QuizDraft.createImprove("운영체제", 5L, "{\"quizzes\":[]}", 1L);
             ReflectionTestUtils.setField(draft, "id", 2L);
-            given(draftService.getOrThrow(2L)).willReturn(draft);
+            given(draftService.getForUpdate(2L)).willReturn(draft);
 
             GeneratedQuizSet.GeneratedQuiz generatedQuiz = new GeneratedQuizSet.GeneratedQuiz(
                     QuizType.MULTIPLE_CHOICE,

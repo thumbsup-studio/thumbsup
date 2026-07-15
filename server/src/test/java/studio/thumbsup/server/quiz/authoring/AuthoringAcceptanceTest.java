@@ -73,8 +73,9 @@ class AuthoringAcceptanceTest {
         databaseCleanUp.execute();
     }
 
+    /** 저작(#174) 경로는 ADMIN 전용이라(#174 C1) 인수 테스트 토큰도 ADMIN role로 발급한다. */
     private String bearerToken(long userId) {
-        return "Bearer " + jwtTokenProvider.createAccessToken(userId);
+        return "Bearer " + jwtTokenProvider.createAccessToken(userId, "ADMIN");
     }
 
     private JsonNode data(org.springframework.test.web.servlet.ResultActions result) throws Exception {
@@ -172,6 +173,29 @@ class AuthoringAcceptanceTest {
                 .andExpect(status().isOk()));
 
         assertThat(nextData.isNull()).isTrue();
+    }
+
+    @Test
+    @DisplayName("ADMIN이 아닌 유저는 저작 API에 403으로 막힌다 — 대시보드·브리지 경로 공통")
+    void 관리자가_아니면_저작_API는_403() throws Exception {
+        String nonAdminToken = "Bearer " + jwtTokenProvider.createAccessToken(USER_ID, "USER");
+
+        mockMvc.perform(post("/api/v1/authoring/drafts/generate")
+                        .header(HttpHeaders.AUTHORIZATION, nonAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"topic\":\"운영체제\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/api/v1/authoring/bridge/jobs/next").header(HttpHeaders.AUTHORIZATION, nonAdminToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    @DisplayName("Authorization 헤더가 없으면 저작 API도 401로 막힌다 — 403이 아니라 401이어야 한다")
+    void 미인증이면_저작_API는_401() throws Exception {
+        mockMvc.perform(get("/api/v1/authoring/drafts")).andExpect(status().isUnauthorized());
     }
 
     /** {@code BridgeResultRequest}는 record라 필드명이 그대로 JSON 키가 된다 — 테스트에서 별도 DTO import 없이 직렬화용으로만 쓴다. */
