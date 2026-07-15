@@ -17,7 +17,7 @@ vi.mock("@/lib/api", () => ({ logout: logoutMock }));
 function renderProfile(email = "jiyeon.kim@example.com") {
   return render(
     <AppToastProvider>
-      <ProfilePage data={{ email }} />
+      <ProfilePage data={{ email, role: "USER" }} />
     </AppToastProvider>,
   );
 }

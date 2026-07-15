@@ -117,4 +117,14 @@ describe("QuizzesScreen", () => {
 
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/login"));
   });
+
+  it("권한 없음(403)이면 홈으로 이동한다", async () => {
+    getAuthoringQuizzesMock.mockRejectedValue(
+      new ApiError({ code: "FORBIDDEN", status: 403, message: "forbidden" }),
+    );
+
+    renderScreen();
+
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/"));
+  });
 });

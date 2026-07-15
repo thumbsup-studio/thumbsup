@@ -54,6 +54,11 @@ export function DraftDetailScreen({ draftId }: { draftId: number }) {
         router.replace("/login");
         return;
       }
+      // 권한 없음(403) — RequireAdmin이 이미 진입을 막지만, role이 세션 중 바뀌는 경우를 대비한 방어.
+      if (error instanceof ApiError && error.status === 403) {
+        router.replace("/");
+        return;
+      }
       setState({ status: "error" });
     }
   }, [draftId, router]);
