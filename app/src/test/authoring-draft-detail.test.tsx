@@ -95,6 +95,44 @@ const BASE_DRAFT: DraftDetail = {
   approvedAt: null,
 };
 
+// payload 전 필드(정답류·해설 3종·키워드 사전·파생 개념·꼬리질문)가 화면에 실제로 그려지는지
+// 검증하기 위한 전용 draft — BASE_DRAFT와 분리해 기존 케이스에 영향을 주지 않는다.
+const RICH_DRAFT: DraftDetail = {
+  ...BASE_DRAFT,
+  payload: {
+    quizzes: [
+      {
+        type: "KEYWORD_BLANK",
+        difficulty: "HARD",
+        questionText:
+          "[[LIFO]] 구조를 쓰는 자료구조는 스택이며 접근 시간복잡도는 [[CONST_TIME]]이다.",
+        codeSnippet: null,
+        explanationSummary: "스택은 후입선출 구조로 동작한다.",
+        explanationExample: "함수 호출 스택이 대표적인 실무 예시다.",
+        wrongAnswerExplanation: "큐(FIFO)와 혼동하지 않아야 한다.",
+        correctAnswer: null,
+        choices: null,
+        answerKeywords: [
+          ["중위", "중위 순회", "inorder"],
+          ["O(n)", "Θ(n)"],
+        ],
+        followUpQuestions: [
+          {
+            content: "스택과 큐의 가장 큰 차이는 무엇인가요?",
+            isPrimary: true,
+            difficulty: "EASY",
+            oneLineAnswer: "삽입/삭제되는 순서가 서로 반대다.",
+            blocks: [{ label: "핵심 정리", content: "스택은 LIFO, 큐는 FIFO 구조다." }],
+            keywords: [{ keyword: "FIFO", description: "선입선출 구조" }],
+          },
+        ],
+        derivedConcepts: ["재귀", "백트래킹"],
+        keywords: [{ keyword: "LIFO", description: "후입선출 구조" }],
+      },
+    ],
+  },
+};
+
 beforeEach(() => {
   getDraftMock.mockReset();
   reviewDraftMock.mockReset();
@@ -115,6 +153,85 @@ describe("DraftDetailScreen", () => {
     expect(screen.getByText(/정답은 B다\./)).toBeInTheDocument();
     // 오답 선지엔 정답 표시가 없어야 한다
     expect(screen.getByText("A 선지")).toBeInTheDocument();
+  });
+
+  it("OX 슬롯의 correctAnswer(정답)가 화면에 보인다", async () => {
+    getDraftMock.mockResolvedValue(BASE_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText("프로세스는 독립된 자원을 갖는다.");
+    // choices가 null인 OX 문제는 이 정답 표시가 유일한 정답 단서다 — 검수자가 O/X를 판단할 근거.
+    expect(screen.getByText(/정답:\s*O/)).toBeInTheDocument();
+  });
+
+  it("KEYWORD_BLANK 슬롯의 answerKeywords가 빈칸별로 보인다(동의어는 같은 그룹)", async () => {
+    getDraftMock.mockResolvedValue(RICH_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText(/구조를 쓰는 자료구조는 스택이며/);
+    // [[마커]]는 하이라이트로 변환하지 않고 원문 그대로 노출돼야 한다(검수자가 마커 규칙 위반을 육안 확인).
+    expect(screen.getByText(/\[\[LIFO\]\]/)).toBeInTheDocument();
+    expect(screen.getByText(/빈칸 1:.*중위.*중위 순회.*inorder/)).toBeInTheDocument();
+    expect(screen.getByText(/빈칸 2:.*O\(n\).*Θ\(n\)/)).toBeInTheDocument();
+  });
+
+  it("explanationExample·wrongAnswerExplanation이 라벨과 함께 보인다", async () => {
+    getDraftMock.mockResolvedValue(RICH_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText(/구조를 쓰는 자료구조는 스택이며/);
+    expect(screen.getByText("실무 예시")).toBeInTheDocument();
+    expect(screen.getByText("함수 호출 스택이 대표적인 실무 예시다.")).toBeInTheDocument();
+    expect(screen.getByText("오답 해설")).toBeInTheDocument();
+    expect(screen.getByText("큐(FIFO)와 혼동하지 않아야 한다.")).toBeInTheDocument();
+  });
+
+  it("explanationExample이 null이면 '실무 예시' 라벨 없이도 깨지지 않는다", async () => {
+    getDraftMock.mockResolvedValue(BASE_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText("프로세스는 독립된 자원을 갖는다.");
+    expect(screen.queryByText("실무 예시")).not.toBeInTheDocument();
+    expect(screen.getByText("스레드와 혼동하지 말 것.")).toBeInTheDocument();
+  });
+
+  it("keywords 사전(용어+설명)이 보인다", async () => {
+    getDraftMock.mockResolvedValue(RICH_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText(/구조를 쓰는 자료구조는 스택이며/);
+    expect(screen.getByText("LIFO")).toBeInTheDocument();
+    expect(screen.getByText("후입선출 구조")).toBeInTheDocument();
+  });
+
+  it("derivedConcepts가 칩으로 보인다", async () => {
+    getDraftMock.mockResolvedValue(RICH_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText(/구조를 쓰는 자료구조는 스택이며/);
+    expect(screen.getByText("재귀")).toBeInTheDocument();
+    expect(screen.getByText("백트래킹")).toBeInTheDocument();
+  });
+
+  it("followUpQuestions의 oneLineAnswer·blocks가 접이식(details) 안에 렌더된다", async () => {
+    getDraftMock.mockResolvedValue(RICH_DRAFT);
+
+    renderScreen();
+
+    await screen.findByText(/구조를 쓰는 자료구조는 스택이며/);
+    expect(screen.getByText("스택과 큐의 가장 큰 차이는 무엇인가요?")).toBeInTheDocument();
+    expect(screen.getByText("삽입/삭제되는 순서가 서로 반대다.")).toBeInTheDocument();
+    expect(screen.getByText("스택은 LIFO, 큐는 FIFO 구조다.")).toBeInTheDocument();
+
+    const details = document.querySelector("details");
+    expect(details).not.toBeNull();
+    expect(details?.textContent ?? "").toContain("스택과 큐의 가장 큰 차이는 무엇인가요?");
   });
 
   it("revisions 이력을 revisionNo 내림차순으로 렌더한다", async () => {

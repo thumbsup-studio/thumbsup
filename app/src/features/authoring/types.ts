@@ -69,6 +69,15 @@ export type GeneratedQuizKeyword = {
   description: string;
 };
 
+export type GeneratedFollowUpQuestion = {
+  content: string;
+  isPrimary: boolean;
+  difficulty: string;
+  oneLineAnswer: string;
+  blocks: { label: string; content: string }[];
+  keywords: GeneratedQuizKeyword[];
+};
+
 export type GeneratedQuiz = {
   type: string;
   difficulty: string;
@@ -80,7 +89,7 @@ export type GeneratedQuiz = {
   correctAnswer: string | null;
   choices: GeneratedQuizChoice[] | null;
   answerKeywords: string[][] | null;
-  followUpQuestions: unknown[] | null;
+  followUpQuestions: GeneratedFollowUpQuestion[] | null;
   derivedConcepts: string[] | null;
   keywords: GeneratedQuizKeyword[] | null;
 };
