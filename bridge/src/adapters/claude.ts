@@ -1,7 +1,12 @@
+import { tmpdir } from "node:os";
 import { createInterface } from "node:readline";
 import { execa } from "execa";
 import { sanitizedEnv, stripFences } from "./spawn.js";
 import type { CliAdapter } from "./types.js";
+
+// 서버가 보내는 시스템 프롬프트 정본(AuthoringPromptFactory.generatePrompt가 사용자 프롬프트에 이미 삽입)을
+// claude 기본 에이전트 시스템 프롬프트가 덮어씌우지 않도록 최소 지시로 교체한다.
+const MINIMAL_SYSTEM_PROMPT = "너는 요청받은 JSON만 출력하는 생성기다.";
 
 type StreamEvent = {
   type: string;
@@ -31,10 +36,29 @@ export function createClaudeAdapter(opts: { bin?: string } = {}): CliAdapter {
   return {
     cli: "CLAUDE",
     async run({ prompt, outputSchema }, { onLog }) {
+      // 브리지는 운영자의 개인 환경(레포 CLAUDE.md, MCP 서버, 훅, 슬래시 커맨드, 자동 메모리)을
+      // 상속받을 이유가 없다 — 서버가 보내는 프롬프트/스키마만으로 완결된 단발 생성기다.
+      // --bare는 쓰지 않는다: OAuth·키체인까지 차단해 구독 인증이 깨진다(spawn.ts 참고).
       const subprocess = execa(
         opts.bin ?? "claude",
-        ["-p", prompt, "--output-format", "stream-json", "--verbose", "--json-schema", JSON.stringify(outputSchema)],
-        { env: sanitizedEnv(), extendEnv: false, reject: false, buffer: false, stdin: "ignore" },
+        [
+          "-p",
+          prompt,
+          "--output-format",
+          "stream-json",
+          "--verbose",
+          "--json-schema",
+          JSON.stringify(outputSchema),
+          "--tools",
+          "",
+          "--strict-mcp-config",
+          "--setting-sources",
+          "",
+          "--disable-slash-commands",
+          "--system-prompt",
+          MINIMAL_SYSTEM_PROMPT,
+        ],
+        { cwd: tmpdir(), env: sanitizedEnv(), extendEnv: false, reject: false, buffer: false, stdin: "ignore" },
       );
 
       let result: string | null = null;

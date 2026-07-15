@@ -1,3 +1,5 @@
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -41,5 +43,20 @@ describe("createClaudeAdapter", () => {
     } finally {
       delete process.env.ANTHROPIC_API_KEY;
     }
+  });
+
+  it("운영자 개인 환경을 격리하는 인자와 cwd를 넘긴다", async () => {
+    const adapter = createClaudeAdapter({ bin: fixturePath("fake-claude-argv.mjs") });
+    const result = await adapter.run({ prompt: "P", outputSchema: {} }, { onLog: () => {} });
+    const { argv, cwd } = JSON.parse(result) as { argv: string[]; cwd: string };
+    const flagValue = (flag: string) => argv[argv.indexOf(flag) + 1];
+
+    expect(flagValue("--tools")).toBe("");
+    expect(argv).toContain("--strict-mcp-config");
+    expect(flagValue("--setting-sources")).toBe("");
+    expect(argv).toContain("--disable-slash-commands");
+    expect(flagValue("--system-prompt")).toBeTruthy();
+    // macOS는 /tmp가 심볼릭 링크라 os.tmpdir()과 자식 프로세스의 실제 cwd 표기가 다를 수 있어 realpath로 비교.
+    expect(realpathSync(cwd)).toBe(realpathSync(tmpdir()));
   });
 });
