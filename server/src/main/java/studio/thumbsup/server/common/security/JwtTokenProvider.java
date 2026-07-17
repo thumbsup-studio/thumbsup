@@ -20,6 +20,9 @@ import org.springframework.util.Assert;
 public class JwtTokenProvider {
 
     private static final int REFRESH_TOKEN_BYTE_LENGTH = 32;
+    private static final String ROLE_CLAIM = "role";
+    /** role 클레임 없이 발급된(과거) 토큰이거나 클레임이 비어 있을 때의 안전한 기본값. */
+    private static final String DEFAULT_ROLE = "USER";
 
     private final SecretKey secretKey;
     private final Duration accessTokenValidity;
@@ -34,10 +37,16 @@ public class JwtTokenProvider {
         this.clock = clock;
     }
 
+    /** role 없이 발급 — USER로 간주된다. 저작(#174) 등 ADMIN이 필요한 경로는 {@link #createAccessToken(Long, String)}을 쓴다. */
     public String createAccessToken(Long userId) {
+        return createAccessToken(userId, DEFAULT_ROLE);
+    }
+
+    public String createAccessToken(Long userId, String role) {
         Instant now = clock.instant();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim(ROLE_CLAIM, role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(accessTokenValidity)))
                 .signWith(secretKey)
@@ -57,12 +66,27 @@ public class JwtTokenProvider {
      * @throws JwtException 서명 불일치 등 무효 토큰 (→ UNAUTHORIZED)
      */
     public Long parseUserId(String token) {
+        return parseClaims(token).userId();
+    }
+
+    /**
+     * userId·role을 한 번의 서명 검증으로 함께 추출한다 — {@link JwtAuthenticationFilter}가 SecurityContext에
+     * 권한(GrantedAuthority)까지 싣기 위해 쓴다.
+     *
+     * @throws ExpiredJwtException 만료된 토큰 (→ TOKEN_EXPIRED)
+     * @throws JwtException 서명 불일치 등 무효 토큰 (→ UNAUTHORIZED)
+     */
+    public AccessTokenClaims parseClaims(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(secretKey)
                 .clock(() -> Date.from(clock.instant()))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return Long.parseLong(claims.getSubject());
+        Long userId = Long.parseLong(claims.getSubject());
+        String role = claims.get(ROLE_CLAIM, String.class);
+        return new AccessTokenClaims(userId, role == null ? DEFAULT_ROLE : role);
     }
+
+    public record AccessTokenClaims(Long userId, String role) {}
 }

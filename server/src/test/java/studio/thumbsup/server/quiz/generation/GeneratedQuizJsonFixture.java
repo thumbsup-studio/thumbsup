@@ -7,7 +7,7 @@ package studio.thumbsup.server.quiz.generation;
  * <p>부모 문제의 사전은 {@code PCB}, 꼬리질문의 사전은 {@code FIFO}로 일부러 갈라 놓았다 — 둘을 섞어 쓰면
  * 검증기가 오타로 잡아야 한다는 것이 이 픽스처가 지키는 계약이다(#133).
  */
-final class GeneratedQuizJsonFixture {
+public final class GeneratedQuizJsonFixture {
 
     static final String DEFAULT_BLOCKS = "[{\"label\": \"해설\", \"content\": \"큐는 먼저 넣은 것이 먼저 나온다.\"}]";
     static final String DEFAULT_KEYWORDS = "[{\"keyword\": \"FIFO\", \"description\": \"설명\"}]";
@@ -57,7 +57,7 @@ final class GeneratedQuizJsonFixture {
                 """.formatted(type, difficulty, questionText, extraFields, followUpQuestions);
     }
 
-    static String oxQuizJson() {
+    public static String oxQuizJson() {
         return quizJson("OX", "EASY", "질문 본문", "\"correctAnswer\": \"O\", \"choices\": null, \"answerKeywords\": null");
     }
 
@@ -91,7 +91,7 @@ final class GeneratedQuizJsonFixture {
                 "\"correctAnswer\": null, \"choices\": null, \"answerKeywords\": [[\"LIFO\", \"Last In First Out\"]]");
     }
 
-    static String validSetJson() {
+    public static String validSetJson() {
         return setJsonWithFirstQuiz(oxQuizJson());
     }
 

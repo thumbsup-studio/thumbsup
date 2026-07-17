@@ -43,6 +43,8 @@ public class SecurityConfig {
     private static final String[] PUBLIC_PATHS = {
         "/actuator/health", "/api/v1/auth/signup", "/api/v1/auth/login", "/api/v1/auth/refresh",
     };
+    /** 저작 파이프라인 전체(대시보드+브리지)는 ADMIN만 — #174 C1. */
+    private static final String[] AUTHORING_PATHS = {"/api/v1/authoring/**"};
 
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
@@ -84,6 +86,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(PUBLIC_PATHS)
                         .permitAll()
+                        .requestMatchers(AUTHORING_PATHS)
+                        .hasRole("ADMIN")
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(handling -> handling.authenticationEntryPoint(authenticationEntryPoint)

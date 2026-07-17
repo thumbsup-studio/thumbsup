@@ -4,7 +4,7 @@ package studio.thumbsup.server.quiz.generation;
  * 엘리스 모델에 보낼 프롬프트를 조립한다 — 요구 스키마는 {@link GeneratedQuizSet}과 1:1로 맞춰져 있다.
  * 난이도·유형 매핑은 세션 설계(#19)를 그대로 따른다: 하(EASY)=OX, 중(MEDIUM)=사지선다, 상(HARD)=키워드 빈칸.
  */
-final class QuizGenerationPromptBuilder {
+public final class QuizGenerationPromptBuilder {
 
     private static final String SCHEMA = """
             {
@@ -104,7 +104,7 @@ final class QuizGenerationPromptBuilder {
 
     private QuizGenerationPromptBuilder() {}
 
-    static String build(String courseTopic) {
+    public static String build(String courseTopic) {
         return """
                 "%s" 주제로 학습 퀴즈 5문제를 한 세트로 생성해줘. 오직 아래 JSON 스키마와 정확히 일치하는
                 JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는 절대 포함하지 마.

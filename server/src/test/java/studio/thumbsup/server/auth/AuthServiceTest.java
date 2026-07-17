@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import studio.thumbsup.server.auth.dto.AuthTokenResponse;
 import studio.thumbsup.server.auth.dto.LoginRequest;
+import studio.thumbsup.server.auth.dto.MeResponse;
 import studio.thumbsup.server.auth.dto.RefreshRequest;
 import studio.thumbsup.server.auth.dto.SignupRequest;
 import studio.thumbsup.server.common.exception.BusinessException;
@@ -51,10 +53,20 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
+        authService = authServiceWithAdminEmails(List.of());
+    }
+
+    private AuthService authServiceWithAdminEmails(List<String> adminEmails) {
         JwtProperties jwtProperties = new JwtProperties("test-secret", Duration.ofMinutes(30), Duration.ofDays(14));
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        authService = new AuthService(
-                userRepository, refreshTokenRepository, passwordEncoder, jwtTokenProvider, jwtProperties, clock);
+        return new AuthService(
+                userRepository,
+                refreshTokenRepository,
+                passwordEncoder,
+                jwtTokenProvider,
+                jwtProperties,
+                new AuthoringAdminProperties(adminEmails),
+                clock);
     }
 
     @Test
@@ -73,7 +85,7 @@ class AuthServiceTest {
         given(passwordEncoder.encode("password1")).willReturn("hashed");
         given(userRepository.save(any(User.class))).willReturn(AuthFixture.user(1L, "a@test.com", "hashed"));
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
-        given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
+        given(jwtTokenProvider.createAccessToken(1L, "USER")).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
 
         AuthTokenResponse response = authService.signup(new SignupRequest("a@test.com", "password1"));
@@ -129,7 +141,7 @@ class AuthServiceTest {
         given(userRepository.findByEmail("a@test.com")).willReturn(Optional.of(user));
         given(passwordEncoder.matches("password1", "hashed")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
-        given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
+        given(jwtTokenProvider.createAccessToken(1L, "USER")).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
 
         AuthTokenResponse response = authService.login(new LoginRequest("a@test.com", "password1"));
@@ -139,13 +151,29 @@ class AuthServiceTest {
     }
 
     @Test
+    void 로그인_성공시_admin_emails에_있으면_ADMIN으로_승격되고_role이_실린_토큰을_발급한다() {
+        AuthService adminAwareAuthService = authServiceWithAdminEmails(List.of("a@test.com"));
+        User user = AuthFixture.user(1L, "a@test.com", "hashed");
+        given(userRepository.findByEmail("a@test.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("password1", "hashed")).willReturn(true);
+        given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.empty());
+        given(jwtTokenProvider.createAccessToken(1L, "ADMIN")).willReturn("admin-access-token");
+        given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
+
+        AuthTokenResponse response = adminAwareAuthService.login(new LoginRequest("a@test.com", "password1"));
+
+        assertThat(response.accessToken()).isEqualTo("admin-access-token");
+        assertThat(user.isAdmin()).isTrue();
+    }
+
+    @Test
     void 로그인_성공시_기존_refresh_token이_있으면_회전한다() {
         User user = AuthFixture.user(1L, "a@test.com", "hashed");
         RefreshToken existing = AuthFixture.refreshToken(9L, 1L, "old-hash", NOW.plus(Duration.ofDays(1)));
         given(userRepository.findByEmail("a@test.com")).willReturn(Optional.of(user));
         given(passwordEncoder.matches("password1", "hashed")).willReturn(true);
         given(refreshTokenRepository.findByUserId(1L)).willReturn(Optional.of(existing));
-        given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
+        given(jwtTokenProvider.createAccessToken(1L, "USER")).willReturn("access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("raw-refresh-token");
 
         AuthTokenResponse response = authService.login(new LoginRequest("a@test.com", "password1"));
@@ -180,11 +208,24 @@ class AuthServiceTest {
     }
 
     @Test
+    void 존재하지_않는_유저의_refresh_token은_USER_NOT_FOUND() {
+        RefreshToken valid = AuthFixture.refreshToken(1L, 7L, "hash", NOW.plus(Duration.ofDays(1)));
+        given(refreshTokenRepository.findByTokenHash(any())).willReturn(Optional.of(valid));
+        given(userRepository.findById(7L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshRequest("raw-token")))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e ->
+                        assertThat(((BusinessException) e).getErrorType()).isEqualTo(AuthErrorType.USER_NOT_FOUND));
+    }
+
+    @Test
     void refresh_성공시_기존_토큰을_회전하고_신규_토큰을_발급한다() {
         RefreshToken valid = AuthFixture.refreshToken(1L, 7L, "hash", NOW.plus(Duration.ofDays(1)));
         given(refreshTokenRepository.findByTokenHash(any())).willReturn(Optional.of(valid));
+        given(userRepository.findById(7L)).willReturn(Optional.of(AuthFixture.user(7L, "a@test.com", "hashed")));
         given(refreshTokenRepository.findByUserId(7L)).willReturn(Optional.of(valid));
-        given(jwtTokenProvider.createAccessToken(7L)).willReturn("new-access-token");
+        given(jwtTokenProvider.createAccessToken(7L, "USER")).willReturn("new-access-token");
         given(jwtTokenProvider.createRefreshToken()).willReturn("new-raw-refresh-token");
 
         AuthTokenResponse response = authService.refresh(new RefreshRequest("raw-token"));
@@ -212,10 +253,13 @@ class AuthServiceTest {
     }
 
     @Test
-    void 내_정보_조회시_토큰의_userId로_유저를_찾아_이메일을_반환한다() {
+    void 내_정보_조회시_토큰의_userId로_유저를_찾아_이메일과_role을_반환한다() {
         given(userRepository.findById(7L)).willReturn(Optional.of(AuthFixture.user(7L, "a@test.com", "hashed")));
 
-        assertThat(authService.getMe(7L).email()).isEqualTo("a@test.com");
+        MeResponse me = authService.getMe(7L);
+
+        assertThat(me.email()).isEqualTo("a@test.com");
+        assertThat(me.role()).isEqualTo("USER");
     }
 
     @Test

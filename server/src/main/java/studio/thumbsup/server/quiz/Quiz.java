@@ -138,6 +138,36 @@ public class Quiz extends BaseEntity {
         this.slotOrder = slotOrder;
     }
 
+    /**
+     * 저작 개선(#174) 승인 시 본문 필드를 교체한다. {@code type}/{@code difficulty}/{@code stepOrder}/
+     * {@code slotOrder}는 절대 바꾸지 않는다 — 개선은 같은 슬롯의 내용만 다듬는 것이지 문제를 재배치하지 않는다.
+     */
+    public void updateContent(
+            String questionText,
+            String codeSnippet,
+            String explanationSummary,
+            String explanationExample,
+            String wrongAnswerExplanation) {
+        this.questionText = questionText;
+        this.codeSnippet = codeSnippet;
+        this.explanationSummary = explanationSummary;
+        this.explanationExample = explanationExample;
+        this.wrongAnswerExplanation = wrongAnswerExplanation;
+    }
+
+    /**
+     * 자식 콘텐츠를 전부 비운다 — 개선 승인이 {@link #updateContent} 다음에 호출해 자식을 다시 채울
+     * 자리를 만든다. {@code orphanRemoval = true}라 비운 자식은 flush 시 실제로 삭제된다.
+     */
+    public void resetForRepopulation() {
+        this.correctAnswer = null;
+        choices.clear();
+        answerKeywords.clear();
+        followUpQuestions.clear();
+        derivedConcepts.clear();
+        keywords.clear();
+    }
+
     public void addChoice(String content, boolean isCorrect, int displayOrder) {
         choices.add(QuizChoice.create(this, content, isCorrect, displayOrder));
     }

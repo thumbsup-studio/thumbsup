@@ -17,6 +17,8 @@ thumbsup:
   jwt:
     access-token-validity: 30m # 계약: docs/api-standard.md §8 (secret은 환경별 — 여기 두지 않는다)
     refresh-token-validity: 14d # 계약: docs/api-standard.md §8
+  authoring:
+    admin-emails: [] # 저작 관리자 사전 지정(#174 C1) — 비어 있으면 로그인 self-heal 승격 없음 (시크릿 아님, fail-fast 대상 아님)
 
 server:
   port: 8080
