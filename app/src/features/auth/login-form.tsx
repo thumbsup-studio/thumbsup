@@ -6,6 +6,7 @@ import { LockIcon, MailIcon, RotateCcwIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
+import { fetchMe } from "@/features/profile/api";
 import { ApiError, login, NetworkError } from "@/lib/api";
 import { PlaceholderLink } from "./placeholder-link";
 import { validateEmail, validatePassword } from "./validation";
@@ -33,8 +34,18 @@ export function LoginForm() {
     setLoading(true);
     try {
       await login(email, password);
-      // 기존 유저 → 홈(S2). 신규/기존 분기는 온보딩(#17) 도입 시 확장.
-      router.push("/");
+      // 저작 관리자(ADMIN)는 저작 대시보드로, 일반 유저는 홈(S2)으로.
+      // role 조회 실패는 로그인 성공과 분리 — 홈으로 폴백한다.
+      let destination = "/";
+      try {
+        const me = await fetchMe();
+        if (me.role === "ADMIN") {
+          destination = "/authoring";
+        }
+      } catch {
+        // role 확인 실패 시 홈으로(로그인 자체는 성공).
+      }
+      router.replace(destination);
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(FAIL_MESSAGE);
