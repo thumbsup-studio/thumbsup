@@ -8,8 +8,7 @@ Java 21 · Spring Boot · MySQL · JPA · Gradle(Kotlin DSL).
 ### FE 개발자
 
 FE 개발자는 로컬 서버 실행/AWS 설정 대상이 아니다.
-운영 API 문서는 `https://{prod-api-domain}/swagger-ui.html`에서 Basic Auth로 확인한다.
-운영 API 도메인이 확정되면 `{prod-api-domain}`을 실제 도메인으로 교체한다.
+운영 API 문서는 `https://thumbsup-api.duckdns.org/swagger-ui.html`에서 Basic Auth로 확인한다.
 
 ### 서버 개발자 (IDE/Gradle로 앱 실행)
 
