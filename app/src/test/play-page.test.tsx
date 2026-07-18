@@ -59,6 +59,10 @@ const keywordBlankQuiz = {
   slotOrder: 3,
 };
 
+function renderedChoiceOrder() {
+  return screen.getAllByRole("radio").map((radio) => radio.closest("label")?.textContent ?? "");
+}
+
 describe("PlayPage", () => {
   beforeEach(() => {
     mockRouter.push.mockClear();
@@ -159,6 +163,55 @@ describe("PlayPage", () => {
       );
     });
     expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:1")).toBe("4");
+  });
+
+  it("keeps the server choice order when playing a step for the first time", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
+
+    render(<PlayPage />);
+
+    await screen.findByRole("group", { name: "사지선다 선택지" });
+
+    expect(renderedChoiceOrder()).toEqual(["A뮤텍스", "B캐시", "C스택", "D힙"]);
+  });
+
+  it("shuffles the choice order when re-solving a step in review mode", async () => {
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.mocked(getStepQuiz).mockResolvedValue(multipleChoiceQuiz);
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true });
+
+    render(<PlayPage review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }} />);
+
+    await screen.findByRole("group", { name: "사지선다 선택지" });
+
+    expect(renderedChoiceOrder()).toEqual(["A캐시", "B스택", "C힙", "D뮤텍스"]);
+
+    // 표시 순서가 바뀌어도 채점은 choiceId로 이뤄지므로 제출값은 그대로여야 한다.
+    fireEvent.click(screen.getByRole("radio", { name: /뮤텍스/ }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+    await waitFor(() => {
+      expect(submitQuizAnswer).toHaveBeenCalledWith(8, ["11"]);
+    });
+
+    random.mockRestore();
+  });
+
+  it("keeps the shuffled order stable while the user changes the selection", async () => {
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    vi.mocked(getStepQuiz).mockResolvedValue(multipleChoiceQuiz);
+
+    render(<PlayPage review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }} />);
+
+    await screen.findByRole("group", { name: "사지선다 선택지" });
+    random.mockReturnValue(0.99);
+
+    fireEvent.click(screen.getByRole("radio", { name: /스택/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /힙/ }));
+
+    expect(renderedChoiceOrder()).toEqual(["A캐시", "B스택", "C힙", "D뮤텍스"]);
+
+    random.mockRestore();
   });
 
   it("resets the consecutive correct streak when a step starts from slot one", async () => {
