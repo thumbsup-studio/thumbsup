@@ -45,11 +45,7 @@ class AuthoringCourseServiceTest {
     @DisplayName("getCourseQuizzes")
     class GetCourseQuizzes {
 
-        @Test
-        @DisplayName("stepOrder=0 sentinel을 제외하고 (stepOrder, slotOrder) 순으로 스텝별로 묶어 반환한다")
-        void groups_and_orders_quizzes_by_step_and_slot() {
-            Course course = QuizFixture.course(1L);
-
+        private List<Quiz> scrambledQuizzes() {
             // 스텝 2: slotOrder 역순으로 저장돼도 응답에서는 slotOrder 오름차순이어야 한다.
             Quiz stepTwoSlotTwo = QuizFixture.oxQuiz();
             ReflectionTestUtils.setField(stepTwoSlotTwo, "id", 201L);
@@ -69,11 +65,24 @@ class AuthoringCourseServiceTest {
             ReflectionTestUtils.setField(sentinel, "id", 999L);
             sentinel.assignPosition(0, 1);
 
+            return List.of(stepTwoSlotTwo, sentinel, stepOneSlotOne, stepTwoSlotOne);
+        }
+
+        private List<QuizStep> steps() {
+            return List.of(QuizStep.create(1, "자료구조 기초", 10), QuizStep.create(2, "네트워크 기초", 10));
+        }
+
+        private void stubCourseAndQuizzes() {
+            Course course = QuizFixture.course(1L);
             given(courseRepository.findById(1L)).willReturn(Optional.of(course));
-            given(quizRepository.findAll())
-                    .willReturn(List.of(stepTwoSlotTwo, sentinel, stepOneSlotOne, stepTwoSlotOne));
-            given(quizStepRepository.findAll())
-                    .willReturn(List.of(QuizStep.create(1, "자료구조 기초", 10), QuizStep.create(2, "네트워크 기초", 10)));
+            given(quizRepository.findAll()).willReturn(scrambledQuizzes());
+            given(quizStepRepository.findAll()).willReturn(steps());
+        }
+
+        @Test
+        @DisplayName("stepOrder=0 sentinel을 제외하고 (stepOrder, slotOrder) 순으로 스텝별로 묶어 반환한다")
+        void groups_and_orders_quizzes_by_step_and_slot() {
+            stubCourseAndQuizzes();
 
             AuthoringCourseDetailResponse response = service().getCourseQuizzes(1L);
 
@@ -82,6 +91,27 @@ class AuthoringCourseServiceTest {
             assertThat(response.steps())
                     .extracting(AuthoringDetailedStepResponse::stepOrder)
                     .containsExactly(1, 2);
+
+            AuthoringDetailedStepResponse stepTwo = response.steps().get(1);
+            assertThat(stepTwo.quizzes())
+                    .extracting(AuthoringDetailedQuizResponse::quizId)
+                    .containsExactly(202L, 201L);
+            assertThat(stepTwo.quizzes())
+                    .extracting(AuthoringDetailedQuizResponse::slotOrder)
+                    .containsExactly(1, 2);
+
+            assertThat(response.steps())
+                    .flatExtracting(AuthoringDetailedStepResponse::quizzes)
+                    .extracting(AuthoringDetailedQuizResponse::quizId)
+                    .doesNotContain(999L);
+        }
+
+        @Test
+        @DisplayName("스텝 topic을 조회해 채우고 각 quiz의 generated 콘텐츠를 포함한다")
+        void populates_step_topic_and_generated_quiz_content() {
+            stubCourseAndQuizzes();
+
+            AuthoringCourseDetailResponse response = service().getCourseQuizzes(1L);
 
             AuthoringDetailedStepResponse stepOne = response.steps().get(0);
             assertThat(stepOne.topic()).isEqualTo("자료구조 기초");
@@ -93,21 +123,10 @@ class AuthoringCourseServiceTest {
 
             AuthoringDetailedStepResponse stepTwo = response.steps().get(1);
             assertThat(stepTwo.topic()).isEqualTo("네트워크 기초");
-            assertThat(stepTwo.quizzes())
-                    .extracting(AuthoringDetailedQuizResponse::quizId)
-                    .containsExactly(202L, 201L);
-            assertThat(stepTwo.quizzes())
-                    .extracting(AuthoringDetailedQuizResponse::slotOrder)
-                    .containsExactly(1, 2);
             assertThat(stepTwo.quizzes().get(0).generated()).isNotNull();
             assertThat(stepTwo.quizzes().get(0).generated().questionText()).isEqualTo("UDP는 신뢰성을 보장한다.");
             assertThat(stepTwo.quizzes().get(1).generated()).isNotNull();
             assertThat(stepTwo.quizzes().get(1).generated().questionText()).isEqualTo("TCP는 연결 지향 프로토콜이다.");
-
-            assertThat(response.steps())
-                    .flatExtracting(AuthoringDetailedStepResponse::quizzes)
-                    .extracting(AuthoringDetailedQuizResponse::quizId)
-                    .doesNotContain(999L);
         }
 
         @Test
