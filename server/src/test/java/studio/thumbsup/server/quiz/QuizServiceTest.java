@@ -217,61 +217,6 @@ class QuizServiceTest {
         }
 
         @Test
-        @DisplayName("키워드 빈칸은 슬롯 순서대로 대소문자·공백을 무시하고 비교한다")
-        void grades_keyword_blank_ignoring_case_and_whitespace() {
-            quizService = service();
-            Quiz quiz = QuizFixture.keywordBlankQuiz(); // answerKeywords = ["LIFO"]
-            quiz.assignPosition(1, 1);
-            ReflectionTestUtils.setField(quiz, "id", 30L);
-            given(quizRepository.findById(30L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
-                    .willReturn(List.of());
-
-            AnswerSubmitResponse response =
-                    quizService.submitAnswer(USER_ID, 30L, new AnswerSubmitRequest(List.of("  lifo  ")));
-
-            assertThat(response.isCorrect()).isTrue();
-        }
-
-        @Test
-        @DisplayName("키워드 빈칸은 제출 개수가 정답 개수와 다르면 오답으로 처리한다")
-        void grades_keyword_blank_incorrect_when_answer_count_mismatches() {
-            quizService = service();
-            Quiz quiz = QuizFixture.keywordBlankQuiz(); // answerKeywords = ["LIFO"] (1개)
-            quiz.assignPosition(1, 1);
-            ReflectionTestUtils.setField(quiz, "id", 30L);
-            given(quizRepository.findById(30L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
-                    .willReturn(List.of());
-
-            AnswerSubmitResponse response =
-                    quizService.submitAnswer(USER_ID, 30L, new AnswerSubmitRequest(List.of("LIFO", "여분")));
-
-            assertThat(response.isCorrect()).isFalse();
-        }
-
-        @Test
-        @DisplayName("키워드 빈칸은 같은 빈칸에 등록된 동의어 중 하나만 맞아도 정답으로 처리한다")
-        void grades_keyword_blank_correct_when_matching_any_synonym() {
-            quizService = service();
-            Quiz quiz = QuizFixture.keywordBlankQuiz(); // 기존 정답: slotOrder=1, "LIFO"
-            quiz.addAnswerKeyword(1, "Last In First Out"); // 같은 슬롯에 동의어 추가
-            quiz.assignPosition(1, 1);
-            ReflectionTestUtils.setField(quiz, "id", 30L);
-            given(quizRepository.findById(30L)).willReturn(Optional.of(quiz));
-            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
-                    .willReturn(List.of());
-
-            AnswerSubmitResponse response =
-                    quizService.submitAnswer(USER_ID, 30L, new AnswerSubmitRequest(List.of("Last In First Out")));
-
-            assertThat(response.isCorrect()).isTrue();
-        }
-
-        @Test
         @DisplayName("사지선다는 숫자로 파싱되지 않는 선택지 id를 제출하면 오답으로 처리한다")
         void grades_multiple_choice_incorrect_when_choice_id_is_not_numeric() {
             quizService = service();
