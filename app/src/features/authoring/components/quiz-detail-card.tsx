@@ -21,7 +21,7 @@ export function QuizDetailCard({ quiz, slotOrder }: { quiz: GeneratedQuiz; slotO
           <code>{quiz.codeSnippet}</code>
         </pre>
       ) : null}
-      {quiz.choices ? (
+      {quiz.choices && quiz.choices.length > 0 ? (
         <ul className="flex flex-col gap-1.5">
           {quiz.choices.map((choice) => (
             <li
@@ -48,7 +48,7 @@ export function QuizDetailCard({ quiz, slotOrder }: { quiz: GeneratedQuiz; slotO
           정답: {quiz.correctAnswer}
         </p>
       ) : null}
-      {quiz.answerKeywords ? (
+      {quiz.answerKeywords && quiz.answerKeywords.length > 0 ? (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-ink-muted">정답(빈칸별 동의어)</span>
           <ul className="flex flex-col gap-1.5">
@@ -72,14 +72,14 @@ export function QuizDetailCard({ quiz, slotOrder }: { quiz: GeneratedQuiz; slotO
         <ExplanationBlock label="오답 해설" text={quiz.wrongAnswerExplanation} />
       </div>
 
-      {quiz.keywords ? (
+      {quiz.keywords && quiz.keywords.length > 0 ? (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-ink-muted">키워드</span>
           <KeywordDictionary keywords={quiz.keywords} />
         </div>
       ) : null}
 
-      {quiz.derivedConcepts ? (
+      {quiz.derivedConcepts && quiz.derivedConcepts.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-ink-muted">파생 개념</span>
           {quiz.derivedConcepts.map((concept) => (

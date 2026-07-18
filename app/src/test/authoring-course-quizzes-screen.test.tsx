@@ -57,6 +57,41 @@ const DETAIL: AuthoringCourseDetail = {
   ],
 };
 
+// 라이브 퀴즈는 서버 QuizToGeneratedQuizMapper가 choices/answerKeywords/keywords/derivedConcepts/
+// followUpQuestions를 null이 아닌 빈 배열([])로 채워 보낸다(이슈 182 회귀 픽스). 빈 배열은 진리값이
+// true라 `x ? ... : null` 가드로는 걸러지지 않고 내용 없는 섹션 제목만 남는 버그가 있었다.
+const DETAIL_EMPTY_ARRAYS: AuthoringCourseDetail = {
+  courseId: 2,
+  title: "네트워크",
+  steps: [
+    {
+      stepOrder: 1,
+      topic: "TCP 기초",
+      quizzes: [
+        {
+          quizId: 201,
+          slotOrder: 1,
+          generated: {
+            type: "MULTIPLE_CHOICE",
+            difficulty: "EASY",
+            questionText: "TCP는 연결 지향 프로토콜이다.",
+            codeSnippet: null,
+            explanationSummary: "TCP는 3-way handshake로 연결을 수립한다.",
+            explanationExample: null,
+            wrongAnswerExplanation: "UDP와 혼동 금지.",
+            correctAnswer: null,
+            choices: [],
+            answerKeywords: [],
+            followUpQuestions: [],
+            derivedConcepts: [],
+            keywords: [],
+          },
+        },
+      ],
+    },
+  ],
+};
+
 function renderScreen() {
   render(
     <AppToastProvider>
@@ -94,6 +129,19 @@ describe("CourseQuizzesScreen", () => {
     expect(screen.getByText("커널은 하드웨어 자원을 관리한다.")).toBeInTheDocument(); // 해설 요약
     expect(screen.getByText(/꼬리질문 1개/)).toBeInTheDocument(); // 꼬리질문 disclosure
     expect(screen.getByText("정답: O")).toBeInTheDocument();
+  });
+
+  it("서버가 채워 보낸 빈 배열 필드는 내용 없는 섹션 제목을 렌더하지 않는다", async () => {
+    getCourseQuizzesMock.mockResolvedValue(DETAIL_EMPTY_ARRAYS);
+
+    renderScreen();
+    fireEvent.click(await screen.findByRole("button", { name: /STEP 1/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /TCP는 연결 지향 프로토콜이다\./ }));
+
+    expect(await screen.findByText("TCP는 3-way handshake로 연결을 수립한다.")).toBeInTheDocument();
+    expect(screen.queryByText("정답(빈칸별 동의어)")).not.toBeInTheDocument();
+    expect(screen.queryByText("키워드")).not.toBeInTheDocument();
+    expect(screen.queryByText("파생 개념")).not.toBeInTheDocument();
   });
 
   it("문제 상세의 개선 버튼으로 개선 시트를 연다", async () => {
