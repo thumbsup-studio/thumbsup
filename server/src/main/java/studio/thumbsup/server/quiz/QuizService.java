@@ -30,8 +30,12 @@ public class QuizService {
 
     private static final int INITIAL_STEP_ORDER = 1;
 
-    /** 빈칸 정답 비교 전에 지울 공백 — "시스템 콜"과 "시스템콜"을 같은 답으로 본다. */
-    private static final Pattern BLANK_ANSWER_WHITESPACE = Pattern.compile("\\s+");
+    /**
+     * 빈칸 정답 비교 전에 지울 공백 — "시스템 콜"과 "시스템콜"을 같은 답으로 본다.
+     * 한글 IME는 전각 공백(U+3000)을 입력할 수 있어 ASCII 공백만 보는 기본 {@code \s} 대신
+     * 유니코드 공백까지 포함하도록 {@link Pattern#UNICODE_CHARACTER_CLASS}를 켠다.
+     */
+    private static final Pattern BLANK_ANSWER_WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
 
     private final QuizRepository quizRepository;
     private final CourseRepository courseRepository;
