@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   approveDraft,
   generateDraft,
+  getAuthoringCourseQuizzes,
+  getAuthoringCourses,
   getAuthoringQuizzes,
   getDraft,
   getDrafts,
@@ -248,6 +250,38 @@ describe("authoring api", () => {
     expect(job.status).toBe("RUNNING");
     expect(String(fetchMock.mock.calls[0][0])).toBe(
       "https://thumbsup-api.duckdns.org/api/v1/authoring/jobs/7",
+    );
+  });
+
+  it("getAuthoringCourses가 courses 배열을 언랩한다", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(
+          200,
+          envelope("SUCCESS", { courses: [{ courseId: 1, title: "운영체제", category: "CS" }] }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getAuthoringCourses();
+
+    expect(result).toEqual([{ courseId: 1, title: "운영체제", category: "CS" }]);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "https://thumbsup-api.duckdns.org/api/v1/authoring/courses",
+    );
+  });
+
+  it("getAuthoringCourseQuizzes가 courseId 경로로 상세를 반환한다", async () => {
+    const detail = { courseId: 1, title: "운영체제", steps: [] };
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, envelope("SUCCESS", detail)));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getAuthoringCourseQuizzes(1);
+
+    expect(result).toEqual(detail);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "https://thumbsup-api.duckdns.org/api/v1/authoring/courses/1/quizzes",
     );
   });
 });

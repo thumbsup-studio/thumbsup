@@ -1,5 +1,12 @@
 import { apiRequest } from "@/lib/api";
-import type { AuthoringStep, DraftDetail, DraftSummary, JobStatus } from "./types";
+import type {
+  AuthoringCourse,
+  AuthoringCourseDetail,
+  AuthoringStep,
+  DraftDetail,
+  DraftSummary,
+  JobStatus,
+} from "./types";
 
 export function generateDraft(topic: string): Promise<{ jobId: number }> {
   return apiRequest("/authoring/drafts/generate", { method: "POST", body: { topic } });
@@ -43,4 +50,13 @@ export async function getAuthoringQuizzes(): Promise<AuthoringStep[]> {
 
 export function getJob(jobId: number): Promise<JobStatus> {
   return apiRequest(`/authoring/jobs/${jobId}`);
+}
+
+export async function getAuthoringCourses(): Promise<AuthoringCourse[]> {
+  const data = await apiRequest<{ courses: AuthoringCourse[] }>("/authoring/courses");
+  return data.courses;
+}
+
+export function getAuthoringCourseQuizzes(courseId: number): Promise<AuthoringCourseDetail> {
+  return apiRequest(`/authoring/courses/${courseId}/quizzes`);
 }
