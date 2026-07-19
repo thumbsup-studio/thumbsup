@@ -92,6 +92,23 @@ class QuizServiceRetryHintTest {
         return quiz;
     }
 
+    /**
+     * 삽입 순서와 displayOrder가 어긋난 사지선다 — 소거가 컬렉션 순회 순서가 아니라 displayOrder를 따르는지 검증용.
+     * 삽입 순서상 첫 오답은 id 301(displayOrder 3)이지만, displayOrder상 첫 오답은 id 302(displayOrder 1)다.
+     */
+    private static Quiz multipleChoiceQuizWithShuffledDisplayOrder() {
+        Quiz quiz = Quiz.create(QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM, "질문", null, "요약", "예시", "오답 해설");
+        quiz.addChoice("가", false, 3);
+        quiz.addChoice("나", false, 1);
+        quiz.addChoice("다", true, 2);
+        quiz.addChoice("라", false, 4);
+        long choiceId = 301L;
+        for (QuizChoice choice : quiz.getChoices()) {
+            ReflectionTestUtils.setField(choice, "id", choiceId++);
+        }
+        return quiz;
+    }
+
     /** 키워드가 아직 등록되지 않은 빈칸 문제 — 슬롯 키워드는 테스트에서 필요한 만큼 추가한다. */
     private static Quiz bareKeywordBlankQuiz() {
         return Quiz.create(
@@ -131,6 +148,18 @@ class QuizServiceRetryHintTest {
             RetryHint hint = submit("not-a-number");
 
             assertThat(hint.eliminatedChoiceId()).isEqualTo(FIRST_CHOICE_ID);
+        }
+
+        @Test
+        @DisplayName("컬렉션 순회 순서가 아니라 displayOrder가 가장 앞선 오답을 소거한다")
+        void eliminates_wrong_choice_by_display_order_not_collection_order() {
+            givenOnlyQuizInStep(multipleChoiceQuizWithShuffledDisplayOrder());
+
+            // 파싱 불가값 제출 → 사용자 선택 제외 없이 오답 중 displayOrder 첫 번째를 골라야 한다.
+            RetryHint hint = submit("not-a-number");
+
+            // 정렬이 없으면 삽입 순서상 첫 오답 301이 나온다 — displayOrder 정렬이면 302다.
+            assertThat(hint.eliminatedChoiceId()).isEqualTo(302L);
         }
     }
 

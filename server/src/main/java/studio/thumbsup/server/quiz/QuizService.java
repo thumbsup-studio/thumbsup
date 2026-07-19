@@ -180,15 +180,16 @@ public class QuizService {
     /**
      * 사용자가 방금 고른 오답을 지우는 건 이미 아는 사실이라 힌트가 되지 않으므로, 오답 중 사용자가 고르지 않은
      * 것을 소거한다. 4지선다면 오답 3개 중 최소 2개가 후보라 항상 하나는 나온다. 표시 순서(displayOrder) 기준
-     * 첫 번째를 골라 결정적으로 만든다. 제출값이 파싱되지 않아 사용자 선택을 특정할 수 없으면 오답 중 첫 번째를 소거한다.
+     * 첫 번째를 골라 결정적으로 만든다 — 컬렉션의 {@code @OrderBy}에 기대지 않고 여기서 명시적으로 정렬한다.
+     * 제출값이 파싱되지 않아 사용자 선택을 특정할 수 없으면 오답 중 첫 번째를 소거한다.
      */
     private RetryHint buildMultipleChoiceHint(Quiz quiz, List<String> answers) {
         Long submittedChoiceId = parseChoiceId(answers.get(0));
         Long eliminatedChoiceId = quiz.getChoices().stream()
                 .filter(choice -> !choice.isCorrect())
                 .filter(choice -> !Objects.equals(choice.getId(), submittedChoiceId))
+                .min(Comparator.comparingInt(QuizChoice::getDisplayOrder))
                 .map(QuizChoice::getId)
-                .findFirst()
                 .orElse(null);
         if (eliminatedChoiceId == null) {
             return null;
