@@ -178,7 +178,7 @@ class QuizControllerTest {
         void returns_200_with_grading_result() throws Exception {
             authenticateAs(7L);
             given(quizService.submitAnswer(eq(7L), eq(1L), eq(new AnswerSubmitRequest(List.of("O")))))
-                    .willReturn(new AnswerSubmitResponse(true));
+                    .willReturn(new AnswerSubmitResponse(true, null));
 
             mockMvc.perform(post("/api/v1/quizzes/1/answers")
                             .contentType(MediaType.APPLICATION_JSON)
