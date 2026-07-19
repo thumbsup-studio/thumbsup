@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,13 @@ import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 public class QuizService {
 
     private static final int INITIAL_STEP_ORDER = 1;
+
+    /**
+     * 빈칸 정답 비교 전에 지울 공백 — "시스템 콜"과 "시스템콜"을 같은 답으로 본다.
+     * 한글 IME는 전각 공백(U+3000)을 입력할 수 있어 ASCII 공백만 보는 기본 {@code \s} 대신
+     * 유니코드 공백까지 포함하도록 {@link Pattern#UNICODE_CHARACTER_CLASS}를 켠다.
+     */
+    private static final Pattern BLANK_ANSWER_WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
 
     private final QuizRepository quizRepository;
     private final CourseRepository courseRepository;
@@ -210,6 +218,9 @@ public class QuizService {
      * 빈칸 하나에 동의어가 여러 개 등록될 수 있다(같은 slotOrder를 여러 행이 공유) — 그중 하나만 맞아도
      * 그 빈칸은 정답으로 인정한다. slotOrder는 실제 빈칸 개수와 일치해야 하므로, 답 개수는 "고유 slotOrder 개수"와
      * 비교한다(등록된 키워드 행 개수가 아님).
+     *
+     * <p>비교는 대소문자와 공백을 무시한다. "시스템 콜"·"문맥 전환"처럼 띄어쓰기가 들어간 정답이 많은데
+     * 붙여 쓰는 표기도 똑같이 통용되므로, 표기 차이로 오답 처리되지 않도록 양쪽에서 공백을 모두 지우고 비교한다.
      */
     private boolean gradeKeywordBlank(Quiz quiz, List<String> answers) {
         Map<Integer, List<String>> synonymsBySlot = quiz.getAnswerKeywords().stream()
@@ -222,14 +233,18 @@ public class QuizService {
         }
         for (int i = 0; i < answers.size(); i++) {
             List<String> synonyms = synonymsBySlot.get(slotOrders.get(i));
-            String submitted = answers.get(i).trim();
-            boolean matched =
-                    synonyms.stream().anyMatch(keyword -> keyword.trim().equalsIgnoreCase(submitted));
+            String submitted = normalizeBlankAnswer(answers.get(i));
+            boolean matched = synonyms.stream()
+                    .anyMatch(keyword -> normalizeBlankAnswer(keyword).equalsIgnoreCase(submitted));
             if (!matched) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static String normalizeBlankAnswer(String raw) {
+        return BLANK_ANSWER_WHITESPACE.matcher(raw).replaceAll("");
     }
 
     /**
