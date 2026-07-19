@@ -302,7 +302,9 @@ function QuestionRenderer({
             ↻
           </span>
           <p className="text-sm font-semibold leading-6 text-ink">
-            오답이에요. 힌트를 보고 한 번 더 도전해 보세요.
+            {quiz.type === "MULTIPLE_CHOICE"
+              ? "오답이에요. 틀린 선택지 하나를 지웠어요. 다시 골라 보세요."
+              : "오답이에요. 첫 글자만 살짝 알려줄게요. 다시 입력해 보세요."}
           </p>
         </div>
       ) : null}
@@ -467,8 +469,9 @@ function KeywordBlankAnswer({
             <label className="block" key={`blank-${slot}`}>
               <span className="text-sm font-bold text-ink">핵심 키워드 {slot}</span>
               {hint ? (
-                <span className="ml-2 text-xs font-semibold text-ink-muted">
-                  힌트 {maskBlankHint(hint)}
+                <span className="ml-2 inline-flex items-center gap-2 rounded-chip border border-warning/40 bg-surface px-2.5 py-1 text-xs shadow-card">
+                  <span className="font-bold text-ink-muted">힌트</span>
+                  <span className="font-semibold text-ink">{maskBlankHint(hint)}</span>
                 </span>
               ) : null}
               <input
