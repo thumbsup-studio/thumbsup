@@ -14,8 +14,15 @@ import {
   difficultyLabels,
   getPlayQuestionKindLabel,
   isUnauthorized,
+  shuffleChoices,
 } from "@/features/play/quiz-shared";
-import { getNextQuiz, getStepQuiz, type QuizNextResponse, submitQuizAnswer } from "@/lib/api/quiz";
+import {
+  getNextQuiz,
+  getStepQuiz,
+  type QuizChoice,
+  type QuizNextResponse,
+  submitQuizAnswer,
+} from "@/lib/api/quiz";
 
 type AnswerDraft = boolean | string | string[] | null;
 
@@ -39,6 +46,15 @@ export function PlayPage({ review }: PlayPageProps) {
 
   const reviewStep = review?.step ?? null;
   const reviewSlot = review?.slot ?? null;
+  const isReview = reviewStep !== null && reviewSlot !== null;
+
+  // 복습은 매번 다른 순서로 보여줘야 번호 암기를 막을 수 있어 문제를 새로 받을 때마다 한 번 섞는다.
+  // 선택을 바꿔 리렌더될 때 순서가 흔들리지 않도록 quiz에 묶어 기억해 둔다.
+  const displayedChoices = useMemo(() => {
+    const choices = quiz?.choices ?? [];
+
+    return isReview ? shuffleChoices(choices) : choices;
+  }, [quiz, isReview]);
 
   const totalCount = quiz?.totalCount ?? defaultStepTotal;
   const currentNumber = quiz?.slotOrder ?? 1;
@@ -195,6 +211,7 @@ export function PlayPage({ review }: PlayPageProps) {
           {!isLoading && !error && quiz ? (
             <>
               <QuestionRenderer
+                choices={displayedChoices}
                 draft={draft}
                 isLocked={isSubmitting}
                 onDraftChange={setDraft}
@@ -234,11 +251,13 @@ function PlaySkeleton() {
 }
 
 function QuestionRenderer({
+  choices,
   draft,
   isLocked,
   onDraftChange,
   quiz,
 }: {
+  choices: QuizChoice[];
   draft: AnswerDraft;
   isLocked: boolean;
   onDraftChange: (draft: AnswerDraft) => void;
@@ -279,7 +298,7 @@ function QuestionRenderer({
           <>
             {quiz.codeSnippet ? <CodeBlock code={quiz.codeSnippet} languageLabel="ts" /> : null}
             <fieldset className="space-y-3" aria-label="사지선다 선택지">
-              {(quiz.choices ?? []).map((choice, index) => (
+              {choices.map((choice, index) => (
                 <label
                   className={`flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition ${
                     draft === String(choice.choiceId)
