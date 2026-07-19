@@ -93,3 +93,23 @@ export type GeneratedQuiz = {
   derivedConcepts: string[] | null;
   keywords: GeneratedQuizKeyword[] | null;
 };
+
+export type AuthoringCourse = { courseId: number; title: string; category: string };
+
+export type AuthoringDetailedQuiz = {
+  quizId: number;
+  slotOrder: number;
+  generated: GeneratedQuiz;
+};
+
+export type AuthoringDetailedStep = {
+  stepOrder: number;
+  topic: string | null;
+  quizzes: AuthoringDetailedQuiz[];
+};
+
+export type AuthoringCourseDetail = {
+  courseId: number;
+  title: string;
+  steps: AuthoringDetailedStep[];
+};
