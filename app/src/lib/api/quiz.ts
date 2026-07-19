@@ -23,8 +23,25 @@ export type QuizNextResponse = {
   totalCount?: number;
 };
 
+/** 빈칸 하나에 대한 재도전 힌트. answerLength는 공백을 제외한 글자 수. */
+export type RetryHintBlank = {
+  slotOrder: number;
+  revealedPrefix: string;
+  answerLength: number;
+};
+
+/**
+ * 오답 재도전 힌트(#63) — 오답이고 중·상 난이도일 때만 채워지고 그 외에는 null.
+ * 사지선다면 소거할 오답 하나(eliminatedChoiceId), 빈칸이면 슬롯별 힌트(blankHints) 중 하나만 채워진다.
+ */
+export type RetryHint = {
+  eliminatedChoiceId: number | null;
+  blankHints: RetryHintBlank[] | null;
+};
+
 export type AnswerSubmitResponse = {
   isCorrect: boolean;
+  retryHint: RetryHint | null;
 };
 
 export type Highlight = {
