@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 
 export type MessageRow = { channel: string; ts: string; threadTs: string | null; user: string; text: string };
-export type QaRow = { id: number; channel: string; ts: string; user: string; text: string };
+export type QaRow = { id: number; channel: string; ts: string; user: string; text: string; threadTs: string | null };
 export type PmDb = ReturnType<typeof openDb>;
 
 const SCHEMA = `
@@ -15,13 +15,14 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages (channel, thread_ts);
 CREATE TABLE IF NOT EXISTS qa_pending (
-  id      INTEGER PRIMARY KEY AUTOINCREMENT,
-  channel TEXT NOT NULL,
-  ts      TEXT NOT NULL,
-  user    TEXT NOT NULL,
-  text    TEXT NOT NULL,
-  status  TEXT NOT NULL DEFAULT 'pending',
-  error   TEXT,
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel   TEXT NOT NULL,
+  ts        TEXT NOT NULL,
+  user      TEXT NOT NULL,
+  text      TEXT NOT NULL,
+  thread_ts TEXT,
+  status    TEXT NOT NULL DEFAULT 'pending',
+  error     TEXT,
   UNIQUE (channel, ts)
 );
 `;
@@ -40,10 +41,10 @@ export function openDb(path: string) {
      WHERE channel = ? AND (ts = ? OR thread_ts = ?) ORDER BY CAST(ts AS REAL)`,
   );
   const enqueueStmt = db.prepare(
-    `INSERT OR IGNORE INTO qa_pending (channel, ts, user, text) VALUES (@channel, @ts, @user, @text)`,
+    `INSERT OR IGNORE INTO qa_pending (channel, ts, user, text, thread_ts) VALUES (@channel, @ts, @user, @text, @threadTs)`,
   );
   const nextQaStmt = db.prepare(
-    `SELECT id, channel, ts, user, text FROM qa_pending WHERE status = 'pending' ORDER BY id LIMIT 1`,
+    `SELECT id, channel, ts, user, text, thread_ts AS threadTs FROM qa_pending WHERE status = 'pending' ORDER BY id LIMIT 1`,
   );
   const doneStmt = db.prepare(`UPDATE qa_pending SET status = 'done' WHERE id = ?`);
   const failStmt = db.prepare(`UPDATE qa_pending SET status = 'failed', error = ? WHERE id = ?`);
@@ -60,8 +61,8 @@ export function openDb(path: string) {
     threadMessages(channel: string, threadTs: string): MessageRow[] {
       return threadStmt.all(channel, threadTs, threadTs) as MessageRow[];
     },
-    enqueueQa(q: { channel: string; ts: string; user: string; text: string }): boolean {
-      return enqueueStmt.run(q).changes > 0;
+    enqueueQa(q: { channel: string; ts: string; user: string; text: string; threadTs?: string | null }): boolean {
+      return enqueueStmt.run({ ...q, threadTs: q.threadTs ?? null }).changes > 0;
     },
     nextPendingQa(): QaRow | null {
       return (nextQaStmt.get() as QaRow | undefined) ?? null;

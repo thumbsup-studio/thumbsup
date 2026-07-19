@@ -55,4 +55,13 @@ describe("qa_pending", () => {
     db.markQaFailed(row.id, "claude 실패");
     expect(db.nextPendingQa()).toBeNull();
   });
+
+  it("threadTs를 저장하고 nextPendingQa로 그대로 조회한다", () => {
+    const db = memDb();
+    db.enqueueQa({ channel: "C1", ts: "1.0", user: "U1", text: "스레드 질문", threadTs: "0.5" });
+    db.enqueueQa({ channel: "C1", ts: "2.0", user: "U1", text: "일반 질문" });
+    expect(db.nextPendingQa()?.threadTs).toBe("0.5");
+    db.markQaDone(db.nextPendingQa()!.id);
+    expect(db.nextPendingQa()?.threadTs).toBeNull();
+  });
 });
