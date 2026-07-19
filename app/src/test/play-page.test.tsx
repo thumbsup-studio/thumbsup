@@ -269,7 +269,8 @@ describe("PlayPage", () => {
       fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
-      expect(await screen.findByText(/한 번 더 도전/)).toBeInTheDocument();
+      // 사지선다는 힌트가 아니라 오답 소거이므로, 문구가 그 사실을 정확히 말해야 한다.
+      expect(await screen.findByText(/틀린 선택지 하나를 지웠어요/)).toBeInTheDocument();
       expect(mockRouter.push).not.toHaveBeenCalled();
       // 이전 선택 초기화 → 제출 버튼이 다시 비활성
       expect(screen.getByRole("radio", { name: /뮤텍스/ })).not.toBeChecked();
@@ -301,7 +302,7 @@ describe("PlayPage", () => {
 
       fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-      await screen.findByText(/한 번 더 도전/);
+      await screen.findByText(/오답이에요/);
 
       fireEvent.click(screen.getByRole("radio", { name: /캐시/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
@@ -326,7 +327,7 @@ describe("PlayPage", () => {
 
       fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-      await screen.findByText(/한 번 더 도전/);
+      await screen.findByText(/오답이에요/);
 
       fireEvent.click(screen.getByRole("radio", { name: /캐시/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
@@ -344,7 +345,7 @@ describe("PlayPage", () => {
 
       fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-      await screen.findByText(/한 번 더 도전/);
+      await screen.findByText(/오답이에요/);
 
       expect(screen.getByRole("radio", { name: /스택/ })).toBeDisabled();
       expect(screen.getByRole("radio", { name: /뮤텍스/ })).toBeEnabled();
@@ -360,13 +361,13 @@ describe("PlayPage", () => {
 
       fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-      await screen.findByText(/한 번 더 도전/);
+      await screen.findByText(/오답이에요/);
 
       fireEvent.click(screen.getByRole("radio", { name: /캐시/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
       expect(await screen.findByText("정답을 확인하지 못했어요.")).toBeInTheDocument();
-      expect(screen.getByText(/한 번 더 도전/)).toBeInTheDocument();
+      expect(screen.getByText(/오답이에요/)).toBeInTheDocument();
       expect(mockRouter.push).not.toHaveBeenCalled();
     });
 
@@ -407,7 +408,9 @@ describe("PlayPage", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
-      expect(await screen.findByText(/시 ○ ○ ○ \(4글자\)/)).toBeInTheDocument();
+      // 빈칸은 실제로 첫 글자 힌트를 주므로 문구도 그렇게 안내한다.
+      expect(await screen.findByText(/첫 글자만 살짝 알려줄게요/)).toBeInTheDocument();
+      expect(screen.getByText(/시 ○ ○ ○ \(4글자\)/)).toBeInTheDocument();
       expect(screen.getByText(/데 ○ ○ \(3글자\)/)).toBeInTheDocument();
       expect(mockRouter.push).not.toHaveBeenCalled();
     });
