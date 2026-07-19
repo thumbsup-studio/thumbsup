@@ -35,7 +35,7 @@ function extractAssistantText(event: StreamEvent): string {
 export function createClaudeAdapter(opts: { bin?: string; systemPrompt?: string } = {}): CliAdapter {
   return {
     async run({ prompt, outputSchema }, { onLog }) {
-      // 브리지는 운영자의 개인 환경(레포 CLAUDE.md, MCP 서버, 훅, 슬래시 커맨드, 자동 메모리)을
+      // pm-bot은 운영자의 개인 환경(레포 CLAUDE.md, MCP 서버, 훅, 슬래시 커맨드, 자동 메모리)을
       // 상속받을 이유가 없다 — 서버가 보내는 프롬프트/스키마만으로 완결된 단발 생성기다.
       // --bare는 쓰지 않는다: OAuth·키체인까지 차단해 구독 인증이 깨진다(spawn.ts 참고).
       const subprocess = execa(
@@ -57,7 +57,15 @@ export function createClaudeAdapter(opts: { bin?: string; systemPrompt?: string 
           "--system-prompt",
           opts.systemPrompt ?? MINIMAL_SYSTEM_PROMPT,
         ],
-        { cwd: tmpdir(), env: sanitizedEnv(), extendEnv: false, reject: false, buffer: false, stdin: "ignore" },
+        {
+          cwd: tmpdir(),
+          env: sanitizedEnv(),
+          extendEnv: false,
+          reject: false,
+          buffer: false,
+          stdin: "ignore",
+          timeout: 120_000,
+        },
       );
 
       let result: string | null = null;

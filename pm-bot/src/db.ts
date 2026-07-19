@@ -31,6 +31,11 @@ export function openDb(path: string) {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA);
+  try {
+    db.exec("ALTER TABLE qa_pending ADD COLUMN thread_ts TEXT");
+  } catch {
+    // 이미 컬럼이 있으면 duplicate column 에러 — 무시 (신규 DB는 CREATE TABLE이 포함)
+  }
 
   const upsertStmt = db.prepare(
     `INSERT INTO messages (channel, ts, thread_ts, user, text) VALUES (@channel, @ts, @threadTs, @user, @text)

@@ -1,3 +1,7 @@
+import Database from "better-sqlite3";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db.js";
 
@@ -63,5 +67,29 @@ describe("qa_pending", () => {
     expect(db.nextPendingQa()?.threadTs).toBe("0.5");
     db.markQaDone(db.nextPendingQa()!.id);
     expect(db.nextPendingQa()?.threadTs).toBeNull();
+  });
+
+  it("thread_ts 컬럼이 없는 구 스키마 DB를 openDb가 마이그레이션한다", () => {
+    const dir = mkdtempSync(join(tmpdir(), "pm-bot-db-"));
+    const path = join(dir, "legacy.sqlite");
+    const legacy = new Database(path);
+    legacy.exec(`
+      CREATE TABLE qa_pending (
+        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        channel TEXT NOT NULL,
+        ts      TEXT NOT NULL,
+        user    TEXT NOT NULL,
+        text    TEXT NOT NULL,
+        status  TEXT NOT NULL DEFAULT 'pending',
+        error   TEXT,
+        UNIQUE (channel, ts)
+      );
+    `);
+    legacy.close();
+
+    const db = openDb(path);
+    db.enqueueQa({ channel: "C1", ts: "1.0", user: "U1", text: "구 스키마 질문", threadTs: "1.0" });
+    expect(db.nextPendingQa()?.threadTs).toBe("1.0");
+    db.close();
   });
 });

@@ -36,16 +36,30 @@ function historyClient(): HistoryClient {
   };
 }
 
+let draining = false;
+let drainRequested = false;
 async function drain(): Promise<void> {
-  await drainQaQueue({
-    db,
-    adapter,
-    index,
-    postMessage: async (channel, threadTs, text) => {
-      await app.client.chat.postMessage({ channel, thread_ts: threadTs, text });
-    },
-    log: (line) => console.log(`[qa] ${line}`),
-  });
+  if (draining) {
+    drainRequested = true;
+    return;
+  }
+  draining = true;
+  try {
+    do {
+      drainRequested = false;
+      await drainQaQueue({
+        db,
+        adapter,
+        index,
+        postMessage: async (channel, threadTs, text) => {
+          await app.client.chat.postMessage({ channel, thread_ts: threadTs, text });
+        },
+        log: (line) => console.log(`[qa] ${line}`),
+      });
+    } while (drainRequested);
+  } finally {
+    draining = false;
+  }
 }
 
 app.event("message", async ({ event }) => {
