@@ -34,11 +34,28 @@ async function drainPages(
   } while (cursor);
 }
 
-/** 채널별 마지막 저장 ts 이후를 수집한다. 반환 = 새로 저장된 메시지 수. */
-export async function backfill(db: PmDb, client: HistoryClient, channels: string[]): Promise<number> {
+/** 채널별 백필 시작점. 소켓 연결 전에 고정해야 하므로 backfill의 필수 인자로 받는다. */
+export type BackfillCursors = ReadonlyMap<string, string | undefined>;
+
+/**
+ * 백필 시작점을 고정한다. **반드시 app.start() 이전에 호출한다** — 소켓이 연결되면
+ * 라이브 메시지가 먼저 저장되어 lastSeenTs가 최신 ts로 올라가고, 그걸 oldest로 쓰면
+ * 봇이 꺼져 있던 구간이 통째로 조회 범위 밖으로 빠진다.
+ */
+export function snapshotCursors(db: PmDb, channels: string[]): BackfillCursors {
+  return new Map(channels.map((channel) => [channel, db.lastSeenTs(channel) ?? undefined]));
+}
+
+/** 스냅샷된 시작점 이후를 수집한다. 반환 = 새로 저장된 메시지 수. */
+export async function backfill(
+  db: PmDb,
+  client: HistoryClient,
+  channels: string[],
+  cursors: BackfillCursors,
+): Promise<number> {
   let saved = 0;
   for (const channel of channels) {
-    const oldest = db.lastSeenTs(channel) ?? undefined;
+    const oldest = cursors.get(channel);
     const threadParents: SlackMessage[] = [];
     await drainPages(
       (cursor) => client.history({ channel, oldest, cursor }),
