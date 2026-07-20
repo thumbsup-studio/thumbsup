@@ -21,6 +21,8 @@ import {
   getStepQuiz,
   type QuizChoice,
   type QuizNextResponse,
+  type RetryHint,
+  type RetryHintBlank,
   submitQuizAnswer,
 } from "@/lib/api/quiz";
 
@@ -43,6 +45,9 @@ export function PlayPage({ review }: PlayPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // 재도전 힌트가 있으면 곧 "재도전 화면"이라는 뜻. hasUsedRetry는 이 문제에서 재도전을 이미 썼는지.
+  const [retryHint, setRetryHint] = useState<RetryHint | null>(null);
+  const [hasUsedRetry, setHasUsedRetry] = useState(false);
 
   const reviewStep = review?.step ?? null;
   const reviewSlot = review?.slot ?? null;
@@ -80,6 +85,8 @@ export function PlayPage({ review }: PlayPageProps) {
       setIsLoading(true);
       setError(null);
       setDraft(null);
+      setRetryHint(null);
+      setHasUsedRetry(false);
 
       try {
         const nextQuiz =
@@ -126,6 +133,15 @@ export function PlayPage({ review }: PlayPageProps) {
 
     try {
       const result = await submitQuizAnswer(quiz.quizId, getSubmittedAnswers(quiz, draft));
+
+      // 중·상 난이도 첫 오답이고 서버가 힌트를 주면, 해설로 넘기지 않고 재도전 1회를 준다.
+      // 연속 정답은 여기서 건드리지 않고 최종 결과에서만 갱신한다 — 재도전 성공이 연속을 잇도록(복습도 동일).
+      if (!result.isCorrect && quiz.difficulty !== "EASY" && !hasUsedRetry && result.retryHint) {
+        setHasUsedRetry(true);
+        setRetryHint(result.retryHint);
+        setDraft(null);
+        return;
+      }
 
       if (review) {
         // 복습: 오늘의 학습 스트릭·보리 포만감은 건드리지 않고, 복습 상태만 URL로 이어받는다.
@@ -203,12 +219,13 @@ export function PlayPage({ review }: PlayPageProps) {
 
         <section className="flex flex-1 flex-col rounded-card border border-border bg-surface-muted p-5 shadow-card">
           {isLoading ? <PlaySkeleton /> : null}
-          {!isLoading && error ? (
+          {/* 로드 실패는 문제가 없으니 전체를 에러로 대체하고 다시 불러오게 한다. */}
+          {!isLoading && error && !quiz ? (
             <Feedback tone="error" onRetry={() => setReloadKey((key) => key + 1)}>
               {error}
             </Feedback>
           ) : null}
-          {!isLoading && !error && quiz ? (
+          {!isLoading && quiz ? (
             <>
               <QuestionRenderer
                 choices={displayedChoices}
@@ -216,7 +233,15 @@ export function PlayPage({ review }: PlayPageProps) {
                 isLocked={isSubmitting}
                 onDraftChange={setDraft}
                 quiz={quiz}
+                retryHint={retryHint}
               />
+
+              {/* 제출 실패는 문제를 그대로 두고 인라인으로 알린다 — 재도전 화면·입력을 잃지 않도록. */}
+              {error ? (
+                <div className="pt-4">
+                  <Feedback tone="error">{error}</Feedback>
+                </div>
+              ) : null}
 
               <div className="pt-4">
                 <Button
@@ -256,15 +281,34 @@ function QuestionRenderer({
   isLocked,
   onDraftChange,
   quiz,
+  retryHint,
 }: {
   choices: QuizChoice[];
   draft: AnswerDraft;
   isLocked: boolean;
   onDraftChange: (draft: AnswerDraft) => void;
   quiz: QuizNextResponse;
+  retryHint: RetryHint | null;
 }) {
   return (
     <div className="flex flex-1 flex-col">
+      {retryHint ? (
+        <div
+          className="mb-4 flex items-start gap-3 rounded-control bg-warning/10 px-4 py-3"
+          role="status"
+          aria-live="polite"
+        >
+          <span aria-hidden="true" className="text-lg leading-6 text-warning">
+            ↻
+          </span>
+          <p className="text-sm font-semibold leading-6 text-ink">
+            {quiz.type === "MULTIPLE_CHOICE"
+              ? "오답이에요. 틀린 선택지 하나를 지웠어요. 다시 골라 보세요."
+              : "오답이에요. 첫 글자만 살짝 알려줄게요. 다시 입력해 보세요."}
+          </p>
+        </div>
+      ) : null}
+
       <div>
         <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
           {getQuestionKindLabel(quiz.type)}
@@ -298,29 +342,40 @@ function QuestionRenderer({
           <>
             {quiz.codeSnippet ? <CodeBlock code={quiz.codeSnippet} languageLabel="ts" /> : null}
             <fieldset className="space-y-3" aria-label="사지선다 선택지">
-              {choices.map((choice, index) => (
-                <label
-                  className={`flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition ${
-                    draft === String(choice.choiceId)
-                      ? "border-primary bg-surface shadow-card"
-                      : "border-border bg-surface"
-                  }`}
-                  key={choice.choiceId}
-                >
-                  <input
-                    checked={draft === String(choice.choiceId)}
-                    className="sr-only"
-                    disabled={isLocked}
-                    name={String(quiz.quizId)}
-                    onChange={() => onDraftChange(String(choice.choiceId))}
-                    type="radio"
-                  />
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-chip bg-ink text-xs text-primary-fg">
-                    {optionLabels[index] ?? index + 1}
-                  </span>
-                  <span>{choice.content}</span>
-                </label>
-              ))}
+              {choices.map((choice, index) => {
+                // 재도전 힌트가 소거한 오답은 고르지 못하게 막고, 지운 티를 낸다.
+                // 사용자가 처음 고른 오답은 다시 고를 수 있게 그대로 둔다(같은 답을 내면 오답 처리가 맞다).
+                const isEliminated = retryHint?.eliminatedChoiceId === choice.choiceId;
+
+                return (
+                  <label
+                    className={`flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition ${
+                      isEliminated
+                        ? "border-border bg-surface-muted opacity-50"
+                        : draft === String(choice.choiceId)
+                          ? "border-primary bg-surface shadow-card"
+                          : "border-border bg-surface"
+                    }`}
+                    key={choice.choiceId}
+                  >
+                    <input
+                      checked={draft === String(choice.choiceId)}
+                      className="sr-only"
+                      disabled={isLocked || isEliminated}
+                      name={String(quiz.quizId)}
+                      onChange={() => onDraftChange(String(choice.choiceId))}
+                      type="radio"
+                    />
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-chip bg-ink text-xs text-primary-fg">
+                      {optionLabels[index] ?? index + 1}
+                    </span>
+                    <span className={isEliminated ? "line-through" : undefined}>
+                      {choice.content}
+                    </span>
+                    {isEliminated ? <span className="sr-only">(소거된 오답)</span> : null}
+                  </label>
+                );
+              })}
             </fieldset>
           </>
         ) : null}
@@ -328,6 +383,7 @@ function QuestionRenderer({
         {quiz.type === "KEYWORD_BLANK" ? (
           <KeywordBlankAnswer
             blankCount={quiz.blankCount ?? 1}
+            blankHints={retryHint?.blankHints ?? null}
             codeSnippet={quiz.codeSnippet}
             disabled={isLocked}
             draft={Array.isArray(draft) ? draft : []}
@@ -380,12 +436,14 @@ function OxButton({
 
 function KeywordBlankAnswer({
   blankCount,
+  blankHints,
   codeSnippet,
   disabled,
   draft,
   onDraftChange,
 }: {
   blankCount: number;
+  blankHints: RetryHintBlank[] | null;
   codeSnippet: string | null;
   disabled: boolean;
   draft: string[];
@@ -404,22 +462,32 @@ function KeywordBlankAnswer({
     <>
       {codeSnippet ? <CodeBlock code={codeSnippet} languageLabel="pseudo" /> : null}
       <fieldset className="space-y-3" aria-label="키워드 빈칸 답안">
-        {getBlankSlots(blankCount).map((slot) => (
-          <label className="block" key={`blank-${slot}`}>
-            <span className="text-sm font-bold text-ink">핵심 키워드 {slot}</span>
-            <input
-              aria-label={`핵심 키워드 ${slot}`}
-              autoCapitalize="off"
-              autoComplete="off"
-              autoCorrect="off"
-              className="mt-2 min-h-12 w-full rounded-control border border-border bg-surface px-4 text-base font-semibold outline-none transition focus:border-primary disabled:text-ink-muted"
-              disabled={disabled}
-              onChange={(event) => updateAnswer(slot - 1, event.target.value)}
-              placeholder="키워드를 입력하세요"
-              value={draft[slot - 1] ?? ""}
-            />
-          </label>
-        ))}
+        {getBlankSlots(blankCount).map((slot) => {
+          const hint = blankHints?.find((item) => item.slotOrder === slot) ?? null;
+
+          return (
+            <label className="block" key={`blank-${slot}`}>
+              <span className="text-sm font-bold text-ink">핵심 키워드 {slot}</span>
+              {hint ? (
+                <span className="ml-2 inline-flex items-center gap-2 rounded-chip border border-warning/40 bg-surface px-2.5 py-1 text-xs shadow-card">
+                  <span className="font-bold text-ink-muted">힌트</span>
+                  <span className="font-semibold text-ink">{maskBlankHint(hint)}</span>
+                </span>
+              ) : null}
+              <input
+                aria-label={`핵심 키워드 ${slot}`}
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+                className="mt-2 min-h-12 w-full rounded-control border border-border bg-surface px-4 text-base font-semibold outline-none transition focus:border-primary disabled:text-ink-muted"
+                disabled={disabled}
+                onChange={(event) => updateAnswer(slot - 1, event.target.value)}
+                placeholder="키워드를 입력하세요"
+                value={draft[slot - 1] ?? ""}
+              />
+            </label>
+          );
+        })}
       </fieldset>
     </>
   );
@@ -427,6 +495,13 @@ function KeywordBlankAnswer({
 
 function getBlankSlots(blankCount: number) {
   return Array.from({ length: blankCount }, (_, index) => index + 1);
+}
+
+/** "시 ○ ○ ○ (4글자)"처럼 첫 글자만 드러내고 나머지는 공백 제외 글자수만큼 ○로 가린다. */
+function maskBlankHint(hint: RetryHintBlank) {
+  const remaining = Math.max(0, hint.answerLength - 1);
+
+  return `${hint.revealedPrefix}${" ○".repeat(remaining)} (${hint.answerLength}글자)`;
 }
 
 const getQuestionKindLabel = getPlayQuestionKindLabel;
