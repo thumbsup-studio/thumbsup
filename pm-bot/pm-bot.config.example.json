@@ -1,0 +1,5 @@
+{
+  "channels": ["C0PLANNING", "C0DEV"],
+  "dbPath": "./pm-bot.sqlite",
+  "specDir": "../docs/product"
+}
