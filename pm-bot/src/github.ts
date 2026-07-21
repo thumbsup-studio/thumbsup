@@ -104,13 +104,14 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
       if (fields.status) await setField(meta, itemId, "status", fields.status);
     },
 
-    /** 최초엔 blobless clone, 이후엔 fetch + origin/main 강제 리셋 — 잡 간 상태 오염 방지 (스펙 §4.4). */
+    /** 최초엔 blobless clone, 이후엔 fetch + origin/main 강제 리셋 + untracked 정리 — 잡 간 상태 오염 방지 (스펙 §4.4). */
     async prepareSpecRepo(): Promise<void> {
       if (!existsSync(join(cfg.workRepoDir, ".git"))) {
         await exec("git", ["clone", "--filter=blob:none", `https://github.com/${cfg.repo}.git`, cfg.workRepoDir]);
       }
       await git(["fetch", "origin"]);
       await git(["checkout", "-f", "-B", "main", "origin/main"]);
+      await git(["clean", "-fd"]);
     },
 
     async readSpecFile(file: string): Promise<string> {

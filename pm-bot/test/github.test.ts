@@ -100,15 +100,17 @@ describe("createGhClient — .workrepo 명세 PR", () => {
     expect(calls[0]).toBe(`git clone --filter=blob:none https://github.com/o/r.git ${cfg.workRepoDir}`);
     expect(calls[1]).toContain("fetch origin");
     expect(calls[2]).toContain("checkout -f -B main origin/main");
+    expect(calls[3]).toContain("clean -fd");
   });
 
-  it("prepareSpecRepo는 clone이 있으면 fetch·리셋만 한다", async () => {
+  it("prepareSpecRepo는 clone이 있으면 fetch·리셋·클린만 한다", async () => {
     const cfg = workCfg();
     mkdirSync(join(cfg.workRepoDir, ".git"), { recursive: true });
     const { exec, calls } = fakeExec([["git -C", ""]]);
     await createGhClient(cfg, exec).prepareSpecRepo();
     expect(calls.some((c) => c.startsWith("git clone"))).toBe(false);
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
+    expect(calls[2]).toContain("clean -fd");
   });
 
   it("submitSpecPr는 브랜치·파일 쓰기·커밋·푸시·PR 생성을 순서대로 수행한다", async () => {
