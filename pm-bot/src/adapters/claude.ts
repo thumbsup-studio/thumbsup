@@ -2,7 +2,7 @@ import { tmpdir } from "node:os";
 import { createInterface } from "node:readline";
 import { execa } from "execa";
 import { sanitizedEnv, stripFences } from "./spawn.js";
-import type { CliAdapter } from "./types.js";
+import type { AdapterHooks, AdapterInput, CliAdapter } from "./types.js";
 
 // 서버가 보내는 시스템 프롬프트 정본(AuthoringPromptFactory.generatePrompt가 사용자 프롬프트에 이미 삽입)을
 // claude 기본 에이전트 시스템 프롬프트가 덮어씌우지 않도록 최소 지시로 교체한다.
@@ -105,4 +105,14 @@ export function createClaudeAdapter(opts: { bin?: string; systemPrompt?: string 
       return result;
     },
   };
+}
+
+/** adapter.run 실패 시 1회 재시도 후에야 실패로 처리한다 (스펙 §5). qa·분석 공용. */
+export async function runWithRetry(adapter: CliAdapter, input: AdapterInput, hooks: AdapterHooks): Promise<string> {
+  try {
+    return await adapter.run(input, hooks);
+  } catch (err) {
+    hooks.onLog(`[retry] 1차 실패, 재시도: ${err instanceof Error ? err.message : String(err)}`);
+    return adapter.run(input, hooks);
+  }
 }
