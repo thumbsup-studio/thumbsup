@@ -1,11 +1,11 @@
 ---
 name: pm-bot
-description: Slack에서 팀 대화를 수집하고 명세 근거 Q&A에 답하는 PM 봇(#202) 운영. 봇 기동·종료·pm2 상주, Slack 앱 셋업(매니페스트·토큰 2종·채널 초대), 멘션 사용법, DB 조회, 크래시 진단, Phase 1 한계를 알아야 할 때. 사용자가 "슬랙 봇 켜줘", "PM 봇 켜/꺼", "봇 서버 띄워", "봇이 답을 안 해", "봇이 죽었어", "Slack 봇 셋업", "명세 물어보기"라고 할 때 트리거.
+description: Slack에서 팀 대화를 수집하고 명세 근거 Q&A에 답하는 PM 봇(#202) 운영. 봇 기동·종료·pm2 상주, Slack 앱 셋업(매니페스트·토큰 2종·채널 초대), 멘션 사용법, DB 조회, 크래시 진단, Phase 1 한계를 알아야 할 때. 사용자가 "슬랙 봇 켜줘", "PM 봇 켜/꺼", "봇 서버 띄워", "봇이 답을 안 해", "봇이 죽었어", "Slack 봇 셋업", "명세 물어보기", "스레드 분석", "명세 PR 승인", "이모지 트리거"라고 할 때 트리거.
 ---
 
-# pm-bot — Slack PM 봇 (#202, Phase 1)
+# pm-bot — Slack PM 봇 (#202, Phase 1·2)
 
-지정한 Slack 채널의 대화를 로컬 SQLite에 모으고, 멘션하면 레포의 명세 markdown을 근거로 답하는 상주 봇. Phase 1은 **읽기 전용** — 명세를 고치거나 이슈를 만들지 않는다.
+지정한 Slack 채널의 대화를 로컬 SQLite에 모으고, 멘션하면 레포의 명세 markdown을 근거로 답하는 상주 봇. Phase 2부터 스레드에 🤖 이모지를 달면 스레드를 분석해 **명세 수정 PR**(✅ 승인 시 자동 머지)과 **GitHub 이슈 등록·갱신**(Thumbs Up Roadmap 보드 **Backlog**에 배치)까지 수행한다.
 
 **팀원은 아무것도 설치할 필요가 없다.** Slack에서 `@pm-bot` 멘션만 하면 된다. 봇은 운영자 노트북 한 대에서만 돈다.
 
@@ -20,7 +20,7 @@ description: Slack에서 팀 대화를 수집하고 명세 근거 Q&A에 답하�
     ├─ 백필 (재기동 시 놓친 구간 복구)
     └─ Q&A: 명세 검색 → claude -p (개인 구독) → 스레드 답변
               │
-              └─ docs/superpowers/specs/*.md 를 섹션 단위로 인덱싱
+              └─ docs/specs/*.md 를 섹션 단위로 인덱싱
 ```
 
 `bridge/`와 **무관하다.** 둘 다 `claude -p`로 개인 구독을 쓰지만 `import` 관계가 없고, `pm-bot/src/adapters/`는 bridge에서 **복사해 온 독립 사본**이다(`spawn.ts` 첫 줄 주석). bridge가 꺼져 있어도 pm-bot은 돈다.
@@ -102,13 +102,24 @@ cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm install
 
 비용은 **답변 1건당 $0.08~0.12** (운영자 개인 Claude 구독). 팀원이 많이 물어보면 운영자 구독을 쓴다는 점을 기억할 것.
 
+### 🤖 스레드 분석 (Phase 2)
+
+분석하고 싶은 스레드의 아무 메시지에 🤖(robot_face) 반응을 단다. 채널 멤버 누구나 가능.
+
+- 접수되면 봇이 👀를 달고, 완료되면 스레드에 결과(명세 PR·이슈 링크)를 답글로 남긴다
+- 명세 변경은 봇이 올린 "📝 명세 변경 제안" 답글에 ✅를 달면 auto-merge, ❌면 PR 클로즈
+- 같은 스레드에 🤖를 다시 달면: 새 메시지가 없으면 "이미 처리됨", 있으면 재분석(기존 이슈는 중복 생성 대신 갱신)
+- 새 이슈는 Roadmap 보드 **Backlog**(백로그 탭)에 쌓인다 — 사람이 트리아지해서 Todo로 올린다. 기존 이슈 갱신은 코멘트만 달고 보드 Status는 건드리지 않는다
+- 실패하면 ⚠️ 답글이 남는다 — 🤖를 다시 달면 재시도
+- 비용: 분석 1건당 claude 호출 2회+ ≈ $0.15~0.25 (운영자 구독)
+
 ## Phase 0 — Slack 앱 셋업 (최초 1회)
 
 ### 1. 앱 생성 — https://api.slack.com/apps
 
 `Create New App` → **`From an app manifest`** → `pm-bot/slack-app-manifest.yml` 내용을 YAML 탭에 붙여넣기.
 
-수동으로 스코프를 클릭해 넣지 말 것. 매니페스트가 스코프 6개·이벤트 2개·Socket Mode를 한 번에 설정한다.
+수동으로 스코프를 클릭해 넣지 말 것. 매니페스트가 스코프 7개·이벤트 3개·Socket Mode를 한 번에 설정한다.
 
 ### 2. 토큰 2개 — 서로 다른 화면에서 나온다
 
@@ -132,12 +143,20 @@ SLACK_APP_TOKEN=xapp-...
 {
   "channels": ["C0BK8M5N7EU"],
   "dbPath": "./pm-bot.sqlite",
-  "specDir": "../docs/superpowers/specs"
+  "specDir": "../docs/specs",
+  "github": {
+    "repo": "thumbsup-studio/thumbsup",
+    "projectOwner": "thumbsup-studio",
+    "projectNumber": 2,
+    "specDirInRepo": "docs/specs",
+    "account": "kmjnnhyk"
+  }
 }
 ```
 
 - `channels`는 채널 **이름이 아니라 ID**(`C`로 시작). Slack에서 채널명 클릭 → 정보 창 맨 아래.
-- `specDir`은 현재 `../docs/superpowers/specs`. example의 `../docs/product`는 스프린트 레포 subtree 병합 후에나 존재한다(미실행).
+- `specDir`은 현재 `../docs/specs`. example의 `../docs/product`는 스프린트 레포 subtree 병합 후에나 존재한다(미실행).
+- `github`은 Phase 2 전용(선택). **없으면 GitHub 액션 비활성, 수집·Q&A만 동작**한다 — 명세 PR·이슈 생성 없이 Phase 1처럼 쓸 수 있다.
 
 ### 4. 채널에 초대
 
@@ -146,6 +165,14 @@ SLACK_APP_TOKEN=xapp-...
 ```
 
 **이걸 빠뜨리면 봇이 부팅 직후 죽는다.** 스코프가 있어도 봇은 자기가 멤버인 채널만 읽는다.
+
+### 5. Phase 2 업그레이드 — 앱 재설치 (최초 1회)
+
+매니페스트에 `reaction_added` 이벤트·`reactions:write` 스코프가 추가됐다. 기존 앱에 반영하려면:
+
+1. https://api.slack.com/apps → 앱 선택 → **App Manifest** → `pm-bot/slack-app-manifest.yml` 내용으로 교체 → Save
+2. 스코프가 바뀌었으므로 **Reinstall to Workspace** 버튼이 뜬다 → 재설치 (토큰은 그대로 유효)
+3. 봇 재기동 후 테스트 채널 스레드에 🤖를 달아 👀가 달리는지 확인
 
 ## ⚠️ 함정
 
@@ -177,6 +204,11 @@ The display_name cannot be converted to a username: `PM봇`
 
 Socket Mode 연결에 필요하다. 없으면 부팅하자마자 소켓 연결에서 죽는다.
 
+### gh 활성 계정이 jinhyeok-bell이면 GitHub 액션이 꺼진다
+
+기동 로그에 `gh 활성 계정 불일치` 경고가 뜨면 명세 PR·이슈 생성이 비활성 상태다(수집·Q&A는 정상).
+`gh auth switch --user kmjnnhyk` 후 재기동.
+
 ## Phase 1 한계 (설계상 의도된 것 + 실측으로 드러난 것)
 
 | 한계 | 내용 |
@@ -194,6 +226,8 @@ Socket Mode 연결에 필요하다. 없으면 부팅하자마자 소켓 연결�
 cd pm-bot
 sqlite3 pm-bot.sqlite "select ts, user, text from messages order by ts"
 sqlite3 pm-bot.sqlite "select id, status, error from qa_pending"
+sqlite3 pm-bot.sqlite "select thread_ts, status, error from analyses"
+sqlite3 pm-bot.sqlite "select pr_number, status from spec_prs"
 ```
 
 `qa_pending.status`: `pending` → `done` / `failed`(`error`에 사유). 답변 실패 시 스레드에도 `⚠️ 답변 생성에 실패했어요`가 올라간다 — 조용히 실패하지 않는다.
@@ -206,14 +240,21 @@ sqlite3 pm-bot.sqlite "select id, status, error from qa_pending"
 
 ```bash
 cd pm-bot
-pnpm tsx qa-dryrun.ts ../docs/superpowers/specs "빈칸 정답 매칭 규칙이 뭐야?"
+pnpm tsx qa-dryrun.ts ../docs/specs "빈칸 정답 매칭 규칙이 뭐야?"
 ```
 
 히트한 섹션 목록과 최종 답변을 같이 출력한다. 히트 0건이면 봇도 "모른다"고 답한다.
 
+Phase 2 스레드 분석도 dryrun이 있다. `analyze-dryrun.ts`는 Slack 반응 이벤트·DB·`gh` PR 생성 없이 fetch → 판정 → (`--edit` 시) 편집 diff 미리보기까지만 돈다. `config.github`이 있어야 한다(열린 이슈·보드 옵션 조회용, 읽기 전용).
+
+```bash
+cd pm-bot
+pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <channel> <thread_ts> [--edit]
+```
+
 ## 관련
 
-- 스펙: [`docs/superpowers/specs/2026-07-19-pm-bot-design.md`](../../../docs/superpowers/specs/2026-07-19-pm-bot-design.md)
-- 플랜: [`docs/superpowers/plans/2026-07-19-pm-bot-phase1.md`](../../../docs/superpowers/plans/2026-07-19-pm-bot-phase1.md)
+- 스펙: [`docs/specs/2026-07-19-pm-bot-design.md`](../../../docs/specs/2026-07-19-pm-bot-design.md) · [`2026-07-21-pm-bot-phase2-emoji-design.md`](../../../docs/specs/2026-07-21-pm-bot-phase2-emoji-design.md)
+- 플랜: [`docs/plans/2026-07-19-pm-bot-phase1.md`](../../../docs/plans/2026-07-19-pm-bot-phase1.md) · [`2026-07-21-pm-bot-phase2-emoji.md`](../../../docs/plans/2026-07-21-pm-bot-phase2-emoji.md)
 - 이슈: #202 (Phase 4까지 열어둠)
 - 팀원용 MCP 패키지(`pm-mcp/`)는 Phase 4 — 각자 Cursor·Claude Code에 붙이는 stdio 서버. 미구현

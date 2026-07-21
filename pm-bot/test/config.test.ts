@@ -19,4 +19,15 @@ describe("loadConfig", () => {
   it("객체가 아니면 던진다", () => {
     expect(() => loadConfig(null)).toThrow();
   });
+
+  it("github 블록이 있으면 필수 키를 검증한다", () => {
+    const base = { channels: ["C1"], dbPath: "./db", specDir: "./specs" };
+    expect(() => loadConfig({ ...base, github: { repo: "o/r" } })).toThrow(/github/);
+    const ok = loadConfig({ ...base, github: { repo: "o/r", projectOwner: "o", projectNumber: 2, specDirInRepo: "docs/x", account: "kmjnnhyk" } });
+    expect(ok.github?.projectNumber).toBe(2);
+  });
+
+  it("github 블록이 없으면 undefined로 통과한다 (Phase 1 설정 호환)", () => {
+    expect(loadConfig({ channels: ["C1"], dbPath: "./db", specDir: "./specs" }).github).toBeUndefined();
+  });
 });

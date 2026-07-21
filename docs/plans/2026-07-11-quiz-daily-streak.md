@@ -1,6 +1,6 @@
 # 오늘의 학습(1스텝) 완료 → 스트릭 갱신·완료 플래그 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 유저가 오늘의 학습(커리큘럼 1스텝, 문제 5개)을 처음 완료하면 스트릭이 KST 기준으로 하루 1회만 갱신되고, 홈 응답(`GET /api/v1/home`)이 "오늘 완료" 플래그와 함께 실제 갱신된 스트릭을 내려준다.
 
@@ -19,7 +19,7 @@
 - Flyway 마이그레이션은 `V{yyyyMMddHHmmss}__{설명}.sql` 이름으로 추가하고, 이미 적용된 파일은 수정하지 않는다.
 - 테스트 4종 컨벤션(Service Mockito / Controller standalone MockMvc / Repository `@DataJpaTest`+Testcontainers / Fixture)을 그대로 따르고, `@Nested`/`@DisplayName`으로 케이스를 구분한다.
 - **커밋/푸시는 이 세션에서 직접 하지 않는다** — 모든 태스크 구현이 끝난 뒤 사용자가 직접 리뷰하고 커밋한다. 각 태스크는 "Run tests" 까지만 수행하고 git commit 단계를 포함하지 않는다.
-- 참고 문서(정본): `docs/superpowers/specs/2026-07-11-quiz-daily-streak-design.md` (데이터 모델·훅 위치·복습과의 상호작용·비범위 전부 여기 있음), 이슈 [#152](https://github.com/thumbsup-studio/thumbsup/issues/152).
+- 참고 문서(정본): `docs/specs/2026-07-11-quiz-daily-streak-design.md` (데이터 모델·훅 위치·복습과의 상호작용·비범위 전부 여기 있음), 이슈 [#152](https://github.com/thumbsup-studio/thumbsup/issues/152).
 
 ---
 
@@ -34,7 +34,7 @@ cd /Users/jisu/IdeaProjects/thumbsup
 git checkout -b feat/152-quiz-daily-streak
 ```
 
-Expected: `Switched to a new branch 'feat/152-quiz-daily-streak'`. (main에 이미 있던 미커밋 변경사항 — `server/docker-compose.yml` 수정, `docs/superpowers/specs/*` 두 파일 — 은 그대로 새 브랜치로 이어진다. 이 변경들은 건드리지 않는다.)
+Expected: `Switched to a new branch 'feat/152-quiz-daily-streak'`. (main에 이미 있던 미커밋 변경사항 — `server/docker-compose.yml` 수정, `docs/specs/*` 두 파일 — 은 그대로 새 브랜치로 이어진다. 이 변경들은 건드리지 않는다.)
 
 ---
 

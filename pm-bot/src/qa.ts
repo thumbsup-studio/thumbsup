@@ -1,4 +1,5 @@
-import type { AdapterHooks, AdapterInput, CliAdapter } from "./adapters/types.js";
+import { runWithRetry } from "./adapters/claude.js";
+import type { CliAdapter } from "./adapters/types.js";
 import type { PmDb } from "./db.js";
 import { search, type SpecSection } from "./specindex.js";
 
@@ -37,16 +38,6 @@ export type QaDeps = {
   postMessage(channel: string, threadTs: string, text: string): Promise<void>;
   log(line: string): void;
 };
-
-/** adapter.run 실패 시 1회 재시도 후에야 실패로 처리한다 (스펙 §5). */
-async function runWithRetry(adapter: CliAdapter, input: AdapterInput, hooks: AdapterHooks): Promise<string> {
-  try {
-    return await adapter.run(input, hooks);
-  } catch (err) {
-    hooks.onLog(`[retry] 1차 실패, 재시도: ${err instanceof Error ? err.message : String(err)}`);
-    return adapter.run(input, hooks);
-  }
-}
 
 /** pending Q&A를 순차 처리한다. 실패는 failed로 마킹하고 스레드에 알린다 (조용한 실패 금지, 스펙 §5). */
 export async function drainQaQueue(deps: QaDeps): Promise<number> {

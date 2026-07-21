@@ -1,6 +1,6 @@
 # 릴리즈 자동화 + 배포·릴리즈 스킬 문서화 구현 계획 (#78)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** release-please로 릴리즈(태그·GitHub Release·CHANGELOG·버전)를 자동화하고, 프로덕션 링크 노출 + 배포·릴리즈 스킬 문서화 + server 배포 제외 규약을 정비한다.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** googleapis/release-please-action@v4, release-type "simple"(통합 버전), GitHub Actions, gh CLI
 
-**참조 스펙:** `docs/superpowers/specs/2026-07-07-release-automation-design.md`
+**참조 스펙:** `docs/specs/2026-07-07-release-automation-design.md`
 
 ## Global Constraints
 

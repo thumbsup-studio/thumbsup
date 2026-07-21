@@ -1,6 +1,6 @@
 # 로그인 인증 API (#44) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 이메일/비밀번호 기반 회원가입·로그인·토큰 재발급(회전)·로그아웃 API를 구현한다 (소셜 로그인 제외 — M3).
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Spring Boot 3(Web/Data JPA/Security/Validation), jjwt(access token — 기존 코드 재사용), Flyway(MySQL), JUnit5 + Mockito + AssertJ + Testcontainers.
 
-**설계 근거 전체:** `docs/superpowers/specs/2026-07-07-auth-login-api-design.md` (결정 기록 표 포함, 미커밋 상태 — 이 플랜과 함께 리뷰)
+**설계 근거 전체:** `docs/specs/2026-07-07-auth-login-api-design.md` (결정 기록 표 포함, 미커밋 상태 — 이 플랜과 함께 리뷰)
 
 ## Global Constraints
 

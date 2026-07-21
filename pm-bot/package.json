@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@slack/bolt": "^4.2.0",
+    "@slack/web-api": "^8.0.0",
     "better-sqlite3": "^12.2.0",
     "execa": "^9.6.0"
   },

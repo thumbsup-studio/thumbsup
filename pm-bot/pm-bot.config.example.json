@@ -1,5 +1,12 @@
 {
   "channels": ["C0PLANNING", "C0DEV"],
   "dbPath": "./pm-bot.sqlite",
-  "specDir": "../docs/product"
+  "specDir": "../docs/product",
+  "github": {
+    "repo": "thumbsup-studio/thumbsup",
+    "projectOwner": "thumbsup-studio",
+    "projectNumber": 2,
+    "specDirInRepo": "docs/specs",
+    "account": "kmjnnhyk"
+  }
 }

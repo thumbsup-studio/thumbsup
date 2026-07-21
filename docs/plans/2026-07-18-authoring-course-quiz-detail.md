@@ -1,6 +1,6 @@
 # 라이브 문제 코스별 상세 뷰 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 문제 저작 대시보드에서 코스 → 스텝(아코디언) → 문제(클릭) → 전체 상세(키워드·해설·꼬리질문·선택지·정답)를 열람하는 뷰를 추가한다.
 

@@ -1,6 +1,6 @@
 /**
  * 문제 저작 대시보드 도메인 타입.
- * 필드명은 서버 REST 계약(docs/superpowers/plans/2026-07-14-quiz-authoring-{app,server}.md)과 1:1.
+ * 필드명은 서버 REST 계약(docs/plans/2026-07-14-quiz-authoring-{app,server}.md)과 1:1.
  */
 
 export type DraftOrigin = "NEW" | "IMPROVE";

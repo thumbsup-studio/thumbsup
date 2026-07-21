@@ -1,6 +1,6 @@
 # PR1 (#33) — 앱 스캐폴딩 + 에이전트 워크스페이스 + @claude 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `app/`에 Next.js+Tailwind+Biome을 스캐폴딩하고, AI 에이전트(사람 보조·봇 모두)가 규약대로 작동하는 기반(CLAUDE.md·스킬·CI·@claude 봇)을 깐다.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js(App Router)·TypeScript(strict)·Tailwind CSS v4·Biome·pnpm 10·Node 22·GitHub Actions
 
-**참조 스펙:** `docs/superpowers/specs/2026-07-07-frontend-infra-design.md`
+**참조 스펙:** `docs/specs/2026-07-07-frontend-infra-design.md`
 
 ## Global Constraints
 
@@ -257,7 +257,7 @@ cd app && pnpm typecheck && pnpm lint && pnpm build   # 품질 게이트
 
 - 이슈·라벨·마일스톤 규약: CONTRIBUTING.md §4~6
 - PR 자동 리뷰: CodeRabbit (`.coderabbit.yaml`) — `app/**`·`server/**` 경로별 지침
-- 사양 문서: `docs/superpowers/specs/`
+- 사양 문서: `docs/specs/`
 ```
 
 - [ ] **Step 2: `app/CLAUDE.md` 작성** (전체 내용)

@@ -1,6 +1,6 @@
 # 디자인 시스템 + 3단 하네스 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Thumbs Up 앱에 브랜드 디자인 토큰·공통 UI 컴포넌트·Storybook 카탈로그를 만들고, 규칙 위반을 자동 차단하는 3단 하네스(에이전트 스킬 · 정적 게이트 · 시각 QA)를 구축한다.
 
@@ -41,7 +41,7 @@
 **Files:**
 - Create: `app/PRODUCT.md`
 - Create: `app/DESIGN.md`
-- Read (참조): `docs/design/references/*.png` (6장), `docs/superpowers/specs/2026-07-08-design-system-harness-design.md` §3
+- Read (참조): `docs/design/references/*.png` (6장), `docs/specs/2026-07-08-design-system-harness-design.md` §3
 
 **Interfaces:**
 - Produces: `DESIGN.md`가 Task 2 토큰 값의 근거. 아래 "필수 섹션"의 항목명은 Task 2 토큰 이름과 1:1 대응해야 함.

@@ -2,7 +2,7 @@
 
 - **날짜**: 2026-07-11
 - **상태**: 설계 완료 — [#152](https://github.com/thumbsup-studio/thumbsup/issues/152) 티켓팅 완료, 미착수
-- **선행 문서**: `docs/superpowers/specs/2026-07-10-quiz-progress-sync-design.md`(A/B/C안 검토, 이번 문서가 그 후속 결정), `docs/superpowers/specs/2026-07-10-learning-quiz-merge-design.md`(§64-65 "하루 문제 수 제한" 갭을 이미 예고함)
+- **선행 문서**: `docs/specs/2026-07-10-quiz-progress-sync-design.md`(A/B/C안 검토, 이번 문서가 그 후속 결정), `docs/specs/2026-07-10-learning-quiz-merge-design.md`(§64-65 "하루 문제 수 제한" 갭을 이미 예고함)
 
 ## 배경과 목표
 

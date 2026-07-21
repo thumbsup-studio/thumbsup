@@ -3,7 +3,7 @@
 Thumbs Up의 시각 언어를 기록한다. 근거는 `docs/design/references/`에 커밋된 시안 6장
 (`home-today.png` · `today-streak-recovery.png` · `quiz-types-board.png` ·
 `quiz-flow-board.png` · `answer-insight.png` · `answer-feedback-popover.png`)이며,
-PR #85 preview 디자인이 공식 승격된 기준이다(`docs/superpowers/specs/2026-07-08-design-system-harness-design.md` §3).
+PR #85 preview 디자인이 공식 승격된 기준이다(`docs/specs/2026-07-08-design-system-harness-design.md` §3).
 
 **이 문서의 역할과 한계:** 아래 섹션의 항목명(`primary`, `card`, `hero` 등)은
 Task 2가 `globals.css`의 `@theme`에 그대로 옮길 토큰 이름이다 — **이름은 이 문서가 확정**이지만,

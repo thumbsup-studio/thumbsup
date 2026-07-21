@@ -93,3 +93,83 @@ describe("qa_pending", () => {
     db.close();
   });
 });
+
+describe("analyses", () => {
+  it("requestAnalysis는 신규 스레드를 pending으로 큐잉한다", () => {
+    const db = openDb(":memory:");
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued");
+    expect(db.nextPendingAnalysis()?.threadTs).toBe("1.0");
+  });
+
+  it("pending·running 중복 요청은 in_progress로 무시된다", () => {
+    const db = openDb(":memory:");
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U2" })).toBe("in_progress");
+    db.markAnalysisRunning("C1", "1.0");
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U2" })).toBe("in_progress");
+  });
+
+  it("done 재요청은 lastMsgTs·resultJson을 보존한 채 재큐잉된다", () => {
+    const db = openDb(":memory:");
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    db.markAnalysisRunning("C1", "1.0");
+    db.markAnalysisDone("C1", "1.0", "5.0", '{"issueUrls":[]}');
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U2" })).toBe("queued");
+    const row = db.nextPendingAnalysis();
+    expect(row?.lastMsgTs).toBe("5.0");
+    expect(row?.resultJson).toBe('{"issueUrls":[]}');
+    expect(row?.requestedBy).toBe("U2");
+  });
+
+  it("failed 재요청은 error를 비우고 재큐잉된다", () => {
+    const db = openDb(":memory:");
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    db.markAnalysisRunning("C1", "1.0");
+    db.markAnalysisFailed("C1", "1.0", "boom");
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued");
+    expect(db.nextPendingAnalysis()?.error).toBeNull();
+  });
+
+  it("resetRunningAnalyses는 running만 pending으로 되돌린다", () => {
+    const db = openDb(":memory:");
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    db.markAnalysisRunning("C1", "1.0");
+    db.requestAnalysis({ channel: "C1", threadTs: "2.0", requestedBy: "U1" });
+    db.markAnalysisRunning("C1", "2.0");
+    db.markAnalysisDone("C1", "2.0", "2.0", "{}");
+    expect(db.resetRunningAnalyses()).toBe(1);
+    expect(db.nextPendingAnalysis()?.threadTs).toBe("1.0");
+  });
+});
+
+describe("spec_prs", () => {
+  it("승인 대기 메시지 ts로 역참조한다", () => {
+    const db = openDb(":memory:");
+    db.insertSpecPr({ prNumber: 7, prUrl: "https://x/7", channel: "C1", messageTs: "9.0", threadTs: "1.0", status: "awaiting" });
+    expect(db.specPrByMessage("C1", "9.0")?.prNumber).toBe(7);
+    expect(db.specPrByMessage("C1", "8.0")).toBeNull();
+    db.markSpecPr(7, "approved");
+    expect(db.specPrByMessage("C1", "9.0")?.status).toBe("approved");
+  });
+
+  it("awaitingSpecPrsByThread는 같은 스레드의 awaiting 행만 반환한다 (approved·superseded 제외)", () => {
+    const db = openDb(":memory:");
+    db.insertSpecPr({ prNumber: 1, prUrl: "https://x/1", channel: "C1", messageTs: "1.1", threadTs: "1.0", status: "awaiting" });
+    db.insertSpecPr({ prNumber: 2, prUrl: "https://x/2", channel: "C1", messageTs: "1.2", threadTs: "1.0", status: "awaiting" });
+    db.insertSpecPr({ prNumber: 3, prUrl: "https://x/3", channel: "C1", messageTs: "1.3", threadTs: "1.0", status: "awaiting" });
+    db.markSpecPr(2, "approved");
+    db.markSpecPr(3, "superseded");
+    // 다른 스레드의 awaiting 행은 포함되지 않는다
+    db.insertSpecPr({ prNumber: 4, prUrl: "https://x/4", channel: "C1", messageTs: "2.1", threadTs: "2.0", status: "awaiting" });
+
+    const rows = db.awaitingSpecPrsByThread("C1", "1.0");
+    expect(rows.map((r) => r.prNumber)).toEqual([1]);
+  });
+
+  it("markSpecPr은 superseded로 전이할 수 있다", () => {
+    const db = openDb(":memory:");
+    db.insertSpecPr({ prNumber: 5, prUrl: "https://x/5", channel: "C1", messageTs: "9.0", threadTs: "1.0", status: "awaiting" });
+    db.markSpecPr(5, "superseded");
+    expect(db.specPrByMessage("C1", "9.0")?.status).toBe("superseded");
+  });
+});
