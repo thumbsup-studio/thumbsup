@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { applyEdits, buildEditPrompt, buildJudgePrompt } from "../src/analysis.js";
+import type { CliAdapter } from "../src/adapters/types.js";
+import { applyEdits, buildEditPrompt, buildJudgePrompt, drainAnalysisQueue, fetchThread, type AnalysisDeps } from "../src/analysis.js";
+import { openDb } from "../src/db.js";
+import type { GhClient } from "../src/github.js";
 
 describe("applyEdits", () => {
   it("정확히 1건 매치면 치환한다", () => {
@@ -51,5 +54,121 @@ describe("buildEditPrompt", () => {
     expect(prompt).toContain("# 제목");
     expect(prompt).toContain("순위를 3으로");
     expect(JSON.stringify(outputSchema)).toContain("edits");
+  });
+});
+
+/** 스레드 페이지 응답과 postMessage 기록을 갖춘 테스트 하네스 */
+function harness(over: Partial<{ threadMsgs: Array<{ ts: string; user?: string; text?: string }>; judgeJson: object; editJson: object }> = {}) {
+  const db = openDb(":memory:");
+  const posted: string[] = [];
+  const ghCalls: string[] = [];
+  const judge = over.judgeJson ?? { spec_changes: [], issue_actions: [], nothing_found: true };
+  const adapterOutputs = [JSON.stringify(judge), JSON.stringify(over.editJson ?? { edits: [{ old: "2순위", new: "3순위" }] })];
+  let adapterCall = 0;
+  const deps: AnalysisDeps = {
+    db,
+    adapter: { run: async () => adapterOutputs[Math.min(adapterCall++, 1)]! } as CliAdapter,
+    index: [{ file: "spec.md", heading: "h", ids: [], body: "북마크는 2순위" }],
+    history: {
+      history: async () => ({ messages: [] }),
+      replies: async ({ channel }) => ({
+        messages: (over.threadMsgs ?? [{ ts: "1.0", user: "U1", text: "북마크 미루자" }]).map((m) => ({ channel, ts: m.ts, user: m.user, text: m.text })),
+      }),
+    },
+    gh: {
+      listOpenIssues: async () => { ghCalls.push("list"); return []; },
+      boardOptions: async () => ({ area: ["S2 홈"], status: ["Todo"] }),
+      createIssue: async () => { ghCalls.push("createIssue"); return { number: 42, url: "https://gh/i/42" }; },
+      commentIssue: async () => { ghCalls.push("commentIssue"); return { url: "https://gh/i/3#c" }; },
+      setBoardFields: async () => { ghCalls.push("setBoardFields"); },
+      checkAuth: async () => ({ ok: true, login: "kmjnnhyk" }),
+      prepareSpecRepo: async () => { ghCalls.push("prepare"); },
+      readSpecFile: async () => "북마크는 2순위",
+      submitSpecPr: async () => { ghCalls.push("submitSpecPr"); return { number: 9, url: "https://gh/pr/9" }; },
+      mergePr: async () => {}, closePr: async () => {},
+    } as GhClient,
+    getPermalink: async () => "https://slack/p1",
+    postMessage: async (_c, _t, text) => { posted.push(text); return { ts: `bot.${posted.length}` }; },
+    log: () => {},
+  };
+  return { db, deps, posted, ghCalls };
+}
+
+describe("fetchThread", () => {
+  it("봇 메시지(user 없음)도 포함하고 마지막 ts를 계산한다", async () => {
+    const { deps } = harness({ threadMsgs: [{ ts: "1.0", user: "U1", text: "질문" }, { ts: "2.0", text: "AI 허들 요약" }] });
+    const t = await fetchThread(deps.history, "C1", "1.0");
+    expect(t.msgs).toEqual([{ user: "U1", text: "질문" }, { user: "bot", text: "AI 허들 요약" }]);
+    expect(t.lastMsgTs).toBe("2.0");
+  });
+});
+
+describe("drainAnalysisQueue", () => {
+  it("nothing_found면 '찾지 못했다' 답글 후 done", async () => {
+    const { db, deps, posted } = harness();
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    expect(await drainAnalysisQueue(deps)).toBe(1);
+    expect(posted[0]).toContain("찾지 못했");
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued"); // done 상태였음
+  });
+
+  it("spec_changes는 PR 생성 → 승인 대기 답글 ts를 spec_prs에 기록한다", async () => {
+    const { db, deps, posted, ghCalls } = harness({
+      judgeJson: { spec_changes: [{ file: "spec.md", summary: "북마크 연기", rationale: "합의", edit_instruction: "2순위를 3순위로" }], issue_actions: [], nothing_found: false },
+    });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    expect(ghCalls).toContain("prepare");
+    expect(ghCalls).toContain("submitSpecPr");
+    expect(posted.some((p) => p.includes("https://gh/pr/9"))).toBe(true);
+    // 승인 대기 답글(첫 게시)의 ts로 역참조 가능해야 한다
+    expect(db.specPrByMessage("C1", "bot.1")?.prNumber).toBe(9);
+  });
+
+  it("issue create는 등록 + 보드 배치 + 사후 보고", async () => {
+    const { db, deps, posted, ghCalls } = harness({
+      judgeJson: { spec_changes: [], issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }], nothing_found: false },
+    });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    expect(ghCalls).toEqual(expect.arrayContaining(["createIssue", "setBoardFields"]));
+    expect(posted.some((p) => p.includes("https://gh/i/42"))).toBe(true);
+  });
+
+  it("done 재큐잉 + 새 메시지 없음 → '이미 처리됨' 답글만 하고 done 복원", async () => {
+    const { db, deps, posted, ghCalls } = harness();
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    db.markAnalysisRunning("C1", "1.0");
+    db.markAnalysisDone("C1", "1.0", "1.0", '{"prUrl":"https://gh/pr/9","issueUrls":[]}'); // lastMsgTs = 스레드 마지막과 동일
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U2" });
+    await drainAnalysisQueue(deps);
+    expect(posted[0]).toContain("이미 처리");
+    expect(posted[0]).toContain("https://gh/pr/9");
+    expect(ghCalls).not.toContain("list"); // 판정까지 안 감
+  });
+
+  it("gh 비활성이면 failed + 안내 답글", async () => {
+    const { db, deps, posted } = harness();
+    deps.gh = null;
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    expect(posted[0]).toContain("GitHub 연동");
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued"); // failed → 재시도 가능
+  });
+
+  it("이슈 단계 실패 시 성공한 PR 링크를 포함해 ⚠️ 보고하고 failed", async () => {
+    const { db, deps, posted } = harness({
+      judgeJson: {
+        spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }],
+        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }],
+        nothing_found: false,
+      },
+    });
+    deps.gh = { ...deps.gh!, createIssue: async () => { throw new Error("boom"); } };
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    const warn = posted.find((p) => p.includes("⚠️"))!;
+    expect(warn).toContain("boom");
+    expect(warn).toContain("https://gh/pr/9");
   });
 });

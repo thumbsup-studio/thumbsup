@@ -1,4 +1,9 @@
-import type { SpecSection } from "./specindex.js";
+import { runWithRetry } from "./adapters/claude.js";
+import type { CliAdapter } from "./adapters/types.js";
+import type { HistoryClient } from "./collector.js";
+import type { PmDb } from "./db.js";
+import type { GhClient } from "./github.js";
+import { search, type SpecSection } from "./specindex.js";
 
 export const ANALYSIS_SYSTEM_PROMPT =
   "너는 떰즈업 팀의 PM 어시스턴트다. 요청받은 JSON만 출력한다. 제공된 스레드와 명세 발췌만 근거로 판단하고, 근거가 약하면 항목을 만들지 않는다.";
@@ -116,4 +121,121 @@ export function applyEdits(content: string, edits: Array<{ old: string; new: str
     out = out.replace(e.old, e.new);
   });
   return out;
+}
+
+export type FetchedThread = { msgs: ThreadMsg[]; lastMsgTs: string };
+
+/** 스레드 전문을 실시간 조회한다. user 없는 봇 메시지(허들 AI 노트)도 포함 — 스펙 §2. */
+export async function fetchThread(client: HistoryClient, channel: string, threadTs: string): Promise<FetchedThread> {
+  const msgs: ThreadMsg[] = [];
+  let lastMsgTs = threadTs;
+  let cursor: string | undefined;
+  do {
+    const page = await client.replies({ channel, ts: threadTs, cursor });
+    for (const m of page.messages) {
+      if (!m.text) continue;
+      msgs.push({ user: m.user ?? "bot", text: m.text });
+      if (Number(m.ts) > Number(lastMsgTs)) lastMsgTs = m.ts;
+    }
+    cursor = page.nextCursor;
+  } while (cursor);
+  return { msgs, lastMsgTs };
+}
+
+export type AnalysisDeps = {
+  db: PmDb;
+  adapter: CliAdapter;
+  index: SpecSection[];
+  gh: GhClient | null;
+  history: HistoryClient;
+  getPermalink(channel: string, ts: string): Promise<string>;
+  postMessage(channel: string, threadTs: string, text: string): Promise<{ ts: string }>;
+  log(line: string): void;
+};
+
+function prevLinks(prev: PrevResult): string {
+  return [prev.prUrl && `\n• 명세 PR: ${prev.prUrl}`, ...prev.issueUrls.map((u) => `\n• 이슈: ${u}`)].filter(Boolean).join("");
+}
+
+/** pending 분석을 순차 처리한다. 실패는 failed로 남기고 스레드에 알린다 (조용한 실패 금지). */
+export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
+  let handled = 0;
+  for (let job = deps.db.nextPendingAnalysis(); job !== null; job = deps.db.nextPendingAnalysis()) {
+    deps.db.markAnalysisRunning(job.channel, job.threadTs);
+    const done: string[] = []; // 부분 성공 추적 — catch에서 보고에 포함
+    const result: PrevResult = { issueUrls: [] };
+    try {
+      if (!deps.gh) throw new Error("GitHub 연동 비활성 상태예요 (gh 계정·config.github 확인)");
+      const gh = deps.gh;
+      const { msgs, lastMsgTs } = await fetchThread(deps.history, job.channel, job.threadTs);
+      const prev = job.resultJson ? (JSON.parse(job.resultJson) as PrevResult) : undefined;
+      if (prev && job.lastMsgTs === lastMsgTs) {
+        await deps.postMessage(job.channel, job.threadTs, `🤖 이미 처리한 스레드예요 (새 메시지 없음).${prevLinks(prev)}`);
+        deps.db.markAnalysisDone(job.channel, job.threadTs, lastMsgTs, job.resultJson!);
+        handled += 1;
+        continue;
+      }
+      const permalink = await deps.getPermalink(job.channel, job.threadTs);
+      const options = await gh.boardOptions();
+      const openIssues = await gh.listOpenIssues();
+      const hits = search(deps.index, msgs.map((m) => m.text).join(" ").slice(0, 2000));
+      const judgeRaw = await runWithRetry(deps.adapter, buildJudgePrompt({ thread: msgs, permalink, hits, openIssues, areaOptions: options.area, statusOptions: options.status, prev }), { onLog: deps.log });
+      const judge = JSON.parse(judgeRaw) as JudgeResult;
+
+      if (judge.spec_changes.length > 0) {
+        await gh.prepareSpecRepo();
+        const files: Array<{ file: string; content: string }> = [];
+        for (const c of judge.spec_changes) {
+          const content = await gh.readSpecFile(c.file);
+          const editRaw = await runWithRetry(deps.adapter, buildEditPrompt({ file: c.file, content, instruction: c.edit_instruction }), { onLog: deps.log });
+          files.push({ file: c.file, content: applyEdits(content, (JSON.parse(editRaw) as { edits: Array<{ old: string; new: string }> }).edits) });
+        }
+        const summary = judge.spec_changes.map((c) => c.summary).join(", ");
+        const pr = await gh.submitSpecPr({
+          branch: `docs/pm-bot-${job.threadTs.replace(".", "-")}`,
+          files,
+          commitMsg: `docs(spec): ${summary} (pm-bot)`,
+          title: `docs(spec): ${summary} (pm-bot)`,
+          body: `근거 스레드: ${permalink}\n\n${judge.spec_changes.map((c) => `- ${c.summary}: ${c.rationale}`).join("\n")}`,
+        });
+        result.prUrl = pr.url;
+        done.push(`명세 PR: ${pr.url}`);
+        const posted = await deps.postMessage(job.channel, job.threadTs, `📝 명세 변경 제안: ${pr.url}\n이 메시지에 ✅ 반응 → 자동 머지, ❌ → 반려`);
+        deps.db.insertSpecPr({ prNumber: pr.number, prUrl: pr.url, channel: job.channel, messageTs: posted.ts, threadTs: job.threadTs, status: "awaiting" });
+      }
+
+      for (const a of judge.issue_actions) {
+        if (a.kind === "create") {
+          const issue = await gh.createIssue({ title: a.title, body: `${a.body}\n\n근거 스레드: ${permalink}` });
+          await gh.setBoardFields(issue.number, { area: a.area, status: a.status });
+          result.issueUrls.push(issue.url);
+          done.push(`이슈 생성: ${issue.url}`);
+        } else {
+          if (a.number == null) throw new Error(`issue_actions update에 number 없음: ${a.title}`);
+          const c = await gh.commentIssue({ number: a.number, body: `${a.body}\n\n근거 스레드: ${permalink}` });
+          await gh.setBoardFields(a.number, { status: a.status });
+          result.issueUrls.push(c.url);
+          done.push(`이슈 갱신: #${a.number}`);
+        }
+      }
+
+      if (done.length === 0) {
+        await deps.postMessage(job.channel, job.threadTs, "🤖 분석했지만 명세 변경·이슈로 등록할 내용을 찾지 못했어요.");
+      } else {
+        await deps.postMessage(job.channel, job.threadTs, `🤖 분석 완료:\n${done.map((d) => `• ${d}`).join("\n")}`);
+      }
+      deps.db.markAnalysisDone(job.channel, job.threadTs, lastMsgTs, JSON.stringify(result));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.db.markAnalysisFailed(job.channel, job.threadTs, msg);
+      const partial = done.length > 0 ? `\n완료된 항목:\n${done.map((d) => `• ${d}`).join("\n")}` : "";
+      try {
+        await deps.postMessage(job.channel, job.threadTs, `⚠️ 분석 처리에 실패했어요: ${msg}${partial}\n🤖를 다시 달면 재시도해요.`);
+      } catch (postErr) {
+        deps.log(`실패 알림 게시 실패 (${job.channel}/${job.threadTs}): ${postErr instanceof Error ? postErr.message : String(postErr)}`);
+      }
+    }
+    handled += 1;
+  }
+  return handled;
 }
