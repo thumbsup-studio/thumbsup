@@ -33,4 +33,5 @@ thumbsup:
   authoring:
     # 콤마 구분 이메일 목록(#174 C1) — SSM: /thumbsup/prod/AUTHORING_ADMIN_EMAILS. 시크릿이 아니라 default 빈 값 허용
     # (파라미터가 아직 없으면 자동 승격이 없을 뿐 배포는 막지 않는다).
+    # ⚠️ 이 값은 부팅 시점에만 SSM에서 읽는다 — 파라미터를 갱신해도 컨테이너를 재기동(재배포)해야 반영된다 (#209).
     admin-emails: ${AUTHORING_ADMIN_EMAILS:}
