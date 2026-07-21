@@ -1,6 +1,6 @@
 # 해설 꼬리 질문 풀기 + 히스토리 탭바 복구 Implementation Plan
 
-> **For agentic workers:** 설계 근거는 `docs/superpowers/specs/2026-07-10-follow-up-question-and-history-tabbar-design.md` 참조. Steps use checkbox (`- [ ]`) syntax.
+> **For agentic workers:** 설계 근거는 `docs/specs/2026-07-10-follow-up-question-and-history-tabbar-design.md` 참조. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** 해설 화면에서 이어지는 2단계 꼬리 질문 화면을 추가하고, 히스토리 탭에서 사라지던 하단 앱 탭바를 공용화해 복구한다.
 

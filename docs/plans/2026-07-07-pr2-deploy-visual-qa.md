@@ -1,6 +1,6 @@
 # PR2 (#46) — 배포 인프라 + AI 시각 QA 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** main 머지 시 자동 프로덕션 배포 + PR마다 프리뷰 URL 코멘트 + 프리뷰 스크린샷을 엘리스 멀티모달 모델이 리뷰하는 시각 QA를 구축한다.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Vercel CLI · Playwright(chromium) · tsx · 엘리스AX API(OpenAI 호환) · marocchino/sticky-pull-request-comment
 
-**참조 스펙:** `docs/superpowers/specs/2026-07-07-frontend-infra-design.md`
+**참조 스펙:** `docs/specs/2026-07-07-frontend-infra-design.md`
 **선행 조건:** PR1(#33) 머지 완료
 
 ## Global Constraints

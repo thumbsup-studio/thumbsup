@@ -1,6 +1,6 @@
 # PM 봇 Phase 1 (수집·백필·Q&A) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Slack 지정 채널을 수집·백필하고, @멘션 질문에 명세(markdown) 근거로 답하는 읽기 전용 PM 봇을 만든다.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript / Node ≥22 (ESM), `@slack/bolt` v4(Socket Mode), `better-sqlite3`, `execa`(claude CLI spawn), `tsx`(실행), `vitest`(테스트)
 
-**스펙:** `docs/superpowers/specs/2026-07-19-pm-bot-design.md` §3.1(수집기·Q&A)·§5·§6 — Phase 2(분석→PR→승인)·Phase 3(이슈·리포트)·Phase 4(pm-mcp)는 **후속 플랜**이며 이 플랜 범위가 아니다.
+**스펙:** `docs/specs/2026-07-19-pm-bot-design.md` §3.1(수집기·Q&A)·§5·§6 — Phase 2(분석→PR→승인)·Phase 3(이슈·리포트)·Phase 4(pm-mcp)는 **후속 플랜**이며 이 플랜 범위가 아니다.
 
 ## Global Constraints
 
@@ -1041,7 +1041,7 @@ Expected: PASS — index.ts는 컴파일만 검증 (Slack 연결은 다음 스�
 # thumbsup-pm-bot
 
 Slack 지정 채널을 수집하고 명세 근거 Q&A에 답하는 PM 봇 (Phase 1 — 읽기 전용).
-설계: `../docs/superpowers/specs/2026-07-19-pm-bot-design.md`
+설계: `../docs/specs/2026-07-19-pm-bot-design.md`
 
 ## 준비
 1. Slack 앱 (Socket Mode ON) — Bot Token Scopes: `channels:history` `channels:read` `chat:write` `reactions:read` `users:read`, Event Subscriptions: `message.channels` `app_mention`

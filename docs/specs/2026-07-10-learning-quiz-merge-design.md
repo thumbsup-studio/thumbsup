@@ -3,7 +3,7 @@
 - **날짜**: 2026-07-10
 - **상태**: 구현 완료 (빌드·테스트 그린, 커밋/PR 대기)
 - **관련 이슈**: [#117 refactor(server): learning을 quiz로 통합](https://github.com/thumbsup-studio/thumbsup/issues/117)
-- **선행**: #45(홈 화면 조회 API, `docs/superpowers/specs/2026-07-09-home-query-api-design.md`) — 이번 작업이 그 설계를 뒤집는다
+- **선행**: #45(홈 화면 조회 API, `docs/specs/2026-07-09-home-query-api-design.md`) — 이번 작업이 그 설계를 뒤집는다
 
 ## 배경과 문제
 

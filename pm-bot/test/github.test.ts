@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createGhClient, type Exec } from "../src/github.js";
 
-const CFG = { repo: "o/r", projectOwner: "o", projectNumber: 2, specDirInRepo: "docs/superpowers/specs", account: "kmjnnhyk", workRepoDir: "/tmp/none" };
+const CFG = { repo: "o/r", projectOwner: "o", projectNumber: 2, specDirInRepo: "docs/specs", account: "kmjnnhyk", workRepoDir: "/tmp/none" };
 
 /** 명령 프리픽스 → stdout 응답을 등록하고 호출 기록을 남기는 가짜 exec */
 function fakeExec(responses: Array<[string, string]>) {
@@ -134,9 +134,9 @@ describe("createGhClient — .workrepo 명세 PR", () => {
 
   it("submitSpecPr는 브랜치·파일 쓰기·커밋·푸시·PR 생성을 순서대로 수행한다", async () => {
     const cfg = workCfg();
-    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
+    mkdirSync(join(cfg.workRepoDir, "docs/specs"), { recursive: true });
     const { exec, calls } = fakeExec([
-      [`git -C ${cfg.workRepoDir} status --porcelain`, " M docs/superpowers/specs/spec.md\n"],
+      [`git -C ${cfg.workRepoDir} status --porcelain`, " M docs/specs/spec.md\n"],
       ["git -C", ""],
       ["gh pr create", "https://github.com/o/r/pull/9\n"],
     ]);
@@ -145,7 +145,7 @@ describe("createGhClient — .workrepo 명세 PR", () => {
       commitMsg: "docs(spec): x (pm-bot)", title: "docs(spec): x (pm-bot)", body: "근거",
     });
     expect(res).toEqual({ number: 9, url: "https://github.com/o/r/pull/9" });
-    expect(readFileSync(join(cfg.workRepoDir, "docs/superpowers/specs/spec.md"), "utf8")).toBe("새 내용");
+    expect(readFileSync(join(cfg.workRepoDir, "docs/specs/spec.md"), "utf8")).toBe("새 내용");
     const seq = calls.map((c) => c.split(" ").slice(0, 4).join(" "));
     expect(calls.some((c) => c.includes("checkout -B docs/pm-bot-1-0"))).toBe(true);
     expect(calls.some((c) => c.includes("commit -m"))).toBe(true);
@@ -155,7 +155,7 @@ describe("createGhClient — .workrepo 명세 PR", () => {
 
   it("submitSpecPr는 git status --porcelain이 비어있으면 push 전에 throw한다 (커밋할 변경 없음)", async () => {
     const cfg = workCfg();
-    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
+    mkdirSync(join(cfg.workRepoDir, "docs/specs"), { recursive: true });
     const { exec, calls } = fakeExec([
       [`git -C ${cfg.workRepoDir} status --porcelain`, ""],
       ["git -C", ""],
@@ -173,8 +173,8 @@ describe("createGhClient — .workrepo 명세 PR", () => {
 
   it("readSpecFile은 specDirInRepo 밑에서 읽는다", async () => {
     const cfg = workCfg();
-    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
-    writeFileSync(join(cfg.workRepoDir, "docs/superpowers/specs/a.md"), "본문", "utf8");
+    mkdirSync(join(cfg.workRepoDir, "docs/specs"), { recursive: true });
+    writeFileSync(join(cfg.workRepoDir, "docs/specs/a.md"), "본문", "utf8");
     const { exec } = fakeExec([]);
     expect(await createGhClient(cfg, exec).readSpecFile("a.md")).toBe("본문");
   });

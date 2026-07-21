@@ -49,7 +49,7 @@ thumbsup/
 │   ├── verify-app/               # ← PR1: 검증 게이트 절차
 │   └── next-best-practices/      # ← PR1: Vercel 공식 스킬 vendoring
 ├── .coderabbit.yaml              # ← PR1: frontend→app, backend→server 경로 수정
-├── docs/superpowers/specs/       #    이 문서
+├── docs/specs/       #    이 문서
 └── README.md                     # ← PR1: dev 서버 구동 문서화 (+CodeRabbit 문단 경로 갱신)
 ```
 

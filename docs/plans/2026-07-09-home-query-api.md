@@ -1,6 +1,6 @@
 # 홈 화면 조회 API (#45) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 유저 기준 스트릭·포인트·오늘의 학습 진입점을 한 번에 반환하는 `GET /api/v1/home`을 구현한다. 문제 완료 시 streak/points를 갱신하는 쓰기 로직은 범위 밖(후속 티켓) — 이번 PR은 조회만 다룬다.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Spring Boot 3(Web/Data JPA/Security), Flyway(MySQL), JUnit5 + Mockito + AssertJ + Testcontainers.
 
-**설계 근거 전체:** `docs/superpowers/specs/2026-07-09-home-query-api-design.md` (결정 기록 표 포함)
+**설계 근거 전체:** `docs/specs/2026-07-09-home-query-api-design.md` (결정 기록 표 포함)
 
 ## Global Constraints
 

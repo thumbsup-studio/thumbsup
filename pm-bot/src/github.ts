@@ -8,7 +8,7 @@ export type GhConfig = {
   repo: string;            // "thumbsup-studio/thumbsup"
   projectOwner: string;    // "thumbsup-studio" (org)
   projectNumber: number;   // Thumbs Up Roadmap = 2
-  specDirInRepo: string;   // "docs/superpowers/specs"
+  specDirInRepo: string;   // "docs/specs"
   account?: string;        // 기대 gh 활성 계정 — 불일치 시 GitHub 액션 비활성 (403 함정)
   workRepoDir: string;     // 명세 PR용 blobless clone 절대 경로
 };
@@ -133,7 +133,7 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
       const status = await git(["status", "--porcelain"]);
       if (!status) throw new Error("명세 변경 결과가 기존과 동일 — 커밋할 변경 없음");
       await git(["commit", "-m", a.commitMsg]);
-      await git(["push", "-u", "origin", a.branch, "--force"]); // 재분석마다 고유 브랜치라 force는 동시 실행 방지용 안전장치
+      await git(["push", "-u", "origin", a.branch, "--force"]); // 동일 lastMsgTs 재시도 시 같은 브랜치의 이전 실패 런 커밋을 덮어쓰기 위해 force 필요
       const url = await gh(["pr", "create", "--repo", cfg.repo, "--head", a.branch, "--title", a.title, "--body", a.body], { cwd: cfg.workRepoDir });
       const m = url.match(/\/(\d+)$/);
       if (!m) throw new Error(`PR URL 파싱 실패: ${url}`);

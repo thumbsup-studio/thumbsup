@@ -18,7 +18,7 @@ API를 만들거나 호출하기 전에 먼저 확인한다 (Contract-first).
 | [`server/docs/`](../server/docs/) | 서버 구현 규칙·운영 가이드 (DTO, 예외 구현, 환경변수, [CI 인수인계](../server/docs/ci-requirements.md)) | `server/CLAUDE.md` (AI 자동 로딩 인덱스) |
 | `app/docs/` | FE 내부 문서 | `app/` 생성 시 FE 팀이 동일 규칙으로 |
 
-> 예외: [`superpowers/`](superpowers/)는 FE 인프라 사양·플랜 아카이브다(계약 문서 아님).
+> 예외: [`specs/`](specs/)(설계 사양)·[`plans/`](plans/)(구현 플랜)는 아카이브다(계약 문서 아님).
 
 ## 문서 역할 분담 (docs ↔ Swagger)
 

@@ -1,6 +1,6 @@
 # Home Today MVP Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 루트 `/`에 Today 홈 MVP를 구현하고, `#2`, `#51`, `#52`, `#53` 범위를 mock 데이터와 테스트 포함으로 완료한 뒤 `verify-app` 게이트를 통과한다.
 

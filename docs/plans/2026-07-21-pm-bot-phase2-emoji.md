@@ -1,6 +1,6 @@
 # PM 봇 Phase 2 — 🤖 이모지 트리거 분석 구현 플랜
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Slack 스레드에 🤖 이모지가 달리면 봇이 스레드를 분석해 명세 수정 PR(✅ 승인 → auto-merge)과 GitHub 이슈 등록/갱신(Roadmap 보드 배치)을 수행한다.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript / Node ≥22 / ESM, @slack/bolt(Socket Mode), better-sqlite3, execa + gh CLI, vitest. 새 npm 의존성은 `@slack/web-api`(dryrun 하네스용) 1개.
 
-**스펙:** [`docs/superpowers/specs/2026-07-21-pm-bot-phase2-emoji-design.md`](../specs/2026-07-21-pm-bot-phase2-emoji-design.md)
+**스펙:** [`docs/specs/2026-07-21-pm-bot-phase2-emoji-design.md`](../specs/2026-07-21-pm-bot-phase2-emoji-design.md)
 
 ## Global Constraints
 
@@ -638,7 +638,7 @@ git commit -m "feat(pm-bot): 판정·편집 프롬프트와 치환 적용기 —
 import { describe, expect, it } from "vitest";
 import { createGhClient, type Exec } from "../src/github.js";
 
-const CFG = { repo: "o/r", projectOwner: "o", projectNumber: 2, specDirInRepo: "docs/superpowers/specs", account: "kmjnnhyk", workRepoDir: "/tmp/none" };
+const CFG = { repo: "o/r", projectOwner: "o", projectNumber: 2, specDirInRepo: "docs/specs", account: "kmjnnhyk", workRepoDir: "/tmp/none" };
 
 /** 명령 프리픽스 → stdout 응답을 등록하고 호출 기록을 남기는 가짜 exec */
 function fakeExec(responses: Array<[string, string]>) {
@@ -728,7 +728,7 @@ export type GhConfig = {
   repo: string;            // "thumbsup-studio/thumbsup"
   projectOwner: string;    // "thumbsup-studio" (org)
   projectNumber: number;   // Thumbs Up Roadmap = 2
-  specDirInRepo: string;   // "docs/superpowers/specs"
+  specDirInRepo: string;   // "docs/specs"
   account?: string;        // 기대 gh 활성 계정 — 불일치 시 GitHub 액션 비활성 (403 함정)
   workRepoDir: string;     // 명세 PR용 blobless clone 절대 경로
 };
@@ -887,14 +887,14 @@ describe("createGhClient — .workrepo 명세 PR", () => {
 
   it("submitSpecPr는 브랜치·파일 쓰기·커밋·푸시·PR 생성을 순서대로 수행한다", async () => {
     const cfg = workCfg();
-    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
+    mkdirSync(join(cfg.workRepoDir, "docs/specs"), { recursive: true });
     const { exec, calls } = fakeExec([["git -C", ""], ["gh pr create", "https://github.com/o/r/pull/9\n"]]);
     const res = await createGhClient(cfg, exec).submitSpecPr({
       branch: "docs/pm-bot-1-0", files: [{ file: "spec.md", content: "새 내용" }],
       commitMsg: "docs(spec): x (pm-bot)", title: "docs(spec): x (pm-bot)", body: "근거",
     });
     expect(res).toEqual({ number: 9, url: "https://github.com/o/r/pull/9" });
-    expect(readFileSync(join(cfg.workRepoDir, "docs/superpowers/specs/spec.md"), "utf8")).toBe("새 내용");
+    expect(readFileSync(join(cfg.workRepoDir, "docs/specs/spec.md"), "utf8")).toBe("새 내용");
     const seq = calls.map((c) => c.split(" ").slice(0, 4).join(" "));
     expect(calls.some((c) => c.includes("checkout -B docs/pm-bot-1-0"))).toBe(true);
     expect(calls.some((c) => c.includes("commit -m"))).toBe(true);
@@ -904,8 +904,8 @@ describe("createGhClient — .workrepo 명세 PR", () => {
 
   it("readSpecFile은 specDirInRepo 밑에서 읽는다", async () => {
     const cfg = workCfg();
-    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
-    writeFileSync(join(cfg.workRepoDir, "docs/superpowers/specs/a.md"), "본문", "utf8");
+    mkdirSync(join(cfg.workRepoDir, "docs/specs"), { recursive: true });
+    writeFileSync(join(cfg.workRepoDir, "docs/specs/a.md"), "본문", "utf8");
     const { exec } = fakeExec([]);
     expect(await createGhClient(cfg, exec).readSpecFile("a.md")).toBe("본문");
   });
@@ -1487,7 +1487,7 @@ if (resetCount > 0) console.log(`[pm-bot] 중단됐던 분석 ${resetCount}건 �
     "repo": "thumbsup-studio/thumbsup",
     "projectOwner": "thumbsup-studio",
     "projectNumber": 2,
-    "specDirInRepo": "docs/superpowers/specs",
+    "specDirInRepo": "docs/specs",
     "account": "kmjnnhyk"
   }
 }
@@ -1746,4 +1746,4 @@ Task 4 (gh 이슈·보드) ─▶ Task 5 ─┘  │                            
                                     └──────────────────────▶ Task 9 (문서) ────┘ (9는 7 이후 아무 때나)
 ```
 
-Task 1·2·3·4는 상호 독립 — 병렬 dispatch 가능 (superpowers:dispatching-parallel-agents).
+Task 1·2·3·4는 상호 독립 — 병렬 dispatch 가능.

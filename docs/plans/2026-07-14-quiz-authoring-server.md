@@ -1,6 +1,6 @@
 # 문제 저작 파이프라인 — 서버 구현 계획 (#174)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 웹 대시보드가 만든 생성/검수/개선 잡을 로컬 브리지가 폴링·실행하고, 결과를 draft→approved 라이프사이클로 관리·승격하는 Spring Boot 파이프라인.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Spring Boot(기존), JPA/Hibernate, Flyway, MySQL 8.4 Testcontainers, SseEmitter.
 
-**Spec:** `docs/superpowers/specs/2026-07-14-quiz-authoring-dashboard-design.md`
+**Spec:** `docs/specs/2026-07-14-quiz-authoring-dashboard-design.md`
 
 ## Global Constraints
 

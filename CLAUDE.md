@@ -24,7 +24,7 @@ cd app && pnpm typecheck && pnpm lint && pnpm build   # 품질 게이트
 
 - 이슈·라벨·마일스톤 규약: CONTRIBUTING.md §4~6
 - PR 자동 리뷰: CodeRabbit (`.coderabbit.yaml`) — `app/**`·`server/**` 경로별 지침
-- 사양 문서: `docs/superpowers/specs/`
+- 사양 문서: `docs/specs/`
 
 ## 배포 인프라 현황 (server/AWS, #47)
 

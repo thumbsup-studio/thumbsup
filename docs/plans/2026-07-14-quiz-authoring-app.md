@@ -1,6 +1,6 @@
 # 문제 저작 대시보드 UI — 구현 계획 (#176)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `/authoring` 보호 라우트에서 문제 생성/검수/개선/승인을 트리거하고 잡 실행 로그를 xterm.js 터미널로 실시간 표시하는 대시보드.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next 16.2.10, React 19.2.4, Tailwind v4(토큰), @xterm/xterm + @xterm/addon-fit (react-xtermjs 미사용 — 직접 마운트가 의존성 적음), vitest + RTL, biome.
 
-**Spec:** `docs/superpowers/specs/2026-07-14-quiz-authoring-dashboard-design.md`
+**Spec:** `docs/specs/2026-07-14-quiz-authoring-dashboard-design.md`
 
 ## Global Constraints
 

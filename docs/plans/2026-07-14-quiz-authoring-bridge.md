@@ -1,6 +1,6 @@
 # 문제 저작 로컬 브리지 (thumbsup-bridge) — 구현 계획 (#175)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 팀원 노트북에서 서버 잡 큐를 폴링해 claude-code/codex/gemini CLI를 **개인 구독 세션으로 헤드리스 실행**하고, 로그를 서버로 중계하며 결과 JSON을 제출하는 Node/TS 실행기.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node 22, TypeScript(strict, NodeNext, ESM), execa ^9, vitest, tsx.
 
-**Spec:** `docs/superpowers/specs/2026-07-14-quiz-authoring-dashboard-design.md` (§8 브리지 상세)
+**Spec:** `docs/specs/2026-07-14-quiz-authoring-dashboard-design.md` (§8 브리지 상세)
 
 ## Global Constraints
 

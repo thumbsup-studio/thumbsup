@@ -20,7 +20,7 @@ description: Slack에서 팀 대화를 수집하고 명세 근거 Q&A에 답하�
     ├─ 백필 (재기동 시 놓친 구간 복구)
     └─ Q&A: 명세 검색 → claude -p (개인 구독) → 스레드 답변
               │
-              └─ docs/superpowers/specs/*.md 를 섹션 단위로 인덱싱
+              └─ docs/specs/*.md 를 섹션 단위로 인덱싱
 ```
 
 `bridge/`와 **무관하다.** 둘 다 `claude -p`로 개인 구독을 쓰지만 `import` 관계가 없고, `pm-bot/src/adapters/`는 bridge에서 **복사해 온 독립 사본**이다(`spawn.ts` 첫 줄 주석). bridge가 꺼져 있어도 pm-bot은 돈다.
@@ -142,19 +142,19 @@ SLACK_APP_TOKEN=xapp-...
 {
   "channels": ["C0BK8M5N7EU"],
   "dbPath": "./pm-bot.sqlite",
-  "specDir": "../docs/superpowers/specs",
+  "specDir": "../docs/specs",
   "github": {
     "repo": "thumbsup-studio/thumbsup",
     "projectOwner": "thumbsup-studio",
     "projectNumber": 2,
-    "specDirInRepo": "docs/superpowers/specs",
+    "specDirInRepo": "docs/specs",
     "account": "kmjnnhyk"
   }
 }
 ```
 
 - `channels`는 채널 **이름이 아니라 ID**(`C`로 시작). Slack에서 채널명 클릭 → 정보 창 맨 아래.
-- `specDir`은 현재 `../docs/superpowers/specs`. example의 `../docs/product`는 스프린트 레포 subtree 병합 후에나 존재한다(미실행).
+- `specDir`은 현재 `../docs/specs`. example의 `../docs/product`는 스프린트 레포 subtree 병합 후에나 존재한다(미실행).
 - `github`은 Phase 2 전용(선택). **없으면 GitHub 액션 비활성, 수집·Q&A만 동작**한다 — 명세 PR·이슈 생성 없이 Phase 1처럼 쓸 수 있다.
 
 ### 4. 채널에 초대
@@ -239,7 +239,7 @@ sqlite3 pm-bot.sqlite "select pr_number, status from spec_prs"
 
 ```bash
 cd pm-bot
-pnpm tsx qa-dryrun.ts ../docs/superpowers/specs "빈칸 정답 매칭 규칙이 뭐야?"
+pnpm tsx qa-dryrun.ts ../docs/specs "빈칸 정답 매칭 규칙이 뭐야?"
 ```
 
 히트한 섹션 목록과 최종 답변을 같이 출력한다. 히트 0건이면 봇도 "모른다"고 답한다.
@@ -253,7 +253,7 @@ pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <channel> <thread_ts> [--ed
 
 ## 관련
 
-- 스펙: [`docs/superpowers/specs/2026-07-19-pm-bot-design.md`](../../../docs/superpowers/specs/2026-07-19-pm-bot-design.md) · [`2026-07-21-pm-bot-phase2-emoji-design.md`](../../../docs/superpowers/specs/2026-07-21-pm-bot-phase2-emoji-design.md)
-- 플랜: [`docs/superpowers/plans/2026-07-19-pm-bot-phase1.md`](../../../docs/superpowers/plans/2026-07-19-pm-bot-phase1.md) · [`2026-07-21-pm-bot-phase2-emoji.md`](../../../docs/superpowers/plans/2026-07-21-pm-bot-phase2-emoji.md)
+- 스펙: [`docs/specs/2026-07-19-pm-bot-design.md`](../../../docs/specs/2026-07-19-pm-bot-design.md) · [`2026-07-21-pm-bot-phase2-emoji-design.md`](../../../docs/specs/2026-07-21-pm-bot-phase2-emoji-design.md)
+- 플랜: [`docs/plans/2026-07-19-pm-bot-phase1.md`](../../../docs/plans/2026-07-19-pm-bot-phase1.md) · [`2026-07-21-pm-bot-phase2-emoji.md`](../../../docs/plans/2026-07-21-pm-bot-phase2-emoji.md)
 - 이슈: #202 (Phase 4까지 열어둠)
 - 팀원용 MCP 패키지(`pm-mcp/`)는 Phase 4 — 각자 Cursor·Claude Code에 붙이는 stdio 서버. 미구현
