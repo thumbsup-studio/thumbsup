@@ -3,7 +3,7 @@ name: pm-bot
 description: Slack에서 팀 대화를 수집하고 명세 근거 Q&A에 답하는 PM 봇(#202) 운영. 봇 기동·종료·pm2 상주, Slack 앱 셋업(매니페스트·토큰 2종·채널 초대), 멘션 사용법, DB 조회, 크래시 진단, Phase 1 한계를 알아야 할 때. 사용자가 "슬랙 봇 켜줘", "PM 봇 켜/꺼", "봇 서버 띄워", "봇이 답을 안 해", "봇이 죽었어", "Slack 봇 셋업", "명세 물어보기", "스레드 분석", "명세 PR 승인", "이모지 트리거"라고 할 때 트리거.
 ---
 
-# pm-bot — Slack PM 봇 (#202, Phase 1)
+# pm-bot — Slack PM 봇 (#202, Phase 1·2)
 
 지정한 Slack 채널의 대화를 로컬 SQLite에 모으고, 멘션하면 레포의 명세 markdown을 근거로 답하는 상주 봇. Phase 2부터 스레드에 🤖 이모지를 달면 스레드를 분석해 **명세 수정 PR**(✅ 승인 시 자동 머지)과 **GitHub 이슈 등록·갱신**(Thumbs Up Roadmap 보드 배치)까지 수행한다.
 
@@ -118,7 +118,7 @@ cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm install
 
 `Create New App` → **`From an app manifest`** → `pm-bot/slack-app-manifest.yml` 내용을 YAML 탭에 붙여넣기.
 
-수동으로 스코프를 클릭해 넣지 말 것. 매니페스트가 스코프 6개·이벤트 2개·Socket Mode를 한 번에 설정한다.
+수동으로 스코프를 클릭해 넣지 말 것. 매니페스트가 스코프 7개·이벤트 3개·Socket Mode를 한 번에 설정한다.
 
 ### 2. 토큰 2개 — 서로 다른 화면에서 나온다
 
@@ -253,7 +253,7 @@ pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <channel> <thread_ts> [--ed
 
 ## 관련
 
-- 스펙: [`docs/superpowers/specs/2026-07-19-pm-bot-design.md`](../../../docs/superpowers/specs/2026-07-19-pm-bot-design.md)
-- 플랜: [`docs/superpowers/plans/2026-07-19-pm-bot-phase1.md`](../../../docs/superpowers/plans/2026-07-19-pm-bot-phase1.md)
+- 스펙: [`docs/superpowers/specs/2026-07-19-pm-bot-design.md`](../../../docs/superpowers/specs/2026-07-19-pm-bot-design.md) · [`2026-07-21-pm-bot-phase2-emoji-design.md`](../../../docs/superpowers/specs/2026-07-21-pm-bot-phase2-emoji-design.md)
+- 플랜: [`docs/superpowers/plans/2026-07-19-pm-bot-phase1.md`](../../../docs/superpowers/plans/2026-07-19-pm-bot-phase1.md) · [`2026-07-21-pm-bot-phase2-emoji.md`](../../../docs/superpowers/plans/2026-07-21-pm-bot-phase2-emoji.md)
 - 이슈: #202 (Phase 4까지 열어둠)
 - 팀원용 MCP 패키지(`pm-mcp/`)는 Phase 4 — 각자 Cursor·Claude Code에 붙이는 stdio 서버. 미구현
