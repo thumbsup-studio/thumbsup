@@ -44,6 +44,14 @@ describe("createGhClient — 인증·이슈·보드", () => {
     expect(await createGhClient(CFG, exec).createIssue({ title: "t", body: "b" })).toEqual({ number: 42, url: "https://github.com/o/r/issues/42" });
   });
 
+  it("commentIssue는 이슈 번호·repo·body로 댓글을 단다", async () => {
+    const { exec, calls } = fakeExec([["gh issue comment", "https://github.com/o/r/issues/42#issuecomment-1\n"]]);
+    expect(await createGhClient(CFG, exec).commentIssue({ number: 42, body: "b" })).toEqual({
+      url: "https://github.com/o/r/issues/42#issuecomment-1",
+    });
+    expect(calls[0]).toBe("gh issue comment 42 --repo o/r --body b");
+  });
+
   it("setBoardFields는 아이템 추가 후 필드 2개를 설정한다", async () => {
     const { exec, calls } = fakeExec([
       ["gh api graphql -f query=query", BOARD_META],
