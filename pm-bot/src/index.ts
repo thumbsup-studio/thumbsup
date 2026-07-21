@@ -146,22 +146,20 @@ app.event("reaction_added", async ({ event }) => {
   // approve | reject — 승인 대기 답글에 달린 ✅/❌
   const reply = (text: string) => app.client.chat.postMessage({ channel: route.pr.channel, thread_ts: route.pr.threadTs, text });
   if (!gh) {
-    await reply("⚠️ GitHub 연동이 비활성이라 PR을 처리할 수 없어요.");
+    await reply("⚠️ GitHub 연동이 비활성이라 PR을 처리할 수 없어요.").catch(() => {});
     return;
   }
   try {
-    if (route.kind === "approve") {
-      await gh.mergePr(route.pr.prNumber);
-      db.markSpecPr(route.pr.prNumber, "approved");
-      await reply(`✅ 승인 — CI 통과 후 자동 머지됩니다: ${route.pr.prUrl}`);
-    } else {
-      await gh.closePr(route.pr.prNumber, "PM봇: Slack ❌ 반려");
-      db.markSpecPr(route.pr.prNumber, "rejected");
-      await reply("❌ 반려 — PR을 닫았어요. 정정 내용을 이 스레드에 남겨주세요.");
-    }
+    if (route.kind === "approve") await gh.mergePr(route.pr.prNumber);
+    else await gh.closePr(route.pr.prNumber, "PM봇: Slack ❌ 반려");
   } catch (err) {
     await reply(`⚠️ PR 처리 실패: ${err instanceof Error ? err.message : String(err)}`).catch(() => {});
+    return;
   }
+  // gh 호출은 이미 성공했으므로, 아래는 실패해도 "PR 처리 실패" 오보를 내지 않는다 (상태 갱신 우선, 답글은 best-effort).
+  db.markSpecPr(route.pr.prNumber, route.kind === "approve" ? "approved" : "rejected");
+  if (route.kind === "approve") await reply(`✅ 승인 — CI 통과 후 자동 머지됩니다: ${route.pr.prUrl}`).catch(() => {});
+  else await reply("❌ 반려 — PR을 닫았어요. 정정 내용을 이 스레드에 남겨주세요.").catch(() => {});
 });
 
 const shutdown = async () => {
