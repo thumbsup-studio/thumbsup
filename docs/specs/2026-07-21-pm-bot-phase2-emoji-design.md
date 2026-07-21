@@ -22,7 +22,7 @@
 | 분석 입력 | DB가 아니라 이모지 시점 `conversations.replies` 실시간 fetch | 허들 AI 노트는 봇 메시지라 수집 필터(`!ev.user`)에 걸려 DB에 없다. 팀원 스레드도 같은 경로로 통일 |
 | GitHub 연동 | gh CLI + execa (Octokit 미도입) | 새 npm 의존성 0개, 운영자 gh 인증 재사용(PAT 불필요). Projects v2는 `gh api graphql` |
 | 명세 수정 자율성 | PR → 스레드 답글 → ✅ 승인 → auto-merge | 원 설계 §2 유지 |
-| 이슈 자율성 | 즉시 등록·수정 + 스레드 사후 보고 | 원 설계 §2 유지 |
+| 이슈 자율성 | 즉시 등록·수정 + 스레드 사후 보고. 신규 이슈는 보드 **Backlog**에 배치(트리아지 대기) | 원 설계 §2 유지 + 백로그 규칙 |
 | 새 이슈 vs 기존 수정 | 열린 이슈 목록을 판정 프롬프트에 동봉, claude가 create/update 판단 | 별도 중복 검색 로직 없음 |
 | 작업 레포 | `pm-bot/.workrepo/` blobless clone (`git clone --filter=blob:none`) | 워크트리 미사용 — 상주 데몬이 운영자 작업 레포와 `.git`을 공유하면 락 경합·장애 반경 문제 |
 | 범위 | 이모지 기능만 | Phase 2 백로그 8건은 별도 작업(§9), `action_items` 추적도 비범위(Phase 3) |
@@ -80,13 +80,13 @@ Slack reaction_added ──▶ 리액션 라우터
     "kind": "create | update",
     "number": 123,
     "title": "feat(app): …", "body": "…(근거 스레드 링크 포함)",
-    "area": "…", "status": "…"
+    "area": "…"
   }],
   "nothing_found": false
 }
 ```
 
-- `number`는 `kind: "update"`일 때만. `area`·`status`는 Roadmap 보드 필드값.
+- `number`는 `kind: "update"`일 때만. `area`는 Roadmap 보드 필드값. Status는 판정하지 않는다 — 신규 이슈는 결정적 코드가 **Backlog**로 고정 배치하고, update는 보드 Status를 건드리지 않는다(트리아지는 사람 몫).
 - 원 설계 §3.2 스키마에서 `action_items`를 제외한 형태(Phase 3 잔여).
 
 ### 4.3 명세 편집 — 문자열 치환 (claude -p 2차)
