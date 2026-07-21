@@ -2,6 +2,23 @@ import Database from "better-sqlite3";
 
 export type MessageRow = { channel: string; ts: string; threadTs: string | null; user: string; text: string };
 export type QaRow = { id: number; channel: string; ts: string; user: string; text: string; threadTs: string | null };
+export type AnalysisRow = {
+  channel: string;
+  threadTs: string;
+  status: string;
+  requestedBy: string;
+  lastMsgTs: string | null;
+  resultJson: string | null;
+  error: string | null;
+};
+export type SpecPrRow = {
+  prNumber: number;
+  prUrl: string;
+  channel: string;
+  messageTs: string;
+  threadTs: string;
+  status: string;
+};
 export type PmDb = ReturnType<typeof openDb>;
 
 const SCHEMA = `
@@ -25,6 +42,25 @@ CREATE TABLE IF NOT EXISTS qa_pending (
   error     TEXT,
   UNIQUE (channel, ts)
 );
+CREATE TABLE IF NOT EXISTS analyses (
+  channel      TEXT NOT NULL,
+  thread_ts    TEXT NOT NULL,
+  status       TEXT NOT NULL DEFAULT 'pending',
+  requested_by TEXT NOT NULL,
+  last_msg_ts  TEXT,
+  result_json  TEXT,
+  error        TEXT,
+  PRIMARY KEY (channel, thread_ts)
+);
+CREATE TABLE IF NOT EXISTS spec_prs (
+  pr_number  INTEGER PRIMARY KEY,
+  pr_url     TEXT NOT NULL,
+  channel    TEXT NOT NULL,
+  message_ts TEXT NOT NULL,
+  thread_ts  TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'awaiting'
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_spec_prs_msg ON spec_prs (channel, message_ts);
 `;
 
 export function openDb(path: string) {
@@ -55,6 +91,38 @@ export function openDb(path: string) {
   const failStmt = db.prepare(`UPDATE qa_pending SET status = 'failed', error = ? WHERE id = ?`);
   const maxTsStmt = db.prepare(`SELECT ts FROM messages WHERE channel = ? ORDER BY CAST(ts AS REAL) DESC LIMIT 1`);
 
+  const getAnalysisStmt = db.prepare(
+    `SELECT channel, thread_ts AS threadTs, status, requested_by AS requestedBy,
+            last_msg_ts AS lastMsgTs, result_json AS resultJson, error
+     FROM analyses WHERE channel = ? AND thread_ts = ?`,
+  );
+  const insertAnalysisStmt = db.prepare(
+    `INSERT INTO analyses (channel, thread_ts, status, requested_by) VALUES (?, ?, 'pending', ?)`,
+  );
+  const requeueAnalysisStmt = db.prepare(
+    `UPDATE analyses SET status = 'pending', requested_by = ?, error = NULL WHERE channel = ? AND thread_ts = ?`,
+  );
+  const nextAnalysisStmt = db.prepare(
+    `SELECT channel, thread_ts AS threadTs, status, requested_by AS requestedBy,
+            last_msg_ts AS lastMsgTs, result_json AS resultJson, error
+     FROM analyses WHERE status = 'pending' ORDER BY thread_ts LIMIT 1`,
+  );
+  const analysisStatusStmt = db.prepare(`UPDATE analyses SET status = ? WHERE channel = ? AND thread_ts = ?`);
+  const analysisDoneStmt = db.prepare(
+    `UPDATE analyses SET status = 'done', last_msg_ts = ?, result_json = ?, error = NULL WHERE channel = ? AND thread_ts = ?`,
+  );
+  const analysisFailStmt = db.prepare(`UPDATE analyses SET status = 'failed', error = ? WHERE channel = ? AND thread_ts = ?`);
+  const resetRunningStmt = db.prepare(`UPDATE analyses SET status = 'pending' WHERE status = 'running'`);
+  const insertSpecPrStmt = db.prepare(
+    `INSERT INTO spec_prs (pr_number, pr_url, channel, message_ts, thread_ts, status)
+     VALUES (@prNumber, @prUrl, @channel, @messageTs, @threadTs, @status)`,
+  );
+  const specPrByMsgStmt = db.prepare(
+    `SELECT pr_number AS prNumber, pr_url AS prUrl, channel, message_ts AS messageTs, thread_ts AS threadTs, status
+     FROM spec_prs WHERE channel = ? AND message_ts = ?`,
+  );
+  const markSpecPrStmt = db.prepare(`UPDATE spec_prs SET status = ? WHERE pr_number = ?`);
+
   return {
     upsertMessage(m: MessageRow): void {
       upsertStmt.run(m);
@@ -77,6 +145,40 @@ export function openDb(path: string) {
     },
     markQaFailed(id: number, error: string): void {
       failStmt.run(error, id);
+    },
+    requestAnalysis(q: { channel: string; threadTs: string; requestedBy: string }): "queued" | "in_progress" {
+      const row = getAnalysisStmt.get(q.channel, q.threadTs) as AnalysisRow | undefined;
+      if (!row) {
+        insertAnalysisStmt.run(q.channel, q.threadTs, q.requestedBy);
+        return "queued";
+      }
+      if (row.status === "pending" || row.status === "running") return "in_progress";
+      requeueAnalysisStmt.run(q.requestedBy, q.channel, q.threadTs); // done의 last_msg_ts·result_json 보존 — drain의 재트리거 판단 근거
+      return "queued";
+    },
+    nextPendingAnalysis(): AnalysisRow | null {
+      return (nextAnalysisStmt.get() as AnalysisRow | undefined) ?? null;
+    },
+    markAnalysisRunning(channel: string, threadTs: string): void {
+      analysisStatusStmt.run("running", channel, threadTs);
+    },
+    markAnalysisDone(channel: string, threadTs: string, lastMsgTs: string, resultJson: string): void {
+      analysisDoneStmt.run(lastMsgTs, resultJson, channel, threadTs);
+    },
+    markAnalysisFailed(channel: string, threadTs: string, error: string): void {
+      analysisFailStmt.run(error, channel, threadTs);
+    },
+    resetRunningAnalyses(): number {
+      return resetRunningStmt.run().changes;
+    },
+    insertSpecPr(row: SpecPrRow): void {
+      insertSpecPrStmt.run(row);
+    },
+    specPrByMessage(channel: string, messageTs: string): SpecPrRow | null {
+      return (specPrByMsgStmt.get(channel, messageTs) as SpecPrRow | undefined) ?? null;
+    },
+    markSpecPr(prNumber: number, status: "approved" | "rejected"): void {
+      markSpecPrStmt.run(status, prNumber);
     },
     close(): void {
       db.close();
