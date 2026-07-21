@@ -198,6 +198,39 @@ describe("drainAnalysisQueue", () => {
     expect(prompts.some((p) => p.includes("https://gh/pr/9"))).toBe(true); // 재판정 prompt에 이전 PR 링크 동봉 → 중복 생성 방지
   });
 
+  it("부분 실패 후 재시도 성공 — 1차 PR 링크와 2차 이슈 링크가 모두 result_json에 남고 done으로 종료된다", async () => {
+    const { db, deps, posted } = harness({
+      judgeJson: {
+        spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }],
+        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }],
+        nothing_found: false,
+      },
+    });
+    deps.gh = { ...deps.gh!, createIssue: async () => { throw new Error("boom"); } };
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps); // 1차: 명세 PR 생성 성공, 이슈 생성 실패 → failed (PR 링크는 result_json에 보존)
+
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" }); // 재큐잉
+
+    // 2차: 이슈 생성이 성공하도록 교체 + 어댑터가 이번엔 이슈 생성만 판정하도록 교체
+    deps.gh = { ...deps.gh!, createIssue: async () => ({ number: 43, url: "https://gh/i/43" }) };
+    deps.adapter = {
+      run: async () =>
+        JSON.stringify({ spec_changes: [], issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }], nothing_found: false }),
+    } as CliAdapter;
+
+    const postedBefore = posted.length;
+    await drainAnalysisQueue(deps);
+    const secondRunPosts = posted.slice(postedBefore);
+    expect(secondRunPosts.some((p) => p.includes("⚠️"))).toBe(false); // 2차는 성공 — 경고 없음
+    expect(secondRunPosts.some((p) => p.includes("https://gh/i/43"))).toBe(true);
+
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued"); // done 상태였다는 방증
+    const row = db.nextPendingAnalysis();
+    expect(row?.resultJson).toContain("https://gh/pr/9"); // 1차의 PR 링크 보존
+    expect(row?.resultJson).toContain("https://gh/i/43"); // 2차의 이슈 링크 추가
+  });
+
   it("done 이후 새 메시지가 있으면 '이미 처리' 단락 없이 재판정하고 prev 링크를 동봉한다", async () => {
     const { db, deps, posted, ghCalls, prompts } = harness(); // 기본 스레드 마지막 ts = "1.0"
     db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });

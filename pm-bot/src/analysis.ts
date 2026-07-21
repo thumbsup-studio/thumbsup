@@ -157,6 +157,11 @@ function prevLinks(prev: PrevResult): string {
   return [prev.prUrl && `\n• 명세 PR: ${prev.prUrl}`, ...prev.issueUrls.map((u) => `\n• 이슈: ${u}`)].filter(Boolean).join("");
 }
 
+/** issueUrls 중복 없이 직렬화 — 성공·부분 실패 저장 공통 (스펙 §6: 이전 결과 보존). */
+function serializeResult(result: PrevResult): string {
+  return JSON.stringify({ prUrl: result.prUrl, issueUrls: [...new Set(result.issueUrls)] });
+}
+
 /** pending 분석을 순차 처리한다. 실패는 failed로 남기고 스레드에 알린다 (조용한 실패 금지). */
 export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
   let handled = 0;
@@ -165,6 +170,11 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
     const done: string[] = []; // 부분 성공 추적 — catch에서 보고·result_json 병합에 포함
     const result: PrevResult = { issueUrls: [] };
     const prev: PrevResult | undefined = job.resultJson ? (JSON.parse(job.resultJson) as PrevResult) : undefined;
+    if (prev) {
+      // 이번 런 실패해도 이전에 성공한 PR·이슈 링크를 잃지 않도록 결과를 prev로 시드한다.
+      result.prUrl = prev.prUrl;
+      result.issueUrls.push(...prev.issueUrls);
+    }
     try {
       if (!deps.gh) throw new Error("GitHub 연동 비활성 상태예요 (gh 계정·config.github 확인)");
       const gh = deps.gh;
@@ -224,13 +234,11 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
       } else {
         await deps.postMessage(job.channel, job.threadTs, `🤖 분석 완료:\n${done.map((d) => `• ${d}`).join("\n")}`);
       }
-      deps.db.markAnalysisDone(job.channel, job.threadTs, lastMsgTs, JSON.stringify(result));
+      deps.db.markAnalysisDone(job.channel, job.threadTs, lastMsgTs, serializeResult(result));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      const partialResult =
-        result.prUrl || result.issueUrls.length > 0
-          ? JSON.stringify({ prUrl: result.prUrl ?? prev?.prUrl, issueUrls: [...(prev?.issueUrls ?? []), ...result.issueUrls] })
-          : null;
+      // result는 이미 prev로 시드돼 있으므로, 이번 런에 새 진행(done)이 있을 때만 갱신 — 없으면 null로 COALESCE 보존.
+      const partialResult = done.length > 0 ? serializeResult(result) : null;
       deps.db.markAnalysisFailed(job.channel, job.threadTs, msg, partialResult);
       const partial = done.length > 0 ? `\n완료된 항목:\n${done.map((d) => `• ${d}`).join("\n")}` : "";
       try {
