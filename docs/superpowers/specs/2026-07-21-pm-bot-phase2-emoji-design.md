@@ -101,7 +101,7 @@ Slack reaction_added ──▶ 리액션 라우터
 
 ### 4.4 git·PR 규칙
 
-- 브랜치 `docs/pm-bot-<thread_ts>`, 커밋 `docs(spec): <요약> (pm-bot)` — 원 설계 §4의 봇 커밋 규약 예외. CONTRIBUTING 반영 여부는 플랜에서 확인하고 없으면 이번에 1줄 추가
+- 브랜치 `docs/pm-bot-<thread_ts>-<last_msg_ts>`(런마다 고유), 커밋 `docs(spec): <요약> (pm-bot)` — 원 설계 §4의 봇 커밋 규약 예외. CONTRIBUTING 반영 여부는 플랜에서 확인하고 없으면 이번에 1줄 추가
 - `.workrepo`는 잡마다 `fetch` + `reset --hard origin/main`으로 최신화
 - 기동 시 `gh auth status`로 활성 계정이 kmjnnhyk인지 검증(jinhyeok-bell이면 403) — 아니면 부팅 거부가 아니라 **GitHub 액션만 비활성 + 경고 로그** (수집·Q&A는 계속 동작)
 - ✅ → `gh pr merge --auto --squash` (main 브랜치 보호 체크 통과 후 자동 머지 — docs 변경도 server-ci가 paths-filter로 job 내부 스킵하므로 체크는 통과), ❌ → `gh pr close` + 스레드에 사유 요청
