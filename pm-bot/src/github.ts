@@ -46,7 +46,9 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
   async function getBoardMeta(): Promise<BoardMeta> {
     if (boardMeta) return boardMeta;
     const raw = await gh(["api", "graphql", "-f", `query=${FIELDS_QUERY}`, "-f", `owner=${cfg.projectOwner}`, "-F", `number=${cfg.projectNumber}`]);
-    const project = JSON.parse(raw).data.organization.projectV2 as {
+    const parsed = JSON.parse(raw);
+    if (parsed.errors) throw new Error(`GraphQL 오류: ${JSON.stringify(parsed.errors)}`);
+    const project = parsed.data.organization.projectV2 as {
       id: string;
       fields: { nodes: Array<{ id?: string; name?: string; options?: Array<{ id: string; name: string }> }> };
     };
@@ -80,9 +82,9 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
 
     async createIssue(a: { title: string; body: string }): Promise<{ number: number; url: string }> {
       const url = await gh(["issue", "create", "--repo", cfg.repo, "--title", a.title, "--body", a.body]);
-      const number = Number(url.split("/").pop());
-      if (!Number.isInteger(number)) throw new Error(`이슈 URL 파싱 실패: ${url}`);
-      return { number, url };
+      const m = url.match(/\/(\d+)$/);
+      if (!m) throw new Error(`이슈 URL 파싱 실패: ${url}`);
+      return { number: Number(m[1]), url };
     },
 
     async commentIssue(a: { number: number; body: string }): Promise<{ url: string }> {
@@ -99,7 +101,9 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
       const meta = await getBoardMeta();
       const nodeId = await gh(["api", `repos/${cfg.repo}/issues/${issueNumber}`, "-q", ".node_id"]);
       const added = await gh(["api", "graphql", "-f", `query=${ADD_ITEM_MUTATION}`, "-f", `p=${meta.projectId}`, "-f", `c=${nodeId}`]);
-      const itemId = JSON.parse(added).data.addProjectV2ItemById.item.id as string;
+      const addedParsed = JSON.parse(added);
+      if (addedParsed.errors) throw new Error(`GraphQL 오류: ${JSON.stringify(addedParsed.errors)}`);
+      const itemId = addedParsed.data.addProjectV2ItemById.item.id as string;
       if (fields.area) await setField(meta, itemId, "area", fields.area);
       if (fields.status) await setField(meta, itemId, "status", fields.status);
     },
@@ -126,12 +130,14 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
         await writeFile(path, f.content, "utf8");
       }
       await git(["add", "-A"]);
+      const status = await git(["status", "--porcelain"]);
+      if (!status) throw new Error("명세 변경 결과가 기존과 동일 — 커밋할 변경 없음");
       await git(["commit", "-m", a.commitMsg]);
-      await git(["push", "-u", "origin", a.branch, "--force"]); // 재분석 시 같은 브랜치 재사용
+      await git(["push", "-u", "origin", a.branch, "--force"]); // 재분석마다 고유 브랜치라 force는 동시 실행 방지용 안전장치
       const url = await gh(["pr", "create", "--repo", cfg.repo, "--head", a.branch, "--title", a.title, "--body", a.body], { cwd: cfg.workRepoDir });
-      const number = Number(url.split("/").pop());
-      if (!Number.isInteger(number)) throw new Error(`PR URL 파싱 실패: ${url}`);
-      return { number, url };
+      const m = url.match(/\/(\d+)$/);
+      if (!m) throw new Error(`PR URL 파싱 실패: ${url}`);
+      return { number: Number(m[1]), url };
     },
 
     async mergePr(prNumber: number): Promise<void> {

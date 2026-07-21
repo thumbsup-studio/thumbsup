@@ -36,7 +36,7 @@ const history: HistoryClient = {
     };
   },
 };
-const gh = createGhClient({ ...cfg.github, workRepoDir: resolve("./.workrepo") }, (file, args, opts) => execa(file, args, opts));
+const gh = createGhClient({ ...cfg.github, workRepoDir: resolve("./.workrepo") }, (file, args, opts) => execa(file, args, { ...opts, timeout: 120_000 }));
 const adapter = createClaudeAdapter({ bin: cfg.claudeBin, systemPrompt: ANALYSIS_SYSTEM_PROMPT });
 
 const { msgs, lastMsgTs } = await fetchThread(history, channel, threadTs);

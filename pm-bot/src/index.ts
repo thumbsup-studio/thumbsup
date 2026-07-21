@@ -133,12 +133,21 @@ app.event("reaction_added", async ({ event }) => {
   if (route.kind === "ignore") return;
 
   if (route.kind === "trigger") {
-    // 이모지가 달린 메시지의 스레드 부모를 찾는다 (스펙 §4.1)
-    const res = await app.client.conversations.replies({ channel: route.channel, ts: route.ts, limit: 1 });
-    const threadTs = (res.messages?.[0] as { thread_ts?: string } | undefined)?.thread_ts ?? route.ts;
-    if (db.requestAnalysis({ channel: route.channel, threadTs, requestedBy: route.user }) === "queued") {
-      await app.client.reactions.add({ channel: route.channel, timestamp: route.ts, name: "eyes" }).catch(() => {});
-      void drainAnalysis();
+    try {
+      // 이모지가 달린 메시지의 스레드 부모를 찾는다 (스펙 §4.1)
+      const res = await app.client.conversations.replies({ channel: route.channel, ts: route.ts, limit: 1 });
+      const threadTs = (res.messages?.[0] as { thread_ts?: string } | undefined)?.thread_ts ?? route.ts;
+      if (db.requestAnalysis({ channel: route.channel, threadTs, requestedBy: route.user }) === "queued") {
+        await app.client.reactions
+          .add({ channel: route.channel, timestamp: route.ts, name: "eyes" })
+          .catch((e) => console.warn(`[pm-bot] eyes 반응 추가 실패: ${e instanceof Error ? e.message : String(e)}`));
+        void drainAnalysis();
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await app.client.chat
+        .postMessage({ channel: route.channel, thread_ts: route.ts, text: `⚠️ 분석 접수에 실패했어요: ${msg}` })
+        .catch((e) => console.warn(`[pm-bot] 분석 접수 실패 알림 게시 실패: ${e instanceof Error ? e.message : String(e)}`));
     }
     return;
   }
@@ -146,7 +155,7 @@ app.event("reaction_added", async ({ event }) => {
   // approve | reject — 승인 대기 답글에 달린 ✅/❌
   const reply = (text: string) => app.client.chat.postMessage({ channel: route.pr.channel, thread_ts: route.pr.threadTs, text });
   if (!gh) {
-    await reply("⚠️ GitHub 연동이 비활성이라 PR을 처리할 수 없어요.").catch(() => {});
+    await reply("⚠️ GitHub 연동이 비활성이라 PR을 처리할 수 없어요.").catch((e) => console.warn(`[pm-bot] gh 비활성 답글 게시 실패: ${e instanceof Error ? e.message : String(e)}`));
     return;
   }
   try {
@@ -158,8 +167,8 @@ app.event("reaction_added", async ({ event }) => {
   }
   // gh 호출은 이미 성공했으므로, 아래는 실패해도 "PR 처리 실패" 오보를 내지 않는다 (상태 갱신 우선, 답글은 best-effort).
   db.markSpecPr(route.pr.prNumber, route.kind === "approve" ? "approved" : "rejected");
-  if (route.kind === "approve") await reply(`✅ 승인 — CI 통과 후 자동 머지됩니다: ${route.pr.prUrl}`).catch(() => {});
-  else await reply("❌ 반려 — PR을 닫았어요. 정정 내용을 이 스레드에 남겨주세요.").catch(() => {});
+  if (route.kind === "approve") await reply(`✅ 승인 — CI 통과 후 자동 머지됩니다: ${route.pr.prUrl}`).catch((e) => console.warn(`[pm-bot] 승인 답글 게시 실패: ${e instanceof Error ? e.message : String(e)}`));
+  else await reply("❌ 반려 — PR을 닫았어요. 정정 내용을 이 스레드에 남겨주세요.").catch((e) => console.warn(`[pm-bot] 반려 답글 게시 실패: ${e instanceof Error ? e.message : String(e)}`));
 });
 
 const shutdown = async () => {

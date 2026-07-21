@@ -63,6 +63,8 @@ function harness(over: Partial<{ threadMsgs: Array<{ ts: string; user?: string; 
   const posted: string[] = [];
   const ghCalls: string[] = [];
   const prompts: string[] = []; // adapter.run에 전달된 prompt 기록 — prev 동봉 여부 검증용
+  const closePrCalls: Array<{ prNumber: number; comment: string }> = [];
+  const submitSpecPrCalls: Array<{ branch: string }> = [];
   const judge = over.judgeJson ?? { spec_changes: [], issue_actions: [], nothing_found: true };
   const adapterOutputs = [JSON.stringify(judge), JSON.stringify(over.editJson ?? { edits: [{ old: "2순위", new: "3순위" }] })];
   let adapterCall = 0;
@@ -90,14 +92,22 @@ function harness(over: Partial<{ threadMsgs: Array<{ ts: string; user?: string; 
       checkAuth: async () => ({ ok: true, login: "kmjnnhyk" }),
       prepareSpecRepo: async () => { ghCalls.push("prepare"); },
       readSpecFile: async () => "북마크는 2순위",
-      submitSpecPr: async () => { ghCalls.push("submitSpecPr"); return { number: 9, url: "https://gh/pr/9" }; },
-      mergePr: async () => {}, closePr: async () => {},
+      submitSpecPr: async (args) => {
+        ghCalls.push("submitSpecPr");
+        submitSpecPrCalls.push({ branch: args.branch });
+        return { number: 9, url: "https://gh/pr/9" };
+      },
+      mergePr: async () => {},
+      closePr: async (prNumber, comment) => {
+        ghCalls.push("closePr");
+        closePrCalls.push({ prNumber, comment });
+      },
     } as GhClient,
     getPermalink: async () => "https://slack/p1",
     postMessage: async (_c, _t, text) => { posted.push(text); return { ts: `bot.${posted.length}` }; },
     log: () => {},
   };
-  return { db, deps, posted, ghCalls, prompts };
+  return { db, deps, posted, ghCalls, prompts, closePrCalls, submitSpecPrCalls };
 }
 
 describe("fetchThread", () => {
@@ -129,6 +139,57 @@ describe("drainAnalysisQueue", () => {
     expect(posted.some((p) => p.includes("https://gh/pr/9"))).toBe(true);
     // 승인 대기 답글(첫 게시)의 ts로 역참조 가능해야 한다
     expect(db.specPrByMessage("C1", "bot.1")?.prNumber).toBe(9);
+  });
+
+  it("submitSpecPr에 전달된 branch가 lastMsgTs를 포함한다 (재분석마다 고유 브랜치)", async () => {
+    const { db, deps, submitSpecPrCalls } = harness({
+      threadMsgs: [{ ts: "1.0", user: "U1", text: "북마크 미루자" }, { ts: "3.5", user: "U2", text: "네 좋아요" }],
+      judgeJson: { spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }], issue_actions: [], nothing_found: false },
+    });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    expect(submitSpecPrCalls[0]?.branch).toBe("docs/pm-bot-1-0-3-5");
+  });
+
+  it("기존 awaiting spec_pr이 있는 스레드 재분석 → closePr 호출 + 기존 행 superseded + 새 행 insert + 답글에 대체 문구", async () => {
+    const { db, deps, posted, closePrCalls } = harness({
+      judgeJson: { spec_changes: [{ file: "spec.md", summary: "북마크 연기", rationale: "합의", edit_instruction: "2순위를 3순위로" }], issue_actions: [], nothing_found: false },
+    });
+    db.insertSpecPr({ prNumber: 5, prUrl: "https://gh/pr/5", channel: "C1", messageTs: "old.1", threadTs: "1.0", status: "awaiting" });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+
+    expect(closePrCalls).toEqual([{ prNumber: 5, comment: expect.stringContaining("superseded") }]);
+    expect(db.specPrByMessage("C1", "old.1")?.status).toBe("superseded"); // 기존 행은 superseded로, 승인·반려 대상에서 빠짐
+    expect(db.specPrByMessage("C1", "bot.1")?.prNumber).toBe(9); // 새 PR이 새 행으로 기록됨
+    expect(posted[0]).toContain("https://gh/pr/5");
+    expect(posted[0]).toContain("대체되어 닫혔어요");
+  });
+
+  it("awaiting 아닌 기존 spec_pr(approved 등)은 재분석 때 건드리지 않는다", async () => {
+    const { db, deps, posted, closePrCalls } = harness({
+      judgeJson: { spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }], issue_actions: [], nothing_found: false },
+    });
+    db.insertSpecPr({ prNumber: 5, prUrl: "https://gh/pr/5", channel: "C1", messageTs: "old.1", threadTs: "1.0", status: "approved" });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+
+    expect(closePrCalls).toEqual([]);
+    expect(db.specPrByMessage("C1", "old.1")?.status).toBe("approved");
+    expect(posted[0]).not.toContain("대체되어 닫혔어요");
+  });
+
+  it("spec_changes.file에 경로 문자가 있으면 failed 처리하고 submitSpecPr을 호출하지 않는다", async () => {
+    const { db, deps, posted, ghCalls } = harness({
+      judgeJson: { spec_changes: [{ file: "../evil.md", summary: "s", rationale: "r", edit_instruction: "x" }], issue_actions: [], nothing_found: false },
+    });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+
+    expect(ghCalls).not.toContain("submitSpecPr");
+    const warn = posted.find((p) => p.includes("⚠️"))!;
+    expect(warn).toContain("경로 문자");
+    expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued"); // failed → 재시도 가능
   });
 
   it("issue create는 등록 + 보드 배치 + 사후 보고", async () => {

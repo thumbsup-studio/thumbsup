@@ -196,13 +196,23 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
         await gh.prepareSpecRepo();
         const files: Array<{ file: string; content: string }> = [];
         for (const c of judge.spec_changes) {
+          if (c.file.includes("/") || c.file.includes("\\") || c.file.includes(".."))
+            throw new Error(`spec_changes.file에 경로 문자 불허: ${c.file}`);
           const content = await gh.readSpecFile(c.file);
           const editRaw = await runWithRetry(deps.adapter, buildEditPrompt({ file: c.file, content, instruction: c.edit_instruction }), { onLog: deps.log });
           files.push({ file: c.file, content: applyEdits(content, (JSON.parse(editRaw) as { edits: Array<{ old: string; new: string }> }).edits) });
         }
         const summary = judge.spec_changes.map((c) => c.summary).join(", ");
+        // 재분석마다 브랜치가 고유해야 함 — 스레드 고정 브랜치면 이전 PR이 열려 있을 때 gh pr create가
+        // "already exists"로 실패하거나, force-push가 이미 승인된 PR 내용을 소리 없이 바꿔버린다.
+        const branch = `docs/pm-bot-${job.threadTs.replace(".", "-")}-${lastMsgTs.replace(".", "-")}`;
+        const stale = deps.db.awaitingSpecPrsByThread(job.channel, job.threadTs);
+        for (const s of stale) {
+          await gh.closePr(s.prNumber, "PM봇: 재분석으로 대체됨 (superseded)");
+          deps.db.markSpecPr(s.prNumber, "superseded");
+        }
         const pr = await gh.submitSpecPr({
-          branch: `docs/pm-bot-${job.threadTs.replace(".", "-")}`,
+          branch,
           files,
           commitMsg: `docs(spec): ${summary} (pm-bot)`,
           title: `docs(spec): ${summary} (pm-bot)`,
@@ -210,7 +220,8 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
         });
         result.prUrl = pr.url;
         done.push(`명세 PR: ${pr.url}`);
-        const posted = await deps.postMessage(job.channel, job.threadTs, `📝 명세 변경 제안: ${pr.url}\n이 메시지에 ✅ 반응 → 자동 머지, ❌ → 반려`);
+        const supersedeNote = stale.map((s) => `\n(이전 제안 ${s.prUrl}은 대체되어 닫혔어요)`).join("");
+        const posted = await deps.postMessage(job.channel, job.threadTs, `📝 명세 변경 제안: ${pr.url}\n이 메시지에 ✅ 반응 → 자동 머지, ❌ → 반려${supersedeNote}`);
         deps.db.insertSpecPr({ prNumber: pr.number, prUrl: pr.url, channel: job.channel, messageTs: posted.ts, threadTs: job.threadTs, status: "awaiting" });
       }
 

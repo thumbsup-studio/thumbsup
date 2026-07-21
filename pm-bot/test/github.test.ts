@@ -47,6 +47,16 @@ describe("createGhClient — 인증·이슈·보드", () => {
     expect(await createGhClient(CFG, exec).createIssue({ title: "t", body: "b" })).toEqual({ number: 42, url: "https://github.com/o/r/issues/42" });
   });
 
+  it("createIssue는 URL이 끝 슬래시 등 비정상 출력이면 throw한다 (number=0 대신 명시적 실패)", async () => {
+    const { exec } = fakeExec([["gh issue create", "https://github.com/o/r/issues/\n"]]);
+    await expect(createGhClient(CFG, exec).createIssue({ title: "t", body: "b" })).rejects.toThrow(/이슈 URL 파싱 실패/);
+  });
+
+  it("getBoardMeta(boardOptions)는 GraphQL 응답에 errors가 있으면 throw한다", async () => {
+    const { exec } = fakeExec([["gh api graphql -f query=query", JSON.stringify({ errors: [{ message: "권한 없음" }] })]]);
+    await expect(createGhClient(CFG, exec).boardOptions()).rejects.toThrow(/GraphQL 오류/);
+  });
+
   it("commentIssue는 이슈 번호·repo·body로 댓글을 단다", async () => {
     const { exec, calls } = fakeExec([["gh issue comment", "https://github.com/o/r/issues/42#issuecomment-1\n"]]);
     expect(await createGhClient(CFG, exec).commentIssue({ number: 42, body: "b" })).toEqual({
@@ -76,6 +86,15 @@ describe("createGhClient — 인증·이슈·보드", () => {
       ["gh api graphql -f query=mutation($p: ID!, $c: ID!)", JSON.stringify({ data: { addProjectV2ItemById: { item: { id: "ITEM1" } } } })],
     ]);
     await expect(createGhClient(CFG, exec).setBoardFields(42, { area: "없는곳" })).rejects.toThrow(/S2 홈/);
+  });
+
+  it("setBoardFields의 add-item GraphQL 응답에 errors가 있으면 throw한다", async () => {
+    const { exec } = fakeExec([
+      ["gh api graphql -f query=query", BOARD_META],
+      ["gh api repos/o/r/issues/42", "I_node\n"],
+      ["gh api graphql -f query=mutation($p: ID!, $c: ID!)", JSON.stringify({ errors: [{ message: "권한 없음" }] })],
+    ]);
+    await expect(createGhClient(CFG, exec).setBoardFields(42, { area: "S2 홈" })).rejects.toThrow(/GraphQL 오류/);
   });
 
   it("boardOptions는 옵션 이름 목록을 준다 (조회는 1회 캐시)", async () => {
@@ -116,7 +135,11 @@ describe("createGhClient — .workrepo 명세 PR", () => {
   it("submitSpecPr는 브랜치·파일 쓰기·커밋·푸시·PR 생성을 순서대로 수행한다", async () => {
     const cfg = workCfg();
     mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
-    const { exec, calls } = fakeExec([["git -C", ""], ["gh pr create", "https://github.com/o/r/pull/9\n"]]);
+    const { exec, calls } = fakeExec([
+      [`git -C ${cfg.workRepoDir} status --porcelain`, " M docs/superpowers/specs/spec.md\n"],
+      ["git -C", ""],
+      ["gh pr create", "https://github.com/o/r/pull/9\n"],
+    ]);
     const res = await createGhClient(cfg, exec).submitSpecPr({
       branch: "docs/pm-bot-1-0", files: [{ file: "spec.md", content: "새 내용" }],
       commitMsg: "docs(spec): x (pm-bot)", title: "docs(spec): x (pm-bot)", body: "근거",
@@ -128,6 +151,24 @@ describe("createGhClient — .workrepo 명세 PR", () => {
     expect(calls.some((c) => c.includes("commit -m"))).toBe(true);
     expect(calls.some((c) => c.includes("push -u origin docs/pm-bot-1-0 --force"))).toBe(true);
     expect(seq[seq.length - 1]).toContain("gh pr create");
+  });
+
+  it("submitSpecPr는 git status --porcelain이 비어있으면 push 전에 throw한다 (커밋할 변경 없음)", async () => {
+    const cfg = workCfg();
+    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
+    const { exec, calls } = fakeExec([
+      [`git -C ${cfg.workRepoDir} status --porcelain`, ""],
+      ["git -C", ""],
+      ["gh pr create", "https://github.com/o/r/pull/9\n"],
+    ]);
+    await expect(
+      createGhClient(cfg, exec).submitSpecPr({
+        branch: "docs/pm-bot-1-0", files: [{ file: "spec.md", content: "새 내용" }],
+        commitMsg: "docs(spec): x (pm-bot)", title: "docs(spec): x (pm-bot)", body: "근거",
+      }),
+    ).rejects.toThrow(/커밋할 변경 없음/);
+    expect(calls.some((c) => c.includes("push"))).toBe(false);
+    expect(calls.some((c) => c.startsWith("gh pr create"))).toBe(false);
   });
 
   it("readSpecFile은 specDirInRepo 밑에서 읽는다", async () => {

@@ -151,4 +151,25 @@ describe("spec_prs", () => {
     db.markSpecPr(7, "approved");
     expect(db.specPrByMessage("C1", "9.0")?.status).toBe("approved");
   });
+
+  it("awaitingSpecPrsByThread는 같은 스레드의 awaiting 행만 반환한다 (approved·superseded 제외)", () => {
+    const db = openDb(":memory:");
+    db.insertSpecPr({ prNumber: 1, prUrl: "https://x/1", channel: "C1", messageTs: "1.1", threadTs: "1.0", status: "awaiting" });
+    db.insertSpecPr({ prNumber: 2, prUrl: "https://x/2", channel: "C1", messageTs: "1.2", threadTs: "1.0", status: "awaiting" });
+    db.insertSpecPr({ prNumber: 3, prUrl: "https://x/3", channel: "C1", messageTs: "1.3", threadTs: "1.0", status: "awaiting" });
+    db.markSpecPr(2, "approved");
+    db.markSpecPr(3, "superseded");
+    // 다른 스레드의 awaiting 행은 포함되지 않는다
+    db.insertSpecPr({ prNumber: 4, prUrl: "https://x/4", channel: "C1", messageTs: "2.1", threadTs: "2.0", status: "awaiting" });
+
+    const rows = db.awaitingSpecPrsByThread("C1", "1.0");
+    expect(rows.map((r) => r.prNumber)).toEqual([1]);
+  });
+
+  it("markSpecPr은 superseded로 전이할 수 있다", () => {
+    const db = openDb(":memory:");
+    db.insertSpecPr({ prNumber: 5, prUrl: "https://x/5", channel: "C1", messageTs: "9.0", threadTs: "1.0", status: "awaiting" });
+    db.markSpecPr(5, "superseded");
+    expect(db.specPrByMessage("C1", "9.0")?.status).toBe("superseded");
+  });
 });

@@ -123,6 +123,10 @@ export function openDb(path: string) {
     `SELECT pr_number AS prNumber, pr_url AS prUrl, channel, message_ts AS messageTs, thread_ts AS threadTs, status
      FROM spec_prs WHERE channel = ? AND message_ts = ?`,
   );
+  const awaitingSpecPrsByThreadStmt = db.prepare(
+    `SELECT pr_number AS prNumber, pr_url AS prUrl, channel, message_ts AS messageTs, thread_ts AS threadTs, status
+     FROM spec_prs WHERE channel = ? AND thread_ts = ? AND status = 'awaiting'`,
+  );
   const markSpecPrStmt = db.prepare(`UPDATE spec_prs SET status = ? WHERE pr_number = ?`);
 
   return {
@@ -179,7 +183,10 @@ export function openDb(path: string) {
     specPrByMessage(channel: string, messageTs: string): SpecPrRow | null {
       return (specPrByMsgStmt.get(channel, messageTs) as SpecPrRow | undefined) ?? null;
     },
-    markSpecPr(prNumber: number, status: "approved" | "rejected"): void {
+    awaitingSpecPrsByThread(channel: string, threadTs: string): SpecPrRow[] {
+      return awaitingSpecPrsByThreadStmt.all(channel, threadTs) as SpecPrRow[];
+    },
+    markSpecPr(prNumber: number, status: "approved" | "rejected" | "superseded"): void {
       markSpecPrStmt.run(status, prNumber);
     },
     close(): void {
