@@ -1,3 +1,7 @@
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+
 export type Exec = (file: string, args: string[], opts?: { cwd?: string }) => Promise<{ stdout: string }>;
 export type OpenIssue = { number: number; title: string; labels: string[] };
 export type GhConfig = {
@@ -33,6 +37,10 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
 
   async function gh(args: string[], opts?: { cwd?: string }): Promise<string> {
     return (await exec("gh", args, opts)).stdout.trim();
+  }
+
+  async function git(args: string[]): Promise<string> {
+    return (await exec("git", ["-C", cfg.workRepoDir, ...args])).stdout.trim();
   }
 
   async function getBoardMeta(): Promise<BoardMeta> {
@@ -94,6 +102,43 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
       const itemId = JSON.parse(added).data.addProjectV2ItemById.item.id as string;
       if (fields.area) await setField(meta, itemId, "area", fields.area);
       if (fields.status) await setField(meta, itemId, "status", fields.status);
+    },
+
+    /** 최초엔 blobless clone, 이후엔 fetch + origin/main 강제 리셋 — 잡 간 상태 오염 방지 (스펙 §4.4). */
+    async prepareSpecRepo(): Promise<void> {
+      if (!existsSync(join(cfg.workRepoDir, ".git"))) {
+        await exec("git", ["clone", "--filter=blob:none", `https://github.com/${cfg.repo}.git`, cfg.workRepoDir]);
+      }
+      await git(["fetch", "origin"]);
+      await git(["checkout", "-f", "-B", "main", "origin/main"]);
+    },
+
+    async readSpecFile(file: string): Promise<string> {
+      return readFile(join(cfg.workRepoDir, cfg.specDirInRepo, file), "utf8");
+    },
+
+    async submitSpecPr(a: { branch: string; files: Array<{ file: string; content: string }>; commitMsg: string; title: string; body: string }): Promise<{ number: number; url: string }> {
+      await git(["checkout", "-B", a.branch]);
+      for (const f of a.files) {
+        const path = join(cfg.workRepoDir, cfg.specDirInRepo, f.file);
+        await mkdir(dirname(path), { recursive: true });
+        await writeFile(path, f.content, "utf8");
+      }
+      await git(["add", "-A"]);
+      await git(["commit", "-m", a.commitMsg]);
+      await git(["push", "-u", "origin", a.branch, "--force"]); // 재분석 시 같은 브랜치 재사용
+      const url = await gh(["pr", "create", "--repo", cfg.repo, "--head", a.branch, "--title", a.title, "--body", a.body], { cwd: cfg.workRepoDir });
+      const number = Number(url.split("/").pop());
+      if (!Number.isInteger(number)) throw new Error(`PR URL 파싱 실패: ${url}`);
+      return { number, url };
+    },
+
+    async mergePr(prNumber: number): Promise<void> {
+      await gh(["pr", "merge", String(prNumber), "--repo", cfg.repo, "--auto", "--squash"]);
+    },
+
+    async closePr(prNumber: number, comment: string): Promise<void> {
+      await gh(["pr", "close", String(prNumber), "--repo", cfg.repo, "--comment", comment]);
     },
   };
 }

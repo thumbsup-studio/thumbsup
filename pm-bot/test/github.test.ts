@@ -1,3 +1,6 @@
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createGhClient, type Exec } from "../src/github.js";
 
@@ -81,5 +84,64 @@ describe("createGhClient — 인증·이슈·보드", () => {
     expect(await gh.boardOptions()).toEqual({ area: ["S2 홈"], status: ["Todo", "Done"] });
     await gh.boardOptions();
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("createGhClient — .workrepo 명세 PR", () => {
+  function workCfg() {
+    const dir = mkdtempSync(join(tmpdir(), "workrepo-"));
+    return { ...CFG, workRepoDir: join(dir, "repo") };
+  }
+
+  it("prepareSpecRepo는 .git이 없으면 blobless clone부터 한다", async () => {
+    const cfg = workCfg();
+    const { exec, calls } = fakeExec([["git clone", ""], ["git -C", ""]]);
+    await createGhClient(cfg, exec).prepareSpecRepo();
+    expect(calls[0]).toBe(`git clone --filter=blob:none https://github.com/o/r.git ${cfg.workRepoDir}`);
+    expect(calls[1]).toContain("fetch origin");
+    expect(calls[2]).toContain("checkout -f -B main origin/main");
+  });
+
+  it("prepareSpecRepo는 clone이 있으면 fetch·리셋만 한다", async () => {
+    const cfg = workCfg();
+    mkdirSync(join(cfg.workRepoDir, ".git"), { recursive: true });
+    const { exec, calls } = fakeExec([["git -C", ""]]);
+    await createGhClient(cfg, exec).prepareSpecRepo();
+    expect(calls.some((c) => c.startsWith("git clone"))).toBe(false);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("submitSpecPr는 브랜치·파일 쓰기·커밋·푸시·PR 생성을 순서대로 수행한다", async () => {
+    const cfg = workCfg();
+    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
+    const { exec, calls } = fakeExec([["git -C", ""], ["gh pr create", "https://github.com/o/r/pull/9\n"]]);
+    const res = await createGhClient(cfg, exec).submitSpecPr({
+      branch: "docs/pm-bot-1-0", files: [{ file: "spec.md", content: "새 내용" }],
+      commitMsg: "docs(spec): x (pm-bot)", title: "docs(spec): x (pm-bot)", body: "근거",
+    });
+    expect(res).toEqual({ number: 9, url: "https://github.com/o/r/pull/9" });
+    expect(readFileSync(join(cfg.workRepoDir, "docs/superpowers/specs/spec.md"), "utf8")).toBe("새 내용");
+    const seq = calls.map((c) => c.split(" ").slice(0, 4).join(" "));
+    expect(calls.some((c) => c.includes("checkout -B docs/pm-bot-1-0"))).toBe(true);
+    expect(calls.some((c) => c.includes("commit -m"))).toBe(true);
+    expect(calls.some((c) => c.includes("push -u origin docs/pm-bot-1-0 --force"))).toBe(true);
+    expect(seq[seq.length - 1]).toContain("gh pr create");
+  });
+
+  it("readSpecFile은 specDirInRepo 밑에서 읽는다", async () => {
+    const cfg = workCfg();
+    mkdirSync(join(cfg.workRepoDir, "docs/superpowers/specs"), { recursive: true });
+    writeFileSync(join(cfg.workRepoDir, "docs/superpowers/specs/a.md"), "본문", "utf8");
+    const { exec } = fakeExec([]);
+    expect(await createGhClient(cfg, exec).readSpecFile("a.md")).toBe("본문");
+  });
+
+  it("mergePr·closePr는 auto-squash·코멘트 클로즈를 호출한다", async () => {
+    const { exec, calls } = fakeExec([["gh pr", ""]]);
+    const gh = createGhClient(CFG, exec);
+    await gh.mergePr(9);
+    await gh.closePr(9, "반려");
+    expect(calls[0]).toBe("gh pr merge 9 --repo o/r --auto --squash");
+    expect(calls[1]).toBe("gh pr close 9 --repo o/r --comment 반려");
   });
 });
