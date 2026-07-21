@@ -105,6 +105,7 @@ Slack reaction_added ──▶ 리액션 라우터
 - `.workrepo`는 잡마다 `fetch` + `reset --hard origin/main`으로 최신화
 - 기동 시 `gh auth status`로 활성 계정이 kmjnnhyk인지 검증(jinhyeok-bell이면 403) — 아니면 부팅 거부가 아니라 **GitHub 액션만 비활성 + 경고 로그** (수집·Q&A는 계속 동작)
 - ✅ → `gh pr merge --auto --squash` (main 브랜치 보호 체크 통과 후 자동 머지 — docs 변경도 server-ci가 paths-filter로 job 내부 스킵하므로 체크는 통과), ❌ → `gh pr close` + 스레드에 사유 요청
+- 재분석 시 기존 awaiting PR은 close(superseded 마킹)하고 `docs/pm-bot-<thread_ts>-<last_msg_ts>` 고유 브랜치로 새 PR을 만든다 — 같은 head 브랜치의 중복 PR 생성 불가·승인된 PR 내용 무단 변경 방지
 
 ## 5. 데이터 (SQLite 추가 테이블)
 
@@ -128,7 +129,7 @@ CREATE TABLE spec_prs (
   channel     TEXT NOT NULL,
   message_ts  TEXT NOT NULL,    -- 봇이 올린 승인 대기 답글의 ts
   thread_ts   TEXT NOT NULL,
-  status      TEXT NOT NULL     -- awaiting → approved | rejected
+  status      TEXT NOT NULL     -- awaiting → approved | rejected | superseded
 );
 ```
 
