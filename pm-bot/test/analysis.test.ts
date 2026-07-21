@@ -26,7 +26,6 @@ describe("buildJudgePrompt", () => {
     hits: [{ file: "spec.md", heading: "우선순위", ids: ["F-45"], body: "북마크는 2순위" }],
     openIssues: [{ number: 3, title: "북마크 UI", labels: ["app"] }],
     areaOptions: ["S2 홈", "S7 정리장"],
-    statusOptions: ["Todo", "Done"],
   };
   it("스레드·명세 발췌·열린 이슈·permalink를 프롬프트에 담는다", () => {
     const { prompt } = buildJudgePrompt(base);
@@ -35,11 +34,11 @@ describe("buildJudgePrompt", () => {
     expect(prompt).toContain("#3 북마크 UI");
     expect(prompt).toContain("https://slack/p1");
   });
-  it("area·status 스키마 enum은 보드 옵션을 그대로 쓴다", () => {
+  it("area 스키마 enum은 보드 옵션을 그대로 쓰고, status는 더 이상 판정하지 않는다", () => {
     const { outputSchema } = buildJudgePrompt(base);
     const s = JSON.stringify(outputSchema);
     expect(s).toContain("S7 정리장");
-    expect(s).toContain("Todo");
+    expect(s).not.toContain('"status"');
   });
   it("prev가 있으면 중복 등록 방지 지시를 담는다", () => {
     const { prompt } = buildJudgePrompt({ ...base, prev: { prUrl: "https://gh/pr/1", issueUrls: ["https://gh/i/2"] } });
@@ -88,7 +87,7 @@ function harness(over: Partial<{ threadMsgs: Array<{ ts: string; user?: string; 
       boardOptions: async () => ({ area: ["S2 홈"], status: ["Todo"] }),
       createIssue: async () => { ghCalls.push("createIssue"); return { number: 42, url: "https://gh/i/42" }; },
       commentIssue: async () => { ghCalls.push("commentIssue"); return { url: "https://gh/i/3#c" }; },
-      setBoardFields: async () => { ghCalls.push("setBoardFields"); },
+      setBoardFields: async (n, f) => { ghCalls.push(`setBoardFields:${n}:${JSON.stringify(f)}`); },
       checkAuth: async () => ({ ok: true, login: "kmjnnhyk" }),
       prepareSpecRepo: async () => { ghCalls.push("prepare"); },
       readSpecFile: async () => "북마크는 2순위",
@@ -192,14 +191,28 @@ describe("drainAnalysisQueue", () => {
     expect(db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" })).toBe("queued"); // failed → 재시도 가능
   });
 
-  it("issue create는 등록 + 보드 배치 + 사후 보고", async () => {
+  it("issue create는 등록 + 보드 배치(Backlog 고정 + area) + 사후 보고", async () => {
     const { db, deps, posted, ghCalls } = harness({
-      judgeJson: { spec_changes: [], issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }], nothing_found: false },
+      judgeJson: { spec_changes: [], issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈" }], nothing_found: false },
     });
     db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
     await drainAnalysisQueue(deps);
-    expect(ghCalls).toEqual(expect.arrayContaining(["createIssue", "setBoardFields"]));
+    expect(ghCalls).toEqual(expect.arrayContaining(["createIssue", expect.stringContaining("setBoardFields")]));
+    const call = ghCalls.find((c) => c.startsWith("setBoardFields"))!;
+    expect(call).toContain("Backlog");
+    expect(call).toContain("S2 홈");
     expect(posted.some((p) => p.includes("https://gh/i/42"))).toBe(true);
+  });
+
+  it("issue update는 코멘트만 달고 보드 Status는 건드리지 않는다", async () => {
+    const { db, deps, posted, ghCalls } = harness({
+      judgeJson: { spec_changes: [], issue_actions: [{ kind: "update", number: 3, title: "t", body: "b", area: "S2 홈" }], nothing_found: false },
+    });
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    expect(ghCalls).toContain("commentIssue");
+    expect(ghCalls.some((c) => c.startsWith("setBoardFields"))).toBe(false);
+    expect(posted.some((p) => p.includes("이슈 갱신: #3"))).toBe(true);
   });
 
   it("done 재큐잉 + 새 메시지 없음 → '이미 처리됨' 답글만 하고 done 복원", async () => {
@@ -227,7 +240,7 @@ describe("drainAnalysisQueue", () => {
     const { db, deps, posted } = harness({
       judgeJson: {
         spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }],
-        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }],
+        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈" }],
         nothing_found: false,
       },
     });
@@ -243,7 +256,7 @@ describe("drainAnalysisQueue", () => {
     const { db, deps, posted, prompts } = harness({
       judgeJson: {
         spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }],
-        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }],
+        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈" }],
         nothing_found: false,
       },
     });
@@ -263,7 +276,7 @@ describe("drainAnalysisQueue", () => {
     const { db, deps, posted } = harness({
       judgeJson: {
         spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }],
-        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }],
+        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈" }],
         nothing_found: false,
       },
     });
@@ -277,7 +290,7 @@ describe("drainAnalysisQueue", () => {
     deps.gh = { ...deps.gh!, createIssue: async () => ({ number: 43, url: "https://gh/i/43" }) };
     deps.adapter = {
       run: async () =>
-        JSON.stringify({ spec_changes: [], issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }], nothing_found: false }),
+        JSON.stringify({ spec_changes: [], issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈" }], nothing_found: false }),
     } as CliAdapter;
 
     const postedBefore = posted.length;

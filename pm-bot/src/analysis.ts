@@ -10,9 +10,14 @@ export const ANALYSIS_SYSTEM_PROMPT =
 
 export type ThreadMsg = { user: string; text: string };
 export type SpecChange = { file: string; summary: string; rationale: string; edit_instruction: string };
-export type IssueAction = { kind: "create" | "update"; number?: number; title: string; body: string; area: string; status: string };
+export type IssueAction = { kind: "create" | "update"; number?: number; title: string; body: string; area: string };
 export type JudgeResult = { spec_changes: SpecChange[]; issue_actions: IssueAction[]; nothing_found: boolean };
 export type PrevResult = { prUrl?: string; issueUrls: string[] };
+
+// 봇이 새로 만드는 이슈는 항상 이 값으로 보드 Status에 고정 배치한다.
+// 보드 Status 필드의 실제 옵션명과 정확히 일치해야 함 — 다르면 setBoardFields가
+// 가용 옵션 목록과 함께 throw하므로 런타임에 바로 드러난다.
+const BACKLOG_STATUS = "Backlog";
 
 export function buildJudgePrompt(args: {
   thread: ThreadMsg[];
@@ -20,7 +25,6 @@ export function buildJudgePrompt(args: {
   hits: SpecSection[];
   openIssues: Array<{ number: number; title: string; labels: string[] }>;
   areaOptions: string[];
-  statusOptions: string[];
   prev?: PrevResult;
 }): { prompt: string; outputSchema: object } {
   const thread = args.thread.map((m) => `${m.user}: ${m.text}`).join("\n");
@@ -44,7 +48,7 @@ ${issues}${prevNote}
 ## 지시
 - spec_changes.edit_instruction: 편집자가 파일을 열고 그대로 수행할 수 있게 어느 부분을 어떻게 바꿀지 구체적으로
 - issue_actions.title: "feat(app): …" 형식의 한국어 요약, body: 배경·할 일·근거 스레드 링크(${args.permalink}) 포함
-- area·status는 제시된 옵션값 중에서만 선택`;
+- area는 제시된 옵션값 중에서만 선택 (status는 판정하지 않는다 — 새 이슈는 봇이 Backlog로 배치)`;
   return {
     prompt,
     outputSchema: {
@@ -69,9 +73,9 @@ ${issues}${prevNote}
             properties: {
               kind: { enum: ["create", "update"] }, number: { type: "integer" },
               title: { type: "string" }, body: { type: "string" },
-              area: { enum: args.areaOptions }, status: { enum: args.statusOptions },
+              area: { enum: args.areaOptions },
             },
-            required: ["kind", "title", "body", "area", "status"],
+            required: ["kind", "title", "body", "area"],
             additionalProperties: false,
           },
         },
@@ -189,7 +193,7 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
       const options = await gh.boardOptions();
       const openIssues = await gh.listOpenIssues();
       const hits = search(deps.index, msgs.map((m) => m.text).join(" ").slice(0, 2000));
-      const judgeRaw = await runWithRetry(deps.adapter, buildJudgePrompt({ thread: msgs, permalink, hits, openIssues, areaOptions: options.area, statusOptions: options.status, prev }), { onLog: deps.log });
+      const judgeRaw = await runWithRetry(deps.adapter, buildJudgePrompt({ thread: msgs, permalink, hits, openIssues, areaOptions: options.area, prev }), { onLog: deps.log });
       const judge = JSON.parse(judgeRaw) as JudgeResult;
 
       if (judge.spec_changes.length > 0) {
@@ -208,7 +212,12 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
         const branch = `docs/pm-bot-${job.threadTs.replace(".", "-")}-${lastMsgTs.replace(".", "-")}`;
         const stale = deps.db.awaitingSpecPrsByThread(job.channel, job.threadTs);
         for (const s of stale) {
-          await gh.closePr(s.prNumber, "PM봇: 재분석으로 대체됨 (superseded)");
+          // 밖에서(GitHub UI 등) 이미 닫힌 PR이면 close 실패해도 대체 목적은 달성 — 마킹은 진행
+          try {
+            await gh.closePr(s.prNumber, "PM봇: 재분석으로 대체됨 (superseded)");
+          } catch (closeErr) {
+            deps.log(`supersede close 실패(#${s.prNumber}, 이미 닫힘 가능): ${closeErr instanceof Error ? closeErr.message : String(closeErr)}`);
+          }
           deps.db.markSpecPr(s.prNumber, "superseded");
         }
         const pr = await gh.submitSpecPr({
@@ -228,13 +237,12 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
       for (const a of judge.issue_actions) {
         if (a.kind === "create") {
           const issue = await gh.createIssue({ title: a.title, body: `${a.body}\n\n근거 스레드: ${permalink}` });
-          await gh.setBoardFields(issue.number, { area: a.area, status: a.status });
+          await gh.setBoardFields(issue.number, { area: a.area, status: BACKLOG_STATUS });
           result.issueUrls.push(issue.url);
           done.push(`이슈 생성: ${issue.url}`);
         } else {
           if (a.number == null) throw new Error(`issue_actions update에 number 없음: ${a.title}`);
           const c = await gh.commentIssue({ number: a.number, body: `${a.body}\n\n근거 스레드: ${permalink}` });
-          await gh.setBoardFields(a.number, { status: a.status });
           result.issueUrls.push(c.url);
           done.push(`이슈 갱신: #${a.number}`);
         }

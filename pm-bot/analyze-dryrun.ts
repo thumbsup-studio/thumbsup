@@ -52,7 +52,7 @@ const openIssues = await gh.listOpenIssues();
 const permalink = (await slack.chat.getPermalink({ channel, message_ts: threadTs })).permalink ?? "(permalink 실패)";
 const judgeRaw = await runWithRetry(
   adapter,
-  buildJudgePrompt({ thread: msgs, permalink, hits, openIssues, areaOptions: options.area, statusOptions: options.status }),
+  buildJudgePrompt({ thread: msgs, permalink, hits, openIssues, areaOptions: options.area }),
   { onLog: (l) => console.error(`[claude] ${l}`) },
 );
 const judge = JSON.parse(judgeRaw) as JudgeResult;
