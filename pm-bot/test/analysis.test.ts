@@ -62,12 +62,18 @@ function harness(over: Partial<{ threadMsgs: Array<{ ts: string; user?: string; 
   const db = openDb(":memory:");
   const posted: string[] = [];
   const ghCalls: string[] = [];
+  const prompts: string[] = []; // adapter.run에 전달된 prompt 기록 — prev 동봉 여부 검증용
   const judge = over.judgeJson ?? { spec_changes: [], issue_actions: [], nothing_found: true };
   const adapterOutputs = [JSON.stringify(judge), JSON.stringify(over.editJson ?? { edits: [{ old: "2순위", new: "3순위" }] })];
   let adapterCall = 0;
   const deps: AnalysisDeps = {
     db,
-    adapter: { run: async () => adapterOutputs[Math.min(adapterCall++, 1)]! } as CliAdapter,
+    adapter: {
+      run: async (input) => {
+        prompts.push(input.prompt);
+        return adapterOutputs[Math.min(adapterCall++, 1)]!;
+      },
+    } as CliAdapter,
     index: [{ file: "spec.md", heading: "h", ids: [], body: "북마크는 2순위" }],
     history: {
       history: async () => ({ messages: [] }),
@@ -91,7 +97,7 @@ function harness(over: Partial<{ threadMsgs: Array<{ ts: string; user?: string; 
     postMessage: async (_c, _t, text) => { posted.push(text); return { ts: `bot.${posted.length}` }; },
     log: () => {},
   };
-  return { db, deps, posted, ghCalls };
+  return { db, deps, posted, ghCalls, prompts };
 }
 
 describe("fetchThread", () => {
@@ -170,5 +176,47 @@ describe("drainAnalysisQueue", () => {
     const warn = posted.find((p) => p.includes("⚠️"))!;
     expect(warn).toContain("boom");
     expect(warn).toContain("https://gh/pr/9");
+  });
+
+  it("부분 실패 후 재드레인 — 성공한 PR 링크가 result_json에 보존되고 재판정 prompt에 동봉된다", async () => {
+    const { db, deps, posted, prompts } = harness({
+      judgeJson: {
+        spec_changes: [{ file: "spec.md", summary: "s", rationale: "r", edit_instruction: "2순위를 3순위로" }],
+        issue_actions: [{ kind: "create", title: "t", body: "b", area: "S2 홈", status: "Todo" }],
+        nothing_found: false,
+      },
+    });
+    deps.gh = { ...deps.gh!, createIssue: async () => { throw new Error("boom"); } };
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await drainAnalysisQueue(deps);
+    expect(posted.some((p) => p.includes("⚠️"))).toBe(true);
+
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" }); // 재큐잉
+    expect(db.nextPendingAnalysis()?.resultJson).toContain("https://gh/pr/9"); // 실패해도 성공한 PR은 안 잃어버림
+
+    await drainAnalysisQueue(deps);
+    expect(prompts.some((p) => p.includes("https://gh/pr/9"))).toBe(true); // 재판정 prompt에 이전 PR 링크 동봉 → 중복 생성 방지
+  });
+
+  it("done 이후 새 메시지가 있으면 '이미 처리' 단락 없이 재판정하고 prev 링크를 동봉한다", async () => {
+    const { db, deps, posted, ghCalls, prompts } = harness(); // 기본 스레드 마지막 ts = "1.0"
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    db.markAnalysisRunning("C1", "1.0");
+    db.markAnalysisDone("C1", "1.0", "0.5", '{"prUrl":"https://gh/pr/9","issueUrls":[]}'); // lastMsgTs가 스레드 마지막(1.0)보다 과거
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U2" });
+    await drainAnalysisQueue(deps);
+    expect(posted[0]).not.toContain("이미 처리");
+    expect(ghCalls).toContain("list"); // 판정 단계까지 감
+    expect(prompts.some((p) => p.includes("https://gh/pr/9"))).toBe(true);
+  });
+
+  it("postMessage가 계속 실패해도 drain은 예외를 던지지 않고 log에 남긴다", async () => {
+    const { db, deps } = harness();
+    const logs: string[] = [];
+    deps.postMessage = async () => { throw new Error("slack down"); };
+    deps.log = (line) => { logs.push(line); };
+    db.requestAnalysis({ channel: "C1", threadTs: "1.0", requestedBy: "U1" });
+    await expect(drainAnalysisQueue(deps)).resolves.toBe(1);
+    expect(logs.some((l) => l.includes("실패 알림 게시 실패"))).toBe(true);
   });
 });

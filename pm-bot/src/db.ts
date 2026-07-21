@@ -111,7 +111,9 @@ export function openDb(path: string) {
   const analysisDoneStmt = db.prepare(
     `UPDATE analyses SET status = 'done', last_msg_ts = ?, result_json = ?, error = NULL WHERE channel = ? AND thread_ts = ?`,
   );
-  const analysisFailStmt = db.prepare(`UPDATE analyses SET status = 'failed', error = ? WHERE channel = ? AND thread_ts = ?`);
+  const analysisFailStmt = db.prepare(
+    `UPDATE analyses SET status = 'failed', error = ?, result_json = COALESCE(?, result_json) WHERE channel = ? AND thread_ts = ?`,
+  );
   const resetRunningStmt = db.prepare(`UPDATE analyses SET status = 'pending' WHERE status = 'running'`);
   const insertSpecPrStmt = db.prepare(
     `INSERT INTO spec_prs (pr_number, pr_url, channel, message_ts, thread_ts, status)
@@ -165,8 +167,8 @@ export function openDb(path: string) {
     markAnalysisDone(channel: string, threadTs: string, lastMsgTs: string, resultJson: string): void {
       analysisDoneStmt.run(lastMsgTs, resultJson, channel, threadTs);
     },
-    markAnalysisFailed(channel: string, threadTs: string, error: string): void {
-      analysisFailStmt.run(error, channel, threadTs);
+    markAnalysisFailed(channel: string, threadTs: string, error: string, resultJson?: string | null): void {
+      analysisFailStmt.run(error, resultJson ?? null, channel, threadTs);
     },
     resetRunningAnalyses(): number {
       return resetRunningStmt.run().changes;

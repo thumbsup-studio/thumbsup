@@ -162,13 +162,13 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
   let handled = 0;
   for (let job = deps.db.nextPendingAnalysis(); job !== null; job = deps.db.nextPendingAnalysis()) {
     deps.db.markAnalysisRunning(job.channel, job.threadTs);
-    const done: string[] = []; // 부분 성공 추적 — catch에서 보고에 포함
+    const done: string[] = []; // 부분 성공 추적 — catch에서 보고·result_json 병합에 포함
     const result: PrevResult = { issueUrls: [] };
+    const prev: PrevResult | undefined = job.resultJson ? (JSON.parse(job.resultJson) as PrevResult) : undefined;
     try {
       if (!deps.gh) throw new Error("GitHub 연동 비활성 상태예요 (gh 계정·config.github 확인)");
       const gh = deps.gh;
       const { msgs, lastMsgTs } = await fetchThread(deps.history, job.channel, job.threadTs);
-      const prev = job.resultJson ? (JSON.parse(job.resultJson) as PrevResult) : undefined;
       if (prev && job.lastMsgTs === lastMsgTs) {
         await deps.postMessage(job.channel, job.threadTs, `🤖 이미 처리한 스레드예요 (새 메시지 없음).${prevLinks(prev)}`);
         deps.db.markAnalysisDone(job.channel, job.threadTs, lastMsgTs, job.resultJson!);
@@ -227,7 +227,11 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
       deps.db.markAnalysisDone(job.channel, job.threadTs, lastMsgTs, JSON.stringify(result));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      deps.db.markAnalysisFailed(job.channel, job.threadTs, msg);
+      const partialResult =
+        result.prUrl || result.issueUrls.length > 0
+          ? JSON.stringify({ prUrl: result.prUrl ?? prev?.prUrl, issueUrls: [...(prev?.issueUrls ?? []), ...result.issueUrls] })
+          : null;
+      deps.db.markAnalysisFailed(job.channel, job.threadTs, msg, partialResult);
       const partial = done.length > 0 ? `\n완료된 항목:\n${done.map((d) => `• ${d}`).join("\n")}` : "";
       try {
         await deps.postMessage(job.channel, job.threadTs, `⚠️ 분석 처리에 실패했어요: ${msg}${partial}\n🤖를 다시 달면 재시도해요.`);
