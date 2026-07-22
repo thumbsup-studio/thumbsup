@@ -21,11 +21,11 @@ GitHub 이슈 하나를 받아 **브랜치 생성부터 PR·최종 보고까지 
 
 ## 파이프라인 전체 흐름
 
-```
+```text
 0. 사전 점검          → 클린 워크트리·main 최신화·Docker
 1. 이슈 확보          → assignee 할당, status: in-progress
 2. 맥락 수집          → 선행/의존 이슈·관련 코드·규약 문서 (병렬 서브에이전트)
-3. 브랜치 생성        → main에서 분기 (TBD)
+3. 브랜치 생성        → 최신 main에서 분기 · 동명 브랜치 충돌 확인
 4. 계획 확정          → ★ 유일한 사용자 확인 지점
 5. 구현(Outside-In)   → ATDD red → 단위 TDD 루프 → ATDD green → refactor
 6. 정적 게이트        → ./gradlew --no-daemon spotlessApply build
@@ -42,7 +42,8 @@ GitHub 이슈 하나를 받아 **브랜치 생성부터 PR·최종 보고까지 
 ### 0. 사전 점검
 
 ```bash
-git status --short --branch      # 더러우면 중단하고 사용자에게 보고
+# 더티 워크트리면 즉시 중단 (사용자 미커밋 작업 보호) — 주석이 아니라 실제 게이트
+[ -z "$(git status --porcelain)" ] || { echo "워크트리에 미커밋 변경 있음 — 중단하고 사용자에게 보고"; exit 1; }
 git checkout main && git pull --ff-only
 docker info --format '{{.ServerVersion}}'   # Testcontainers·로컬 기동에 필요. 실패 시 Docker Desktop 실행 안내
 ```
@@ -65,6 +66,7 @@ gh issue list --repo thumbsup-studio/thumbsup --state open \
 gh issue view <NN> --repo thumbsup-studio/thumbsup --json number,title,body,labels,assignees,milestone,state
 ```
 
+- **이슈 `state`가 `OPEN`이 아니면 중단**하고 보고 (닫힌 이슈에 작업하지 않는다).
 - **다른 사람이 이미 assignee면 중단**하고 사용자에게 보고 (중복 작업 방지).
 - 본인 할당 + 진행 라벨:
   ```bash
@@ -87,10 +89,11 @@ gh issue view <NN> --repo thumbsup-studio/thumbsup --json number,title,body,labe
 
 ### 3. 브랜치 생성
 
-TBD — 항상 최신 `main`에서 분기. 이슈의 `type:` 라벨로 타입 결정 (`type: feat`→`feat`, `type: fix`→`fix`, 없으면 `feat`).
+`git fetch origin main`으로 최신을 재확인하고 `origin/main`에서 분기한다. 타입은 이슈의 `type:` 라벨로 결정 (`type: feat`→`feat`, `type: fix`→`fix`, 없으면 `feat`). 동명 브랜치가 로컬·원격에 이미 있으면 진행 중인 타인 작업일 수 있으므로 재사용 여부를 판단하고, 불확실하면 중단·보고한다.
 
 ```bash
-git checkout -b <type>/<이슈번호>-<짧은-영문-슬러그>   # 예: feat/43-insight-api
+git fetch origin main
+git switch -c <type>/<이슈번호>-<짧은-영문-슬러그> origin/main   # 예: feat/43-insight-api
 ```
 
 ### 4. 계획 확정 ★ 유일한 확인 지점
@@ -149,7 +152,10 @@ cd server && ./gradlew --no-daemon spotlessApply build
 
 **절차** — 로컬 기동은 `thumbsup-local-server` 스킬을 그대로 따른다 (AWS profile `thumbsup`, Docker MySQL, `./gradlew bootRun` 백그라운드 실행):
 
-1. `curl -fsS http://localhost:8080/actuator/health` → `{"status":"UP"}`
+1. health: 2xx만으로 부족하고 응답 **본문의 `status`가 `UP`인지**까지 확인한다.
+   ```bash
+   curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"' || { echo "health UP 아님"; exit 1; }
+   ```
 2. **계획서의 시나리오를 curl로 실행** — 정상 케이스 + 에러 케이스(4xx의 error code까지) 응답을 계획과 대조.
 3. **Swagger 명세 대조**: 인증 정보는 하드코딩하지 않고 **로컬 SSM에서 읽어 셸 변수로만** 쓴다(profile `thumbsup`). 값을 출력하지 않는다.
    ```bash
@@ -157,10 +163,10 @@ cd server && ./gradlew --no-daemon spotlessApply build
      --profile thumbsup --region ap-northeast-2 --query Parameter.Value --output text)
    SWAGGER_PASS=$(aws ssm get-parameter --name /thumbsup/local/SWAGGER_PASSWORD --with-decryption \
      --profile thumbsup --region ap-northeast-2 --query Parameter.Value --output text)
-   curl -fsS -u "$SWAGGER_USER:$SWAGGER_PASS" http://localhost:8080/v3/api-docs
+   printf 'user = "%s:%s"\n' "$SWAGGER_USER" "$SWAGGER_PASS" | curl -fsS -K - http://localhost:8080/v3/api-docs
    ```
    구현된 API가 명세에 정확히 반영됐는지 확인: 경로·메서드·요청/응답 스키마·에러 응답·필드 설명(한국어). 불일치 시 어노테이션 수정 → 6단계부터 재실행.
-   (자격증명은 SSM에서만 읽고 셸 변수로만 쓴다 — `echo "$SWAGGER_PASS"` 금지, 채팅 로그·커밋·PR·터미널에 값 노출 금지. SSM 접근이 안 되면 `thumbsup-local-server` 스킬의 AWS 프로파일 점검을 따른다.)
+   (자격증명은 SSM에서만 읽고 셸 변수로만 쓴다. `curl -u` 인자로 넘기면 `ps`에 노출되므로 위처럼 stdin config(`-K -`)로 전달한다 — `echo "$SWAGGER_PASS"` 금지, 채팅 로그·커밋·PR·터미널에 값 노출 금지. SSM 접근이 안 되면 `thumbsup-local-server` 스킬의 AWS 프로파일 점검을 따른다.)
 4. 종료: `bootRun` 프로세스 종료 후 `cd server && docker compose down`
 
 ### 8. 리뷰 (별도 패스 — 자기 승인 금지)
