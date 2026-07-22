@@ -1,7 +1,7 @@
 # 로컬 개발 가이드
 
-이 문서는 서버 개발자가 로컬에서 Thumbs Up 서버를 실행하는 절차다.
-FE 개발자는 로컬 서버 실행과 AWS 설정 대상이 아니다. FE 개발자는 운영 Swagger URL을 통해 API 명세를 확인한다.
+이 문서는 로컬에서 Thumbs Up 서버를 실행하는 **절차의 정본**이다.
+FE 개발자가 서버 작업을 맡는 경우의 온보딩(준비물·활용 스킬)은 [../../docs/frontend-server-dev-guide.md](../../docs/frontend-server-dev-guide.md)를 먼저 보고, 실행 세부는 이 문서를 참조한다. API 명세만 필요하면 운영 Swagger URL로 확인한다.
 
 ## 1. 준비물
 
