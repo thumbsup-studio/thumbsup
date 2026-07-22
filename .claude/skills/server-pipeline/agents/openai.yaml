@@ -1,0 +1,4 @@
+interface:
+  display_name: "Server Pipeline (Thumbs Up)"
+  short_description: "GitHub 이슈 기반 server 작업 파이프라인 — 확보→계획→ATDD/TDD→게이트→검증→PR."
+  default_prompt: "server 이슈 하나를 파이프라인으로 처리해줘. 이슈 번호를 주면 시작."

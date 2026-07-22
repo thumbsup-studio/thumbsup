@@ -1,0 +1,4 @@
+interface:
+  display_name: "안전한 PR 머지"
+  short_description: "최신 main·CI·Flyway·배포를 확인하는 안전한 PR 머지"
+  default_prompt: "Use $merge to 최신 main과 Flyway 안전성을 확인하고 PR을 squash merge한 뒤 배포까지 검증해줘."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Thumbs Up Local Server"
+  short_description: "Run and verify the Thumbs Up Spring Boot server locally."
+  default_prompt: "Run the Thumbs Up server locally and verify health/Swagger."
