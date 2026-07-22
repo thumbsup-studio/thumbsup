@@ -5,7 +5,7 @@
 ## 필수 규칙
 
 - **main 직접 커밋 금지.** 브랜치: `<type>/<이슈번호>-<슬러그>` (예: `feat/12-like-button`)
-- 커밋 전 **`commit` 스킬**, PR 생성 전 **`pr` 스킬** 사용 (형식 강제)
+- 커밋 전 **`commit` 스킬**, PR 생성 전 **`pr` 스킬**, PR 머지 전 **`merge` 스킬** 사용 (형식·검증 게이트 강제)
 - 커밋 형식: `<type>(<scope>): <한국어 요약> (#이슈)` — scope: `app`|`server`|`shared`
 - PR 본문에 `Closes #이슈` 필수, Squash merge
 - `app/` 작업 시: [`app/CLAUDE.md`](./app/CLAUDE.md) 규약 + **`next-best-practices` 스킬 필수 로드**
