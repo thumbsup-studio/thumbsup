@@ -3,6 +3,7 @@ package studio.thumbsup.server.notice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -27,6 +28,7 @@ import studio.thumbsup.server.common.config.JpaAuditingConfig;
 @Testcontainers
 @Import({ClockConfig.class, JpaAuditingConfig.class})
 @ActiveProfiles("test")
+@DisplayName("공지 리포지토리")
 class NoticeRepositoryTest {
 
     @Container
@@ -40,7 +42,8 @@ class NoticeRepositoryTest {
     }
 
     @Test
-    void 커서_페이지네이션은_id_내림차순으로_이어진다() {
+    @DisplayName("커서 페이지네이션은 id 내림차순으로 이어진다")
+    void paginates_by_id_desc_with_cursor() {
         Notice first = noticeRepository.save(Notice.create("첫째", "내용"));
         Notice second = noticeRepository.save(Notice.create("둘째", "내용"));
         Notice third = noticeRepository.save(Notice.create("셋째", "내용"));
@@ -54,7 +57,8 @@ class NoticeRepositoryTest {
     }
 
     @Test
-    void 감사_필드는_저장_시_자동으로_채워진다() {
+    @DisplayName("감사 필드는 저장 시 자동으로 채워진다")
+    void fills_audit_fields_on_save() {
         Notice saved = noticeRepository.save(Notice.create("공지", "내용"));
 
         assertThat(saved.getCreatedAt()).isNotNull(); // Flyway NOT NULL 컬럼 + Auditing 동작 확인

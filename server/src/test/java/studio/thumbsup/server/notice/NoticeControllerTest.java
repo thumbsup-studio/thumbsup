@@ -14,6 +14,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -33,6 +35,7 @@ import studio.thumbsup.server.notice.dto.NoticeListResponse.NoticeItem;
 
 /** Controller 슬라이스 테스트 — standalone MockMvc로 요청/응답 계약만 검증한다 (피라미드 2층). */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("공지 컨트롤러")
 class NoticeControllerTest {
 
     @Mock
@@ -61,49 +64,65 @@ class NoticeControllerTest {
                 .build();
     }
 
-    @Test
-    void 목록_응답은_공통_envelope와_커서_meta를_따른다() throws Exception {
-        NoticeItem item = new NoticeItem(3L, "공지", OffsetDateTime.of(2026, 7, 7, 9, 0, 0, 0, ZoneOffset.ofHours(9)));
-        // 서비스는 mock이므로 커서는 불투명 문자열 그대로 pass-through됨을 검증한다
-        given(noticeService.getNotices(isNull(), anyInt()))
-                .willReturn(new CursorPage<>(new NoticeListResponse(List.of(item)), CursorMeta.of(true, "cursor-3")));
+    @Nested
+    @DisplayName("목록 조회")
+    class GetNotices {
 
-        mockMvc.perform(get("/api/v1/notices"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.items[0].noticeId").value(3))
-                .andExpect(jsonPath("$.data.items[0].createdAt").value("2026-07-07T09:00:00+09:00"))
-                .andExpect(jsonPath("$.meta.hasNext").value(true))
-                .andExpect(jsonPath("$.meta.nextCursor").value("cursor-3"));
+        @Test
+        @DisplayName("목록 응답은 공통 envelope와 커서 meta를 따른다")
+        void returns_common_envelope_with_cursor_meta() throws Exception {
+            NoticeItem item =
+                    new NoticeItem(3L, "공지", OffsetDateTime.of(2026, 7, 7, 9, 0, 0, 0, ZoneOffset.ofHours(9)));
+            // 서비스는 mock이므로 커서는 불투명 문자열 그대로 pass-through됨을 검증한다
+            given(noticeService.getNotices(isNull(), anyInt()))
+                    .willReturn(
+                            new CursorPage<>(new NoticeListResponse(List.of(item)), CursorMeta.of(true, "cursor-3")));
+
+            mockMvc.perform(get("/api/v1/notices"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.items[0].noticeId").value(3))
+                    .andExpect(jsonPath("$.data.items[0].createdAt").value("2026-07-07T09:00:00+09:00"))
+                    .andExpect(jsonPath("$.meta.hasNext").value(true))
+                    .andExpect(jsonPath("$.meta.nextCursor").value("cursor-3"));
+        }
+
+        @Test
+        @DisplayName("size가 최대치를 넘으면 INVALID_INPUT")
+        void rejects_too_large_size_with_invalid_input() throws Exception {
+            mockMvc.perform(get("/api/v1/notices").param("size", "200"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        }
     }
 
-    @Test
-    void 상세_응답은_content를_포함한_envelope를_따른다() throws Exception {
-        given(noticeService.getNotice(3L))
-                .willReturn(new NoticeDetailResponse(
-                        3L, "공지", "본문 내용", OffsetDateTime.of(2026, 7, 7, 9, 0, 0, 0, ZoneOffset.ofHours(9))));
+    @Nested
+    @DisplayName("상세 조회")
+    class GetNotice {
 
-        mockMvc.perform(get("/api/v1/notices/3"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.noticeId").value(3))
-                .andExpect(jsonPath("$.data.content").value("본문 내용"))
-                .andExpect(jsonPath("$.meta").doesNotExist());
-    }
+        @Test
+        @DisplayName("상세 응답은 content를 포함한 envelope를 따른다")
+        void returns_detail_envelope_with_content() throws Exception {
+            given(noticeService.getNotice(3L))
+                    .willReturn(new NoticeDetailResponse(
+                            3L, "공지", "본문 내용", OffsetDateTime.of(2026, 7, 7, 9, 0, 0, 0, ZoneOffset.ofHours(9))));
 
-    @Test
-    void 없는_공지는_NOTICE_NOT_FOUND_코드로_응답한다() throws Exception {
-        given(noticeService.getNotice(99L)).willThrow(new BusinessException(NoticeErrorType.NOTICE_NOT_FOUND));
+            mockMvc.perform(get("/api/v1/notices/3"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.noticeId").value(3))
+                    .andExpect(jsonPath("$.data.content").value("본문 내용"))
+                    .andExpect(jsonPath("$.meta").doesNotExist());
+        }
 
-        mockMvc.perform(get("/api/v1/notices/99"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("NOTICE_NOT_FOUND"));
-    }
+        @Test
+        @DisplayName("없는 공지는 NOTICE_NOT_FOUND 코드로 응답한다")
+        void returns_notice_not_found_code() throws Exception {
+            given(noticeService.getNotice(99L)).willThrow(new BusinessException(NoticeErrorType.NOTICE_NOT_FOUND));
 
-    @Test
-    void size가_최대치를_넘으면_INVALID_INPUT() throws Exception {
-        mockMvc.perform(get("/api/v1/notices").param("size", "200"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+            mockMvc.perform(get("/api/v1/notices/99"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOTICE_NOT_FOUND"));
+        }
     }
 }
