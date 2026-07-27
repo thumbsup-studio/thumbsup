@@ -2,13 +2,12 @@ package studio.thumbsup.server.quiz.authoring;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import studio.thumbsup.server.quiz.generation.EliceClient;
 import studio.thumbsup.server.quiz.generation.QuizGenerationPromptBuilder;
 
 /**
  * 저작 파이프라인(#174)이 브리지에 보낼 프롬프트를 조립한다. GENERATE 잡은 기존 생성 파이프라인의
- * 프롬프트({@link EliceClient#SYSTEM_PROMPT} + {@link QuizGenerationPromptBuilder})를 그대로 재사용하고,
- * REVIEW 잡은 기존 문제를 비평·수정하는 별도 템플릿을 쓴다.
+ * 프롬프트({@link QuizGenerationPromptBuilder#SYSTEM_PROMPT} + {@link QuizGenerationPromptBuilder})를 그대로
+ * 재사용하고, REVIEW 잡은 기존 문제를 비평·수정하는 별도 템플릿을 쓴다.
  */
 public final class AuthoringPromptFactory {
 
@@ -49,13 +48,13 @@ public final class AuthoringPromptFactory {
     private AuthoringPromptFactory() {}
 
     public static String generatePrompt(String topic) {
-        return EliceClient.SYSTEM_PROMPT + "\n\n" + QuizGenerationPromptBuilder.build(topic);
+        return QuizGenerationPromptBuilder.SYSTEM_PROMPT + "\n\n" + QuizGenerationPromptBuilder.build(topic);
     }
 
     public static String reviewPrompt(
             String topic, String currentPayloadJson, String feedback, List<String> siblingQuestions) {
         return REVIEW_TEMPLATE.formatted(
-                EliceClient.SYSTEM_PROMPT,
+                QuizGenerationPromptBuilder.SYSTEM_PROMPT,
                 topic,
                 currentPayloadJson,
                 feedbackSection(feedback),

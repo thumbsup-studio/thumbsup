@@ -1,10 +1,21 @@
 package studio.thumbsup.server.quiz.generation;
 
 /**
- * 엘리스 모델에 보낼 프롬프트를 조립한다 — 요구 스키마는 {@link GeneratedQuizSet}과 1:1로 맞춰져 있다.
+ * 저작 브리지에 보낼 프롬프트를 조립한다 — 요구 스키마는 {@link GeneratedQuizSet}과 1:1로 맞춰져 있다.
  * 난이도·유형 매핑은 세션 설계(#19)를 그대로 따른다: 하(EASY)=OX, 중(MEDIUM)=사지선다, 상(HARD)=키워드 빈칸.
  */
 public final class QuizGenerationPromptBuilder {
+
+    public static final String SYSTEM_PROMPT = """
+            너는 컴퓨터공학 전공 교재 수준의 정확성을 가진 CS 강사이며, 학습자의 이해도를 확인하는 퀴즈를 만든다.
+
+            - 사실 기반으로만 작성한다. 확실하지 않은 내용, 검증되지 않은 수치·통계, 존재하지 않는 개념이나
+              용어를 지어내지 않는다. 확신이 없으면 더 널리 알려진 확실한 소재로 대체한다.
+            - 사용자가 제시한 JSON 스키마를 한 글자도 벗어나지 않고 정확히 지킨다. 스키마에 없는 필드를
+              추가하거나, 요구된 필드를 누락하거나, 타입(문자열/배열/불리언 등)을 다르게 쓰지 않는다.
+            - 응답은 오직 유효한 JSON 객체 하나뿐이어야 한다. 인사말, 설명 문장, 주석, 마크다운 코드펜스
+              (```)는 절대 포함하지 않는다.
+            """;
 
     private static final String SCHEMA = """
             {

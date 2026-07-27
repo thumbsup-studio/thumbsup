@@ -5,7 +5,7 @@ import studio.thumbsup.server.quiz.QuizDifficulty;
 import studio.thumbsup.server.quiz.QuizType;
 
 /**
- * 엘리스 응답 JSON을 그대로 역직렬화하는 구조 — {@link QuizGenerationPromptBuilder}가 요구하는 스키마와 1:1로 맞춘다.
+ * 생성 응답 JSON을 그대로 역직렬화하는 구조 — {@link QuizGenerationPromptBuilder}가 요구하는 스키마와 1:1로 맞춘다.
  * type/difficulty는 {@link QuizType}/{@link QuizDifficulty} enum 이름과 정확히 일치해야 한다(Jackson 기본 매핑).
  */
 public record GeneratedQuizSet(List<GeneratedQuiz> quizzes) {
