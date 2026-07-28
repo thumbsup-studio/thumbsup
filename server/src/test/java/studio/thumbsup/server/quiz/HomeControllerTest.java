@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -65,7 +66,7 @@ class HomeControllerTest {
             authenticateAs(7L);
             HomeResponse response = new HomeResponse(
                     5, 320, true, new HomeResponse.TodayLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3));
-            given(homeService.getHome(eq(7L))).willReturn(response);
+            given(homeService.getHome(eq(7L), isNull())).willReturn(response);
 
             mockMvc.perform(get("/api/v1/home"))
                     .andExpect(status().isOk())
@@ -82,7 +83,8 @@ class HomeControllerTest {
         @DisplayName("기본 코스가 준비되지 않았으면 404 COURSE_NOT_FOUND를 반환한다")
         void returns_404_when_course_not_found() throws Exception {
             authenticateAs(7L);
-            given(homeService.getHome(eq(7L))).willThrow(new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
+            given(homeService.getHome(eq(7L), isNull()))
+                    .willThrow(new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
 
             mockMvc.perform(get("/api/v1/home"))
                     .andExpect(status().isNotFound())

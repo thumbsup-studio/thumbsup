@@ -68,7 +68,7 @@ class QuizRepositoryTest {
 
     /** quiz.step_order가 quiz_step을 FK로 참조하므로, 스텝에 문제를 저장하기 전 부모 행을 먼저 만든다. */
     private void saveStep(int stepOrder) {
-        quizStepRepository.save(QuizStep.create(stepOrder, "테스트 스텝 " + stepOrder, 3));
+        quizStepRepository.save(QuizStep.create(stepOrder, 1L, "테스트 스텝 " + stepOrder, 3));
     }
 
     @Nested
@@ -233,11 +233,12 @@ class QuizRepositoryTest {
         }
 
         @Test
-        @DisplayName("시드된 정식 커리큘럼의 최댓값(V20260709210001 기준 12)을 반환한다")
+        @DisplayName("시드된 정식 커리큘럼의 최댓값(V20260711150000 기준 14)을 반환한다")
         void finds_seeded_curriculum_max_step_order() {
-            // 마이그레이션이 항상 1~12스텝 커리큘럼을 시드하므로 "커리큘럼 없음" 상태는 재현할 수 없다 —
-            // 대신 시드된 실제 최댓값을 검증해 마이그레이션 스텝 수 자체도 함께 확인한다.
-            assertThat(quizRepository.findMaxStepOrder()).contains(12);
+            // 마이그레이션이 항상 1~14스텝 커리큘럼(운영체제 1~12 + 디자인 패턴 13~14)을 시드하므로
+            // "커리큘럼 없음" 상태는 재현할 수 없다 — 대신 시드된 실제 최댓값을 검증해
+            // 마이그레이션 스텝 수 자체도 함께 확인한다.
+            assertThat(quizRepository.findMaxStepOrder()).contains(14);
         }
     }
 
@@ -294,13 +295,14 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("생성 시 1스텝부터 시작하고, 진행하면 다음 스텝으로 넘어간다")
         void starts_at_step_one_and_advances() {
-            QuizProgress progress = quizProgressRepository.save(QuizProgress.create(1L));
+            QuizProgress progress = quizProgressRepository.save(QuizProgress.create(1L, 1L, 1));
             assertThat(progress.getCurrentStepOrder()).isEqualTo(1);
 
             progress.advanceToNextStep();
             quizProgressRepository.saveAndFlush(progress);
 
-            QuizProgress found = quizProgressRepository.findByUserId(1L).orElseThrow();
+            QuizProgress found =
+                    quizProgressRepository.findByUserIdAndCourseId(1L, 1L).orElseThrow();
             assertThat(found.getCurrentStepOrder()).isEqualTo(2);
         }
     }
@@ -312,7 +314,7 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("스텝 주제를 저장하고 조회한다")
         void saves_and_finds_by_step_order() {
-            quizStepRepository.save(QuizStep.create(101, "CPU 스케줄링 기초", 5));
+            quizStepRepository.save(QuizStep.create(101, 1L, "CPU 스케줄링 기초", 5));
 
             QuizStep found = quizStepRepository.findByStepOrder(101).orElseThrow();
 
@@ -335,9 +337,9 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("범위 내 스텝을 스텝번호 오름차순으로 조회한다")
         void finds_steps_between_range_in_order() {
-            quizStepRepository.save(QuizStep.create(103, "셋째", 5));
-            quizStepRepository.save(QuizStep.create(101, "첫째", 5));
-            quizStepRepository.save(QuizStep.create(102, "둘째", 5));
+            quizStepRepository.save(QuizStep.create(103, 1L, "셋째", 5));
+            quizStepRepository.save(QuizStep.create(101, 1L, "첫째", 5));
+            quizStepRepository.save(QuizStep.create(102, 1L, "둘째", 5));
 
             List<QuizStep> found = quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(101, 102);
 
@@ -347,7 +349,7 @@ class QuizRepositoryTest {
         @Test
         @DisplayName("시작값이 끝값보다 크면 빈 목록을 반환한다")
         void returns_empty_when_start_greater_than_end() {
-            quizStepRepository.save(QuizStep.create(101, "첫째", 5));
+            quizStepRepository.save(QuizStep.create(101, 1L, "첫째", 5));
 
             List<QuizStep> found = quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(101, 100);
 

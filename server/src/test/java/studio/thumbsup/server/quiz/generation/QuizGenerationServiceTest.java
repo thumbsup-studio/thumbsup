@@ -48,22 +48,35 @@ class QuizGenerationServiceTest {
         @DisplayName("유효한 응답이면 검증 후 QuizPersister에 저장을 위임하고 결과를 그대로 반환한다")
         void delegates_to_persister_and_returns_its_result() {
             given(eliceClient.generate(any())).willReturn(validSetJson());
-            given(quizPersister.persist(any(), any())).willReturn(4);
+            given(quizPersister.persist(any(), any(), any())).willReturn(4);
 
-            int stepOrder = service().generateStep("운영체제");
+            int stepOrder = service().generateStep(1L, "운영체제");
 
             assertThat(stepOrder).isEqualTo(4);
-            verify(quizPersister).persist(org.mockito.ArgumentMatchers.eq("운영체제"), any());
+            verify(quizPersister)
+                    .persist(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq("운영체제"), any());
+        }
+
+        @Test
+        @DisplayName("레벨을 지정하면 해당 레벨의 콘텐츠 난이도 힌트가 담긴 프롬프트로 호출한다")
+        void passes_level_hint_into_prompt() {
+            given(eliceClient.generate(any())).willReturn(validSetJson());
+            given(quizPersister.persist(any(), any(), any())).willReturn(7);
+
+            int stepOrder = service().generateStep(1L, "운영체제", GenerationLevel.ADVANCED);
+
+            assertThat(stepOrder).isEqualTo(7);
+            verify(eliceClient).generate(org.mockito.ArgumentMatchers.contains("콘텐츠 난이도: 심화 수준으로 맞춰라"));
         }
 
         @Test
         @DisplayName("마크다운 코드펜스로 감싸진 응답도 파싱해 저장을 위임한다")
         void strips_markdown_fence_before_parsing() {
             given(eliceClient.generate(any())).willReturn("```json\n" + validSetJson() + "\n```");
-            given(quizPersister.persist(any(), any())).willReturn(1);
+            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep("운영체제")).isEqualTo(1);
-            verify(quizPersister).persist(any(), any());
+            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
+            verify(quizPersister).persist(any(), any(), any());
         }
 
         @Test
@@ -76,10 +89,10 @@ class QuizGenerationServiceTest {
                             "\"keywords\": [{\"keyword\": \"PCB\", \"description\": \"설명\"}, "
                                     + "{\"keyword\": \"페이지 폴트\", \"description\": \"설명\"}]");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(distributedMarkers));
-            given(quizPersister.persist(any(), any())).willReturn(1);
+            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep("운영체제")).isEqualTo(1);
-            verify(quizPersister).persist(any(), any());
+            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
+            verify(quizPersister).persist(any(), any(), any());
         }
     }
 
@@ -92,10 +105,10 @@ class QuizGenerationServiceTest {
         void rejects_when_not_five_quizzes() {
             given(eliceClient.generate(any())).willReturn("{\"quizzes\": [%s]}".formatted(oxQuizJson()));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("5개가 아닙니다");
-            verify(quizPersister, never()).persist(any(), any());
+            verify(quizPersister, never()).persist(any(), any(), any());
         }
 
         @Test
@@ -110,7 +123,7 @@ class QuizGenerationServiceTest {
                                     multipleChoiceQuizJson(),
                                     keywordBlankQuizJson()));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("유형/난이도가 예상과 다릅니다");
         }
@@ -122,7 +135,7 @@ class QuizGenerationServiceTest {
                     "OX", "EASY", "질문 본문", "\"correctAnswer\": \"MAYBE\", \"choices\": null, \"answerKeywords\": null");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(invalidOx));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("O/X가 아닙니다");
         }
@@ -147,7 +160,7 @@ class QuizGenerationServiceTest {
                                     multipleChoiceQuizJson(),
                                     keywordBlankQuizJson()));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("4개가 아닙니다");
         }
@@ -169,7 +182,7 @@ class QuizGenerationServiceTest {
                                     multipleChoiceQuizJson(),
                                     emptyKeywords));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("answerKeywords가 비어 있습니다");
         }
@@ -191,7 +204,7 @@ class QuizGenerationServiceTest {
                                     multipleChoiceQuizJson(),
                                     emptySynonymGroup));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("빈 동의어 묶음");
         }
@@ -213,7 +226,7 @@ class QuizGenerationServiceTest {
                                     multipleChoiceQuizJson(),
                                     mismatched));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("빈칸 개수");
         }
@@ -225,7 +238,7 @@ class QuizGenerationServiceTest {
                     oxQuizJson().replace("[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.", "[[PCB]] 한 줄짜리 요약.");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(oneLineSummary));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("정확히 3줄이 아닙니다");
         }
@@ -239,7 +252,7 @@ class QuizGenerationServiceTest {
                             "[[PCB]]는 핵심 요약 1줄. \\n핵심 요약 2줄.\\n핵심 요약 3줄.");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(trailingWhitespace));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("정확히 3줄이 아닙니다");
         }
@@ -250,7 +263,7 @@ class QuizGenerationServiceTest {
             String typoMarker = oxQuizJson().replace("[[PCB]]는 핵심 요약", "[[PCM]]는 핵심 요약");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(typoMarker));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("오타 의심");
         }
@@ -265,7 +278,7 @@ class QuizGenerationServiceTest {
                                     + "{\"keyword\": \"페이지 폴트\", \"description\": \"설명\"}]");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(uncoveredKeyword));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("어디에도 마킹되지 않았습니다");
         }
@@ -277,11 +290,11 @@ class QuizGenerationServiceTest {
                     oxQuizJson().replace("\"explanationExample\": null", "\"explanationExample\": \"[[PCB]] 적용 예시\"");
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(duplicatedAcrossFields));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("해설 3개 컬럼에서 같은 키워드가 두 번 이상 마킹됐습니다")
                     .hasMessageContaining("[[PCB]]");
-            verify(quizPersister, never()).persist(any(), any());
+            verify(quizPersister, never()).persist(any(), any(), any());
         }
 
         @Test
@@ -289,7 +302,7 @@ class QuizGenerationServiceTest {
         void rejects_non_json_response() {
             given(eliceClient.generate(any())).willReturn("이건 JSON이 아니에요");
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("파싱하지 못했습니다");
         }

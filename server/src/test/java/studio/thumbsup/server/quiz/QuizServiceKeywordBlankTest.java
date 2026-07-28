@@ -44,6 +44,7 @@ class QuizServiceKeywordBlankTest {
     private UserProgressService userProgressService;
 
     private static final Long USER_ID = 1L;
+    private static final Long COURSE_ID = 1L;
     private static final Long QUIZ_ID = 30L;
     private static final Instant NOW = Instant.parse("2026-07-11T00:00:00Z");
 
@@ -66,11 +67,16 @@ class QuizServiceKeywordBlankTest {
         quiz.assignPosition(1, 1);
         ReflectionTestUtils.setField(quiz, "id", QUIZ_ID);
         given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
+        // submitAnswer가 stepOrder로부터 courseId를 역으로 찾는다.
+        given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(QuizStep.create(1, COURSE_ID, "토픽", 3)));
         given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
         given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1)).willReturn(List.of());
         // 채점 후 진행 상태 갱신 경로가 항상 진행 상태 행을 먼저 잠그므로 미리 채워 둔다.
-        given(quizProgressRepository.findByUserIdForUpdate(USER_ID))
-                .willReturn(Optional.of(QuizProgress.create(USER_ID)));
+        QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
+        given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                .willReturn(Optional.of(progress));
+        given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
+                .willReturn(Optional.of(progress));
     }
 
     private AnswerSubmitResponse submit(String... answers) {

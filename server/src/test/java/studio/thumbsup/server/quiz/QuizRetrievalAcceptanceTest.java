@@ -30,6 +30,7 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
 class QuizRetrievalAcceptanceTest {
 
     private static final long TEST_USER_ID = 157L;
+    private static final long OS_COURSE_ID = 1L;
 
     private static final List<CorrectedQuiz> CORRECTED_QUIZZES = List.of(
             new CorrectedQuiz(
@@ -72,8 +73,9 @@ class QuizRetrievalAcceptanceTest {
 
     @BeforeEach
     void setUpProgress() {
-        QuizProgress progress =
-                quizProgressRepository.findByUserId(TEST_USER_ID).orElseGet(() -> QuizProgress.create(TEST_USER_ID));
+        QuizProgress progress = quizProgressRepository
+                .findByUserIdAndCourseId(TEST_USER_ID, OS_COURSE_ID)
+                .orElseGet(() -> QuizProgress.create(TEST_USER_ID, OS_COURSE_ID, 1));
         while (progress.getCurrentStepOrder() < 10) {
             progress.advanceToNextStep();
         }

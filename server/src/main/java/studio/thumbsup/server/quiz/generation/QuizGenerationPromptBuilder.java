@@ -102,18 +102,64 @@ public final class QuizGenerationPromptBuilder {
               본문에 자연스럽게 넣을 수 없는 용어는 keywords 목록에 아예 넣지 마라.
             """;
 
+    /**
+     * 유형마다 "쉽다/어렵다"의 의미가 다르므로(OX는 헷갈림 정도, 사지선다는 오답 매력도, 키워드 빈칸은
+     * 용어 전문성) 유형별로 따로 지시한다 — 슬롯 순서(하2·중2·상1) 자체를 바꾸는 게 아니라, 그 슬롯
+     * 안에서 다루는 콘텐츠의 깊이만 이 지시로 조절한다.
+     */
+    private static final String CONTENT_LEVEL_BASIC = """
+            콘텐츠 난이도: 입문자 수준으로 맞춰라. 문제 유형·슬롯 순서(하2·중2·상1)는 그대로 유지하되,
+            유형별로 다음과 같이 개념의 깊이를 낮춰라.
+            - OX: 가장 널리 알려진 기본 사실을 판정하게 하고, 헷갈리기 쉬운 예외 조건·경계 사례는 피해라.
+            - 사지선다: 오답 선택지도 명백히 틀린 것 위주로 구성해, 정답과 지나치게 비슷한 근접 개념으로
+              헷갈리게 하지 마라.
+            - 키워드 빈칸: 교재 도입부에 나올 법한 가장 기본적인 핵심 용어로 빈칸을 구성해라.
+            """;
+
+    private static final String CONTENT_LEVEL_ADVANCED = """
+            콘텐츠 난이도: 심화 수준으로 맞춰라. 문제 유형·슬롯 순서(하2·중2·상1)는 그대로 유지하되,
+            유형별로 다음과 같이 개념의 깊이를 높여라.
+            - OX: 단순 정의가 아니라 실무자도 자주 오해하는 경계 사례·예외 조건·미묘한 차이를 판정하게 해라.
+            - 사지선다: 오답 선택지도 정답과 근접한 개념으로 구성해, 단순 소거법이 아니라 정확한 이해가
+              있어야 풀리게 해라.
+            - 키워드 빈칸: 실무·심화 문헌에서 쓰이는 전문 용어나 세부 메커니즘을 가리키는 용어로 빈칸을
+              구성해라.
+            """;
+
     private QuizGenerationPromptBuilder() {}
 
+    /** 저작 파이프라인(#174)의 {@code AuthoringPromptFactory}가 콘텐츠 난이도 힌트 없이 재사용한다. */
     public static String build(String courseTopic) {
+        return build(courseTopic, GenerationLevel.STANDARD);
+    }
+
+    /**
+     * {@code level}은 슬롯 구성(하2·중2·상1)이 정하는 문제 "형식" 난이도와 별개로, 그 안에서 다루는
+     * 콘텐츠 깊이를 조절한다. STANDARD는 별도 힌트를 넣지 않는다(기존 동작과 동일 — 모델 판단에 맡긴다).
+     */
+    static String build(String courseTopic, GenerationLevel level) {
         return """
                 "%s" 주제로 학습 퀴즈 5문제를 한 세트로 생성해줘. 오직 아래 JSON 스키마와 정확히 일치하는
                 JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는 절대 포함하지 마.
 
                 %s
-                %s
+                %s%s
                 %s
                 JSON 스키마:
                 %s
-                """.formatted(courseTopic, SLOT_COMPOSITION, COMMON_REQUIREMENTS, MARKER_RULES, SCHEMA);
+                """.formatted(
+                courseTopic, SLOT_COMPOSITION, contentLevelHint(level), COMMON_REQUIREMENTS, MARKER_RULES, SCHEMA);
+    }
+
+    // if-else 사용 이유: enum switch 표현식은 컴파일러가 안전장치로 java.lang.MatchException 생성 코드를
+    // 바이트코드에 삽입하는데, ArchUnit이 이를 "표준 예외 직접 생성"으로 오탐지한다(QuizService#grade와 동일 이유).
+    private static String contentLevelHint(GenerationLevel level) {
+        if (level == GenerationLevel.BASIC) {
+            return CONTENT_LEVEL_BASIC;
+        }
+        if (level == GenerationLevel.ADVANCED) {
+            return CONTENT_LEVEL_ADVANCED;
+        }
+        return "";
     }
 }

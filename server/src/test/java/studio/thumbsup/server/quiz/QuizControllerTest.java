@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -71,7 +72,7 @@ class QuizControllerTest {
             authenticateAs(7L);
             QuizNextResponse response = new QuizNextResponse(
                     1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 1);
-            given(quizService.getNextQuiz(eq(7L))).willReturn(response);
+            given(quizService.getNextQuiz(eq(7L), isNull())).willReturn(response);
 
             mockMvc.perform(get("/api/v1/quizzes/next"))
                     .andExpect(status().isOk())
@@ -84,7 +85,8 @@ class QuizControllerTest {
         @DisplayName("스텝을 모두 풀었으면 404 QUIZ_STEP_COMPLETED를 반환한다")
         void returns_404_when_step_completed() throws Exception {
             authenticateAs(7L);
-            given(quizService.getNextQuiz(eq(7L))).willThrow(new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
+            given(quizService.getNextQuiz(eq(7L), isNull()))
+                    .willThrow(new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
 
             mockMvc.perform(get("/api/v1/quizzes/next"))
                     .andExpect(status().isNotFound())
@@ -100,7 +102,7 @@ class QuizControllerTest {
         @DisplayName("성공하면 200과 완료한 스텝 목록을 반환한다")
         void returns_200_with_completed_steps() throws Exception {
             authenticateAs(7L);
-            given(quizService.getCompletedSteps(eq(7L)))
+            given(quizService.getCompletedSteps(eq(7L), isNull()))
                     .willReturn(new QuizStepHistoryResponse(List.of(
                             new QuizStepHistoryResponse.Item(1, "프로세스와 스레드"),
                             new QuizStepHistoryResponse.Item(2, "CPU 스케줄링"))));
@@ -117,7 +119,7 @@ class QuizControllerTest {
         @DisplayName("완료한 스텝이 없으면 빈 배열을 반환한다")
         void returns_empty_array_when_no_completed_steps() throws Exception {
             authenticateAs(7L);
-            given(quizService.getCompletedSteps(eq(7L))).willReturn(new QuizStepHistoryResponse(List.of()));
+            given(quizService.getCompletedSteps(eq(7L), isNull())).willReturn(new QuizStepHistoryResponse(List.of()));
 
             mockMvc.perform(get("/api/v1/quizzes/steps/completed"))
                     .andExpect(status().isOk())

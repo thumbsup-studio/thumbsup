@@ -3,17 +3,26 @@ package studio.thumbsup.server.quiz;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface QuizStepRepository extends JpaRepository<QuizStep, Long> {
 
     Optional<QuizStep> findByStepOrder(int stepOrder);
 
-    /**
-     * 실제 커리큘럼 스텝 수 — {@code step_order=0}은 스텝 밖 placeholder 샘플의 sentinel이라 제외한다
-     * (V20260709201632__create_quiz_step.sql 참조).
-     */
-    long countByStepOrderGreaterThan(int stepOrder);
-
     /** 완료한 스텝 이력 조회용 — startInclusive > endInclusive면(완료한 스텝 없음) 빈 목록을 반환한다. */
     List<QuizStep> findByStepOrderBetweenOrderByStepOrderAsc(int startInclusive, int endInclusive);
+
+    /**
+     * 코스의 "시작 스텝" — stepOrder가 코스와 무관하게 전역 순번이라 코스마다 1이 아닐 수 있다
+     * (예: 디자인패턴 코스는 13부터 시작). 진행 기록이 없는 신규 유저의 기본 커서를 정하는 데 쓴다.
+     */
+    @Query("SELECT MIN(s.stepOrder) FROM QuizStep s WHERE s.courseId = :courseId")
+    Optional<Integer> findMinStepOrderByCourseId(Long courseId);
+
+    /** 코스의 "마지막 스텝" — 홈 화면 커서를 그 코스의 범위 안으로 clamp하는 데 쓴다. */
+    @Query("SELECT MAX(s.stepOrder) FROM QuizStep s WHERE s.courseId = :courseId")
+    Optional<Integer> findMaxStepOrderByCourseId(Long courseId);
+
+    /** 그 코스에 실제 저장된 스텝 수 — 홈 화면 "N/전체" 표시에 쓴다. */
+    long countByCourseId(Long courseId);
 }

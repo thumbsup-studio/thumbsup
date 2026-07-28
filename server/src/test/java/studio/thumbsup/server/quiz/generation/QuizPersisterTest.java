@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.FollowUpBlockType;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizChoice;
@@ -35,8 +36,11 @@ class QuizPersisterTest {
     @Mock
     private QuizStepRepository quizStepRepository;
 
+    @Mock
+    private CourseRepository courseRepository;
+
     private QuizPersister persister() {
-        return new QuizPersister(quizRepository, quizStepRepository);
+        return new QuizPersister(quizRepository, quizStepRepository, courseRepository);
     }
 
     private static GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion() {
@@ -93,7 +97,7 @@ class QuizPersisterTest {
         given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz(), oxQuiz()));
 
-        int stepOrder = persister().persist("운영체제", generated);
+        int stepOrder = persister().persist(1L, "운영체제", generated);
 
         assertThat(stepOrder).isEqualTo(1);
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
@@ -109,7 +113,7 @@ class QuizPersisterTest {
         given(quizRepository.findMaxStepOrder()).willReturn(Optional.of(3));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
 
-        int stepOrder = persister().persist("운영체제", generated);
+        int stepOrder = persister().persist(1L, "운영체제", generated);
 
         assertThat(stepOrder).isEqualTo(4);
     }
@@ -120,7 +124,7 @@ class QuizPersisterTest {
         given(quizRepository.findMaxStepOrder()).willReturn(Optional.of(3));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
 
-        persister().persist("CPU 스케줄링 기초", generated);
+        persister().persist(1L, "CPU 스케줄링 기초", generated);
 
         ArgumentCaptor<QuizStep> captor = ArgumentCaptor.forClass(QuizStep.class);
         verify(quizStepRepository).save(captor.capture());
@@ -135,7 +139,7 @@ class QuizPersisterTest {
         given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(keywordBlankQuizWithSynonyms()));
 
-        persister().persist("운영체제", generated);
+        persister().persist(1L, "운영체제", generated);
 
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
         verify(quizRepository).save(captor.capture());
@@ -159,7 +163,7 @@ class QuizPersisterTest {
                 List.of(new GeneratedQuizSet.GeneratedKeyword("LIFO", "마지막에 넣은 데이터가 먼저 나오는 순서")));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuizWith(detailed)));
 
-        persister().persist("자료구조", generated);
+        persister().persist(1L, "자료구조", generated);
 
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
         verify(quizRepository).save(captor.capture());
@@ -200,7 +204,7 @@ class QuizPersisterTest {
                 List.of(new GeneratedQuizSet.GeneratedKeyword("키워드1", "설명")));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(mc));
 
-        persister().persist("운영체제", generated);
+        persister().persist(1L, "운영체제", generated);
 
         ArgumentCaptor<Quiz> captor = ArgumentCaptor.forClass(Quiz.class);
         verify(quizRepository).save(captor.capture());

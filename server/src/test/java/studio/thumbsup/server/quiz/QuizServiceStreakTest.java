@@ -48,6 +48,7 @@ class QuizServiceStreakTest {
     private QuizService quizService;
 
     private static final Long USER_ID = 1L;
+    private static final Long COURSE_ID = 1L;
     private static final Instant NOW = Instant.parse("2026-07-11T00:00:00Z");
     private static final LocalDate TODAY_KST = LocalDate.of(2026, 7, 11);
 
@@ -69,6 +70,10 @@ class QuizServiceStreakTest {
         return quiz;
     }
 
+    private static QuizStep stepFixture(int stepOrder) {
+        return QuizStep.create(stepOrder, COURSE_ID, "토픽", 10);
+    }
+
     @Nested
     @DisplayName("정답 제출 — 스트릭 기록")
     class SubmitAnswerStreak {
@@ -81,6 +86,7 @@ class QuizServiceStreakTest {
             List<Quiz> stepQuizzes = List.of(
                     quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
             given(quizRepository.findById(10L)).willReturn(Optional.of(last));
+            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
             given(quizRepository.findIdsByStepOrder(1))
                     .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
             List<QuizAttempt> allAttempted = stepQuizzes.stream()
@@ -88,8 +94,11 @@ class QuizServiceStreakTest {
                     .toList();
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(allAttempted);
-            given(quizProgressRepository.findByUserIdForUpdate(USER_ID))
-                    .willReturn(Optional.of(QuizProgress.create(USER_ID)));
+            QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progress));
+            given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progress));
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
@@ -102,6 +111,12 @@ class QuizServiceStreakTest {
             quizService = service();
             Quiz quiz = quizWithId(10L, 1, 1);
             given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
+            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
+            QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progress));
+            given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progress));
             given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(10L, 11L));
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(List.of());
@@ -119,6 +134,7 @@ class QuizServiceStreakTest {
             List<Quiz> stepQuizzes = List.of(
                     quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
             given(quizRepository.findById(10L)).willReturn(Optional.of(last));
+            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
             given(quizRepository.findIdsByStepOrder(1))
                     .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
             List<QuizAttempt> allAttempted = stepQuizzes.stream()
@@ -126,10 +142,12 @@ class QuizServiceStreakTest {
                     .toList();
             given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
                     .willReturn(allAttempted);
-            QuizProgress aheadProgress = QuizProgress.create(USER_ID);
+            QuizProgress aheadProgress = QuizProgress.create(USER_ID, COURSE_ID, 1);
             aheadProgress.advanceToNextStep(); // currentStepOrder=2, 이미 스텝1을 지나감
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(aheadProgress));
-            given(quizProgressRepository.findByUserIdForUpdate(USER_ID)).willReturn(Optional.of(aheadProgress));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(aheadProgress));
+            given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(aheadProgress));
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 

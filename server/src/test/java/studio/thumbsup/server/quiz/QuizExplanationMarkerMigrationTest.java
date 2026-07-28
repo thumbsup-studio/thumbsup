@@ -116,7 +116,7 @@ class QuizExplanationMarkerMigrationTest {
 
     private Quiz saveQuiz(
             int stepOrder, String summary, String example, String wrongAnswer, boolean duplicateKeywordRow) {
-        quizStepRepository.save(QuizStep.create(stepOrder, "마이그레이션 테스트", 5));
+        quizStepRepository.save(QuizStep.create(stepOrder, 1L, "마이그레이션 테스트", 5));
         Quiz quiz = Quiz.create(QuizType.OX, QuizDifficulty.EASY, "테스트 문제", null, summary, example, wrongAnswer);
         quiz.assignCorrectAnswer("O");
         quiz.assignPosition(stepOrder, 1);

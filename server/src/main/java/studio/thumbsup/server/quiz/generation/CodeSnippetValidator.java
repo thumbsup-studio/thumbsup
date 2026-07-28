@@ -31,25 +31,64 @@ final class CodeSnippetValidator {
     private static final String GENERIC_TYPE_ARGUMENT = "(?:\\?|[A-Za-z_$][A-Za-z0-9_$.]*(?:\\[\\])?)";
     private static final String GENERIC_TYPE_ARGUMENTS =
             "<\\s*" + GENERIC_TYPE_ARGUMENT + "(?:\\s*,\\s*" + GENERIC_TYPE_ARGUMENT + ")*\\s*>";
-    private static final String CODE_TYPE = "(?:byte|short|int|long|float|double|char|boolean|auto|var|String|size_t|"
-            + "(?:[a-z_$][A-Za-z0-9_$]*\\.)*[A-Z][A-Za-z0-9_$]*(?:"
-            + GENERIC_TYPE_ARGUMENTS
-            + ")?(?:\\[\\])?)";
+    private static final String CODE_TYPE =
+            "(?:byte|short|int|long|float|double|char|boolean|bool|auto|var|String|size_t|semaphore|mutex|"
+                    + "(?:[a-z_$][A-Za-z0-9_$]*\\.)*[A-Z][A-Za-z0-9_$]*(?:"
+                    + GENERIC_TYPE_ARGUMENTS
+                    + ")?(?:\\[\\])?)";
     private static final String FUNCTION_PARAMETER =
             "(?:(?:final\\s+)?" + CODE_TYPE + "\\s+[*&]*\\s*" + IDENTIFIER + "|void)";
     private static final String FUNCTION_PARAMETER_LIST =
             "(?:" + FUNCTION_PARAMETER + "(?:\\s*,\\s*" + FUNCTION_PARAMETER + ")*)?";
     static final String CALL_ARGUMENT_OR_STAR = "(?:\\*|" + CALL_ARGUMENT + ")";
+    /** 선언 줄 끝 — 빈 본문 한 줄 표기({@code {}})까지 인정한다. 흔한 생성자·훅 메서드 관용구다. */
+    private static final String DECLARATION_SUFFIX = "(?:\\{\\s*}|\\{|;)?\\s*$";
 
+    /**
+     * 리턴 타입을 {@link #CODE_TYPE}(기본형뿐 아니라 커스텀 대문자 타입도 포함)로 받는다 — 디자인패턴의
+     * {@code getInstance()}/{@code create()}/{@code build()}처럼 자기 타입이나 생성 결과 타입을 반환하는
+     * 메서드가 하드코딩된 기본형 목록에 없어서 거부되던 문제를 고친다.
+     */
     private static final Pattern FUNCTION_DECLARATION_LINE =
-            Pattern.compile("^\\s*(?:(?:public|private|protected|static|final|volatile|unsigned|signed)\\s+)*"
-                    + "(?:void|int|long|short|char|float|double|boolean|bool|byte|String|auto|size_t|semaphore|mutex)"
-                    + "(?:"
-                    + GENERIC_TYPE_ARGUMENTS
-                    + ")?\\s+[*&]*\\s*"
+            Pattern.compile("^\\s*(?:(?:public|private|protected|static|final|volatile|unsigned|signed|abstract)\\s+)*"
+                    + "(?:void|"
+                    + CODE_TYPE
+                    + ")"
+                    + "\\s+[*&]*\\s*"
                     + "[A-Za-z_$][A-Za-z0-9_$]*\\s*\\(\\s*"
                     + FUNCTION_PARAMETER_LIST
-                    + "\\s*\\)\\s*(?:\\{|;)?\\s*$");
+                    + "\\s*\\)\\s*"
+                    + DECLARATION_SUFFIX);
+
+    /** Java/C++ 스타일 클래스·인터페이스·열거형 선언 — 파이썬 스타일(콜론)은 기존 STRONG 목록에 이미 있다. */
+    private static final Pattern CLASS_DECLARATION_LINE =
+            Pattern.compile("^\\s*(?:(?:public|private|protected|abstract|final|static)\\s+)*"
+                    + "(?:class|interface|enum|record|struct)\\s+[A-Za-z_$][A-Za-z0-9_$]*"
+                    + "(?:"
+                    + GENERIC_TYPE_ARGUMENTS
+                    + ")?"
+                    + "(?:\\s+extends\\s+[A-Za-z_$][A-Za-z0-9_$.]*(?:"
+                    + GENERIC_TYPE_ARGUMENTS
+                    + ")?)?"
+                    + "(?:\\s+implements\\s+[A-Za-z_$][A-Za-z0-9_$.]*(?:"
+                    + GENERIC_TYPE_ARGUMENTS
+                    + ")?(?:\\s*,\\s*[A-Za-z_$][A-Za-z0-9_$.]*(?:"
+                    + GENERIC_TYPE_ARGUMENTS
+                    + ")?)*)?"
+                    + "\\s*"
+                    + DECLARATION_SUFFIX);
+
+    /**
+     * 생성자 선언 — 리턴 타입이 없어 {@link #FUNCTION_DECLARATION_LINE}에 안 걸린다. 일반 함수 호출문과
+     * 구분하기 위해 접근 제어자를 하나 이상 요구한다(호출문은 제어자를 붙이지 않는다).
+     */
+    private static final Pattern CONSTRUCTOR_DECLARATION_LINE =
+            Pattern.compile("^\\s*(?:public|private|protected)\\s+(?:(?:public|private|protected|final)\\s+)*"
+                    + "[A-Za-z_$][A-Za-z0-9_$]*\\s*\\(\\s*"
+                    + FUNCTION_PARAMETER_LIST
+                    + "\\s*\\)\\s*"
+                    + DECLARATION_SUFFIX);
+
     private static final Pattern CONDITION_CONTROL_PREFIX =
             Pattern.compile("^\\s*(?:if|while|switch|with)\\s*\\(", Pattern.CASE_INSENSITIVE);
     private static final Pattern FOR_CONTROL_PREFIX = Pattern.compile("^\\s*for\\s*\\(", Pattern.CASE_INSENSITIVE);
@@ -87,9 +126,11 @@ final class CodeSnippetValidator {
     /** 단독으로도 실행 구조를 입증하는 보수적 패턴 목록이다. */
     private static final List<Pattern> STRONG_CODE_LINE_PATTERNS = List.of(
             FUNCTION_DECLARATION_LINE,
+            CLASS_DECLARATION_LINE,
+            CONSTRUCTOR_DECLARATION_LINE,
             Pattern.compile("^\\s*(?:(?:(?:(?:public|private|protected|static|final|volatile|unsigned|signed)\\s+)*"
-                    + "(?:void|int|long|short|char|float|double|boolean|bool|byte|String|auto|size_t|semaphore|mutex)"
-                    + "(?:<[^>]+>)?\\s+[*&]*\\s*[A-Za-z_$][A-Za-z0-9_$]*(?:\\s*\\[[^\\]]*])?)|"
+                    + CODE_TYPE
+                    + "\\s+[*&]*\\s*[A-Za-z_$][A-Za-z0-9_$]*(?:\\s*\\[[^\\]]*])?)|"
                     + "(?:(?:const|let|var)\\s+[A-Za-z_$][A-Za-z0-9_$]*))\\s*=\\s*(?:"
                     + ".*[A-Za-z_$][A-Za-z0-9_$]*\\s*\\(.*|"
                     + ".*[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*|\\[[^\\]]+]).*|"
@@ -170,13 +211,14 @@ final class CodeSnippetValidator {
     /** 강한 실행 구조와 함께 있을 때만 코드의 보조 줄로 인정한다. */
     private static final List<Pattern> SUPPORTING_CODE_LINE_PATTERNS = List.of(
             Pattern.compile("^\\s*(?:(?:public|private|protected|static|final|volatile|unsigned|signed)\\s+)*"
-                    + "(?:void|int|long|short|char|float|double|boolean|bool|byte|String|auto|size_t|semaphore|mutex)"
-                    + "(?:<[^>]+>)?\\s+[*&]*\\s*"
+                    + CODE_TYPE
+                    + "\\s+[*&]*\\s*"
                     + "[A-Za-z_$][A-Za-z0-9_$]*(?:\\s*\\[[^\\]]*])?\\s*(?:=|;).*$"),
             Pattern.compile("^\\s*(?:const|let|var)\\s+[A-Za-z_$][A-Za-z0-9_$]*\\s*=\\s*\\S.*$"),
             Pattern.compile("^\\s*[A-Za-z_$][A-Za-z0-9_$]*(?:(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)|(?:\\[[^\\]]+]))*\\s*"
                     + "(?:=|:=|<-|←|\\+=|-=|\\*=|/=|%=)\\s*\\S.*$"),
-            Pattern.compile("^\\s*[{}]+[;,]?\\s*$"));
+            Pattern.compile("^\\s*[{}]+[;,]?\\s*$"),
+            Pattern.compile("^\\s*@[A-Za-z_$][A-Za-z0-9_$]*(?:\\([^)]*\\))?\\s*$"));
 
     private CodeSnippetValidator() {}
 

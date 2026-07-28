@@ -16,6 +16,8 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.DatabaseCleanUp;
+import studio.thumbsup.server.quiz.Course;
+import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizFixture;
 import studio.thumbsup.server.quiz.QuizRepository;
@@ -53,6 +55,11 @@ class AuthoringApprovalIntegrationTest {
     private final GenerationJobRepository generationJobRepository;
     private final DatabaseCleanUp databaseCleanUp;
 
+    // 생성자 파라미터 수를 checkstyle 제한(7개) 안에 두기 위해 필드 주입을 쓴다 — course_id 도입(#234)으로
+    // 새로 필요해진 의존성이라 생성자에 추가하면 한도를 넘는다.
+    @Autowired
+    private CourseRepository courseRepository;
+
     // Bean이 아닌 로컬 인스턴스 — 생성자 파라미터 수를 checkstyle 제한(7개) 안에 두기 위해서다.
     // GeneratedQuizSet은 record 역직렬화만 필요해 Spring이 커스터마이즈한 기본 ObjectMapper와 차이가 없다.
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -77,13 +84,17 @@ class AuthoringApprovalIntegrationTest {
     @BeforeEach
     void cleanSeedData() {
         databaseCleanUp.execute();
+        // 승인(NEW draft materialize)이 QuizPersister의 기본 코스 해석 경로를 타므로, 매 테스트마다
+        // 최소 코스 1개는 있어야 한다 — DatabaseCleanUp이 Flyway 시드 코스까지 지운다.
+        courseRepository.save(Course.create("운영체제", "CS"));
     }
 
     @Test
     @DisplayName("개선 draft 승인은 원본 quiz id를 보존하며 내용만 교체한다")
     void 개선_draft_승인은_원본_quiz_id를_보존하며_내용만_교체한다() throws Exception {
         int stepOrder = 1;
-        quizStepRepository.save(QuizStep.create(stepOrder, "운영체제", 3));
+        Long courseId = courseRepository.findFirstByOrderByIdAsc().orElseThrow().getId();
+        quizStepRepository.save(QuizStep.create(stepOrder, courseId, "운영체제", 3));
         List<Quiz> step = QuizFixture.step(stepOrder);
         quizRepository.saveAll(step);
         Quiz targetQuiz = step.get(2); // multipleChoiceQuiz, 3번 슬롯

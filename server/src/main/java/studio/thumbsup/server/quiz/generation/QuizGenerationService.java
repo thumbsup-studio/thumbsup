@@ -23,15 +23,22 @@ public class QuizGenerationService {
         this.validator = validator;
     }
 
+    /** {@link #generateStep(Long, String, GenerationLevel)}를 콘텐츠 난이도 힌트 없이(STANDARD) 호출한다. */
+    public int generateStep(Long courseId, String courseTopic) {
+        return generateStep(courseId, courseTopic, GenerationLevel.STANDARD);
+    }
+
     /**
-     * 코스 주제로 한 스텝(5문제)을 생성·저장하고, 배정된 스텝 번호를 반환한다.
+     * 코스 주제로 한 스텝(5문제)을 생성·저장하고, 배정된 스텝 번호를 반환한다. {@code courseId}가 속할 코스를
+     * 정한다 — stepOrder는 코스와 무관하게 전역 순번이라, 어느 코스 소속인지는 이 값으로만 알 수 있다.
+     * {@code level}은 슬롯 구성(하2·중2·상1)이 정하는 문제 형식과 별개로 콘텐츠 깊이를 조절한다.
      * LLM 호출(수십 초 소요 가능)은 여기서 트랜잭션 밖에 두고, DB 저장만 {@link QuizPersister}의
      * 트랜잭션으로 묶는다 — 그렇지 않으면 외부 호출 대기 시간만큼 DB 커넥션을 점유하게 된다.
      */
-    public int generateStep(String courseTopic) {
-        String rawResponse = eliceClient.generate(QuizGenerationPromptBuilder.build(courseTopic));
+    public int generateStep(Long courseId, String courseTopic, GenerationLevel level) {
+        String rawResponse = eliceClient.generate(QuizGenerationPromptBuilder.build(courseTopic, level));
         GeneratedQuizSet generated = validator.parse(rawResponse);
         validator.validateSet(generated);
-        return quizPersister.persist(courseTopic, generated);
+        return quizPersister.persist(courseId, courseTopic, generated);
     }
 }

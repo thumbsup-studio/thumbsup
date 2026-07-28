@@ -111,7 +111,7 @@ class FollowUpQuestionAcceptanceTest {
         // quiz.step_order가 quiz_step.step_order를 FK로 참조하므로 스텝 행이 먼저 있어야 한다.
         quizStepRepository
                 .findByStepOrder(FIXTURE_STEP_ORDER)
-                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, "픽스처 스텝", 3)));
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, 1L, "픽스처 스텝", 3)));
 
         Quiz quiz = QuizFixture.oxQuiz();
         quiz.assignPosition(FIXTURE_STEP_ORDER, 1);
