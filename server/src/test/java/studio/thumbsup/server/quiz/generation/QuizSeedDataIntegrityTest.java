@@ -36,8 +36,8 @@ import studio.thumbsup.server.quiz.QuizType;
 @ActiveProfiles("test")
 class QuizSeedDataIntegrityTest {
 
-    private static final int TOTAL_QUIZ_COUNT = 63;
-    private static final int FORMAL_QUIZ_COUNT = 60;
+    private static final int TOTAL_QUIZ_COUNT = 73;
+    private static final int FORMAL_QUIZ_COUNT = 70;
     private static final Pattern BLANK_PATTERN = Pattern.compile("___");
 
     private static final Set<Coordinate> REVIEWED_CODE_SNIPPETS = Set.of(
@@ -50,7 +50,8 @@ class QuizSeedDataIntegrityTest {
             new Coordinate(8, 4),
             new Coordinate(9, 4),
             new Coordinate(11, 4),
-            new Coordinate(12, 4));
+            new Coordinate(12, 4),
+            new Coordinate(13, 4));
 
     @Container
     @ServiceConnection
@@ -67,7 +68,7 @@ class QuizSeedDataIntegrityTest {
     class QuizTypeAudit {
 
         @Test
-        @DisplayName("placeholder 3문제와 운영 커리큘럼 60문제가 정확한 슬롯 유형·난이도를 갖는다")
+        @DisplayName("placeholder 3문제와 정식 커리큘럼 70문제(운영체제 60 + 디자인 패턴 10)가 정확한 슬롯 유형·난이도를 갖는다")
         void keeps_complete_slot_contract() {
             List<Quiz> quizzes = quizRepository.findAll();
             List<Quiz> formal =
@@ -77,7 +78,7 @@ class QuizSeedDataIntegrityTest {
             assertThat(formal).hasSize(FORMAL_QUIZ_COUNT);
             assertPlaceholderContract(quizzes);
 
-            IntStream.rangeClosed(1, 12).forEach(stepOrder -> assertFormalStep(formal, stepOrder));
+            IntStream.rangeClosed(1, 14).forEach(stepOrder -> assertFormalStep(formal, stepOrder));
         }
 
         @Test
@@ -92,7 +93,7 @@ class QuizSeedDataIntegrityTest {
     class CodeSnippetAudit {
 
         @Test
-        @DisplayName("검수된 10개 좌표에만 코드 지문이 있고 모두 코드 구조 검증을 통과한다")
+        @DisplayName("검수된 11개 좌표에만 코드 지문이 있고 모두 코드 구조 검증을 통과한다")
         void keeps_only_reviewed_code_snippets() {
             List<Quiz> quizzesWithCode = quizRepository.findAll().stream()
                     .filter(quiz -> quiz.getCodeSnippet() != null)

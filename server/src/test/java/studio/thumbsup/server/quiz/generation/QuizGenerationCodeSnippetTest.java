@@ -38,12 +38,12 @@ class QuizGenerationCodeSnippetTest {
         @DisplayName("코드 구조가 있는 codeSnippet은 검증 후 저장한다")
         void persists_generated_quiz_with_valid_code_snippet() throws Exception {
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstCodeSnippet("int value = 1;\nvalue++;"));
-            given(quizPersister.persist(any(), any())).willReturn(4);
+            given(quizPersister.persist(any(), any(), any())).willReturn(4);
 
-            int stepOrder = service().generateStep("운영체제");
+            int stepOrder = service().generateStep(1L, "운영체제");
 
             assertThat(stepOrder).isEqualTo(4);
-            verify(quizPersister).persist(any(), any());
+            verify(quizPersister).persist(any(), any(), any());
         }
 
         @Test
@@ -56,10 +56,10 @@ class QuizGenerationCodeSnippetTest {
                     """;
             given(eliceClient.generate(any())).willReturn(setJsonWithFirstCodeSnippet(naturalLanguageSnippet));
 
-            assertThatThrownBy(() -> service().generateStep("운영체제"))
+            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("codeSnippet");
-            verify(quizPersister, never()).persist(any(), any());
+            verify(quizPersister, never()).persist(any(), any(), any());
         }
 
         @Test

@@ -34,9 +34,20 @@ public record HomeResponse(int streakDays, int points, boolean todayCompleted, T
         }
     }
 
+    /**
+     * {@code minStepOrder}는 이 코스의 시작 스텝 번호다 — stepOrder가 코스 무관 전역 순번이라 항상 1은
+     * 아니다(예: 디자인패턴 코스는 13부터 시작). "1을 빼면 완료 수"라는 가정은 첫 코스(1부터 시작)에만
+     * 우연히 맞았을 뿐이라, 실제 시작 스텝을 받아 계산한다.
+     */
     public static HomeResponse from(
-            int streakDays, int points, boolean todayCompleted, Course course, QuizStep current, int totalCount) {
-        int completedCount = current.getStepOrder() - 1;
+            int streakDays,
+            int points,
+            boolean todayCompleted,
+            Course course,
+            QuizStep current,
+            int minStepOrder,
+            int totalCount) {
+        int completedCount = current.getStepOrder() - minStepOrder;
         return new HomeResponse(
                 streakDays, points, todayCompleted, TodayLearning.of(course, current, completedCount, totalCount));
     }

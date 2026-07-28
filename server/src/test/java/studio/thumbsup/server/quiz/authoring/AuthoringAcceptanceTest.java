@@ -25,6 +25,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.quiz.Course;
+import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
 
@@ -52,6 +54,7 @@ class AuthoringAcceptanceTest {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final QuizRepository quizRepository;
+    private final CourseRepository courseRepository;
     private final DatabaseCleanUp databaseCleanUp;
 
     AuthoringAcceptanceTest(
@@ -59,11 +62,13 @@ class AuthoringAcceptanceTest {
             @Autowired JwtTokenProvider jwtTokenProvider,
             @Autowired ObjectMapper objectMapper,
             @Autowired QuizRepository quizRepository,
+            @Autowired CourseRepository courseRepository,
             @Autowired DatabaseCleanUp databaseCleanUp) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.objectMapper = objectMapper;
         this.quizRepository = quizRepository;
+        this.courseRepository = courseRepository;
         this.databaseCleanUp = databaseCleanUp;
     }
 
@@ -71,6 +76,9 @@ class AuthoringAcceptanceTest {
     @BeforeEach
     void cleanSeedData() {
         databaseCleanUp.execute();
+        // 승인(NEW draft materialize)이 QuizPersister의 기본 코스 해석 경로를 타므로, 매 테스트마다
+        // 최소 코스 1개는 있어야 한다 — DatabaseCleanUp이 Flyway 시드 코스까지 지운다.
+        courseRepository.save(Course.create("운영체제", "CS"));
     }
 
     /** 저작(#174) 경로는 ADMIN 전용이라(#174 C1) 인수 테스트 토큰도 ADMIN role로 발급한다. */

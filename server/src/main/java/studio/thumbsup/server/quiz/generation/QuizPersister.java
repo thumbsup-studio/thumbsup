@@ -3,7 +3,11 @@ package studio.thumbsup.server.quiz.generation;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.quiz.Course;
+import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.FollowUpBlockType;
+import studio.thumbsup.server.quiz.LearningErrorType;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizFollowUpQuestion;
 import studio.thumbsup.server.quiz.QuizRepository;
@@ -24,18 +28,31 @@ public class QuizPersister {
 
     private final QuizRepository quizRepository;
     private final QuizStepRepository quizStepRepository;
+    private final CourseRepository courseRepository;
 
-    public QuizPersister(QuizRepository quizRepository, QuizStepRepository quizStepRepository) {
+    public QuizPersister(
+            QuizRepository quizRepository, QuizStepRepository quizStepRepository, CourseRepository courseRepository) {
         this.quizRepository = quizRepository;
         this.quizStepRepository = quizStepRepository;
+        this.courseRepository = courseRepository;
+    }
+
+    /**
+     * 저작 파이프라인(#174)이 courseId 없이 호출하는 경로 — 코스 선택 UI가 아직 없어 기본 코스
+     * (가장 먼저 생성된 코스)로 저장한다. CLI 생성 파이프라인처럼 코스를 명시해야 하면
+     * {@link #persist(Long, String, GeneratedQuizSet)}를 쓴다.
+     */
+    @Transactional
+    public int persist(String courseTopic, GeneratedQuizSet generated) {
+        return persist(resolveDefaultCourseId(), courseTopic, generated);
     }
 
     @Transactional
-    public int persist(String courseTopic, GeneratedQuizSet generated) {
+    int persist(Long courseId, String courseTopic, GeneratedQuizSet generated) {
         int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
 
         // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
-        quizStepRepository.save(QuizStep.create(stepOrder, courseTopic, DEFAULT_ESTIMATED_MINUTES));
+        quizStepRepository.save(QuizStep.create(stepOrder, courseId, courseTopic, DEFAULT_ESTIMATED_MINUTES));
 
         int slotOrder = 1;
         for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
@@ -111,5 +128,12 @@ public class QuizPersister {
         for (String concept : derivedConcepts) {
             quiz.addDerivedConcept(concept, order++);
         }
+    }
+
+    private Long resolveDefaultCourseId() {
+        return courseRepository
+                .findFirstByOrderByIdAsc()
+                .map(Course::getId)
+                .orElseThrow(() -> new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
     }
 }

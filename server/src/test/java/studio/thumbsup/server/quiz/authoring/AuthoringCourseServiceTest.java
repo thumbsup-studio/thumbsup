@@ -69,7 +69,7 @@ class AuthoringCourseServiceTest {
         }
 
         private List<QuizStep> steps() {
-            return List.of(QuizStep.create(1, "자료구조 기초", 10), QuizStep.create(2, "네트워크 기초", 10));
+            return List.of(QuizStep.create(1, 1L, "자료구조 기초", 10), QuizStep.create(2, 1L, "네트워크 기초", 10));
         }
 
         private void stubCourseAndQuizzes() {

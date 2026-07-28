@@ -50,10 +50,10 @@ class QuizGenerationFollowUpValidationTest {
 
     private void assertRejected(String messageFragment) {
         QuizGenerationService quizGenerationService = service();
-        assertThatThrownBy(() -> quizGenerationService.generateStep("운영체제"))
+        assertThatThrownBy(() -> quizGenerationService.generateStep(1L, "운영체제"))
                 .isInstanceOf(QuizGenerationException.class)
                 .hasMessageContaining(messageFragment);
-        verify(quizPersister, never()).persist(any(), any());
+        verify(quizPersister, never()).persist(any(), any(), any());
     }
 
     @Nested
@@ -134,9 +134,9 @@ class QuizGenerationFollowUpValidationTest {
             String blocks = "[{\"label\": \"해설\", \"content\": \"큐는 [[FIFO]] 순서다.\"},"
                     + " {\"label\": \"흔한 오해\", \"content\": \"스택과 헷갈리기 쉽다.\"}]";
             givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", "마커 없는 한 줄 답.", blocks, DEFAULT_KEYWORDS));
-            given(quizPersister.persist(any(), any())).willReturn(1);
+            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep("운영체제")).isEqualTo(1);
+            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
         }
     }
 
@@ -207,9 +207,9 @@ class QuizGenerationFollowUpValidationTest {
             String keywords = "[{\"keyword\": \"FIFO\", \"description\": \"설명\"},"
                     + " {\"keyword\": \"작업 대기열\", \"description\": \"설명\"}]";
             givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, blocks, keywords));
-            given(quizPersister.persist(any(), any())).willReturn(1);
+            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep("운영체제")).isEqualTo(1);
+            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
         }
 
         @Test
@@ -221,9 +221,9 @@ class QuizGenerationFollowUpValidationTest {
                             "보조 꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, DEFAULT_BLOCKS, DEFAULT_KEYWORDS)
                     .replace("\"isPrimary\": true", "\"isPrimary\": false");
             givenFirstQuizFollowUp(primary + "," + secondary);
-            given(quizPersister.persist(any(), any())).willReturn(1);
+            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep("운영체제")).isEqualTo(1);
+            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
         }
     }
 }

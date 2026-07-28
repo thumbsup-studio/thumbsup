@@ -104,8 +104,56 @@ class CodeSnippetValidatorTest {
                             """),
                                     Arguments.of("셸 파이프라인", "echo hello | grep h")),
                             validFunctionCallSnippets(),
-                            validParenthesizedControlSnippets())
+                            validParenthesizedControlSnippets(),
+                            validDesignPatternSnippets())
                     .flatMap(stream -> stream);
+        }
+
+        private static Stream<Arguments> validDesignPatternSnippets() {
+            return Stream.of(
+                    Arguments.of("싱글턴 패턴 전체", """
+                            public class Singleton {
+                                private static Singleton instance;
+
+                                private Singleton() {}
+
+                                public static Singleton getInstance() {
+                                    if (instance == null) {
+                                        instance = new Singleton();
+                                    }
+                                    return instance;
+                                }
+                            }
+                            """),
+                    Arguments.of("인터페이스 선언과 구현", """
+                            interface Observer {
+                                void update(String event);
+                            }
+
+                            class ConcreteObserver implements Observer {
+                                public void update(String event) {
+                                    log(event);
+                                }
+                            }
+                            """),
+                    Arguments.of("추상 클래스와 훅 메서드", """
+                            public abstract class Game {
+                                protected abstract void initialize();
+
+                                protected void hook() {}
+                            }
+                            """),
+                    Arguments.of("애노테이션이 붙은 메서드 오버라이드", """
+                            @Override
+                            public void update(String event) {
+                                log(event);
+                            }
+                            """),
+                    Arguments.of("제네릭 인터페이스 구현", """
+                            class ListIterator implements Iterator<Item> {
+                                private int index;
+                            }
+                            """));
         }
 
         private static Stream<Arguments> validFunctionCallSnippets() {
@@ -176,6 +224,7 @@ class CodeSnippetValidatorTest {
                             """)),
                             invalidNaturalCommandSnippets(),
                             invalidControlSnippets(),
+                            invalidClassLikeSnippets(),
                             invalidCallSnippets())
                     .flatMap(stream -> stream);
         }
@@ -198,6 +247,13 @@ class CodeSnippetValidatorTest {
                     Arguments.of("콜론을 포함한 영어 자연어 if 조건", "if (input: valid)"),
                     Arguments.of("세미콜론으로 위장한 자연어 for 조건", "for (each item; do something; continue)"),
                     Arguments.of("소문자 타입처럼 보이는 자연어 catch 조건", "catch (the error)"));
+        }
+
+        private static Stream<Arguments> invalidClassLikeSnippets() {
+            return Stream.of(
+                    Arguments.of("class 단어가 포함된 자연어 문장", "class methods are usually static"),
+                    Arguments.of("interface 단어가 포함된 자연어 문장", "the interface between components matters"),
+                    Arguments.of("private 뒤에 여러 단어가 온 자연어", "private the input is valid()"));
         }
 
         private static Stream<Arguments> invalidCallSnippets() {

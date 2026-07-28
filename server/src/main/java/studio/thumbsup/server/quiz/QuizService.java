@@ -2,10 +2,8 @@ package studio.thumbsup.server.quiz;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -21,7 +19,6 @@ import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
-import studio.thumbsup.server.quiz.dto.RetryHint;
 
 /**
  * ⚠️ 클래스 레벨 {@code @Transactional(readOnly = true)}는 조회 전용 기본값이다.
@@ -30,8 +27,6 @@ import studio.thumbsup.server.quiz.dto.RetryHint;
 @Service
 @Transactional(readOnly = true)
 public class QuizService {
-
-    private static final int INITIAL_STEP_ORDER = 1;
 
     /**
      * 빈칸 정답 비교 전에 지울 공백 — "시스템 콜"과 "시스템콜"을 같은 답으로 본다.
@@ -69,12 +64,26 @@ public class QuizService {
      * 유저의 현재 진행 스텝에서, 아직 시도하지 않은 문제 중 출제 순서가 가장 빠른 것을 반환한다.
      * 오답이어도 같은 문제를 다시 내려주지 않고 다음 문제로 선형 진행한다(#58) — 즉시 재도전을 강제하지 않는다.
      * 틀린 문제의 복습은 이 흐름과 별개로, 저장된 풀이 이력(QuizAttempt)을 활용하는 향후 기능의 몫이다.
+     *
+     * <p>{@code courseId}가 null이면 기본 코스({@link CourseRepository#findFirstByOrderByIdAsc})를 쓴다 —
+     * 코스 선택 UI가 아직 없는 앱이 courseId 없이 호출해도 기존과 동일하게 동작한다.
      */
-    public QuizNextResponse getNextQuiz(Long userId) {
+    public QuizNextResponse getNextQuiz(Long userId, Long courseId) {
+        Long resolvedCourseId = resolveCourseId(courseId);
         int stepOrder = quizProgressRepository
-                .findByUserId(userId)
+                .findByUserIdAndCourseId(userId, resolvedCourseId)
                 .map(QuizProgress::getCurrentStepOrder)
-                .orElse(INITIAL_STEP_ORDER);
+                .orElseGet(() -> initialStepOrder(resolvedCourseId));
+
+        // stepOrder는 코스 무관 전역 순번이라, 코스를 완주해 커서가 그 코스의 마지막 스텝을 넘으면
+        // 다음 코스의 stepOrder를 그대로 가리키게 된다. 여기서 막지 않으면 완주 응답 대신 다른 코스의
+        // 문제를 그대로 내려주게 된다.
+        int maxStepOrder = quizStepRepository
+                .findMaxStepOrderByCourseId(resolvedCourseId)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        if (stepOrder > maxStepOrder) {
+            throw new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED);
+        }
 
         List<Quiz> stepQuizzes = quizRepository.findByStepOrderOrderBySlotOrderAsc(stepOrder);
         if (stepQuizzes.isEmpty()) {
@@ -95,25 +104,29 @@ public class QuizService {
 
     /**
      * 유저가 완료한 스텝(현재 진행 스텝보다 이전) 목록을 스텝번호 오름차순으로 반환한다 — 히스토리 화면(#10).
-     * 진행 기록이 없으면(1스텝도 완료 전) 빈 목록을 반환한다.
+     * 진행 기록이 없으면(1스텝도 완료 전) 빈 목록을 반환한다. courseId 기본값은 {@link #getNextQuiz}와 동일.
      */
-    public QuizStepHistoryResponse getCompletedSteps(Long userId) {
+    public QuizStepHistoryResponse getCompletedSteps(Long userId, Long courseId) {
+        Long resolvedCourseId = resolveCourseId(courseId);
+        int startStepOrder = initialStepOrder(resolvedCourseId);
         int currentStepOrder = quizProgressRepository
-                .findByUserId(userId)
+                .findByUserIdAndCourseId(userId, resolvedCourseId)
                 .map(QuizProgress::getCurrentStepOrder)
-                .orElse(INITIAL_STEP_ORDER);
+                .orElse(startStepOrder);
         List<QuizStep> completedSteps =
-                quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(INITIAL_STEP_ORDER, currentStepOrder - 1);
+                quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(startStepOrder, currentStepOrder - 1);
         return QuizStepHistoryResponse.from(completedSteps);
     }
 
     /**
      * 완료한 스텝의 문제를 슬롯 지정으로 다시 조회한다(#151, 히스토리 재풀이). 시도 이력을 보지 않고
      * 항상 그 슬롯의 문제를 그대로 반환한다 — {@link #getNextQuiz}와 달리 "미시도만"이 아니다.
-     * 접근 제어는 {@link #submitAnswer}와 동일하게 현재 진행 스텝 이하만 허용한다.
+     * 접근 제어는 {@link #submitAnswer}와 동일하게 현재 진행 스텝 이하만 허용한다. courseId는 클라이언트가
+     * 보내지 않는다 — stepOrder가 속한 코스를 서버가 직접 찾아 그 코스의 진행 상태와 대조한다(위조 불가).
      */
     public QuizNextResponse getStepQuiz(Long userId, int stepOrder, int slotOrder) {
-        validateAccessible(userId, stepOrder);
+        Long courseId = courseIdForStep(stepOrder);
+        validateAccessible(userId, courseId, stepOrder);
         Quiz quiz = quizRepository
                 .findByStepOrderAndSlotOrder(stepOrder, slotOrder)
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
@@ -125,22 +138,24 @@ public class QuizService {
      *
      * <p>해설은 quizId만으로 정해지는 정적 콘텐츠라 채점 결과에 의존하지 않는다. 그래서 정답 제출(#42)이
      * 쓴 풀이 이력을 읽지 않으며, 새로고침·딥링크·복습처럼 채점 없이 해설만 필요한 흐름에서도 그대로 쓰인다.
+     *
+     * <p>courseTitle은 이 quiz가 실제로 속한 스텝의 코스에서 가져온다 — 예전엔 항상 "기본 코스"를 가져와서
+     * 디자인패턴 문제 해설에도 "OS"라고 잘못 표시되는 버그가 있었다.
      */
     public QuizExplanationResponse getExplanation(Long quizId) {
         Quiz quiz =
                 quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
 
+        QuizStep step = quizStepRepository
+                .findByStepOrder(quiz.getStepOrder())
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         String courseTitle = courseRepository
-                .findFirstByOrderByIdAsc()
+                .findById(step.getCourseId())
                 .map(Course::getTitle)
                 .orElseThrow(() -> new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
-        String unitTitle = quizStepRepository
-                .findByStepOrder(quiz.getStepOrder())
-                .map(QuizStep::getTopic)
-                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         long totalCount = quizRepository.countByStepOrder(quiz.getStepOrder());
 
-        return QuizExplanationResponse.from(quiz, totalCount, courseTitle, unitTitle);
+        return QuizExplanationResponse.from(quiz, totalCount, courseTitle, step.getTopic());
     }
 
     /**
@@ -153,91 +168,51 @@ public class QuizService {
     public AnswerSubmitResponse submitAnswer(Long userId, Long quizId, AnswerSubmitRequest request) {
         Quiz quiz =
                 quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        validateAccessible(userId, quiz);
+        Long courseId = courseIdForStep(quiz.getStepOrder());
+        validateAccessible(userId, courseId, quiz.getStepOrder());
 
         boolean isCorrect = grade(quiz, request.answers());
         quizAttemptRepository.save(QuizAttempt.create(quiz, userId, isCorrect));
-        advanceProgressIfStepCompleted(userId, quiz.getStepOrder());
+        advanceProgressIfStepCompleted(userId, courseId, quiz.getStepOrder());
 
-        return new AnswerSubmitResponse(isCorrect, buildRetryHint(quiz, request.answers(), isCorrect));
+        return new AnswerSubmitResponse(isCorrect, RetryHintBuilder.build(quiz, request.answers(), isCorrect));
+    }
+
+    /** stepOrder가 속한 코스 id — quiz.step_order로부터 역으로 찾는다. 존재하지 않는 스텝이면 QUIZ_NOT_FOUND. */
+    private Long courseIdForStep(int stepOrder) {
+        return quizStepRepository
+                .findByStepOrder(stepOrder)
+                .map(QuizStep::getCourseId)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+    }
+
+    /** courseId가 지정돼 있으면 그대로, 없으면 기본 코스(가장 먼저 생성된 코스)를 쓴다. */
+    private Long resolveCourseId(Long courseId) {
+        if (courseId != null) {
+            return courseId;
+        }
+        return courseRepository
+                .findFirstByOrderByIdAsc()
+                .map(Course::getId)
+                .orElseThrow(() -> new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
+    }
+
+    /** 그 코스의 시작 스텝 — stepOrder가 코스 무관 전역 순번이라 코스마다 1이 아닐 수 있다. */
+    private int initialStepOrder(Long courseId) {
+        return quizStepRepository
+                .findMinStepOrderByCourseId(courseId)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
     }
 
     /**
-     * 재도전 힌트를 만든다 — 오답이고 중·상 난이도일 때만. 정답을 흘리지 않도록 부분 힌트만 준다:
-     * 사지선다는 오답 하나를 소거하고, 빈칸은 슬롯별 첫 글자·글자수를 준다. 그 외에는 {@code null}이다.
-     * OX는 힌트로 줄 형태가 없어 유형으로도 막는다 — 현재 데이터에서 OX는 항상 EASY지만 코드가 그 결합을 가정하지 않는다.
-     */
-    private RetryHint buildRetryHint(Quiz quiz, List<String> answers, boolean isCorrect) {
-        if (isCorrect || quiz.getDifficulty() == QuizDifficulty.EASY || quiz.getType() == QuizType.OX) {
-            return null;
-        }
-        if (quiz.getType() == QuizType.MULTIPLE_CHOICE) {
-            return buildMultipleChoiceHint(quiz, answers);
-        }
-        return buildKeywordBlankHint(quiz);
-    }
-
-    /**
-     * 사용자가 방금 고른 오답을 지우는 건 이미 아는 사실이라 힌트가 되지 않으므로, 오답 중 사용자가 고르지 않은
-     * 것을 소거한다. 4지선다면 오답 3개 중 최소 2개가 후보라 항상 하나는 나온다. 표시 순서(displayOrder) 기준
-     * 첫 번째를 골라 결정적으로 만든다 — 컬렉션의 {@code @OrderBy}에 기대지 않고 여기서 명시적으로 정렬한다.
-     * 제출값이 파싱되지 않아 사용자 선택을 특정할 수 없으면 오답 중 첫 번째를 소거한다.
-     */
-    private RetryHint buildMultipleChoiceHint(Quiz quiz, List<String> answers) {
-        Long submittedChoiceId = parseChoiceId(answers.get(0));
-        Long eliminatedChoiceId = quiz.getChoices().stream()
-                .filter(choice -> !choice.isCorrect())
-                .filter(choice -> !Objects.equals(choice.getId(), submittedChoiceId))
-                .min(Comparator.comparingInt(QuizChoice::getDisplayOrder))
-                .map(QuizChoice::getId)
-                .orElse(null);
-        if (eliminatedChoiceId == null) {
-            return null;
-        }
-        return new RetryHint(eliminatedChoiceId, null);
-    }
-
-    /**
-     * 슬롯마다 첫 키워드의 첫 글자와 공백 제외 글자수를 준다. "첫 키워드"는 그 슬롯에 등록된 순서(엔티티 id
-     * 오름차순) 기준 첫 번째다 — 시드에서 한글 표기가 먼저, 영문 동의어가 뒤에 와서 자연스럽게 한글이 힌트가 된다.
-     * 글자수는 정답 매칭이 띄어쓰기를 무시하므로(#183) 공백을 제외해 센다. 목록은 {@code slotOrder} 오름차순으로
-     * 내려준다. 키워드가 등록되지 않은 문제는 힌트 없이({@code null}) 넘어간다.
-     */
-    private RetryHint buildKeywordBlankHint(Quiz quiz) {
-        Map<Integer, List<QuizAnswerKeyword>> keywordsBySlot =
-                quiz.getAnswerKeywords().stream().collect(Collectors.groupingBy(QuizAnswerKeyword::getSlotOrder));
-        if (keywordsBySlot.isEmpty()) {
-            return null;
-        }
-        List<RetryHint.BlankHint> blankHints = keywordsBySlot.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> toBlankHint(entry.getKey(), entry.getValue()))
-                .toList();
-        return new RetryHint(null, blankHints);
-    }
-
-    private RetryHint.BlankHint toBlankHint(int slotOrder, List<QuizAnswerKeyword> slotKeywords) {
-        String keyword = slotKeywords.stream()
-                .min(Comparator.comparing(QuizAnswerKeyword::getId))
-                .map(QuizAnswerKeyword::getKeyword)
-                .orElseThrow();
-        String withoutWhitespace = normalizeBlankAnswer(keyword);
-        return new RetryHint.BlankHint(slotOrder, withoutWhitespace.substring(0, 1), withoutWhitespace.length());
-    }
-
-    /**
-     * 유저의 현재 진행 스텝보다 미래인 스텝의 문제는 제출할 수 없다 — {@code /next}를 거치지 않고
+     * 유저의 그 코스 진행 스텝보다 미래인 스텝의 문제는 제출할 수 없다 — {@code /next}를 거치지 않고
      * quizId를 추측해 앞선 스텝을 건너뛰는 것을 막는다. 현재 스텝과 과거 스텝은 허용한다(복습 여지).
      */
-    private void validateAccessible(Long userId, Quiz quiz) {
-        validateAccessible(userId, quiz.getStepOrder());
-    }
-
-    private void validateAccessible(Long userId, int stepOrder) {
+    private void validateAccessible(Long userId, Long courseId, int stepOrder) {
         int currentStepOrder = quizProgressRepository
-                .findByUserId(userId)
+                .findByUserIdAndCourseId(userId, courseId)
                 .map(QuizProgress::getCurrentStepOrder)
-                .orElse(INITIAL_STEP_ORDER);
+                .orElseGet(() -> initialStepOrder(courseId));
         if (stepOrder > currentStepOrder) {
             throw new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE);
         }
@@ -309,7 +284,7 @@ public class QuizService {
         return true;
     }
 
-    private static String normalizeBlankAnswer(String raw) {
+    static String normalizeBlankAnswer(String raw) {
         return BLANK_ANSWER_WHITESPACE.matcher(raw).replaceAll("");
     }
 
@@ -318,14 +293,14 @@ public class QuizService {
      *
      * <p>같은 유저가 같은 스텝의 마지막 문제 두 개를 동시에 제출하면, 서로 상대방의 커밋을 못 본 채
      * 둘 다 "아직 미완료"로 판단해 진행이 영영 갱신되지 않는 레이스가 생길 수 있다. 이를 막기 위해
-     * 진행 상태 행을 유저 단위로 비관적 락({@link QuizProgressRepository#findByUserIdForUpdate})으로
+     * 진행 상태 행을 유저·코스 단위로 비관적 락({@link QuizProgressRepository#findByUserIdAndCourseIdForUpdate})으로
      * 잠가 이 구간을 직렬화한다 — 먼저 온 요청이 커밋할 때까지 나중 요청은 대기했다가, 커밋 후의
      * 최신 시도 이력을 다시 읽는다. 격리 수준을 READ_COMMITTED로 낮춘 이유도 이것과 짝을 이룬다 —
      * 기본 REPEATABLE READ에서는 트랜잭션 최초 조회 시점의 스냅샷이 고정되어, 락을 기다렸다 얻은
      * 뒤에도 그 사이 다른 트랜잭션이 커밋한 시도 이력을 못 볼 수 있다.
      */
-    private void advanceProgressIfStepCompleted(Long userId, int stepOrder) {
-        QuizProgress progress = lockOrCreateProgress(userId);
+    private void advanceProgressIfStepCompleted(Long userId, Long courseId, int stepOrder) {
+        QuizProgress progress = lockOrCreateProgress(userId, courseId);
 
         List<Long> stepQuizIds = quizRepository.findIdsByStepOrder(stepOrder);
         Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
@@ -348,15 +323,18 @@ public class QuizService {
      * 순간 두 요청이 동시에 "행이 없다"를 보고 둘 다 생성을 시도할 수 있으므로, 유니크 제약 위반은
      * 상대가 먼저 만든 행을 락으로 다시 읽어 해소한다.
      */
-    private QuizProgress lockOrCreateProgress(Long userId) {
-        Optional<QuizProgress> existing = quizProgressRepository.findByUserIdForUpdate(userId);
+    private QuizProgress lockOrCreateProgress(Long userId, Long courseId) {
+        Optional<QuizProgress> existing = quizProgressRepository.findByUserIdAndCourseIdForUpdate(userId, courseId);
         if (existing.isPresent()) {
             return existing.get();
         }
         try {
-            return quizProgressRepository.saveAndFlush(QuizProgress.create(userId));
+            return quizProgressRepository.saveAndFlush(
+                    QuizProgress.create(userId, courseId, initialStepOrder(courseId)));
         } catch (DataIntegrityViolationException e) {
-            return quizProgressRepository.findByUserIdForUpdate(userId).orElseThrow();
+            return quizProgressRepository
+                    .findByUserIdAndCourseIdForUpdate(userId, courseId)
+                    .orElseThrow();
         }
     }
 }

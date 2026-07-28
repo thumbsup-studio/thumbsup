@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studio.thumbsup.server.common.response.ApiResponse;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
@@ -32,19 +33,26 @@ public class QuizController {
         this.quizService = quizService;
     }
 
-    @Operation(summary = "다음 문제 조회", description = "유저의 현재 진행 스텝에서 아직 풀지 않은 다음 문제를 반환한다")
+    @Operation(
+            summary = "다음 문제 조회",
+            description = "유저의 현재 진행 스텝에서 아직 풀지 않은 다음 문제를 반환한다. "
+                    + "courseId를 생략하면 기본 코스를 쓴다(코스 선택 UI가 아직 없는 클라이언트를 위한 하위 호환)")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404",
             description = "code=QUIZ_STEP_COMPLETED — 현재 스텝을 모두 풀어 진행 갱신이 필요함")
     @GetMapping("/next")
-    public ApiResponse<QuizNextResponse> getNextQuiz(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.success(quizService.getNextQuiz(userId));
+    public ApiResponse<QuizNextResponse> getNextQuiz(
+            @AuthenticationPrincipal Long userId, @RequestParam(required = false) Long courseId) {
+        return ApiResponse.success(quizService.getNextQuiz(userId, courseId));
     }
 
-    @Operation(summary = "완료한 스텝 이력 조회", description = "유저가 완료한 스텝(현재 진행 스텝보다 이전)을 스텝번호·주제명으로 반환한다")
+    @Operation(
+            summary = "완료한 스텝 이력 조회",
+            description = "유저가 완료한 스텝(현재 진행 스텝보다 이전)을 스텝번호·주제명으로 반환한다. courseId 생략 시 기본 코스")
     @GetMapping("/steps/completed")
-    public ApiResponse<QuizStepHistoryResponse> getCompletedSteps(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.success(quizService.getCompletedSteps(userId));
+    public ApiResponse<QuizStepHistoryResponse> getCompletedSteps(
+            @AuthenticationPrincipal Long userId, @RequestParam(required = false) Long courseId) {
+        return ApiResponse.success(quizService.getCompletedSteps(userId, courseId));
     }
 
     @Operation(

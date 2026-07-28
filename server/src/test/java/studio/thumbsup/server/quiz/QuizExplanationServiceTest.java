@@ -80,11 +80,13 @@ class QuizExplanationServiceTest {
         return quiz;
     }
 
+    private static final Long COURSE_ID = 1L;
+
     private void givenExplanationContext(Quiz quiz) {
         given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
-        given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(Course.create(COURSE_TITLE, "CS")));
         given(quizStepRepository.findByStepOrder(STEP_ORDER))
-                .willReturn(Optional.of(QuizStep.create(STEP_ORDER, UNIT_TITLE, 5)));
+                .willReturn(Optional.of(QuizStep.create(STEP_ORDER, COURSE_ID, UNIT_TITLE, 5)));
+        given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(Course.create(COURSE_TITLE, "CS")));
         given(quizRepository.countByStepOrder(STEP_ORDER)).willReturn(TOTAL_COUNT);
     }
 
@@ -155,6 +157,22 @@ class QuizExplanationServiceTest {
             assertThat(response.explanationSummary()).hasSize(1);
             assertThat(response.explanationSummary().get(0).highlights()).isEmpty();
         }
+
+        @Test
+        @DisplayName("기본 코스가 아닌 다른 코스(예: 디자인 패턴)의 문제는 그 코스의 courseTitle을 반환한다")
+        void returns_course_title_of_the_quizs_actual_course_not_the_default_course() {
+            Long otherCourseId = 2L;
+            Quiz quiz = plainQuizWithId(QUIZ_ID);
+            given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
+            given(quizStepRepository.findByStepOrder(STEP_ORDER))
+                    .willReturn(Optional.of(QuizStep.create(STEP_ORDER, otherCourseId, UNIT_TITLE, 5)));
+            given(courseRepository.findById(otherCourseId)).willReturn(Optional.of(Course.create("디자인 패턴", "CS")));
+            given(quizRepository.countByStepOrder(STEP_ORDER)).willReturn(TOTAL_COUNT);
+
+            QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
+
+            assertThat(response.courseTitle()).isEqualTo("디자인 패턴");
+        }
     }
 
     @Nested
@@ -174,10 +192,12 @@ class QuizExplanationServiceTest {
         }
 
         @Test
-        @DisplayName("기본 코스가 없으면 COURSE_NOT_FOUND")
+        @DisplayName("문제가 속한 코스가 없으면 COURSE_NOT_FOUND")
         void throws_course_not_found_when_course_is_absent() {
             given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(annotatedQuizWithId(QUIZ_ID)));
-            given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.empty());
+            given(quizStepRepository.findByStepOrder(STEP_ORDER))
+                    .willReturn(Optional.of(QuizStep.create(STEP_ORDER, COURSE_ID, UNIT_TITLE, 5)));
+            given(courseRepository.findById(COURSE_ID)).willReturn(Optional.empty());
 
             QuizService quizService = service();
             assertThatThrownBy(() -> quizService.getExplanation(QUIZ_ID))

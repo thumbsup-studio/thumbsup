@@ -50,7 +50,7 @@ class HomeServiceTest {
     }
 
     private static QuizStep step(int stepOrder, String topic, int estimatedMinutes) {
-        return QuizStep.create(stepOrder, topic, estimatedMinutes);
+        return QuizStep.create(stepOrder, COURSE_ID, topic, estimatedMinutes);
     }
 
     @Nested
@@ -63,13 +63,16 @@ class HomeServiceTest {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progressAtStep(2)));
             given(userProgressRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.streakDays()).isEqualTo(5);
             assertThat(response.points()).isEqualTo(320);
@@ -79,17 +82,20 @@ class HomeServiceTest {
         }
 
         @Test
-        @DisplayName("진행 기록이 없으면 streak 0·points 0·1스텝부터 시작하는 기본 상태를 반환한다")
+        @DisplayName("진행 기록이 없으면 streak 0·points 0·그 코스의 첫 스텝부터 시작하는 기본 상태를 반환한다")
         void returns_default_state_when_no_progress() {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.empty());
             given(userProgressRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
             given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(step(1, "배열과 리스트", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.streakDays()).isZero();
             assertThat(response.points()).isZero();
@@ -99,36 +105,42 @@ class HomeServiceTest {
         }
 
         @Test
-        @DisplayName("저장된 커서가 전체 스텝 수를 넘으면 마지막 스텝으로 고정한다(코스 완주)")
+        @DisplayName("저장된 커서가 그 코스의 마지막 스텝을 넘으면 마지막 스텝으로 고정한다(코스 완주)")
         void clamps_cursor_to_last_step_when_course_completed() {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(99)));
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progressAtStep(99)));
             given(userProgressRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 10, 1000, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(3)).willReturn(Optional.of(step(3, "해시 테이블", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.today().order()).isEqualTo(3);
             assertThat(response.today().unitTitle()).isEqualTo("해시 테이블");
         }
 
         @Test
-        @DisplayName("완료한 스텝 수는 커서-1로 계산한다")
-        void computes_completed_count_as_cursor_minus_one() {
+        @DisplayName("완료한 스텝 수는 커서-시작스텝으로 계산한다")
+        void computes_completed_count_as_cursor_minus_start_step() {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(3)));
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progressAtStep(3)));
             given(userProgressRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(3)).willReturn(Optional.of(step(3, "해시 테이블", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.today().completedCount()).isEqualTo(2);
         }
@@ -139,13 +151,16 @@ class HomeServiceTest {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progressAtStep(2)));
             given(userProgressRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.todayCompleted()).isTrue();
         }
@@ -156,13 +171,16 @@ class HomeServiceTest {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progressAtStep(2)));
             given(userProgressRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST.minusDays(1))));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.todayCompleted()).isFalse();
             assertThat(response.streakDays()).isEqualTo(5);
@@ -174,13 +192,16 @@ class HomeServiceTest {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(progressAtStep(2)));
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(progressAtStep(2)));
             given(userProgressRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 7, 320, TODAY_KST.minusDays(3))));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
-            HomeResponse response = homeService.getHome(USER_ID);
+            HomeResponse response = homeService.getHome(USER_ID, null);
 
             assertThat(response.streakDays()).isZero();
             assertThat(response.todayCompleted()).isFalse();
@@ -192,7 +213,7 @@ class HomeServiceTest {
             homeService = service();
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> homeService.getHome(USER_ID))
+            assertThatThrownBy(() -> homeService.getHome(USER_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
                             .isEqualTo(LearningErrorType.COURSE_NOT_FOUND));
@@ -204,18 +225,21 @@ class HomeServiceTest {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
             given(courseRepository.findFirstByOrderByIdAsc()).willReturn(Optional.of(course));
-            given(quizStepRepository.countByStepOrderGreaterThan(0)).willReturn(3L);
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(quizStepRepository.countByCourseId(COURSE_ID)).willReturn(3L);
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.empty());
             given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> homeService.getHome(USER_ID))
+            assertThatThrownBy(() -> homeService.getHome(USER_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorType())
                             .isEqualTo(LearningErrorType.COURSE_NOT_FOUND));
         }
 
         private QuizProgress progressAtStep(int stepOrder) {
-            QuizProgress progress = QuizProgress.create(USER_ID);
+            QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
             for (int i = 1; i < stepOrder; i++) {
                 progress.advanceToNextStep();
             }

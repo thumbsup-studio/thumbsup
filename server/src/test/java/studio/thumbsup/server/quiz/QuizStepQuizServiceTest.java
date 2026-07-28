@@ -41,6 +41,7 @@ class QuizStepQuizServiceTest {
     private UserProgressService userProgressService;
 
     private static final Long USER_ID = 1L;
+    private static final Long COURSE_ID = 1L;
 
     private QuizService service() {
         return new QuizService(
@@ -60,6 +61,10 @@ class QuizStepQuizServiceTest {
         return quiz;
     }
 
+    private static QuizStep stepFixture(int stepOrder) {
+        return QuizStep.create(stepOrder, COURSE_ID, "토픽", 10);
+    }
+
     @Nested
     @DisplayName("스텝 내 문제 재조회")
     class GetStepQuiz {
@@ -67,7 +72,9 @@ class QuizStepQuizServiceTest {
         @Test
         @DisplayName("시도 여부와 무관하게 지정한 슬롯의 문제를 반환한다")
         void returns_quiz_regardless_of_attempt_history() {
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(QuizProgress.create(USER_ID)));
+            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
             given(quizRepository.findByStepOrderAndSlotOrder(1, 3)).willReturn(Optional.of(quizWithId(30L, 1, 3)));
 
             QuizNextResponse response = service().getStepQuiz(USER_ID, 1, 3);
@@ -79,7 +86,10 @@ class QuizStepQuizServiceTest {
         @Test
         @DisplayName("현재 진행 스텝보다 미래 스텝이면 QUIZ_NOT_ACCESSIBLE")
         void throws_not_accessible_for_future_step() {
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.empty()); // currentStepOrder=1
+            given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(stepFixture(2)));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.empty()); // currentStepOrder=1
+            given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
 
             assertThatThrownBy(() -> service().getStepQuiz(USER_ID, 2, 1))
                     .isInstanceOf(BusinessException.class)
@@ -90,7 +100,9 @@ class QuizStepQuizServiceTest {
         @Test
         @DisplayName("존재하지 않는 스텝·슬롯이면 QUIZ_NOT_FOUND")
         void throws_not_found_when_missing() {
-            given(quizProgressRepository.findByUserId(USER_ID)).willReturn(Optional.of(QuizProgress.create(USER_ID)));
+            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
             given(quizRepository.findByStepOrderAndSlotOrder(1, 9)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> service().getStepQuiz(USER_ID, 1, 9))
