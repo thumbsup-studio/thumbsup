@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { HistoryGraphPage } from "@/features/history-graph/components/history-graph-page";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
-const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+const { forceGraphPropsMock, pushMock } = vi.hoisted(() => ({
+  forceGraphPropsMock: vi.fn(),
+  pushMock: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
@@ -12,7 +15,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/dynamic", () => ({
   default: (loader: () => Promise<{ default: unknown }>) => {
     void loader();
-    return function MockForceGraph() {
+    return function MockForceGraph(props: Record<string, unknown>) {
+      forceGraphPropsMock(props);
       return <div data-testid="force-graph">force graph</div>;
     };
   },
@@ -61,5 +65,16 @@ describe("HistoryGraphPage", () => {
 
     expect(screen.queryByText("관련된 개념들")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "스레드" })).not.toBeInTheDocument();
+  });
+
+  it("keeps graph navigation enabled and refits after the force engine settles", async () => {
+    renderPage();
+
+    expect(await screen.findByTestId("force-graph")).toBeInTheDocument();
+
+    const props = forceGraphPropsMock.mock.lastCall?.[0] as Record<string, unknown> | undefined;
+    expect(props?.enablePanInteraction).toBe(true);
+    expect(props?.enableZoomInteraction).toBe(true);
+    expect(props?.onEngineStop).toEqual(expect.any(Function));
   });
 });

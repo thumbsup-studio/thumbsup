@@ -10,6 +10,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-08",
       category: "운영체제",
       relatedSteps: [{ stepOrder: 1, topic: "프로세스와 스레드" }],
+      position: { x: 0, y: 0 },
     },
     {
       id: "thread",
@@ -19,6 +20,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-08",
       category: "운영체제",
       relatedSteps: [{ stepOrder: 1, topic: "프로세스와 스레드" }],
+      position: { x: -92, y: 16 },
     },
     {
       id: "context-switch",
@@ -28,6 +30,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-09",
       category: "운영체제",
       relatedSteps: [{ stepOrder: 2, topic: "CPU 스케줄링" }],
+      position: { x: 100, y: 28 },
     },
     {
       id: "scheduling",
@@ -37,6 +40,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-09",
       category: "운영체제",
       relatedSteps: [{ stepOrder: 2, topic: "CPU 스케줄링" }],
+      position: { x: 136, y: 112 },
     },
     {
       id: "race-condition",
@@ -46,6 +50,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-10",
       category: "동시성",
       relatedSteps: [{ stepOrder: 3, topic: "동기화와 임계구역" }],
+      position: { x: -134, y: 82 },
     },
     {
       id: "critical-section",
@@ -55,6 +60,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-10",
       category: "동시성",
       relatedSteps: [{ stepOrder: 3, topic: "동기화와 임계구역" }],
+      position: { x: -72, y: 132 },
     },
     {
       id: "deadlock",
@@ -63,6 +69,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-11",
       category: "동시성",
       relatedSteps: [{ stepOrder: 4, topic: "교착 상태" }],
+      position: { x: 24, y: 130 },
     },
     {
       id: "paging",
@@ -72,6 +79,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-12",
       category: "메모리",
       relatedSteps: [{ stepOrder: 9, topic: "메모리 관리 기초" }],
+      position: { x: 58, y: -72 },
     },
     {
       id: "page-fault",
@@ -81,6 +89,7 @@ export const mockHistoryGraph: HistoryGraphResponse = {
       learnedAt: "2026-07-13",
       category: "메모리",
       relatedSteps: [{ stepOrder: 10, topic: "가상 메모리" }],
+      position: { x: 94, y: -10 },
     },
   ],
   edges: [

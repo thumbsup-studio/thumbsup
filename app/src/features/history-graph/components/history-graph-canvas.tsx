@@ -27,10 +27,17 @@ type GraphData = {
   nodes: RenderNode[];
   links: RenderLink[];
 };
+type GraphPosition = {
+  x: number;
+  y: number;
+};
 type ForceGraphRef = ForceGraphMethods<RenderNode, RenderLink>;
 type ForceGraphComponentProps = ForceGraphProps<RenderNode, RenderLink> & {
   ref?: MutableRefObject<ForceGraphRef | undefined>;
 };
+
+const FIT_DURATION_MS = 320;
+const FIT_REVEAL_DELAY_MS = FIT_DURATION_MS + 40;
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
@@ -161,6 +168,117 @@ function getLinkNodeId(value: unknown) {
   return value ? String(value) : null;
 }
 
+function buildAdjacency(nodes: HistoryGraphNode[], edges: HistoryGraphEdge[]) {
+  const adjacency = new Map<string, string[]>();
+
+  for (const node of nodes) {
+    adjacency.set(node.id, []);
+  }
+
+  for (const edge of edges) {
+    adjacency.get(edge.source)?.push(edge.target);
+    adjacency.get(edge.target)?.push(edge.source);
+  }
+
+  return adjacency;
+}
+
+function getNodeDepths(nodes: HistoryGraphNode[], edges: HistoryGraphEdge[]) {
+  const startNode = nodes[0];
+  const depths = new Map<string, number>();
+
+  if (!startNode) {
+    return depths;
+  }
+
+  const adjacency = buildAdjacency(nodes, edges);
+  const queue = [startNode.id];
+  depths.set(startNode.id, 0);
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const nodeId = queue[index];
+    const nextDepth = (depths.get(nodeId) ?? 0) + 1;
+
+    for (const nextNodeId of adjacency.get(nodeId) ?? []) {
+      if (depths.has(nextNodeId)) {
+        continue;
+      }
+
+      depths.set(nextNodeId, nextDepth);
+      queue.push(nextNodeId);
+    }
+  }
+
+  return depths;
+}
+
+function getStableGraphPositions(
+  nodes: HistoryGraphNode[],
+  edges: HistoryGraphEdge[],
+): Map<string, GraphPosition> {
+  const positions = new Map<string, GraphPosition>();
+  const positionedNodes = nodes.filter((node) => node.position);
+
+  if (positionedNodes.length === nodes.length) {
+    for (const node of positionedNodes) {
+      positions.set(node.id, node.position ?? { x: 0, y: 0 });
+    }
+
+    return positions;
+  }
+
+  const depths = getNodeDepths(nodes, edges);
+  const depthGroups = new Map<number, HistoryGraphNode[]>();
+  const fallbackDepth = Math.max(1, ...Array.from(depths.values())) + 1;
+
+  for (const node of nodes) {
+    const depth = depths.get(node.id) ?? fallbackDepth;
+    depthGroups.set(depth, [...(depthGroups.get(depth) ?? []), node]);
+  }
+
+  for (const [depth, group] of depthGroups) {
+    if (depth === 0) {
+      for (const node of group) {
+        positions.set(node.id, { x: 0, y: 0 });
+      }
+      continue;
+    }
+
+    const radius = 78 + (depth - 1) * 58;
+    const angleOffset = depth % 2 === 0 ? -Math.PI / 2 : -Math.PI * 0.68;
+
+    group.forEach((node, index) => {
+      const angle = angleOffset + (2 * Math.PI * index) / group.length;
+      positions.set(node.id, {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
+      });
+    });
+  }
+
+  return positions;
+}
+
+function getGraphData(nodes: HistoryGraphNode[], edges: HistoryGraphEdge[]): GraphData {
+  const positions = getStableGraphPositions(nodes, edges);
+
+  return {
+    nodes: nodes.map((node) => {
+      const position = positions.get(node.id) ?? { x: 0, y: 0 };
+
+      return {
+        ...node,
+        fx: position.x,
+        fy: position.y,
+        val: 2,
+        x: position.x,
+        y: position.y,
+      };
+    }),
+    links: edges.map((edge) => ({ ...edge })),
+  };
+}
+
 export function HistoryGraphCanvas({
   nodes,
   edges,
@@ -170,43 +288,88 @@ export function HistoryGraphCanvas({
 }: GraphCanvasProps) {
   const colors = useGraphColors();
   const graphRef = useRef<ForceGraphRef | undefined>(undefined);
+  const fitRafRef = useRef<number | null>(null);
+  const fitTimerRef = useRef<number | null>(null);
+  const repeatFitTimerRef = useRef<number | null>(null);
+  const revealTimerRef = useRef<number | null>(null);
+  const hasFittedRef = useRef(false);
+  const [hasFitted, setHasFitted] = useState(false);
   const { ref, width } = useElementWidth();
   const relatedNodeSet = useMemo(() => new Set(relatedNodeIds), [relatedNodeIds]);
   const showAllLabels = nodes.length <= 20;
-  const graphData: GraphData = useMemo(
-    () => ({
-      nodes: nodes.map((node) => ({
-        ...node,
-        val: 2,
-      })),
-      links: edges,
-    }),
-    [edges, nodes],
-  );
-  const fitGraph = useCallback(() => {
-    const run = () => {
-      graphRef.current?.zoomToFit(320, 28);
-    };
+  const graphData: GraphData = useMemo(() => getGraphData(nodes, edges), [edges, nodes]);
+  const clearScheduledFit = useCallback(() => {
+    if (fitRafRef.current !== null) {
+      window.cancelAnimationFrame(fitRafRef.current);
+      fitRafRef.current = null;
+    }
 
-    requestAnimationFrame(() => {
-      window.setTimeout(run, 80);
-    });
+    if (fitTimerRef.current !== null) {
+      window.clearTimeout(fitTimerRef.current);
+      fitTimerRef.current = null;
+    }
+
+    if (repeatFitTimerRef.current !== null) {
+      window.clearTimeout(repeatFitTimerRef.current);
+      repeatFitTimerRef.current = null;
+    }
+
+    if (revealTimerRef.current !== null) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
   }, []);
+  const fitGraph = useCallback(() => {
+    graphRef.current?.zoomToFit(FIT_DURATION_MS, 28);
+
+    if (hasFittedRef.current || revealTimerRef.current !== null) {
+      return;
+    }
+
+    revealTimerRef.current = window.setTimeout(() => {
+      revealTimerRef.current = null;
+      hasFittedRef.current = true;
+      setHasFitted(true);
+    }, FIT_REVEAL_DELAY_MS);
+  }, []);
+  const scheduleFitGraph = useCallback(
+    ({ delay = 120, repeat = false }: { delay?: number; repeat?: boolean } = {}) => {
+      clearScheduledFit();
+
+      fitRafRef.current = window.requestAnimationFrame(() => {
+        fitRafRef.current = null;
+        fitTimerRef.current = window.setTimeout(() => {
+          fitTimerRef.current = null;
+          fitGraph();
+
+          if (repeat) {
+            repeatFitTimerRef.current = window.setTimeout(() => {
+              repeatFitTimerRef.current = null;
+              fitGraph();
+            }, 720);
+          }
+        }, delay);
+      });
+    },
+    [clearScheduledFit, fitGraph],
+  );
 
   useEffect(() => {
     if (width <= 0 || graphData.nodes.length === 0) {
       return undefined;
     }
 
-    const timer = window.setTimeout(fitGraph, 120);
-    return () => window.clearTimeout(timer);
-  }, [fitGraph, graphData, width]);
+    hasFittedRef.current = false;
+    setHasFitted(false);
+    scheduleFitGraph({ delay: 180, repeat: true });
+    return clearScheduledFit;
+  }, [clearScheduledFit, graphData, scheduleFitGraph, width]);
 
   useEffect(() => {
-    const handlePageShow = () => fitGraph();
+    const handlePageShow = () => scheduleFitGraph({ delay: 180, repeat: true });
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        fitGraph();
+        scheduleFitGraph({ delay: 180, repeat: true });
       }
     };
 
@@ -217,47 +380,56 @@ export function HistoryGraphCanvas({
       window.removeEventListener("pageshow", handlePageShow);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [fitGraph]);
+  }, [scheduleFitGraph]);
 
   return (
     <section aria-label="지식 그래프">
       <div ref={ref} className="overflow-hidden rounded-card bg-graph-surface shadow-card">
         {width > 0 ? (
-          <ForceGraph2D
-            ref={graphRef}
-            backgroundColor={colors.surface}
-            cooldownTicks={80}
-            enableNodeDrag={false}
-            enablePanInteraction
-            enableZoomInteraction
-            graphData={graphData}
-            height={320}
-            linkDirectionalArrowLength={4}
-            linkDirectionalArrowRelPos={0.96}
-            linkWidth={(link) => {
-              const source = getLinkNodeId(link.source);
-              const target = getLinkNodeId(link.target);
-              return source === selectedNodeId || target === selectedNodeId ? 2.5 : 1.4;
-            }}
-            linkColor={(link) => {
-              const source = getLinkNodeId(link.source);
-              const target = getLinkNodeId(link.target);
-              return source === selectedNodeId || target === selectedNodeId
-                ? colors.mastered
-                : colors.edge;
-            }}
-            nodeCanvasObject={(node, ctx, scale) =>
-              drawNode(node, ctx, scale, colors, selectedNodeId, relatedNodeSet, showAllLabels)
+          <div
+            className={
+              hasFitted
+                ? "opacity-100 motion-safe:transition-opacity motion-safe:duration-200"
+                : "opacity-0"
             }
-            nodePointerAreaPaint={drawPointerArea}
-            onNodeClick={(node) => {
-              if (node.id) {
-                onSelectNode(String(node.id));
+          >
+            <ForceGraph2D
+              ref={graphRef}
+              backgroundColor={colors.surface}
+              cooldownTicks={20}
+              enableNodeDrag={false}
+              enablePanInteraction
+              enableZoomInteraction
+              graphData={graphData}
+              height={320}
+              linkDirectionalArrowLength={4}
+              linkDirectionalArrowRelPos={0.96}
+              linkWidth={(link) => {
+                const source = getLinkNodeId(link.source);
+                const target = getLinkNodeId(link.target);
+                return source === selectedNodeId || target === selectedNodeId ? 2.5 : 1.4;
+              }}
+              linkColor={(link) => {
+                const source = getLinkNodeId(link.source);
+                const target = getLinkNodeId(link.target);
+                return source === selectedNodeId || target === selectedNodeId
+                  ? colors.mastered
+                  : colors.edge;
+              }}
+              nodeCanvasObject={(node, ctx, scale) =>
+                drawNode(node, ctx, scale, colors, selectedNodeId, relatedNodeSet, showAllLabels)
               }
-            }}
-            showPointerCursor
-            width={width}
-          />
+              nodePointerAreaPaint={drawPointerArea}
+              onEngineStop={() => scheduleFitGraph({ delay: 0 })}
+              onNodeClick={(node) => {
+                if (node.id) {
+                  onSelectNode(String(node.id));
+                }
+              }}
+              showPointerCursor
+              width={width}
+            />
+          </div>
         ) : null}
       </div>
     </section>

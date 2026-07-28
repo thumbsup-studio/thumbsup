@@ -10,6 +10,10 @@ export type HistoryGraphNode = {
   learnedAt: string | null;
   category: string;
   relatedSteps: HistoryGraphRelatedStep[];
+  position?: {
+    x: number;
+    y: number;
+  };
 };
 
 export type HistoryGraphEdge = {
