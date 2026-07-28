@@ -1,8 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { type ComponentType, useEffect, useMemo, useRef, useState } from "react";
-import type { ForceGraphProps, NodeObject } from "react-force-graph-2d";
+import {
+  type ComponentType,
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { ForceGraphMethods, ForceGraphProps, NodeObject } from "react-force-graph-2d";
 import type { HistoryGraphEdge, HistoryGraphNode } from "../types";
 
 type GraphCanvasProps = {
@@ -19,6 +27,10 @@ type GraphData = {
   nodes: RenderNode[];
   links: RenderLink[];
 };
+type ForceGraphRef = ForceGraphMethods<RenderNode, RenderLink>;
+type ForceGraphComponentProps = ForceGraphProps<RenderNode, RenderLink> & {
+  ref?: MutableRefObject<ForceGraphRef | undefined>;
+};
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
@@ -27,7 +39,7 @@ const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
       그래프 엔진을 준비하는 중
     </div>
   ),
-}) as ComponentType<ForceGraphProps<RenderNode, RenderLink>>;
+}) as ComponentType<ForceGraphComponentProps>;
 
 function getCssToken(name: string) {
   if (typeof window === "undefined") {
@@ -95,6 +107,7 @@ function drawNode(
   colors: ReturnType<typeof useGraphColors>,
   selectedNodeId: string,
   relatedNodeIds: Set<string>,
+  showAllLabels: boolean,
 ) {
   const label = node.label;
   const nodeId = node.id ? String(node.id) : "";
@@ -113,6 +126,10 @@ function drawNode(
   ctx.lineWidth = selected ? 2.5 : 1.2;
   ctx.strokeStyle = stroke;
   ctx.stroke();
+
+  if (!showAllLabels && !selected && !related) {
+    return;
+  }
 
   const fontSize = Math.max(7, selected ? 10 / globalScale : 8.5 / globalScale);
   ctx.font = `600 ${fontSize}px sans-serif`;
@@ -152,8 +169,10 @@ export function HistoryGraphCanvas({
   onSelectNode,
 }: GraphCanvasProps) {
   const colors = useGraphColors();
+  const graphRef = useRef<ForceGraphRef | undefined>(undefined);
   const { ref, width } = useElementWidth();
   const relatedNodeSet = useMemo(() => new Set(relatedNodeIds), [relatedNodeIds]);
+  const showAllLabels = nodes.length <= 20;
   const graphData: GraphData = useMemo(
     () => ({
       nodes: nodes.map((node) => ({
@@ -164,17 +183,53 @@ export function HistoryGraphCanvas({
     }),
     [edges, nodes],
   );
+  const fitGraph = useCallback(() => {
+    const run = () => {
+      graphRef.current?.zoomToFit(320, 28);
+    };
+
+    requestAnimationFrame(() => {
+      window.setTimeout(run, 80);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (width <= 0 || graphData.nodes.length === 0) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(fitGraph, 120);
+    return () => window.clearTimeout(timer);
+  }, [fitGraph, graphData, width]);
+
+  useEffect(() => {
+    const handlePageShow = () => fitGraph();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fitGraph();
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fitGraph]);
 
   return (
     <section aria-label="지식 그래프">
       <div ref={ref} className="overflow-hidden rounded-card bg-graph-surface shadow-card">
         {width > 0 ? (
           <ForceGraph2D
+            ref={graphRef}
             backgroundColor={colors.surface}
             cooldownTicks={80}
             enableNodeDrag={false}
-            enablePanInteraction={false}
-            enableZoomInteraction={false}
+            enablePanInteraction
+            enableZoomInteraction
             graphData={graphData}
             height={320}
             linkDirectionalArrowLength={4}
@@ -192,7 +247,7 @@ export function HistoryGraphCanvas({
                 : colors.edge;
             }}
             nodeCanvasObject={(node, ctx, scale) =>
-              drawNode(node, ctx, scale, colors, selectedNodeId, relatedNodeSet)
+              drawNode(node, ctx, scale, colors, selectedNodeId, relatedNodeSet, showAllLabels)
             }
             nodePointerAreaPaint={drawPointerArea}
             onNodeClick={(node) => {
