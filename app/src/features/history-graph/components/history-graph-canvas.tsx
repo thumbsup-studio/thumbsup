@@ -87,7 +87,7 @@ function useGraphColors() {
 
 function useElementWidth() {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(360);
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
     const element = ref.current;
@@ -95,7 +95,7 @@ function useElementWidth() {
       return undefined;
     }
 
-    const update = () => setWidth(Math.max(320, Math.round(element.getBoundingClientRect().width)));
+    const update = () => setWidth(Math.round(element.getBoundingClientRect().width));
     update();
 
     const observer = new ResizeObserver(update);

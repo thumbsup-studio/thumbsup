@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HistoryGraphPage } from "@/features/history-graph/components/history-graph-page";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
@@ -35,11 +35,29 @@ function renderPage() {
 }
 
 describe("HistoryGraphPage", () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      bottom: 320,
+      height: 320,
+      left: 0,
+      right: 360,
+      toJSON: () => ({}),
+      top: 0,
+      width: 360,
+      x: 0,
+      y: 0,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders the graph canvas and the default concept detail", async () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "지식 그래프" })).toBeInTheDocument();
-    expect(screen.getByTestId("force-graph")).toBeInTheDocument();
+    expect(await screen.findByTestId("force-graph")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "프로세스" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /프로세스와 스레드/ })).toHaveAttribute(
       "href",
