@@ -14,4 +14,5 @@ export const qaRoutes: QaRoute[] = [
   { path: "/login", design: "e2e/designs/login.png" },
   { path: "/signup", design: "e2e/designs/signup.png" },
   { path: "/history", design: "e2e/designs/history.png" },
+  { path: "/history/graph", design: null },
 ];
