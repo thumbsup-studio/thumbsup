@@ -14,10 +14,13 @@ description: 백엔드 개발자가 app/(Next.js) 프론트 작업을 맡을 때
 ```bash
 cd app && pnpm install
 pnpm dev         # http://localhost:3000
+
+# 별도 터미널에서 (dev가 포그라운드를 점유):
 pnpm storybook   # http://localhost:6006 — 공통 컴포넌트 카탈로그(뭐가 있는지 먼저 본다)
 ```
 
 - **백엔드 서버는 띄울 필요 없다.** `NEXT_PUBLIC_API_URL` 미설정 시 클라이언트가 prod API(`https://thumbsup-api.duckdns.org`)로 폴백하고, 서버 CORS가 `localhost:3000`을 허용한다. 서버부터 기동하려는 습관은 여기선 불필요 — 로컬 서버에 붙일 때만 `.env.local` 설정(`frontend-api` 스킬 참조).
+- ⚠️ **그 폴백은 진짜 운영 API·운영 DB다.** 회원가입·쓰기 요청이 실데이터로 남는다 — 개발용 더미 계정만 쓰고 실명·실이메일을 넣지 말 것. 삭제·수정 같은 쓰기 동작을 반복 테스트할 땐 로컬 서버를 띄워서(`thumbsup-local-server` 스킬) 한다.
 - **git worktree라면 그 worktree 안에서 `pnpm install`부터.** 다른 체크아웃의 `node_modules`를 심링크로 끌어오면 Turbopack이 패닉해 빌드가 깨진다.
 - API 대부분이 Bearer 인증 — 개발용 계정이 없으면 앱에서 회원가입해 하나 만들어 둔다.
 
@@ -57,17 +60,19 @@ pnpm storybook   # http://localhost:6006 — 공통 컴포넌트 카탈로그(�
 
 ## 백엔드 습관이 일으키는 함정
 
-- **`fetch()` 직접 호출 금지** → `src/lib/api`의 `apiRequest()`만. envelope 언랩·Bearer 부착·`TOKEN_EXPIRED` 재발급이 전부 내장. 경로에 `/api/v1` 접두사도 붙이지 않는다(클라이언트가 붙임).
-- **CSS 파일 생성·`style={{}}` 금지** → Tailwind v4, `globals.css @theme` 토큰 유틸리티만(`design-system` 스킬). raw hex·arbitrary value는 `check:design`이 커밋을 막는다.
-- **`userId`를 쿼리/바디로 보내지 않는다** — 서버가 토큰에서 식별한다(IDOR 방지).
-- **`'use client'` 남발 금지** — Server Component가 기본, 상호작용 최소 단위에만(`next-best-practices`).
-- **엔드포인트 존재 여부의 정본은 Swagger UI(`/swagger-ui.html`)·서버 컨트롤러 코드다.** 스킬·문서 속 엔드포인트 표는 낡을 수 있다 — 표만 믿고 "없다"고 단정하지 말 것.
+각 항목의 세부 규칙은 여기 다시 쓰지 않는다 — 함정의 존재만 알리고, 정본 스킬에서 확인한다.
+
+- **`fetch()` 직접 호출 금지** — `src/lib/api`의 `apiRequest()`만 쓴다. 인증·응답 처리 규칙의 정본은 `frontend-api`.
+- **CSS 파일 생성·`style={{}}` 금지** — 토큰 유틸리티만 허용되고 `check:design` 게이트가 강제한다. 스타일 규칙의 정본은 `design-system`.
+- **`userId`를 쿼리/바디로 보내지 않는다** — 서버가 토큰에서 식별한다(상세는 `frontend-api`).
+- **`'use client'` 남발 금지** — Server Component가 기본(`next-best-practices`).
+- **엔드포인트 존재 여부의 정본은 Swagger UI·서버 컨트롤러 코드** — 스킬·문서 속 엔드포인트 표는 낡을 수 있다. 표만 믿고 "없다"고 단정하지 말 것.
 
 ## 막힐 때
 
 | 증상 | 먼저 확인할 것 |
 |---|---|
-| API가 401 | 로그인 상태·토큰. 재발급 실패면 로그인 화면행이 정상 동작 |
+| API가 401 | 로그인 상태·토큰. 재발급까지 실패했다면 로그인 화면으로 이동하는 것이 정상 동작 |
 | CORS 에러 | origin이 `localhost:3000`인지, `.env.local` 값 끝 슬래시(더블 슬래시 유발) |
 | 빌드가 Turbopack 패닉 | worktree에서 심링크 `node_modules` 쓰지 않았는지 — 그 자리에서 `pnpm install` |
 | `check:design` 실패 | raw hex·arbitrary value·스토리 누락(`design-system` 스킬) |
