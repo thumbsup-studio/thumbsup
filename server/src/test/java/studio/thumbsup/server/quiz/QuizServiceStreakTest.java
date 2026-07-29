@@ -17,12 +17,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
+import studio.thumbsup.server.common.event.QuizStepCompletedEvent;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 
 /**
- * 정답 제출 시 스트릭(연속 학습) 기록 요청 여부를 검증한다 — 스텝을 처음 완료했을 때만 오늘(KST) 날짜로 기록을 요청하는가.
+ * 정답 제출 시 스트릭(연속 학습) 기록 이벤트 발행 여부를 검증한다 — 스텝을 처음 완료했을 때만 오늘(KST) 날짜로 이벤트를 발행하는가.
  * 같은 서비스를 다루지만 {@code QuizServiceTest}에서 분리했다(checkstyle 파일 길이 상한 400줄).
  */
 @ExtendWith(MockitoExtension.class)
@@ -44,7 +46,7 @@ class QuizServiceStreakTest {
     private QuizProgressRepository quizProgressRepository;
 
     @Mock
-    private UserProgressService userProgressService;
+    private ApplicationEventPublisher eventPublisher;
 
     private QuizService quizService;
 
@@ -60,7 +62,7 @@ class QuizServiceStreakTest {
                 quizStepRepository,
                 quizAttemptRepository,
                 quizProgressRepository,
-                userProgressService,
+                eventPublisher,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -103,7 +105,7 @@ class QuizServiceStreakTest {
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
-            verify(userProgressService).recordStepCompletion(USER_ID, TODAY_KST);
+            verify(eventPublisher).publishEvent(new QuizStepCompletedEvent(USER_ID, TODAY_KST));
         }
 
         @Test
@@ -124,7 +126,7 @@ class QuizServiceStreakTest {
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
-            verify(userProgressService, never()).recordStepCompletion(any(), any());
+            verify(eventPublisher, never()).publishEvent(any(QuizStepCompletedEvent.class));
         }
 
         @Test
@@ -153,7 +155,7 @@ class QuizServiceStreakTest {
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
             verify(quizProgressRepository, never()).save(any());
-            verify(userProgressService, never()).recordStepCompletion(any(), any());
+            verify(eventPublisher, never()).publishEvent(any(QuizStepCompletedEvent.class));
         }
     }
 }

@@ -8,10 +8,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import studio.thumbsup.server.common.event.QuizStepCompletedEvent;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.time.TimeZones;
 import studio.thumbsup.server.quiz.course.Course;
@@ -42,7 +44,7 @@ public class QuizService {
     private final QuizStepRepository quizStepRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizProgressRepository quizProgressRepository;
-    private final UserProgressService userProgressService;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     public QuizService(
@@ -51,14 +53,14 @@ public class QuizService {
             QuizStepRepository quizStepRepository,
             QuizAttemptRepository quizAttemptRepository,
             QuizProgressRepository quizProgressRepository,
-            UserProgressService userProgressService,
+            ApplicationEventPublisher eventPublisher,
             Clock clock) {
         this.quizRepository = quizRepository;
         this.courseRepository = courseRepository;
         this.quizStepRepository = quizStepRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.quizProgressRepository = quizProgressRepository;
-        this.userProgressService = userProgressService;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
     }
 
@@ -300,6 +302,10 @@ public class QuizService {
      * 최신 시도 이력을 다시 읽는다. 격리 수준을 READ_COMMITTED로 낮춘 이유도 이것과 짝을 이룬다 —
      * 기본 REPEATABLE READ에서는 트랜잭션 최초 조회 시점의 스냅샷이 고정되어, 락을 기다렸다 얻은
      * 뒤에도 그 사이 다른 트랜잭션이 커밋한 시도 이력을 못 볼 수 있다.
+     *
+     * <p>스트릭·포인트 갱신은 {@code QuizStepCompletedEvent}를 publish해 {@code user} 도메인에
+     * 위임한다 — 이 트랜잭션이 커밋된 뒤 별도 트랜잭션으로 처리되어(AFTER_COMMIT), 스트릭 갱신이
+     * 실패해도 방금 저장한 퀴즈 풀이·진행 상태는 롤백되지 않는다.
      */
     private void advanceProgressIfStepCompleted(Long userId, Long courseId, int stepOrder) {
         QuizProgress progress = lockOrCreateProgress(userId, courseId);
@@ -316,7 +322,8 @@ public class QuizService {
         if (progress.getCurrentStepOrder() == stepOrder) {
             progress.advanceToNextStep();
             quizProgressRepository.save(progress);
-            userProgressService.recordStepCompletion(userId, LocalDate.now(clock.withZone(TimeZones.KST)));
+            eventPublisher.publishEvent(
+                    new QuizStepCompletedEvent(userId, LocalDate.now(clock.withZone(TimeZones.KST))));
         }
     }
 

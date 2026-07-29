@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
@@ -37,7 +38,7 @@ class QuizStepHistoryServiceTest {
     private QuizProgressRepository quizProgressRepository;
 
     @Mock
-    private UserProgressService userProgressService;
+    private ApplicationEventPublisher eventPublisher;
 
     private static final Long USER_ID = 1L;
     private static final Long COURSE_ID = 1L;
@@ -49,7 +50,7 @@ class QuizStepHistoryServiceTest {
                 quizStepRepository,
                 quizAttemptRepository,
                 quizProgressRepository,
-                userProgressService,
+                eventPublisher,
                 Clock.fixed(Instant.parse("2026-07-11T00:00:00Z"), ZoneOffset.UTC));
     }
 
