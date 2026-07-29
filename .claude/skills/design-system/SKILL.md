@@ -17,7 +17,7 @@ UI 작업 전 이 규칙을 따른다. 상세는 `app/DESIGN.md`, 토큰은 `app
 - **토큰만 사용.** `bg-primary`·`rounded-card`·`shadow-hero`·`text-ink` 등 이름 유틸리티로만. `bg-[#...]`·`rounded-[36px]`·raw hex 금지.
 - **새 스타일이 필요하면 토큰을 먼저 추가.** globals.css `@theme`에 이름을 정의하고 그 이름을 쓴다.
 - **컴포넌트는 components/ui에서.** 화면은 `src/components/ui/`의 Button·Card·Chip·BottomTabBar·Feedback·Progress·Skeleton·EmptyState를 조립. 없는 것만 새로 만들되, **만들면 `<name>.stories.tsx`를 함께** 작성(게이트가 강제).
-- **시안에 없는 상태**(에러·빈·로딩·오프라인·"준비중")는 감으로 짓지 말고 `lazyweb-quick-search`로 실서비스 레퍼런스 확보 후 디자인.
+- **시안에 없는 상태**(에러·빈·로딩·오프라인·"준비중")는 감으로 짓지 말고 실서비스 레퍼런스(웹 리서치·유사 앱 스크린샷)를 확보 후 디자인.
 - **접근성**: 터치 타깃 ≥44px, 본문 대비 ≥4.5:1, 색만으로 상태 구분 금지(아이콘·텍스트 병행), 모션은 `motion-safe:`/`prefers-reduced-motion` 대응.
 - **불가피한 예외**: 그 한 줄에 `// design-ok` 주석.
 
