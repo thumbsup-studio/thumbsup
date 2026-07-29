@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.HomeResponse;
 
 @ExtendWith(MockitoExtension.class)

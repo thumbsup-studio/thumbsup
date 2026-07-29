@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.time.TimeZones;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.HomeResponse;
 
 /**

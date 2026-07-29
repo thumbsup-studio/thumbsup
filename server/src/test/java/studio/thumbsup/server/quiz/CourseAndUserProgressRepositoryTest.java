@@ -22,6 +22,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.config.ClockConfig;
 import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 
 /**
  * Repository 통합 테스트 — 실제 MySQL(Testcontainers)에 Flyway 마이그레이션을 적용해

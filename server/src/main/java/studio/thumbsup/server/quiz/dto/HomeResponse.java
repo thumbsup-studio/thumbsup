@@ -1,7 +1,7 @@
 package studio.thumbsup.server.quiz.dto;
 
-import studio.thumbsup.server.quiz.Course;
 import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.course.Course;
 
 /**
  * 홈 화면 조회 응답 — 스트릭·포인트·오늘의 학습 진입점을 한 번에 담는다.

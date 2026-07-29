@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
 /** QuizService#getCompletedSteps 단위 테스트 — QuizServiceTest와 분리(Checkstyle FileLength). */

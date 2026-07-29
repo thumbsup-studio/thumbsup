@@ -14,9 +14,9 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import studio.thumbsup.server.common.exception.BusinessException;
-import studio.thumbsup.server.quiz.Course;
-import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.LearningErrorType;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 
 /**
  * 문제 생성 파이프라인의 CLI 진입점(#26). 비용이 드는 LLM 호출이라 상시 HTTP 엔드포인트로 열지 않고,

@@ -3,6 +3,7 @@ package studio.thumbsup.server.quiz;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.test.util.ReflectionTestUtils;
+import studio.thumbsup.server.quiz.course.Course;
 
 /** 퀴즈 테스트 픽스처 — feature 소유. 영속화 전 완전한 aggregate를 만들어 반환한다. */
 public final class QuizFixture {
