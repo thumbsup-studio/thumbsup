@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.quiz.course.Course;
@@ -55,7 +56,7 @@ class QuizExplanationServiceTest {
     private QuizProgressRepository quizProgressRepository;
 
     @Mock
-    private UserProgressService userProgressService;
+    private ApplicationEventPublisher eventPublisher;
 
     private QuizService service() {
         return new QuizService(
@@ -64,7 +65,7 @@ class QuizExplanationServiceTest {
                 quizStepRepository,
                 quizAttemptRepository,
                 quizProgressRepository,
-                userProgressService,
+                eventPublisher,
                 Clock.fixed(Instant.parse("2026-07-11T00:00:00Z"), ZoneOffset.UTC));
     }
 

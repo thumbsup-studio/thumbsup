@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
@@ -44,7 +45,7 @@ class QuizServiceRetryHintTest {
     private QuizProgressRepository quizProgressRepository;
 
     @Mock
-    private UserProgressService userProgressService;
+    private ApplicationEventPublisher eventPublisher;
 
     private static final Long USER_ID = 1L;
     private static final Long COURSE_ID = 1L;
@@ -63,7 +64,7 @@ class QuizServiceRetryHintTest {
                 quizStepRepository,
                 quizAttemptRepository,
                 quizProgressRepository,
-                userProgressService,
+                eventPublisher,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

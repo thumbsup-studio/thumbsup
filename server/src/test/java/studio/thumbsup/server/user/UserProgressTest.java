@@ -1,4 +1,4 @@
-package studio.thumbsup.server.quiz;
+package studio.thumbsup.server.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

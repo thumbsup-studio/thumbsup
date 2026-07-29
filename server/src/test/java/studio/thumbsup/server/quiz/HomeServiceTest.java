@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.common.user.UserProgressPort;
+import studio.thumbsup.server.common.user.UserProgressSnapshot;
 import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.HomeResponse;
@@ -33,7 +35,7 @@ class HomeServiceTest {
     private QuizProgressRepository quizProgressRepository;
 
     @Mock
-    private UserProgressRepository userProgressRepository;
+    private UserProgressPort userProgressPort;
 
     private HomeService homeService;
 
@@ -47,7 +49,7 @@ class HomeServiceTest {
                 courseRepository,
                 quizStepRepository,
                 quizProgressRepository,
-                userProgressRepository,
+                userProgressPort,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -70,8 +72,7 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progressAtStep(2)));
-            given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(new UserProgressSnapshot(5, 320, true));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);
@@ -94,7 +95,7 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.empty());
-            given(userProgressRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(UserProgressSnapshot.empty());
             given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(step(1, "배열과 리스트", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);
@@ -117,8 +118,8 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progressAtStep(99)));
-            given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 10, 1000, TODAY_KST)));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST))
+                    .willReturn(new UserProgressSnapshot(10, 1000, true));
             given(quizStepRepository.findByStepOrder(3)).willReturn(Optional.of(step(3, "해시 테이블", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);
@@ -138,8 +139,7 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progressAtStep(3)));
-            given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(new UserProgressSnapshot(5, 320, true));
             given(quizStepRepository.findByStepOrder(3)).willReturn(Optional.of(step(3, "해시 테이블", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);
@@ -158,8 +158,7 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progressAtStep(2)));
-            given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST)));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(new UserProgressSnapshot(5, 320, true));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);
@@ -178,8 +177,7 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progressAtStep(2)));
-            given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 5, 320, TODAY_KST.minusDays(1))));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(new UserProgressSnapshot(5, 320, false));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);
@@ -189,7 +187,7 @@ class HomeServiceTest {
         }
 
         @Test
-        @DisplayName("이틀 이상 스트릭이 끊겼으면 streakDays를 0으로 보여준다(DB 값은 그대로 둔다)")
+        @DisplayName("포트가 이틀 이상 끊긴 스트릭을 0으로 계산해 주면 그 값을 그대로 보여준다")
         void returns_zero_streak_when_stale() {
             homeService = service();
             Course course = QuizFixture.course(COURSE_ID);
@@ -199,8 +197,7 @@ class HomeServiceTest {
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(3));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progressAtStep(2)));
-            given(userProgressRepository.findByUserId(USER_ID))
-                    .willReturn(Optional.of(QuizFixture.userProgress(1L, USER_ID, 7, 320, TODAY_KST.minusDays(3))));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(new UserProgressSnapshot(0, 320, false));
             given(quizStepRepository.findByStepOrder(2)).willReturn(Optional.of(step(2, "스택과 큐", 3)));
 
             HomeResponse response = homeService.getHome(USER_ID, null);

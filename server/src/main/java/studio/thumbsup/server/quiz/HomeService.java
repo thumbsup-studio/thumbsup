@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.time.TimeZones;
+import studio.thumbsup.server.common.user.UserProgressPort;
+import studio.thumbsup.server.common.user.UserProgressSnapshot;
 import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.HomeResponse;
@@ -26,19 +28,19 @@ public class HomeService {
     private final CourseRepository courseRepository;
     private final QuizStepRepository quizStepRepository;
     private final QuizProgressRepository quizProgressRepository;
-    private final UserProgressRepository userProgressRepository;
+    private final UserProgressPort userProgressPort;
     private final Clock clock;
 
     public HomeService(
             CourseRepository courseRepository,
             QuizStepRepository quizStepRepository,
             QuizProgressRepository quizProgressRepository,
-            UserProgressRepository userProgressRepository,
+            UserProgressPort userProgressPort,
             Clock clock) {
         this.courseRepository = courseRepository;
         this.quizStepRepository = quizStepRepository;
         this.quizProgressRepository = quizProgressRepository;
-        this.userProgressRepository = userProgressRepository;
+        this.userProgressPort = userProgressPort;
         this.clock = clock;
     }
 
@@ -50,7 +52,7 @@ public class HomeService {
      * 코스 선택 UI가 아직 없는 앱이 courseId 없이 호출해도 기존과 동일하게 동작한다.
      *
      * <p>스트릭·완료 플래그는 배치 없이 이 조회 시점에 KST 기준 오늘 날짜로 그때그때 계산한다
-     * ({@link UserProgress#getEffectiveStreak}) — 이틀 이상 건너뛴 스트릭은 DB를 갱신하지 않고
+     * ({@link UserProgressPort#getSnapshot}) — 이틀 이상 건너뛴 스트릭은 DB를 갱신하지 않고
      * 응답에서만 0으로 보여준다.
      */
     public HomeResponse getHome(Long userId, Long courseId) {
@@ -70,12 +72,11 @@ public class HomeService {
                 .orElseThrow(() -> new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
 
         LocalDate todayKst = LocalDate.now(clock.withZone(TimeZones.KST));
-        UserProgress progress = userProgressRepository.findByUserId(userId).orElse(null);
-        int streak = progress == null ? 0 : progress.getEffectiveStreak(todayKst);
-        int points = progress == null ? 0 : progress.getPoints();
-        boolean todayCompleted = progress != null && todayKst.equals(progress.getLastCompletedDate());
+        UserProgressSnapshot progress = userProgressPort.getSnapshot(userId, todayKst);
 
-        return HomeResponse.from(streak, points, todayCompleted, course, step, minStepOrder, (int) totalCount);
+        return HomeResponse.from(
+                progress.streak(), progress.points(), progress.todayCompleted(), course, step, minStepOrder, (int)
+                        totalCount);
     }
 
     /** courseId가 지정돼 있으면 그 코스를, 없으면 기본 코스(가장 먼저 생성된 코스)를 가져온다. */
