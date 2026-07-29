@@ -2,6 +2,7 @@ package studio.thumbsup.server.user;
 
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.user.UserProgressPort;
 import studio.thumbsup.server.common.user.UserProgressSnapshot;
@@ -20,7 +21,12 @@ public class UserProgressService implements UserProgressPort {
         this.userProgressRepository = userProgressRepository;
     }
 
-    @Transactional
+    /**
+     * {@code AFTER_COMMIT} 시점엔 원본 트랜잭션의 {@code EntityManagerHolder}가 아직 스레드에 바인딩된
+     * 채라(Spring의 자원 unbind는 afterCommit 콜백 이후 실행됨) 기본 {@code REQUIRED}로는 그 트랜잭션에
+     * 참여만 하고 새로 커밋되지 않는다 — {@code REQUIRES_NEW}로 별도 트랜잭션을 강제한다.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordStepCompletion(Long userId, LocalDate today) {
         UserProgress progress =
                 userProgressRepository.findByUserId(userId).orElseGet(() -> UserProgress.create(userId, 0, 0));
