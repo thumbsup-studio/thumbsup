@@ -16,13 +16,13 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.DatabaseCleanUp;
-import studio.thumbsup.server.quiz.Course;
-import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizFixture;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 

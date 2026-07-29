@@ -4,8 +4,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
-import studio.thumbsup.server.quiz.Course;
-import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.FollowUpBlockType;
 import studio.thumbsup.server.quiz.LearningErrorType;
 import studio.thumbsup.server.quiz.Quiz;
@@ -14,6 +12,8 @@ import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.QuizType;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 
 /**
  * 검증을 마친 생성 결과를 DB에 저장한다(#26). {@link QuizGenerationService}에서 분리한 이유는

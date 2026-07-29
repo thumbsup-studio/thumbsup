@@ -1,4 +1,4 @@
-package studio.thumbsup.server.quiz;
+package studio.thumbsup.server.quiz.course;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

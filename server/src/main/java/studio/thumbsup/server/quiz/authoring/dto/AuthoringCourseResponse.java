@@ -1,6 +1,6 @@
 package studio.thumbsup.server.quiz.authoring.dto;
 
-import studio.thumbsup.server.quiz.Course;
+import studio.thumbsup.server.quiz.course.Course;
 
 public record AuthoringCourseResponse(Long courseId, String title, String category) {
 

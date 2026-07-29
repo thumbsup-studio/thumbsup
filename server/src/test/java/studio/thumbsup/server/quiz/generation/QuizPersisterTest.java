@@ -14,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.FollowUpBlockType;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizChoice;
@@ -26,6 +25,7 @@ import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.QuizType;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 
 @ExtendWith(MockitoExtension.class)
 class QuizPersisterTest {

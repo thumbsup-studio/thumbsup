@@ -9,8 +9,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
-import studio.thumbsup.server.quiz.Course;
-import studio.thumbsup.server.quiz.CourseRepository;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
@@ -20,6 +18,8 @@ import studio.thumbsup.server.quiz.authoring.dto.AuthoringCourseListResponse;
 import studio.thumbsup.server.quiz.authoring.dto.AuthoringCourseResponse;
 import studio.thumbsup.server.quiz.authoring.dto.AuthoringDetailedQuizResponse;
 import studio.thumbsup.server.quiz.authoring.dto.AuthoringDetailedStepResponse;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 
 /**
  * 코스 인덱스·코스별 라이브 문제 상세 조회(#182). 라이브 문제의 전체 상세를 읽기 전용으로 훑는 용도라
