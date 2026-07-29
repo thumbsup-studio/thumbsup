@@ -56,6 +56,9 @@ public class UserProgress extends BaseEntity {
      * 두 번 오르지 않는다. 어제까지 이어졌으면 +1, 하루라도 건너뛰었으면 1로 리셋한다.
      */
     public void recordCompletion(LocalDate today) {
+        if (lastCompletedDate != null && today.isBefore(lastCompletedDate)) {
+            return;
+        }
         if (today.equals(lastCompletedDate)) {
             return;
         }
