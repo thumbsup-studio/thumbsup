@@ -1,5 +1,6 @@
 package studio.thumbsup.server.quiz;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 public interface QuizStepRepository extends JpaRepository<QuizStep, Long> {
 
     Optional<QuizStep> findByStepOrder(int stepOrder);
+
+    /** 코스 목록 조회(#247) — 여러 코스의 스텝을 한 번에 가져와 코스별로 묶기 좋게 정렬해 반환한다. */
+    List<QuizStep> findByCourseIdInOrderByCourseIdAscStepOrderAsc(Collection<Long> courseIds);
 
     /** 완료한 스텝 이력 조회용 — startInclusive > endInclusive면(완료한 스텝 없음) 빈 목록을 반환한다. */
     List<QuizStep> findByStepOrderBetweenOrderByStepOrderAsc(int startInclusive, int endInclusive);
