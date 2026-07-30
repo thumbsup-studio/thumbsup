@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-type TabKey = "home" | "history" | "profile";
+type TabKey = "home" | "history" | "course" | "profile";
 
 type AppTabBarProps = {
   activeTab: TabKey;
@@ -18,6 +18,10 @@ const tabIcons: Record<TabKey, { empty: string; full: string }> = {
     empty: "/icons/tabs/history-empty.png",
     full: "/icons/tabs/history-full.png",
   },
+  course: {
+    empty: "/icons/tabs/course-empty.png",
+    full: "/icons/tabs/course-full.png",
+  },
   profile: {
     empty: "/icons/tabs/profile-empty.png",
     full: "/icons/tabs/profile-full.png",
@@ -27,6 +31,7 @@ const tabIcons: Record<TabKey, { empty: string; full: string }> = {
 const tabItems: { key: TabKey; label: string }[] = [
   { key: "home", label: "홈" },
   { key: "history", label: "히스토리" },
+  // { key: "course", label: "코스" },
   { key: "profile", label: "프로필" },
 ];
 
@@ -61,7 +66,7 @@ function getTabClassName(isActive: boolean) {
 }
 
 /**
- * 앱 하단 탭 내비게이션 — 홈·히스토리·프로필. 라우팅을 내부화해 화면이
+ * 앱 하단 탭 내비게이션 — 홈·히스토리·코스·프로필. 라우팅을 내부화해 화면이
  * `activeTab`만 넘기면 어디서든 동일하게 렌더/이동한다.
  */
 export function AppTabBar({ activeTab }: AppTabBarProps) {
@@ -79,6 +84,11 @@ export function AppTabBar({ activeTab }: AppTabBarProps) {
 
     if (key === "history") {
       router.push("/history");
+      return;
+    }
+
+    if (key === "course") {
+      router.push("/course");
       return;
     }
 
