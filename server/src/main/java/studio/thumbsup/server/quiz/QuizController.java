@@ -15,6 +15,7 @@ import studio.thumbsup.server.common.response.ApiResponse;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
+import studio.thumbsup.server.quiz.dto.QuizHintResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
@@ -69,6 +70,24 @@ public class QuizController {
     public ApiResponse<QuizNextResponse> getStepQuiz(
             @AuthenticationPrincipal Long userId, @PathVariable int stepOrder, @PathVariable int slotOrder) {
         return ApiResponse.success(quizService.getStepQuiz(userId, stepOrder, slotOrder));
+    }
+
+    @Operation(
+            summary = "풀이 중 힌트 요청",
+            description = "정답 제출 전에 사용자가 직접 요청한 문제별 한 문장 힌트를 반환한다. " + "힌트 요청은 채점·진행도·오답 재도전 상태를 변경하지 않는다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "힌트 조회 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404",
+            description = "code=QUIZ_NOT_FOUND — 존재하지 않는 퀴즈")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "code=QUIZ_NOT_ACCESSIBLE — 아직 진행하지 않은 미래 스텝")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "409",
+            description = "code=QUIZ_HINT_NOT_AVAILABLE — 힌트 데이터가 아직 준비되지 않음")
+    @PostMapping("/{quizId}/hints")
+    public ApiResponse<QuizHintResponse> getHint(@AuthenticationPrincipal Long userId, @PathVariable Long quizId) {
+        return ApiResponse.success(quizService.getHint(userId, quizId));
     }
 
     @Operation(

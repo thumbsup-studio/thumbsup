@@ -45,6 +45,7 @@ public final class GeneratedQuizJsonFixture {
                   "type": "%s",
                   "difficulty": "%s",
                   "questionText": "%s",
+                  "hint": "핵심 개념이 맡는 역할과 적용 조건을 떠올려 보세요.",
                   "codeSnippet": null,
                   "explanationSummary": "[[PCB]]는 핵심 요약 1줄.\\n핵심 요약 2줄.\\n핵심 요약 3줄.",
                   "explanationExample": null,

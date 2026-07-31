@@ -50,6 +50,10 @@ public class Quiz extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String codeSnippet;
 
+    /** 정답 제출 전에 사용자가 요청해 보는 한 문장 힌트. 정답·선택지 라벨을 직접 노출하지 않는다(#193). */
+    @Column(columnDefinition = "TEXT")
+    private String hint;
+
     /** OX 전용 정답("O"/"X"). 사지선다·빈칸은 자식 테이블로 정답을 표현한다. */
     @Column(length = 10)
     private String correctAnswer;
@@ -132,6 +136,11 @@ public class Quiz extends BaseEntity {
         this.correctAnswer = correctAnswer;
     }
 
+    /** 생성·백필 검증을 마친 한 문장 힌트를 지정한다. */
+    public void assignHint(String hint) {
+        this.hint = hint;
+    }
+
     /** 커리큘럼 내 위치를 지정한다 — 콘텐츠 필드와 분리해 생성자 파라미터 수를 제한한다(checkstyle). */
     public void assignPosition(int stepOrder, int slotOrder) {
         this.stepOrder = stepOrder;
@@ -145,11 +154,13 @@ public class Quiz extends BaseEntity {
     public void updateContent(
             String questionText,
             String codeSnippet,
+            String hint,
             String explanationSummary,
             String explanationExample,
             String wrongAnswerExplanation) {
         this.questionText = questionText;
         this.codeSnippet = codeSnippet;
+        this.hint = hint;
         this.explanationSummary = explanationSummary;
         this.explanationExample = explanationExample;
         this.wrongAnswerExplanation = wrongAnswerExplanation;

@@ -37,6 +37,7 @@ class AuthoringPromptFactoryTest {
             assertThat(prompt).contains("검수자 피드백");
             assertThat(prompt).contains("선지 3번이 모호함");
             assertThat(prompt).contains("reviewSummary");
+            assertThat(prompt).contains("hint도 반드시 검수").contains("빈칸 정답 키워드나 동의어");
         }
 
         @Test
@@ -80,6 +81,17 @@ class AuthoringPromptFactoryTest {
                     .doesNotThrowAnyException();
             assertThatCode(() -> objectMapper.readTree(AuthoringOutputSchemas.REVIEW))
                     .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("GENERATE·REVIEW 모두 hint를 필수 필드로 요구한다")
+        void output_schemas_require_hint() throws Exception {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            assertThat(objectMapper.readTree(AuthoringOutputSchemas.GENERATE).toString())
+                    .contains("hint");
+            assertThat(objectMapper.readTree(AuthoringOutputSchemas.REVIEW).toString())
+                    .contains("hint");
         }
     }
 }

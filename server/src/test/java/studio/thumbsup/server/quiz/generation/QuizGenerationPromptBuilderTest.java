@@ -73,4 +73,18 @@ class QuizGenerationPromptBuilderTest {
                     .contains("5. HARD(KEYWORD_BLANK)");
         }
     }
+
+    @Test
+    @DisplayName("모든 유형에 한 문장 힌트와 유형별 정답 누출 금지 규칙을 요구한다")
+    void requires_safe_one_sentence_hint_for_every_type() {
+        String prompt = QuizGenerationPromptBuilder.build("운영체제");
+
+        assertThat(prompt)
+                .contains("\"hint\"")
+                .contains("개행 없는 한 문장")
+                .contains("OX")
+                .contains("판단 결론")
+                .contains("선택지 라벨")
+                .contains("정답 키워드와 동의어");
+    }
 }

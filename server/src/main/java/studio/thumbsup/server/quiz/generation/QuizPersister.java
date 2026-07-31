@@ -64,6 +64,7 @@ public class QuizPersister {
                     g.explanationSummary(),
                     g.explanationExample(),
                     g.wrongAnswerExplanation());
+            quiz.assignHint(g.hint());
             populate(quiz, g);
             quiz.assignPosition(stepOrder, slotOrder++);
             quizRepository.save(quiz);

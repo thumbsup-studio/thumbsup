@@ -62,6 +62,7 @@ class QuizPersisterTest {
                 QuizType.OX,
                 QuizDifficulty.EASY,
                 "질문 본문",
+                "판단에 필요한 핵심 조건을 떠올려 보세요.",
                 null, // codeSnippet
                 "핵심 요약 1줄.\n핵심 요약 2줄.\n핵심 요약 3줄.", // explanationSummary
                 null, // explanationExample
@@ -79,6 +80,7 @@ class QuizPersisterTest {
                 QuizType.KEYWORD_BLANK,
                 QuizDifficulty.HARD,
                 "빈칸 ___ 문제",
+                "자료가 드나드는 순서의 기준을 떠올려 보세요.",
                 null, // codeSnippet
                 "핵심 요약 1줄.\n핵심 요약 2줄.\n핵심 요약 3줄.", // explanationSummary
                 null, // explanationExample
@@ -105,6 +107,8 @@ class QuizPersisterTest {
         assertThat(captor.getAllValues()).extracting(Quiz::getSlotOrder).containsExactly(1, 2);
         assertThat(captor.getAllValues())
                 .allSatisfy(quiz -> assertThat(quiz.getStepOrder()).isEqualTo(1));
+        assertThat(captor.getAllValues())
+                .allSatisfy(quiz -> assertThat(quiz.getHint()).isEqualTo("판단에 필요한 핵심 조건을 떠올려 보세요."));
     }
 
     @Test
@@ -190,6 +194,7 @@ class QuizPersisterTest {
                 QuizType.MULTIPLE_CHOICE,
                 QuizDifficulty.MEDIUM,
                 "질문 본문",
+                "각 개념이 맡는 역할의 차이를 비교해 보세요.",
                 null, // codeSnippet
                 "핵심 요약 1줄.\n핵심 요약 2줄.\n핵심 요약 3줄.", // explanationSummary
                 null, // explanationExample

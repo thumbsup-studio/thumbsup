@@ -14,6 +14,7 @@ public record GeneratedQuizSet(List<GeneratedQuiz> quizzes) {
             QuizType type,
             QuizDifficulty difficulty,
             String questionText,
+            String hint,
             String codeSnippet,
             String explanationSummary,
             String explanationExample,
