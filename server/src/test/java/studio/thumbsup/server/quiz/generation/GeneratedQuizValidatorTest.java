@@ -100,6 +100,19 @@ class GeneratedQuizValidatorTest {
                     .hasMessageContaining("개행 없는 한 문장");
         }
 
+        @Test
+        @DisplayName("200자를 넘고 복수 문장인 hint는 문장 정규식보다 길이를 먼저 거부한다")
+        void rejects_overlong_hint_before_sentence_pattern() {
+            String overlongHint = "가".repeat(201) + ". 두 번째 문장입니다.";
+            String json = oxQuizJson().replace("핵심 개념이 맡는 역할과 적용 조건을 떠올려 보세요.", overlongHint);
+            GeneratedQuizSet.GeneratedQuiz quiz =
+                    validator.parse(setJsonWithFirstQuiz(json)).quizzes().get(0);
+
+            assertThatThrownBy(() -> validator.validateSingle(quiz, QuizType.OX, QuizDifficulty.EASY))
+                    .isInstanceOf(QuizGenerationException.class)
+                    .hasMessageContaining("200자를 초과");
+        }
+
         @ParameterizedTest(name = "{0}")
         @ValueSource(strings = {"\\n핵심 개념을 떠올려 보세요.", "핵심 개념을 떠올려 보세요.\\n"})
         @DisplayName("문장 앞뒤 개행도 trim으로 숨기지 않고 거부한다")
@@ -119,10 +132,14 @@ class GeneratedQuizValidatorTest {
                     "분모가 0이 아닐 때만 성립합니다.",
                     "이 병목은 I/O입니다.",
                     "1.5초를 기준으로 비교하세요.",
+                    "e.g. 처리량과 지연 시간의 관계를 비교해 보세요.",
                     "System.out을 기준으로 흐름을 추적하세요.",
-                    "O와 X 표기의 의미를 비교해 보세요."
+                    "O와 X 표기의 의미를 비교해 보세요.",
+                    "서버 응답이 늦어지는 조건을 떠올려 보세요.",
+                    "오답이 생기는 경계 조건을 비교해 보세요.",
+                    "BOX 모델이 구분하는 영역을 떠올려 보세요."
                 })
-        @DisplayName("조건 설명·식별자 표기·소수점·맥락 속 라벨은 결론이나 복수 문장으로 오탐하지 않는다")
+        @DisplayName("약어·조건 설명·답/OX 부분 문자열은 결론이나 복수 문장으로 오탐하지 않는다")
         void allows_safe_conditional_io_and_decimal_hints(String safeHint) {
             String json = oxQuizJson().replace("핵심 개념이 맡는 역할과 적용 조건을 떠올려 보세요.", safeHint);
             GeneratedQuizSet.GeneratedQuiz quiz =
@@ -142,6 +159,19 @@ class GeneratedQuizValidatorTest {
             assertThatThrownBy(() -> validator.validateSingle(quiz, QuizType.OX, QuizDifficulty.EASY))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("판단 결론");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"답이 O입니다.", "정답이다: O입니다."})
+        @DisplayName("답이·정답이다 형태로 실제 정답을 지시하면 거부한다")
+        void rejects_direct_answer_variants(String leakingHint) {
+            String json = oxQuizJson().replace("핵심 개념이 맡는 역할과 적용 조건을 떠올려 보세요.", leakingHint);
+            GeneratedQuizSet.GeneratedQuiz quiz =
+                    validator.parse(setJsonWithFirstQuiz(json)).quizzes().get(0);
+
+            assertThatThrownBy(() -> validator.validateSingle(quiz, QuizType.OX, QuizDifficulty.EASY))
+                    .isInstanceOf(QuizGenerationException.class)
+                    .hasMessageContaining("정답을 직접 지시");
         }
 
         @ParameterizedTest(name = "{0}")

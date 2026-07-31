@@ -49,6 +49,8 @@ public class QuizPersister {
 
     @Transactional
     int persist(Long courseId, String courseTopic, GeneratedQuizSet generated) {
+        validateHintsBeforePersisting(generated);
+
         int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
 
         // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
@@ -70,6 +72,14 @@ public class QuizPersister {
             quizRepository.save(quiz);
         }
         return stepOrder;
+    }
+
+    /** 뒤쪽 슬롯의 hint가 잘못돼도 스텝이나 앞쪽 문제를 먼저 쓰지 않도록 전체 세트를 저장 전에 검증한다. */
+    private void validateHintsBeforePersisting(GeneratedQuizSet generated) {
+        for (int index = 0; index < generated.quizzes().size(); index++) {
+            QuizHintValidator.validate(
+                    "슬롯 %d".formatted(index + 1), generated.quizzes().get(index));
+        }
     }
 
     /** 생성 결과의 자식 콘텐츠(선택지·정답 키워드·꼬리질문·파생개념·키워드)를 이미 만들어진 quiz에 채운다. */

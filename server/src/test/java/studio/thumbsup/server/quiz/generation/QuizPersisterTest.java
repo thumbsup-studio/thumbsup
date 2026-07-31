@@ -1,10 +1,13 @@
 package studio.thumbsup.server.quiz.generation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.List;
 import java.util.Optional;
@@ -218,5 +221,34 @@ class QuizPersisterTest {
                 .filteredOn(QuizChoice::isCorrect)
                 .extracting(QuizChoice::getContent)
                 .containsExactly("b");
+    }
+
+    @Test
+    @DisplayName("뒤쪽 슬롯의 hint가 정답을 노출하면 어떤 스텝이나 문제도 저장하지 않는다")
+    void validates_every_hint_before_any_database_write() {
+        GeneratedQuizSet.GeneratedQuiz invalidQuiz = new GeneratedQuizSet.GeneratedQuiz(
+                QuizType.OX,
+                QuizDifficulty.EASY,
+                "질문 본문",
+                "정답은 O입니다.",
+                null,
+                "핵심 요약 1줄.\n핵심 요약 2줄.\n핵심 요약 3줄.",
+                null,
+                "오답 해설",
+                "O",
+                null,
+                null,
+                List.of(followUpQuestion()),
+                List.of("개념1"),
+                List.of(new GeneratedQuizSet.GeneratedKeyword("키워드1", "설명")));
+        GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz(), invalidQuiz));
+
+        assertThatThrownBy(() -> persister().persist(1L, "운영체제", generated))
+                .isInstanceOf(QuizGenerationException.class)
+                .hasMessageContaining("슬롯 2")
+                .hasMessageContaining("정답을 직접 지시");
+
+        verifyNoInteractions(quizRepository);
+        verify(quizStepRepository, never()).save(org.mockito.ArgumentMatchers.any(QuizStep.class));
     }
 }

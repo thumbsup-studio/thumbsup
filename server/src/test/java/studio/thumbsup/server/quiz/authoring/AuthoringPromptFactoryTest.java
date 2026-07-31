@@ -37,7 +37,7 @@ class AuthoringPromptFactoryTest {
             assertThat(prompt).contains("검수자 피드백");
             assertThat(prompt).contains("선지 3번이 모호함");
             assertThat(prompt).contains("reviewSummary");
-            assertThat(prompt).contains("hint도 반드시 검수").contains("빈칸 정답 키워드나 동의어");
+            assertThat(prompt).contains("hint도 반드시 검수").contains("200자 이내").contains("빈칸 정답 키워드나 동의어");
         }
 
         @Test

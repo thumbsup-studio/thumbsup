@@ -16,6 +16,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -111,22 +112,17 @@ class QuizHintAcceptanceTest {
         }
 
         @Test
+        @Transactional
         @DisplayName("canonical 백필에서 제외된 hint NULL 문제는 409를 반환한다")
         void returns_conflict_when_hint_was_not_backfilled() throws Exception {
             Quiz quiz = seededQuiz(1, 2);
-            String originalHint = quiz.getHint();
             quiz.assignHint(null);
             quizRepository.saveAndFlush(quiz);
 
-            try {
-                mockMvc.perform(post("/api/v1/quizzes/{quizId}/hints", quiz.getId())
-                                .header(HttpHeaders.AUTHORIZATION, bearerToken()))
-                        .andExpect(status().isConflict())
-                        .andExpect(jsonPath("$.code").value("QUIZ_HINT_NOT_AVAILABLE"));
-            } finally {
-                quiz.assignHint(originalHint);
-                quizRepository.saveAndFlush(quiz);
-            }
+            mockMvc.perform(post("/api/v1/quizzes/{quizId}/hints", quiz.getId())
+                            .header(HttpHeaders.AUTHORIZATION, bearerToken()))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("QUIZ_HINT_NOT_AVAILABLE"));
         }
 
         @Test

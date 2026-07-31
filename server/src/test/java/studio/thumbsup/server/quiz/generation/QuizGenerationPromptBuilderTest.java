@@ -81,6 +81,7 @@ class QuizGenerationPromptBuilderTest {
 
         assertThat(prompt)
                 .contains("\"hint\"")
+                .contains("200자 이내")
                 .contains("개행 없는 한 문장")
                 .contains("OX")
                 .contains("판단 결론")

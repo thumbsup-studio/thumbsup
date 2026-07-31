@@ -12,8 +12,9 @@ import studio.thumbsup.server.quiz.QuizType;
 final class QuizHintValidator {
 
     private static final int MAX_HINT_LENGTH = 200;
-    private static final Pattern SENTENCE_END = Pattern.compile("[!?。！？]|(?<![A-Za-z0-9_$])\\.|\\.(?![A-Za-z0-9_$])");
-    private static final Pattern DIRECT_ANSWER = Pattern.compile("(?:정답|답)\\s*(?:은|는|이|가|:)");
+    private static final Pattern SENTENCE_END =
+            Pattern.compile("[!?。！？]|(?<![A-Za-z0-9_$])\\.|(?<![A-Za-z]\\.[A-Za-z])\\.(?![A-Za-z0-9_$])");
+    private static final Pattern DIRECT_ANSWER = Pattern.compile("(?<![\\p{L}\\p{N}])(?:정답|답)\\s*(?:은|는|이|가|:)");
     private static final String BARE_OPTION_LABEL = "(?:\\((?:[1-9]|[A-Da-d]|[가나다라])\\)|[1-9]|[①-⑨]|[A-Da-d]|[가나다라])";
     private static final String PREFIXED_OPTION_LABEL = "(?:\\((?:[1-9]|[A-Da-d]|[가나다라])\\)|[1-9]|[①-⑨]|[A-Da-d])";
     private static final String OPTION_LABEL = "(?<![\\p{L}\\p{N}])" + BARE_OPTION_LABEL;
@@ -92,11 +93,14 @@ final class QuizHintValidator {
             throw new QuizGenerationException("%s의 hint가 비어 있습니다.".formatted(location));
         }
 
-        validateSingleSentence(location, hint);
         String trimmed = hint.trim();
         if (trimmed.length() > MAX_HINT_LENGTH) {
             throw new QuizGenerationException("%s의 hint가 %d자를 초과했습니다.".formatted(location, MAX_HINT_LENGTH));
         }
+        if (hint.contains("\n") || hint.contains("\r")) {
+            throw new QuizGenerationException("%s의 hint는 개행 없는 한 문장이어야 합니다.".formatted(location));
+        }
+        validateSingleSentence(location, trimmed);
         if (trimmed.contains("[[") || trimmed.contains("]]")) {
             throw new QuizGenerationException("%s의 hint에는 키워드 마커를 넣을 수 없습니다.".formatted(location));
         }
