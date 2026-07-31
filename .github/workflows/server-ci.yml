@@ -22,9 +22,13 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # 기본값 some에서는 server/**가 문서에도 매칭되므로 부정 패턴 적용에 every가 필요하다.
+          predicate-quantifier: 'every'
           filters: |
             server:
               - 'server/**'
+              - '!server/docs/**'
+              - '!server/**/*.md'
 
   build-and-test:
     needs: changes
