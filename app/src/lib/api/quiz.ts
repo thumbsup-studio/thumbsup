@@ -44,6 +44,11 @@ export type AnswerSubmitResponse = {
   retryHint: RetryHint | null;
 };
 
+/** 사용자가 제출 전에 요청하는, 문제 유형과 무관한 한 문장 힌트. */
+export type QuizHintResponse = {
+  hint: string;
+};
+
 export type Highlight = {
   keyword: string;
   start: number;
@@ -112,6 +117,12 @@ export function submitQuizAnswer(quizId: number, answers: string[]): Promise<Ans
   return apiRequest<AnswerSubmitResponse>(`/quizzes/${quizId}/answers`, {
     method: "POST",
     body: { answers },
+  });
+}
+
+export function requestQuizHint(quizId: number): Promise<QuizHintResponse> {
+  return apiRequest<QuizHintResponse>(`/quizzes/${quizId}/hints`, {
+    method: "POST",
   });
 }
 

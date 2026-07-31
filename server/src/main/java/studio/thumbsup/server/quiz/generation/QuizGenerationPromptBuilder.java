@@ -13,6 +13,7 @@ public final class QuizGenerationPromptBuilder {
                   "type": "OX | MULTIPLE_CHOICE | KEYWORD_BLANK",
                   "difficulty": "EASY | MEDIUM | HARD",
                   "questionText": "문제 본문",
+                  "hint": "정답을 직접 말하지 않고 판단 단서를 제공하는 200자 이내의 개행 없는 한 문장",
                   "codeSnippet": "실제 코드 또는 실행 흐름이 명확한 의사코드(필요하지 않으면 null)",
                   "explanationSummary": "핵심 3줄 요약 해설 — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
                   "explanationExample": "실무 적용/코드 예시(없으면 null) — 해설 3개 컬럼 전체의 keywords 마커 정책 적용",
@@ -57,6 +58,13 @@ public final class QuizGenerationPromptBuilder {
 
     private static final String COMMON_REQUIREMENTS = """
             모든 문제 공통 요구사항:
+            - hint: 정답을 제출하기 전에 사용자가 직접 요청해 보는 단서다. 200자 이내의 개행 없는 한 문장으로 쓰고,
+              정답 자체가 아니라 정답 개념의 배경 원리·판단 조건·구분 기준을 설명한다. "정답은", "답은",
+              "N번 선택지", "O/X"처럼 답을 직접 지시하는 표현과 [[키워드]] 마커를 절대 넣지 마라.
+              유형별로 다음을 추가로 지켜라.
+              · OX: 참·거짓·옳다·틀리다·맞다·아니다 같은 판단 결론을 말하지 않고, 판정할 조건이나 예외만 설명한다.
+              · MULTIPLE_CHOICE: 선택지 라벨이나 정답 선택지 문구를 말하지 않고, 선택지를 가를 개념적 기준만 설명한다.
+              · KEYWORD_BLANK: 정답 키워드와 동의어를 쓰지 않고, 그 개념의 정의·역할·문맥만 설명한다.
             - codeSnippet: 실제 코드나 실행 흐름이 명확한 의사코드가 문제 풀이에 필요할 때만 작성한다.
               코드/의사코드가 아니면 codeSnippet은 반드시 null로 두고, 자연어 상황 설명·표·조건 목록은 questionText에 작성한다.
               변수명에 리터럴 입력값만 대입해 나열한 데이터도 코드가 아니므로 questionText에 문장으로 작성한다.

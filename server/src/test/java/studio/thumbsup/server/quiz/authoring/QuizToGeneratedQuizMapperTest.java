@@ -23,7 +23,7 @@ class QuizToGeneratedQuizMapperTest {
     class CommonFields {
 
         @Test
-        @DisplayName("type/difficulty/questionText를 그대로 옮긴다")
+        @DisplayName("type/difficulty/questionText/hint를 그대로 옮긴다")
         void copies_type_difficulty_and_question_text() {
             Quiz quiz = oxQuiz();
 
@@ -32,6 +32,7 @@ class QuizToGeneratedQuizMapperTest {
             assertThat(generated.type()).isEqualTo(QuizType.OX);
             assertThat(generated.difficulty()).isEqualTo(QuizDifficulty.EASY);
             assertThat(generated.questionText()).isEqualTo(quiz.getQuestionText());
+            assertThat(generated.hint()).isEqualTo(quiz.getHint());
         }
 
         @Test

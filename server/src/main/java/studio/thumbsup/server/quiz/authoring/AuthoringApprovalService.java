@@ -10,6 +10,7 @@ import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.authoring.dto.ApproveResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
+import studio.thumbsup.server.quiz.generation.QuizGenerationException;
 import studio.thumbsup.server.quiz.generation.QuizPersister;
 
 /**
@@ -50,11 +51,17 @@ public class AuthoringApprovalService {
         }
         jobService.guardDraftHasNoActiveJob(draftId, clock.instant());
 
-        GeneratedQuizSet set = validator.parse(draft.getCurrentPayload());
-        if (draft.getOrigin() == QuizDraftOrigin.NEW) {
-            quizPersister.persist(draft.getTopic(), set);
-        } else {
-            materializeImprove(draft, set);
+        try {
+            GeneratedQuizSet set = validator.parse(draft.getCurrentPayload());
+            if (draft.getOrigin() == QuizDraftOrigin.NEW) {
+                // 배포 전에 저장된 legacy draft를 포함해, 승인 시점의 최종 payload도 다시 검증한다.
+                validator.validateHintSet(set);
+                quizPersister.persist(draft.getTopic(), set);
+            } else {
+                materializeImprove(draft, set);
+            }
+        } catch (QuizGenerationException exception) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_REVIEW_REQUIRED, exception);
         }
 
         draft.approve(userId, clock.instant());
@@ -69,13 +76,18 @@ public class AuthoringApprovalService {
     }
 
     private void materializeImprove(QuizDraft draft, GeneratedQuizSet set) {
+        if (set.quizzes() == null || set.quizzes().size() != 1) {
+            throw new QuizGenerationException("IMPROVE draft는 문제를 정확히 1개 포함해야 합니다.");
+        }
         Quiz quiz = quizRepository
                 .findById(draft.getSourceQuizId())
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         GeneratedQuizSet.GeneratedQuiz generated = set.quizzes().get(0);
+        validator.validateSingleHint(generated, quiz.getType(), quiz.getDifficulty());
         quiz.updateContent(
                 generated.questionText(),
                 generated.codeSnippet(),
+                generated.hint(),
                 generated.explanationSummary(),
                 generated.explanationExample(),
                 generated.wrongAnswerExplanation());

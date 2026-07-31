@@ -30,6 +30,7 @@ import studio.thumbsup.server.common.exception.GlobalExceptionHandler;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
+import studio.thumbsup.server.quiz.dto.QuizHintResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
@@ -228,6 +229,47 @@ class QuizControllerTest {
                             .content(objectMapper.writeValueAsString(new AnswerSubmitRequest(List.of("O")))))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.code").value("QUIZ_NOT_ACCESSIBLE"));
+        }
+    }
+
+    @Nested
+    @DisplayName("풀이 중 힌트 요청")
+    class GetHint {
+
+        @Test
+        @DisplayName("성공하면 200과 단일 hint 문자열을 반환한다")
+        void returns_200_with_hint() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getHint(7L, 1L)).willReturn(new QuizHintResponse("핵심 조건을 서로 비교해 보세요."));
+
+            mockMvc.perform(post("/api/v1/quizzes/1/hints"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.hint").value("핵심 조건을 서로 비교해 보세요."))
+                    .andExpect(jsonPath("$.data.eliminatedChoiceId").doesNotExist())
+                    .andExpect(jsonPath("$.data.blankHints").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("미래 스텝 문제면 403 QUIZ_NOT_ACCESSIBLE을 반환한다")
+        void returns_403_when_quiz_not_accessible() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getHint(7L, 1L)).willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE));
+
+            mockMvc.perform(post("/api/v1/quizzes/1/hints"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("QUIZ_NOT_ACCESSIBLE"));
+        }
+
+        @Test
+        @DisplayName("점진 백필에서 힌트가 없는 문제면 409 QUIZ_HINT_NOT_AVAILABLE을 반환한다")
+        void returns_409_when_hint_is_not_available() throws Exception {
+            authenticateAs(7L);
+            given(quizService.getHint(7L, 1L)).willThrow(new BusinessException(QuizErrorType.QUIZ_HINT_NOT_AVAILABLE));
+
+            mockMvc.perform(post("/api/v1/quizzes/1/hints"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("QUIZ_HINT_NOT_AVAILABLE"));
         }
     }
 

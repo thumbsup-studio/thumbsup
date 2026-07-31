@@ -21,6 +21,7 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
+import studio.thumbsup.server.quiz.dto.QuizHintResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
 import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
 
@@ -135,6 +136,21 @@ public class QuizService {
                 .findByStepOrderAndSlotOrder(stepOrder, slotOrder)
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         return QuizNextResponse.from(quiz);
+    }
+
+    /**
+     * 정답 제출 전 사용자가 직접 요청한 한 문장 힌트를 반환한다(#193). 조회만 수행하므로 풀이 이력·진행도·
+     * 오답 재도전 상태에는 아무 영향이 없다. 접근 범위는 답 제출과 동일하게 현재 진행 스텝 이하로 제한한다.
+     */
+    public QuizHintResponse getHint(Long userId, Long quizId) {
+        Quiz quiz =
+                quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        Long courseId = courseIdForStep(quiz.getStepOrder());
+        validateAccessible(userId, courseId, quiz.getStepOrder());
+        if (quiz.getHint() == null || quiz.getHint().isBlank()) {
+            throw new BusinessException(QuizErrorType.QUIZ_HINT_NOT_AVAILABLE);
+        }
+        return QuizHintResponse.from(quiz);
     }
 
     /**

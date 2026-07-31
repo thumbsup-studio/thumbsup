@@ -31,6 +31,7 @@ const DETAIL: AuthoringCourseDetail = {
             type: "OX",
             difficulty: "EASY",
             questionText: "커널은 특권 수준에서 실행된다.",
+            hint: "하드웨어 자원 관리에 필요한 권한 수준을 생각해 보세요.",
             codeSnippet: null,
             explanationSummary: "커널은 하드웨어 자원을 관리한다.",
             explanationExample: null,
@@ -75,6 +76,7 @@ const DETAIL_EMPTY_ARRAYS: AuthoringCourseDetail = {
             type: "MULTIPLE_CHOICE",
             difficulty: "EASY",
             questionText: "TCP는 연결 지향 프로토콜이다.",
+            hint: "연결 수립 전에 양쪽이 상태를 교환하는지 살펴보세요.",
             codeSnippet: null,
             explanationSummary: "TCP는 3-way handshake로 연결을 수립한다.",
             explanationExample: null,
@@ -127,6 +129,9 @@ describe("CourseQuizzesScreen", () => {
 
     expect(await screen.findByText("커널")).toBeInTheDocument(); // 키워드 사전
     expect(screen.getByText("커널은 하드웨어 자원을 관리한다.")).toBeInTheDocument(); // 해설 요약
+    expect(
+      screen.getByText("하드웨어 자원 관리에 필요한 권한 수준을 생각해 보세요."),
+    ).toBeInTheDocument(); // 제출 전 힌트 검수
     expect(screen.getByText(/꼬리질문 1개/)).toBeInTheDocument(); // 꼬리질문 disclosure
     expect(screen.getByText("정답: O")).toBeInTheDocument();
   });
