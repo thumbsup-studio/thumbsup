@@ -6,6 +6,11 @@ on:
     paths:
       - 'server/**'
 
+concurrency:
+  group: server-deploy-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
+
 permissions:
   id-token: write # OIDC로 AWS 자격 증명 임시 위임받기 위해 필요
   contents: read
