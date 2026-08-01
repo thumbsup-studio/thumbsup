@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
-import { getNextQuiz, getStepQuiz, submitQuizAnswer } from "@/lib/api/quiz";
+import { getNextQuiz, getStepQuiz, requestQuizHint, submitQuizAnswer } from "@/lib/api/quiz";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api/quiz", () => ({
   getNextQuiz: vi.fn(),
   getStepQuiz: vi.fn(),
+  requestQuizHint: vi.fn(),
   submitQuizAnswer: vi.fn(),
 }));
 
@@ -69,6 +70,7 @@ describe("PlayPage", () => {
     mockRouter.replace.mockClear();
     vi.mocked(getNextQuiz).mockReset();
     vi.mocked(getStepQuiz).mockReset();
+    vi.mocked(requestQuizHint).mockReset();
     vi.mocked(submitQuizAnswer).mockReset();
     window.localStorage.clear();
   });
@@ -251,6 +253,177 @@ describe("PlayPage", () => {
 
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith("/login");
+    });
+  });
+
+  describe("제출 전 사용자 요청 힌트", () => {
+    it.each([
+      ["OX", oxQuiz],
+      ["사지선다", multipleChoiceQuiz],
+      ["키워드 빈칸", keywordBlankQuiz],
+    ])("%s 문제에 동일한 힌트 진입점을 보여준다", async (_label, targetQuiz) => {
+      vi.mocked(getNextQuiz).mockResolvedValue(targetQuiz);
+
+      render(<PlayPage />);
+
+      await screen.findByText(targetQuiz.questionText);
+      expect(screen.getByRole("button", { name: "힌트 보기" })).toBeEnabled();
+    });
+
+    it("한 문장 힌트를 표시하되 선택 답안과 채점·스트릭에는 영향을 주지 않는다", async () => {
+      const hint = "프로세스가 자원을 소유하는 단위를 떠올려 보세요.";
+      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+      vi.mocked(requestQuizHint).mockResolvedValue({ hint });
+      vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
+
+      render(<PlayPage />);
+
+      const answer = await screen.findByRole("radio", { name: "O" });
+      fireEvent.click(answer);
+      fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
+
+      expect(await screen.findByText(hint)).toBeInTheDocument();
+      expect(requestQuizHint).toHaveBeenCalledWith(7);
+      expect(answer).toBeChecked();
+      expect(submitQuizAnswer).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "힌트 확인함" })).toBeDisabled();
+
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      await waitFor(() => {
+        expect(submitQuizAnswer).toHaveBeenCalledWith(7, ["O"]);
+      });
+      expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=7&correct=true&streak=1");
+    });
+
+    it("힌트를 불러오는 동안에도 답안은 바꿀 수 있고 제출과 중복 요청만 잠근다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+      vi.mocked(requestQuizHint).mockReturnValue(new Promise(() => {}));
+
+      render(<PlayPage />);
+
+      const answer = await screen.findByRole("radio", { name: "O" });
+      fireEvent.click(answer);
+      fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
+
+      expect(screen.getByRole("button", { name: "힌트 불러오는 중" })).toBeDisabled();
+      expect(answer).toBeEnabled();
+      fireEvent.click(screen.getByRole("radio", { name: "X" }));
+      expect(screen.getByRole("radio", { name: "X" })).toBeChecked();
+      expect(screen.getByRole("button", { name: "정답 확인" })).toBeDisabled();
+      expect(requestQuizHint).toHaveBeenCalledTimes(1);
+    });
+
+    it("이전 문제의 늦은 힌트 응답을 새 문제에 표시하지 않는다", async () => {
+      let resolveOldHint: ((value: { hint: string }) => void) | undefined;
+      const oldHintRequest = new Promise<{ hint: string }>((resolve) => {
+        resolveOldHint = resolve;
+      });
+      vi.mocked(getStepQuiz)
+        .mockResolvedValueOnce(oxQuiz)
+        .mockResolvedValueOnce(multipleChoiceQuiz);
+      vi.mocked(requestQuizHint).mockReturnValue(oldHintRequest);
+
+      const { rerender } = render(
+        <PlayPage review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스" }} />,
+      );
+
+      await screen.findByText(oxQuiz.questionText);
+      fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
+
+      rerender(
+        <PlayPage review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스" }} />,
+      );
+      await screen.findByText(multipleChoiceQuiz.questionText);
+
+      await act(async () => {
+        resolveOldHint?.({ hint: "이전 문제의 늦은 힌트입니다." });
+      });
+
+      expect(screen.queryByText("이전 문제의 늦은 힌트입니다.")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "힌트 보기" })).toBeEnabled();
+    });
+
+    it("힌트 요청 실패 시 답안을 유지하고 다시 요청할 수 있다", async () => {
+      const hint = "프로세스가 자원을 소유하는 단위를 떠올려 보세요.";
+      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+      vi.mocked(requestQuizHint)
+        .mockRejectedValueOnce(new Error("network"))
+        .mockResolvedValueOnce({ hint });
+
+      render(<PlayPage />);
+
+      const answer = await screen.findByRole("radio", { name: "O" });
+      fireEvent.click(answer);
+      fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
+
+      expect(await screen.findByText("힌트를 불러오지 못했어요.")).toBeInTheDocument();
+      expect(answer).toBeChecked();
+
+      fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
+
+      expect(await screen.findByText(hint)).toBeInTheDocument();
+      expect(requestQuizHint).toHaveBeenCalledTimes(2);
+      expect(answer).toBeChecked();
+    });
+
+    it("힌트 API가 401을 반환하면 로그인으로 이동한다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+      vi.mocked(requestQuizHint).mockRejectedValue({ status: 401 });
+
+      render(<PlayPage />);
+
+      await screen.findByText(oxQuiz.questionText);
+      fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
+
+      await waitFor(() => {
+        expect(mockRouter.replace).toHaveBeenCalledWith("/login");
+      });
+    });
+
+    it("저장형 한 문장 힌트와 기존 오답 재도전 힌트를 독립적으로 함께 유지한다", async () => {
+      const hint = "동시 접근을 한 번에 하나로 제한하는 장치를 떠올려 보세요.";
+      vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
+      vi.mocked(requestQuizHint).mockResolvedValue({ hint });
+      vi.mocked(submitQuizAnswer).mockResolvedValue({
+        isCorrect: false,
+        retryHint: { eliminatedChoiceId: 13, blankHints: null },
+      });
+
+      render(<PlayPage />);
+
+      fireEvent.click(await screen.findByRole("button", { name: "힌트 보기" }));
+      expect(await screen.findByText(hint)).toBeInTheDocument();
+      expect(screen.getAllByRole("radio")).toHaveLength(4);
+      for (const choice of screen.getAllByRole("radio")) {
+        expect(choice).toBeEnabled();
+      }
+
+      fireEvent.click(screen.getByRole("radio", { name: /뮤텍스/ }));
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      expect(await screen.findByText(/틀린 선택지 하나를 지웠어요/)).toBeInTheDocument();
+      expect(screen.getByText(hint)).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: /스택/ })).toBeDisabled();
+      expect(requestQuizHint).toHaveBeenCalledTimes(1);
+      expect(mockRouter.push).not.toHaveBeenCalled();
+    });
+
+    it("첫 오답 뒤 재도전 화면에서는 요청형 힌트를 새로 열 수 없다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
+      vi.mocked(submitQuizAnswer).mockResolvedValue({
+        isCorrect: false,
+        retryHint: { eliminatedChoiceId: 13, blankHints: null },
+      });
+
+      render(<PlayPage />);
+
+      fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      expect(await screen.findByText(/틀린 선택지 하나를 지웠어요/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "힌트 보기" })).toBeDisabled();
+      expect(requestQuizHint).not.toHaveBeenCalled();
     });
   });
 

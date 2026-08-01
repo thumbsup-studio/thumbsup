@@ -45,6 +45,7 @@ class AuthoringDraftServiceTest {
                 QuizType.OX,
                 QuizDifficulty.EASY,
                 "질문",
+                "판단에 필요한 조건을 떠올려 보세요.",
                 null,
                 "요약",
                 null,

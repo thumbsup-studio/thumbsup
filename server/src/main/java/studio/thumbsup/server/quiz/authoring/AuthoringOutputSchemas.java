@@ -9,11 +9,11 @@ public final class AuthoringOutputSchemas {
 
     public static final String GENERATE = """
             {"type":"object","required":["quizzes"],"properties":{"quizzes":{"type":"array","minItems":5,"maxItems":5,
-            "items":{"type":"object","required":["type","difficulty","questionText","explanationSummary","wrongAnswerExplanation"]}}}}""";
+            "items":{"type":"object","required":["type","difficulty","questionText","hint","explanationSummary","wrongAnswerExplanation"]}}}}""";
 
     public static final String REVIEW = """
             {"type":"object","required":["reviewSummary","quizzes"],"properties":{"reviewSummary":{"type":"string"},
-            "quizzes":{"type":"array","minItems":1,"items":{"type":"object","required":["type","difficulty","questionText"]}}}}""";
+            "quizzes":{"type":"array","minItems":1,"items":{"type":"object","required":["type","difficulty","questionText","hint"]}}}}""";
 
     private AuthoringOutputSchemas() {}
 }

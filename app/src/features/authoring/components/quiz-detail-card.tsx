@@ -21,6 +21,14 @@ export function QuizDetailCard({ quiz, slotOrder }: { quiz: GeneratedQuiz; slotO
           <code>{quiz.codeSnippet}</code>
         </pre>
       ) : null}
+      <div className="rounded-control border border-border bg-surface-muted px-3 py-2">
+        <ExplanationBlock
+          label="힌트"
+          text={
+            quiz.hint?.trim() ? quiz.hint : "힌트가 아직 생성되지 않았습니다. 재검토 후 승인하세요."
+          }
+        />
+      </div>
       {quiz.choices && quiz.choices.length > 0 ? (
         <ul className="flex flex-col gap-1.5">
           {quiz.choices.map((choice) => (

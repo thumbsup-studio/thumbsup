@@ -66,6 +66,7 @@ class AuthoringCourseControllerTest {
                 QuizType.OX,
                 QuizDifficulty.EASY,
                 "커널은 특권 수준에서 실행된다.",
+                "일반 프로그램과 핵심 관리 코드의 권한 차이를 떠올려 보세요.",
                 null,
                 "커널은 하드웨어 자원을 관리한다.",
                 null,
@@ -87,6 +88,8 @@ class AuthoringCourseControllerTest {
                 .andExpect(jsonPath("$.data.steps[0].quizzes[0].quizId").value(101))
                 .andExpect(jsonPath("$.data.steps[0].quizzes[0].generated.questionText")
                         .value("커널은 특권 수준에서 실행된다."))
+                .andExpect(jsonPath("$.data.steps[0].quizzes[0].generated.hint")
+                        .value("일반 프로그램과 핵심 관리 코드의 권한 차이를 떠올려 보세요."))
                 .andExpect(jsonPath("$.data.steps[0].quizzes[0].generated.correctAnswer")
                         .value("O"))
                 .andExpect(jsonPath("$.data.steps[0].quizzes[0].generated.keywords[0].keyword")

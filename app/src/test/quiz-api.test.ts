@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getNextQuiz, getQuizExplanation, submitQuizAnswer } from "@/lib/api/quiz";
+import { getNextQuiz, getQuizExplanation, requestQuizHint, submitQuizAnswer } from "@/lib/api/quiz";
 import { tokenStore } from "@/lib/api/token-store";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -14,7 +14,11 @@ function envelope(code: string, data: unknown = null, message = "OK") {
 }
 
 function callInit(mock: ReturnType<typeof vi.fn>, index: number) {
-  return mock.mock.calls[index][1] as { headers: Record<string, string>; body?: string };
+  return mock.mock.calls[index][1] as {
+    headers: Record<string, string>;
+    body?: string;
+    method?: string;
+  };
 }
 
 beforeEach(() => {
@@ -62,6 +66,29 @@ describe("quiz api", () => {
     expect(result).toEqual({ isCorrect: true });
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/quizzes/7/answers");
     expect(JSON.parse(callInit(fetchMock, 0).body as string)).toEqual({ answers: ["O"] });
+  });
+
+  it("requests the stored one-sentence hint through the shared authenticated API client", async () => {
+    tokenStore.set({ accessToken: "acc", refreshToken: "ref" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        200,
+        envelope("SUCCESS", {
+          hint: "프로세스가 자원을 소유하는 단위를 떠올려 보세요.",
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await requestQuizHint(7);
+
+    expect(result).toEqual({ hint: "프로세스가 자원을 소유하는 단위를 떠올려 보세요." });
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/quizzes/7/hints");
+    expect(callInit(fetchMock, 0)).toMatchObject({
+      method: "POST",
+      headers: { Authorization: "Bearer acc" },
+    });
+    expect(callInit(fetchMock, 0).body).toBeUndefined();
   });
 
   it("fetches quiz explanation with server-provided highlight offsets", async () => {

@@ -72,6 +72,25 @@ public class GeneratedQuizValidator {
         }
     }
 
+    /** 기존 draft 승인 시 새 필드인 hint만 최신 정책으로 재검증한다. 나머지 필드는 생성·REVIEW 제출 때 검증한다. */
+    public void validateHintSet(GeneratedQuizSet generated) {
+        List<GeneratedQuizSet.GeneratedQuiz> quizzes = generated.quizzes();
+        if (quizzes == null || quizzes.size() != EXPECTED_QUIZ_COUNT) {
+            throw new QuizGenerationException(
+                    "생성된 문제 개수가 %d개가 아닙니다: %s".formatted(EXPECTED_QUIZ_COUNT, quizzes == null ? 0 : quizzes.size()));
+        }
+        for (int index = 0; index < EXPECTED_QUIZ_COUNT; index++) {
+            Expected expected = EXPECTED_SLOTS.get(index);
+            validateHintSlot("슬롯 %d".formatted(index + 1), quizzes.get(index), expected.type(), expected.difficulty());
+        }
+    }
+
+    /** 기존 IMPROVE draft 승인 시 원본 유형·난이도를 유지하는지와 hint만 재검증한다. */
+    public void validateSingleHint(
+            GeneratedQuizSet.GeneratedQuiz quiz, QuizType expectedType, QuizDifficulty expectedDifficulty) {
+        validateHintSlot("문제", quiz, expectedType, expectedDifficulty);
+    }
+
     public void validateSingle(
             GeneratedQuizSet.GeneratedQuiz quiz, QuizType expectedType, QuizDifficulty expectedDifficulty) {
         validateSlot("문제", quiz, expectedType, expectedDifficulty);
@@ -82,16 +101,37 @@ public class GeneratedQuizValidator {
             GeneratedQuizSet.GeneratedQuiz quiz,
             QuizType expectedType,
             QuizDifficulty expectedDifficulty) {
-        if (quiz.type() != expectedType || quiz.difficulty() != expectedDifficulty) {
-            throw new QuizGenerationException("%s의 유형/난이도가 예상과 다릅니다: %s/%s (기대: %s/%s)"
-                    .formatted(location, quiz.type(), quiz.difficulty(), expectedType, expectedDifficulty));
-        }
+        validateExpectedType(location, quiz, expectedType, expectedDifficulty);
         validateCommonFields(location, quiz);
         validateTypeSpecificFields(location, quiz);
     }
 
+    private void validateHintSlot(
+            String location,
+            GeneratedQuizSet.GeneratedQuiz quiz,
+            QuizType expectedType,
+            QuizDifficulty expectedDifficulty) {
+        validateExpectedType(location, quiz, expectedType, expectedDifficulty);
+        QuizHintValidator.validate(location, quiz);
+    }
+
+    private void validateExpectedType(
+            String location,
+            GeneratedQuizSet.GeneratedQuiz quiz,
+            QuizType expectedType,
+            QuizDifficulty expectedDifficulty) {
+        if (quiz == null) {
+            throw new QuizGenerationException("%s의 문제가 비어 있습니다.".formatted(location));
+        }
+        if (quiz.type() != expectedType || quiz.difficulty() != expectedDifficulty) {
+            throw new QuizGenerationException("%s의 유형/난이도가 예상과 다릅니다: %s/%s (기대: %s/%s)"
+                    .formatted(location, quiz.type(), quiz.difficulty(), expectedType, expectedDifficulty));
+        }
+    }
+
     private void validateCommonFields(String location, GeneratedQuizSet.GeneratedQuiz quiz) {
         requireNonBlank(location, "questionText", quiz.questionText());
+        QuizHintValidator.validate(location, quiz);
         CodeSnippetValidator.validate(location, quiz.codeSnippet());
         requireNonBlank(location, "explanationSummary", quiz.explanationSummary());
         requireNonBlank(location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation());
@@ -277,9 +317,16 @@ public class GeneratedQuizValidator {
         if (answerKeywords == null || answerKeywords.isEmpty()) {
             throw new QuizGenerationException("%s의 answerKeywords가 비어 있습니다.".formatted(location));
         }
-        for (List<String> synonyms : answerKeywords) {
+        for (int groupIndex = 0; groupIndex < answerKeywords.size(); groupIndex++) {
+            List<String> synonyms = answerKeywords.get(groupIndex);
             if (synonyms == null || synonyms.isEmpty()) {
                 throw new QuizGenerationException("%s의 answerKeywords 중 빈 동의어 묶음이 있습니다.".formatted(location));
+            }
+            for (int synonymIndex = 0; synonymIndex < synonyms.size(); synonymIndex++) {
+                requireNonBlank(
+                        location,
+                        "answerKeywords[%d][%d]".formatted(groupIndex + 1, synonymIndex + 1),
+                        synonyms.get(synonymIndex));
             }
         }
         long blankCount = Pattern.compile("___").matcher(questionText).results().count();
@@ -300,6 +347,13 @@ public class GeneratedQuizValidator {
         if (choices == null || choices.size() != EXPECTED_CHOICE_COUNT) {
             throw new QuizGenerationException(
                     "%s(사지선다)의 choices가 %d개가 아닙니다.".formatted(location, EXPECTED_CHOICE_COUNT));
+        }
+        for (int index = 0; index < choices.size(); index++) {
+            GeneratedQuizSet.GeneratedChoice choice = choices.get(index);
+            if (choice == null) {
+                throw new QuizGenerationException("%s의 choices[%d]가 비어 있습니다.".formatted(location, index + 1));
+            }
+            requireNonBlank(location, "choices[%d].content".formatted(index + 1), choice.content());
         }
         long correctCount = choices.stream()
                 .filter(GeneratedQuizSet.GeneratedChoice::isCorrect)

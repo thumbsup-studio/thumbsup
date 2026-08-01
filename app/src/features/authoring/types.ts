@@ -82,6 +82,8 @@ export type GeneratedQuiz = {
   type: string;
   difficulty: string;
   questionText: string;
+  /** 배포 전에 저장된 legacy draft payload에는 키 자체가 없을 수 있다. */
+  hint?: string | null;
   codeSnippet: string | null;
   explanationSummary: string;
   explanationExample: string | null;

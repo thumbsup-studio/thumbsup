@@ -22,6 +22,7 @@ public final class QuizFixture {
                 "TCP는 3-way handshake로 연결을 맺는 연결 지향 프로토콜이다.",
                 null,
                 "UDP와 헷갈리기 쉽다 — UDP는 비연결형이라 handshake가 없다.");
+        quiz.assignHint("연결을 시작하기 전에 통신 상대와 준비 절차를 거치는지 떠올려 보세요.");
         quiz.assignCorrectAnswer("O");
         quiz.addFollowUpQuestion("UDP와 TCP의 핵심 차이는 무엇인가요?", true, 1);
         quiz.addDerivedConcept("3-way handshake", 1);
@@ -38,6 +39,7 @@ public final class QuizFixture {
                 "UDP는 신뢰성을 보장하지 않는 비연결형 프로토콜이다.",
                 null,
                 "TCP와 헷갈리기 쉽다 — 신뢰성 보장은 TCP의 특징이다.");
+        quiz.assignHint("전송 전에 연결을 맺고 손실된 데이터를 다시 보내는 절차가 있는지 살펴보세요.");
         quiz.assignCorrectAnswer("X");
         quiz.addFollowUpQuestion("UDP는 어떤 상황에 적합한가요?", true, 1);
         quiz.addDerivedConcept("비연결형 프로토콜", 1);
@@ -54,6 +56,7 @@ public final class QuizFixture {
                 "이중 반복문이 각각 n번 실행되므로 O(n^2)이다.",
                 "정렬되지 않은 배열에서 버블 정렬이 이 패턴의 대표적인 예시다.",
                 "O(n)으로 착각하기 쉽다 — 바깥 반복문만 보고 안쪽 반복문을 놓치지 않도록 주의.");
+        quiz.assignHint("각 반복문이 입력 크기에 따라 몇 번씩 실행되는지 곱해서 생각해 보세요.");
         quiz.addChoice("O(n)", false, 1);
         quiz.addChoice("O(n log n)", false, 2);
         quiz.addChoice("O(n^2)", true, 3);
@@ -73,6 +76,7 @@ public final class QuizFixture {
                 "프로세스는 독립된 메모리 공간을, 스레드는 프로세스 내 메모리를 공유한다.",
                 "멀티스레드 웹 서버가 스레드 간 메모리 공유의 대표적인 예시다.",
                 "스레드도 독립된 메모리를 갖는다고 착각하기 쉽다 — 스택만 별도이고 힙은 공유한다.");
+        quiz.assignHint("실행 단위들이 주소 공간을 각각 소유하는지 함께 사용하는지 구분해 보세요.");
         quiz.addChoice("프로세스는 메모리를 공유하고 스레드는 독립적이다", false, 1);
         quiz.addChoice("스레드는 프로세스 내 메모리를 공유한다", true, 2);
         quiz.addChoice("둘 다 완전히 독립된 메모리를 가진다", false, 3);
@@ -92,6 +96,7 @@ public final class QuizFixture {
                 "스택은 LIFO(Last In First Out) 방식으로 마지막에 넣은 데이터가 먼저 나온다.",
                 "함수 호출 스택, 브라우저 뒤로가기 기능이 대표적인 활용 예시다.",
                 "큐(FIFO)와 헷갈리기 쉽다 — 큐는 먼저 넣은 데이터가 먼저 나온다.");
+        quiz.assignHint("가장 최근에 들어온 데이터가 언제 꺼내지는지 순서를 따라가 보세요.");
         quiz.addAnswerKeyword(1, "LIFO");
         quiz.addFollowUpQuestion("큐(Queue)와 스택의 차이는 무엇인가요?", true, 1);
         quiz.addDerivedConcept("LIFO", 1);
@@ -115,6 +120,7 @@ public final class QuizFixture {
                 "TCP는 [[연결 지향]] 프로토콜이다.\n연결은 [[3-way handshake]]로 맺어진다.",
                 "웹 브라우저도 접속 전에 3-way handshake를 거친다.",
                 "UDP는 [[비연결형]]이라 handshake가 없다.");
+        quiz.assignHint("통신을 시작하기 전에 연결 설정 절차를 수행하는지 떠올려 보세요.");
         quiz.assignCorrectAnswer("O");
         withDetail(quiz.addFollowUpQuestion("보조 질문입니다.", false, 2), 20L);
         withDetail(quiz.addFollowUpQuestion("대표 질문입니다.", true, 1), 10L);

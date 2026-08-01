@@ -43,6 +43,7 @@ const BASE_DRAFT: DraftDetail = {
         type: "OX",
         difficulty: "EASY",
         questionText: "프로세스는 독립된 자원을 갖는다.",
+        hint: "특권 명령을 어떤 실행 모드에서 다루는지 떠올려 보세요.",
         codeSnippet: null,
         explanationSummary: "프로세스는 자원을 독립적으로 관리한다.",
         explanationExample: null,
@@ -58,6 +59,7 @@ const BASE_DRAFT: DraftDetail = {
         type: "MULTIPLE_CHOICE",
         difficulty: "MEDIUM",
         questionText: "다음 중 옳은 것은?",
+        hint: "선택지별 핵심 조건을 운영체제의 보호 경계와 비교해 보세요.",
         codeSnippet: null,
         explanationSummary: "정답은 B다.",
         explanationExample: null,
@@ -106,6 +108,7 @@ const RICH_DRAFT: DraftDetail = {
         difficulty: "HARD",
         questionText:
           "[[LIFO]] 구조를 쓰는 자료구조는 스택이며 접근 시간복잡도는 [[CONST_TIME]]이다.",
+        hint: "삽입과 삭제가 일어나는 끝의 위치와 항목 순서를 추적해 보세요.",
         codeSnippet: null,
         explanationSummary: "스택은 후입선출 구조로 동작한다.",
         explanationExample: "함수 호출 스택이 대표적인 실무 예시다.",
@@ -133,6 +136,13 @@ const RICH_DRAFT: DraftDetail = {
   },
 };
 
+const legacyQuizWithoutHint = { ...BASE_DRAFT.payload.quizzes[0] };
+delete legacyQuizWithoutHint.hint;
+const LEGACY_DRAFT_WITHOUT_HINT: DraftDetail = {
+  ...BASE_DRAFT,
+  payload: { quizzes: [legacyQuizWithoutHint] },
+};
+
 beforeEach(() => {
   getDraftMock.mockReset();
   reviewDraftMock.mockReset();
@@ -151,6 +161,12 @@ describe("DraftDetailScreen", () => {
     expect(screen.getByText("다음 중 옳은 것은?")).toBeInTheDocument();
     expect(screen.getByText(/B 선지/)).toBeInTheDocument();
     expect(screen.getByText(/정답은 B다\./)).toBeInTheDocument();
+    expect(
+      screen.getByText("특권 명령을 어떤 실행 모드에서 다루는지 떠올려 보세요."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("선택지별 핵심 조건을 운영체제의 보호 경계와 비교해 보세요."),
+    ).toBeInTheDocument();
     // 오답 선지엔 정답 표시가 없어야 한다
     expect(screen.getByText("A 선지")).toBeInTheDocument();
   });
@@ -163,6 +179,16 @@ describe("DraftDetailScreen", () => {
     await screen.findByText("프로세스는 독립된 자원을 갖는다.");
     // choices가 null인 OX 문제는 이 정답 표시가 유일한 정답 단서다 — 검수자가 O/X를 판단할 근거.
     expect(screen.getByText(/정답:\s*O/)).toBeInTheDocument();
+  });
+
+  it("legacy draft에 hint 키가 없으면 재검토 안내를 보여준다", async () => {
+    getDraftMock.mockResolvedValue(LEGACY_DRAFT_WITHOUT_HINT);
+
+    renderScreen();
+
+    expect(
+      await screen.findByText("힌트가 아직 생성되지 않았습니다. 재검토 후 승인하세요."),
+    ).toBeInTheDocument();
   });
 
   it("KEYWORD_BLANK 슬롯의 answerKeywords가 빈칸별로 보인다(동의어는 같은 그룹)", async () => {

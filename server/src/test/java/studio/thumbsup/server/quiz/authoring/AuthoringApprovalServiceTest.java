@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
@@ -27,6 +28,7 @@ import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizType;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
+import studio.thumbsup.server.quiz.generation.QuizGenerationException;
 import studio.thumbsup.server.quiz.generation.QuizPersister;
 
 @ExtendWith(MockitoExtension.class)
@@ -118,9 +120,31 @@ class AuthoringApprovalServiceTest {
 
             QuizDraft result = approvalService.approve(9L, 1L);
 
+            verify(validator).validateHintSet(set);
             verify(quizPersister).persist("운영체제", set);
             assertThat(result.getStatus()).isEqualTo(QuizDraftStatus.APPROVED);
             assertThat(result.getApprovedBy()).isEqualTo(9L);
+        }
+
+        @Test
+        @DisplayName("hint가 없는 legacy draft는 materialize 전에 검증 실패한다")
+        void rejects_legacy_draft_without_hint_before_persisting() {
+            QuizDraft draft = QuizDraft.createNew("운영체제", "{\"quizzes\":[]}", 1L);
+            ReflectionTestUtils.setField(draft, "id", 1L);
+            given(draftService.getForUpdate(1L)).willReturn(draft);
+            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            given(validator.parse("{\"quizzes\":[]}")).willReturn(set);
+            willThrow(new QuizGenerationException("슬롯 1의 hint가 비어 있습니다."))
+                    .given(validator)
+                    .validateHintSet(set);
+
+            assertThatThrownBy(() -> approvalService.approve(9L, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(exception -> ((BusinessException) exception).getErrorType())
+                    .isEqualTo(AuthoringErrorType.AUTHORING_DRAFT_REVIEW_REQUIRED);
+
+            verify(quizPersister, never()).persist("운영체제", set);
+            assertThat(draft.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
         }
 
         @Test
@@ -134,6 +158,7 @@ class AuthoringApprovalServiceTest {
                     QuizType.MULTIPLE_CHOICE,
                     QuizDifficulty.MEDIUM,
                     "개선된 질문",
+                    "개선된 판단 단서를 떠올려 보세요.",
                     null,
                     "요약",
                     null,
@@ -154,6 +179,8 @@ class AuthoringApprovalServiceTest {
             approvalService.approve(9L, 2L);
 
             assertThat(sourceQuiz.getQuestionText()).isEqualTo("개선된 질문");
+            assertThat(sourceQuiz.getHint()).isEqualTo("개선된 판단 단서를 떠올려 보세요.");
+            verify(validator).validateSingleHint(generatedQuiz, QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM);
             verify(quizPersister).populate(sourceQuiz, generatedQuiz);
         }
     }

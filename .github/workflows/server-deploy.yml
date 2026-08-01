@@ -5,6 +5,13 @@ on:
     branches: [main]
     paths:
       - 'server/**'
+      - '!server/docs/**'
+      - '!server/**/*.md'
+
+concurrency:
+  group: server-deploy-${{ github.ref }}
+  queue: max
+  cancel-in-progress: false
 
 permissions:
   id-token: write # OIDC로 AWS 자격 증명 임시 위임받기 위해 필요

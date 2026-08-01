@@ -46,6 +46,7 @@ public final class QuizToGeneratedQuizMapper {
                 quiz.getType(),
                 quiz.getDifficulty(),
                 quiz.getQuestionText(),
+                quiz.getHint(),
                 quiz.getCodeSnippet(),
                 quiz.getExplanationSummary(),
                 quiz.getExplanationExample(),

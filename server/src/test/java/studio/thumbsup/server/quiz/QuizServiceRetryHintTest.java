@@ -106,6 +106,7 @@ class QuizServiceRetryHintTest {
      */
     private static Quiz multipleChoiceQuizWithShuffledDisplayOrder() {
         Quiz quiz = Quiz.create(QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM, "질문", null, "요약", "예시", "오답 해설");
+        quiz.assignHint("각 개념이 맡는 역할을 비교해 보세요.");
         quiz.addChoice("가", false, 3);
         quiz.addChoice("나", false, 1);
         quiz.addChoice("다", true, 2);
@@ -119,7 +120,7 @@ class QuizServiceRetryHintTest {
 
     /** 키워드가 아직 등록되지 않은 빈칸 문제 — 슬롯 키워드는 테스트에서 필요한 만큼 추가한다. */
     private static Quiz bareKeywordBlankQuiz() {
-        return Quiz.create(
+        Quiz quiz = Quiz.create(
                 QuizType.KEYWORD_BLANK,
                 QuizDifficulty.HARD,
                 "___은 응용 프로그램이 운영체제 커널 기능을 요청하는 인터페이스다.",
@@ -127,6 +128,8 @@ class QuizServiceRetryHintTest {
                 "요약",
                 null,
                 "오답 해설");
+        quiz.assignHint("응용 프로그램과 핵심 관리 계층 사이의 요청 경로를 떠올려 보세요.");
+        return quiz;
     }
 
     @Nested

@@ -28,6 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.common.exception.GlobalExceptionHandler;
 import studio.thumbsup.server.quiz.authoring.dto.ApproveResponse;
 import studio.thumbsup.server.quiz.authoring.dto.DraftDetailResponse;
@@ -131,6 +132,17 @@ class AuthoringDraftControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.draftId").value(1))
                     .andExpect(jsonPath("$.data.status").value("APPROVED"));
+        }
+
+        @Test
+        @DisplayName("최신 hint 검증을 통과하지 못한 legacy draft는 409와 REVIEW 안내 코드를 반환한다")
+        void returns_409_when_legacy_draft_requires_review() throws Exception {
+            given(approvalService.approveForResponse(eq(7L), eq(1L)))
+                    .willThrow(new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_REVIEW_REQUIRED));
+
+            mockMvc.perform(post("/api/v1/authoring/drafts/1/approve"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("AUTHORING_DRAFT_REVIEW_REQUIRED"));
         }
     }
 

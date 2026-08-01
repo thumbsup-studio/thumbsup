@@ -53,6 +53,8 @@ class QuizNextResponseTest {
     }
 
     private static Quiz quiz(QuizType type, String questionText) {
-        return Quiz.create(type, QuizDifficulty.HARD, questionText, null, "해설", null, "오답 해설");
+        Quiz quiz = Quiz.create(type, QuizDifficulty.HARD, questionText, null, "해설", null, "오답 해설");
+        quiz.assignHint("판단에 필요한 핵심 조건을 떠올려 보세요.");
+        return quiz;
     }
 }

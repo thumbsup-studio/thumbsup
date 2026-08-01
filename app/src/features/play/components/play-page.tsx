@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Feedback } from "@/components/ui/feedback";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +24,7 @@ import {
   type QuizNextResponse,
   type RetryHint,
   type RetryHintBlank,
+  requestQuizHint,
   submitQuizAnswer,
 } from "@/lib/api/quiz";
 
@@ -45,6 +47,11 @@ export function PlayPage({ review }: PlayPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // 사용자가 제출 전에 요청하는 저장형 한 문장 힌트. 아래 #63 재도전 힌트와 상태·효과를 섞지 않는다.
+  const [requestedHint, setRequestedHint] = useState<string | null>(null);
+  const [isHintLoading, setIsHintLoading] = useState(false);
+  const [hintError, setHintError] = useState<string | null>(null);
+  const hintRequestGeneration = useRef(0);
   // 재도전 힌트가 있으면 곧 "재도전 화면"이라는 뜻. hasUsedRetry는 이 문제에서 재도전을 이미 썼는지.
   const [retryHint, setRetryHint] = useState<RetryHint | null>(null);
   const [hasUsedRetry, setHasUsedRetry] = useState(false);
@@ -63,7 +70,9 @@ export function PlayPage({ review }: PlayPageProps) {
 
   const totalCount = quiz?.totalCount ?? defaultStepTotal;
   const currentNumber = quiz?.slotOrder ?? 1;
-  const submitEnabled = quiz ? canSubmitAnswer(quiz, draft) && !isSubmitting : false;
+  const submitEnabled = quiz
+    ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading
+    : false;
 
   const liveText = useMemo(() => {
     if (!quiz) {
@@ -76,6 +85,8 @@ export function PlayPage({ review }: PlayPageProps) {
   useEffect(() => {
     let ignore = false;
     const requestKey = reloadKey;
+    // 슬롯 전환 전에 시작한 힌트 응답이 새 문제에 붙지 않도록 기존 요청 세대를 무효화한다.
+    hintRequestGeneration.current += 1;
 
     if (requestKey < 0) {
       return undefined;
@@ -85,6 +96,9 @@ export function PlayPage({ review }: PlayPageProps) {
       setIsLoading(true);
       setError(null);
       setDraft(null);
+      setRequestedHint(null);
+      setIsHintLoading(false);
+      setHintError(null);
       setRetryHint(null);
       setHasUsedRetry(false);
 
@@ -120,8 +134,41 @@ export function PlayPage({ review }: PlayPageProps) {
 
     return () => {
       ignore = true;
+      hintRequestGeneration.current += 1;
     };
   }, [reloadKey, router, reviewStep, reviewSlot]);
+
+  async function showHint() {
+    if (!quiz || requestedHint || isHintLoading || isSubmitting || hasUsedRetry) {
+      return;
+    }
+
+    const requestGeneration = ++hintRequestGeneration.current;
+    setIsHintLoading(true);
+    setHintError(null);
+
+    try {
+      const result = await requestQuizHint(quiz.quizId);
+      if (hintRequestGeneration.current !== requestGeneration) {
+        return;
+      }
+      setRequestedHint(result.hint);
+    } catch (requestError) {
+      if (hintRequestGeneration.current !== requestGeneration) {
+        return;
+      }
+      if (isUnauthorized(requestError)) {
+        router.replace("/login");
+        return;
+      }
+
+      setHintError("힌트를 불러오지 못했어요.");
+    } finally {
+      if (hintRequestGeneration.current === requestGeneration) {
+        setIsHintLoading(false);
+      }
+    }
+  }
 
   async function submitAnswer() {
     if (!quiz || !submitEnabled) {
@@ -233,8 +280,15 @@ export function PlayPage({ review }: PlayPageProps) {
                 isLocked={isSubmitting}
                 onDraftChange={setDraft}
                 quiz={quiz}
+                requestedHint={requestedHint}
                 retryHint={retryHint}
               />
+
+              {hintError ? (
+                <div className="pt-4">
+                  <Feedback tone="error">{hintError}</Feedback>
+                </div>
+              ) : null}
 
               {/* 제출 실패는 문제를 그대로 두고 인라인으로 알린다 — 재도전 화면·입력을 잃지 않도록. */}
               {error ? (
@@ -243,7 +297,18 @@ export function PlayPage({ review }: PlayPageProps) {
                 </div>
               ) : null}
 
-              <div className="pt-4">
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <Button
+                  aria-label={isHintLoading ? "힌트 불러오는 중" : undefined}
+                  className="w-full text-sm"
+                  disabled={requestedHint !== null || isSubmitting || hasUsedRetry}
+                  loading={isHintLoading}
+                  loadingText="불러오는 중"
+                  onClick={showHint}
+                  variant="secondary"
+                >
+                  {requestedHint ? "힌트 확인함" : "힌트 보기"}
+                </Button>
                 <Button
                   className="w-full shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
                   disabled={!submitEnabled}
@@ -281,6 +346,7 @@ function QuestionRenderer({
   isLocked,
   onDraftChange,
   quiz,
+  requestedHint,
   retryHint,
 }: {
   choices: QuizChoice[];
@@ -288,6 +354,7 @@ function QuestionRenderer({
   isLocked: boolean;
   onDraftChange: (draft: AnswerDraft) => void;
   quiz: QuizNextResponse;
+  requestedHint: string | null;
   retryHint: RetryHint | null;
 }) {
   return (
@@ -314,6 +381,12 @@ function QuestionRenderer({
           {getQuestionKindLabel(quiz.type)}
         </p>
         <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
+        {requestedHint ? (
+          <Card aria-live="polite" className="mt-4" role="status">
+            <p className="text-xs font-bold text-ink-muted">힌트</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-ink">{requestedHint}</p>
+          </Card>
+        ) : null}
       </div>
 
       <div className="mt-auto space-y-4 pt-6">
