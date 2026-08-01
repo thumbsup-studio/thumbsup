@@ -16,6 +16,9 @@ public interface QuizStepRepository extends JpaRepository<QuizStep, Long> {
     /** 완료한 스텝 이력 조회용 — startInclusive > endInclusive면(완료한 스텝 없음) 빈 목록을 반환한다. */
     List<QuizStep> findByStepOrderBetweenOrderByStepOrderAsc(int startInclusive, int endInclusive);
 
+    /** 지식 그래프 relatedSteps의 topic 조립용 — 흩어진 stepOrder 집합에 대한 일괄 조회(#233). */
+    List<QuizStep> findByStepOrderIn(Collection<Integer> stepOrders);
+
     /**
      * 코스의 "시작 스텝" — stepOrder가 코스와 무관하게 전역 순번이라 코스마다 1이 아닐 수 있다
      * (예: 디자인패턴 코스는 13부터 시작). 진행 기록이 없는 신규 유저의 기본 커서를 정하는 데 쓴다.
