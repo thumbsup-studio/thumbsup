@@ -16,9 +16,8 @@ import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 
 /**
- * 검증을 마친 생성 결과를 DB에 저장한다(#26). {@link QuizGenerationService}에서 분리한 이유는
- * 트랜잭션 경계를 DB 저장에만 좁히기 위해서다 — 같은 클래스 안에서 {@code @Transactional} 메서드를
- * 자기 자신이 호출하면 Spring AOP 프록시를 거치지 않아(self-invocation) 트랜잭션이 적용되지 않는다.
+ * 검증을 마친 생성 결과를 DB에 저장한다(#26). 저작 파이프라인이 검증을 통과한 결과만 넘기며,
+ * 트랜잭션 경계는 DB 저장에만 둔다.
  */
 @Service
 public class QuizPersister {

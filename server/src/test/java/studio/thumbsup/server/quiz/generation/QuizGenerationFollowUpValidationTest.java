@@ -1,11 +1,7 @@
 package studio.thumbsup.server.quiz.generation;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.DEFAULT_BLOCKS;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.DEFAULT_KEYWORDS;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.DEFAULT_ONE_LINE_ANSWER;
@@ -17,9 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * 꼬리질문 상세(#133)의 생성 검증. 상세가 한 조각이라도 비면 조회 API가 그 꼬리질문을 응답에서 감추므로
@@ -27,34 +20,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
  *
  * <p>부모 문제의 사전은 {@code PCB}, 꼬리질문의 사전은 {@code FIFO}다 — 두 사전이 섞이지 않는지가 핵심이다.
  */
-@ExtendWith(MockitoExtension.class)
 @DisplayName("꼬리질문 상세 검증")
 class QuizGenerationFollowUpValidationTest {
 
-    @Mock
-    private EliceClient eliceClient;
-
-    @Mock
-    private QuizPersister quizPersister;
-
     private final GeneratedQuizValidator validator = new GeneratedQuizValidator(new ObjectMapper());
 
-    private QuizGenerationService service() {
-        return new QuizGenerationService(eliceClient, quizPersister, validator);
-    }
-
     /** 첫 슬롯의 꼬리질문만 갈아끼운 세트를 응답으로 준다 — 나머지는 항상 유효하다. */
-    private void givenFirstQuizFollowUp(String followUpQuestionsJson) {
-        given(eliceClient.generate(any())).willReturn(setJsonWithFirstQuiz(oxQuizJsonWith(followUpQuestionsJson)));
+    private String setJsonWithFirstQuizFollowUp(String followUpQuestionsJson) {
+        return setJsonWithFirstQuiz(oxQuizJsonWith(followUpQuestionsJson));
     }
 
     private void assertRejected(String messageFragment) {
-        QuizGenerationService quizGenerationService = service();
-        assertThatThrownBy(() -> quizGenerationService.generateStep(1L, "운영체제"))
+        assertThatThrownBy(() -> validateSet(currentResponse))
                 .isInstanceOf(QuizGenerationException.class)
                 .hasMessageContaining(messageFragment);
-        verify(quizPersister, never()).persist(any(), any(), any());
     }
+
+    private String currentResponse;
 
     @Nested
     @DisplayName("필수 필드")
@@ -134,9 +116,8 @@ class QuizGenerationFollowUpValidationTest {
             String blocks = "[{\"label\": \"해설\", \"content\": \"큐는 [[FIFO]] 순서다.\"},"
                     + " {\"label\": \"흔한 오해\", \"content\": \"스택과 헷갈리기 쉽다.\"}]";
             givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", "마커 없는 한 줄 답.", blocks, DEFAULT_KEYWORDS));
-            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
+            assertValid();
         }
     }
 
@@ -207,9 +188,8 @@ class QuizGenerationFollowUpValidationTest {
             String keywords = "[{\"keyword\": \"FIFO\", \"description\": \"설명\"},"
                     + " {\"keyword\": \"작업 대기열\", \"description\": \"설명\"}]";
             givenFirstQuizFollowUp(followUpJson("꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, blocks, keywords));
-            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
+            assertValid();
         }
 
         @Test
@@ -221,9 +201,20 @@ class QuizGenerationFollowUpValidationTest {
                             "보조 꼬리질문", "\"MEDIUM\"", DEFAULT_ONE_LINE_ANSWER, DEFAULT_BLOCKS, DEFAULT_KEYWORDS)
                     .replace("\"isPrimary\": true", "\"isPrimary\": false");
             givenFirstQuizFollowUp(primary + "," + secondary);
-            given(quizPersister.persist(any(), any(), any())).willReturn(1);
 
-            assertThat(service().generateStep(1L, "운영체제")).isEqualTo(1);
+            assertValid();
         }
+    }
+
+    private void givenFirstQuizFollowUp(String followUpQuestionsJson) {
+        currentResponse = setJsonWithFirstQuizFollowUp(followUpQuestionsJson);
+    }
+
+    private void assertValid() {
+        assertThatCode(() -> validateSet(currentResponse)).doesNotThrowAnyException();
+    }
+
+    private void validateSet(String rawResponse) {
+        validator.validateSet(validator.parse(rawResponse));
     }
 }

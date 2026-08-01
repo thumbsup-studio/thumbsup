@@ -12,8 +12,8 @@ import studio.thumbsup.server.quiz.QuizDifficulty;
 import studio.thumbsup.server.quiz.QuizType;
 
 /**
- * 엘리스 응답 문자열을 파싱하고, 생성된 문제가 저장 가능한 형태인지 검증한다. {@link QuizGenerationService}에서
- * 분리한 이유는 저작 파이프라인(#174)의 REVIEW/IMPROVE 잡도 같은 검증 규칙을 재사용해야 하기 때문이다 —
+ * 생성 응답 문자열을 파싱하고, 생성된 문제가 저장 가능한 형태인지 검증한다. 저작 파이프라인(#174)의
+ * GENERATE/REVIEW/IMPROVE 잡이 같은 검증 규칙을 재사용한다 —
  * {@link #validateSet}은 스텝 생성(5슬롯 고정 구성), {@link #validateSingle}은 검수·개선 단건에 쓴다.
  */
 @Component
@@ -43,7 +43,7 @@ public class GeneratedQuizValidator {
         try {
             return objectMapper.readValue(cleaned, GeneratedQuizSet.class);
         } catch (Exception e) {
-            throw new QuizGenerationException("엘리스 응답을 JSON으로 파싱하지 못했습니다: " + rawResponse, e);
+            throw new QuizGenerationException("생성 응답을 JSON으로 파싱하지 못했습니다: " + rawResponse, e);
         }
     }
 

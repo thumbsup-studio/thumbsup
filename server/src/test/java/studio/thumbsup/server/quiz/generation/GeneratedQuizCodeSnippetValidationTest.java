@@ -1,11 +1,8 @@
 package studio.thumbsup.server.quiz.generation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.oxQuizJson;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.setJsonWithFirstQuiz;
 
@@ -14,18 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
-class QuizGenerationCodeSnippetTest {
-
-    @Mock
-    private EliceClient eliceClient;
-
-    @Mock
-    private QuizPersister quizPersister;
+class GeneratedQuizCodeSnippetValidationTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final GeneratedQuizValidator validator = new GeneratedQuizValidator(objectMapper);
@@ -35,15 +22,10 @@ class QuizGenerationCodeSnippetTest {
     class GenerateQuiz {
 
         @Test
-        @DisplayName("코드 구조가 있는 codeSnippet은 검증 후 저장한다")
-        void persists_generated_quiz_with_valid_code_snippet() throws Exception {
-            given(eliceClient.generate(any())).willReturn(setJsonWithFirstCodeSnippet("int value = 1;\nvalue++;"));
-            given(quizPersister.persist(any(), any(), any())).willReturn(4);
-
-            int stepOrder = service().generateStep(1L, "운영체제");
-
-            assertThat(stepOrder).isEqualTo(4);
-            verify(quizPersister).persist(any(), any(), any());
+        @DisplayName("코드 구조가 있는 codeSnippet은 검증을 통과한다")
+        void accepts_generated_quiz_with_valid_code_snippet() throws Exception {
+            assertThatCode(() -> validateSet(setJsonWithFirstCodeSnippet("int value = 1;\nvalue++;")))
+                    .doesNotThrowAnyException();
         }
 
         @Test
@@ -54,12 +36,10 @@ class QuizGenerationCodeSnippetTest {
                     가정: 숫자가 작을수록 우선순위가 높고, 모두 같은 시각에 준비 상태가 된다.
                     스케줄링: 비선점형 우선순위 스케줄링
                     """;
-            given(eliceClient.generate(any())).willReturn(setJsonWithFirstCodeSnippet(naturalLanguageSnippet));
 
-            assertThatThrownBy(() -> service().generateStep(1L, "운영체제"))
+            assertThatThrownBy(() -> validateSet(setJsonWithFirstCodeSnippet(naturalLanguageSnippet)))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("codeSnippet");
-            verify(quizPersister, never()).persist(any(), any(), any());
         }
 
         @Test
@@ -81,8 +61,8 @@ class QuizGenerationCodeSnippetTest {
         }
     }
 
-    private QuizGenerationService service() {
-        return new QuizGenerationService(eliceClient, quizPersister, validator);
+    private void validateSet(String rawResponse) {
+        validator.validateSet(validator.parse(rawResponse));
     }
 
     private String setJsonWithFirstCodeSnippet(String codeSnippet) throws JsonProcessingException {

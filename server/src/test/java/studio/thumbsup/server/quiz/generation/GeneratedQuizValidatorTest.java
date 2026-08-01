@@ -34,7 +34,7 @@ class GeneratedQuizValidatorTest {
         }
 
         @Test
-        @DisplayName("엘리스 응답이 JSON이 아니면 파싱 실패 예외")
+        @DisplayName("생성 응답이 JSON이 아니면 파싱 실패 예외")
         void throws_when_response_is_not_json() {
             assertThatThrownBy(() -> validator.parse("이건 JSON이 아니에요"))
                     .isInstanceOf(QuizGenerationException.class)

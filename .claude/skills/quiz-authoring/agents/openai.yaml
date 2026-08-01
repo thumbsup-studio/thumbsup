@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quiz Authoring (Thumbs Up)"
+  short_description: "문제 저작 파이프라인 — 대시보드·브리지 운영, 잡 진단, 콘텐츠 규칙, 승인."
+  default_prompt: "저작 파이프라인 관련해서 도와줘. 잡 진단·브리지 기동·문제 규칙 중 뭘 볼지 알려줘."
