@@ -338,8 +338,11 @@ public class QuizService {
         if (progress.getCurrentStepOrder() == stepOrder) {
             progress.advanceToNextStep();
             quizProgressRepository.save(progress);
+            // 스트릭 갱신(user 도메인, AFTER_COMMIT)과 지식 그래프 학습 기록(#233, quiz.concept.
+            // LearnedConceptRecorder, 평범한 동기 @EventListener)이 같은 이벤트를 각자 필요한 만큼만
+            // 구독한다 — 두 관심사 모두 "스텝을 처음 완료했다"는 같은 사실 하나일 뿐이다.
             eventPublisher.publishEvent(
-                    new QuizStepCompletedEvent(userId, LocalDate.now(clock.withZone(TimeZones.KST))));
+                    new QuizStepCompletedEvent(userId, LocalDate.now(clock.withZone(TimeZones.KST)), stepOrder));
         }
     }
 
