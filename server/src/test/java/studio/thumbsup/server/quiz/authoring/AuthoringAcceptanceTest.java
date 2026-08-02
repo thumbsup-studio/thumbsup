@@ -2,6 +2,7 @@ package studio.thumbsup.server.quiz.authoring;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,6 +27,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
 import studio.thumbsup.server.quiz.QuizRepository;
+import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
@@ -54,6 +56,7 @@ class AuthoringAcceptanceTest {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final QuizRepository quizRepository;
+    private final QuizStepRepository quizStepRepository;
     private final CourseRepository courseRepository;
     private final DatabaseCleanUp databaseCleanUp;
 
@@ -62,12 +65,14 @@ class AuthoringAcceptanceTest {
             @Autowired JwtTokenProvider jwtTokenProvider,
             @Autowired ObjectMapper objectMapper,
             @Autowired QuizRepository quizRepository,
+            @Autowired QuizStepRepository quizStepRepository,
             @Autowired CourseRepository courseRepository,
             @Autowired DatabaseCleanUp databaseCleanUp) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.objectMapper = objectMapper;
         this.quizRepository = quizRepository;
+        this.quizStepRepository = quizStepRepository;
         this.courseRepository = courseRepository;
         this.databaseCleanUp = databaseCleanUp;
     }
@@ -109,6 +114,97 @@ class AuthoringAcceptanceTest {
         assertThat(quizRepository.count()).isEqualTo(quizCountBefore + 5);
     }
 
+    @Test
+    @DisplayName("목차 붙여넣기부터 코스 발행까지 REST로 완주한다")
+    void 목차_붙여넣기부터_코스_발행까지() throws Exception {
+        courseRepository.deleteAll();
+
+        JsonNode outlineData = requestOutline();
+        long outlineId = outlineData.path("outlineId").asLong();
+        long outlineJobId = outlineData.path("jobId").asLong();
+
+        JsonNode outlineJob = claimNextJob(outlineJobId);
+        assertThat(outlineJob.path("kind").asText()).isEqualTo("OUTLINE");
+        assertThat(outlineJob.path("prompt").asText()).contains("자료구조");
+        submitBridgeResult(outlineJobId, outlineResultJson());
+
+        JsonNode initialDetail = outlineDetail(outlineId);
+        assertThat(initialDetail.path("steps")).hasSize(3);
+        initialDetail
+                .path("steps")
+                .forEach(step -> assertThat(step.path("fillState").asText()).isEqualTo("EMPTY"));
+
+        long[] stepIds = editOutlineSteps(outlineId, initialDetail);
+        for (long stepId : stepIds) {
+            generateAndApproveStep(stepId);
+        }
+        assertThat(quizRepository.count()).isZero();
+        assertThat(quizStepRepository.count()).isZero();
+
+        publishAndAssert(outlineId);
+    }
+
+    private long[] editOutlineSteps(long outlineId, JsonNode initialDetail) throws Exception {
+        long firstStepId = initialDetail.path("steps").get(0).path("stepId").asLong();
+        long secondStepId = initialDetail.path("steps").get(1).path("stepId").asLong();
+        mockMvc.perform(patch("/api/v1/authoring/outline-steps/{stepId}", firstStepId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"topic\":\"기초 자료구조\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/authoring/outline-steps/{stepId}/order", secondStepId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"direction\":\"UP\"}"))
+                .andExpect(status().isOk());
+
+        JsonNode reorderedDetail = outlineDetail(outlineId);
+        assertThat(reorderedDetail.path("steps").get(0).path("stepId").asLong()).isEqualTo(secondStepId);
+        assertThat(reorderedDetail.path("steps").get(1).path("stepId").asLong()).isEqualTo(firstStepId);
+        assertThat(reorderedDetail.path("steps").get(1).path("topic").asText()).isEqualTo("기초 자료구조");
+
+        long thirdStepId = reorderedDetail.path("steps").get(2).path("stepId").asLong();
+        return new long[] {secondStepId, firstStepId, thirdStepId};
+    }
+
+    private void publishAndAssert(long outlineId) throws Exception {
+        JsonNode publishData = data(mockMvc.perform(post("/api/v1/authoring/outlines/{outlineId}/publish", outlineId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
+                .andExpect(status().isOk()));
+        assertThat(publishData.path("courseId").asLong()).isPositive();
+        assertThat(publishData.path("stepCount").asInt()).isEqualTo(3);
+        assertThat(courseRepository.count()).isEqualTo(1);
+        assertThat(quizStepRepository.count()).isEqualTo(3);
+        assertThat(quizRepository.count()).isEqualTo(9);
+
+        JsonNode outlines = data(mockMvc.perform(
+                        get("/api/v1/authoring/outlines").header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
+                .andExpect(status().isOk()));
+        assertThat(outlines.path("outlines")).hasSize(1);
+        assertThat(outlines.path("outlines").get(0).path("status").asText()).isEqualTo("PUBLISHED");
+    }
+
+    @Test
+    @DisplayName("스텝 하나를 승인해도 학습자에게는 아무것도 보이지 않는다")
+    void 승인만으로는_학습자에게_노출되지_않는다() throws Exception {
+        courseRepository.deleteAll();
+
+        JsonNode outlineData = requestOutline();
+        long outlineId = outlineData.path("outlineId").asLong();
+        long outlineJobId = outlineData.path("jobId").asLong();
+        claimNextJob(outlineJobId);
+        submitBridgeResult(outlineJobId, outlineResultJson());
+        long firstStepId =
+                outlineDetail(outlineId).path("steps").get(0).path("stepId").asLong();
+
+        generateAndApproveStep(firstStepId);
+
+        assertThat(quizRepository.count()).isZero();
+        mockMvc.perform(get("/api/v1/courses").header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items").isEmpty());
+    }
+
     /** 1) 대시보드: 생성 잡 등록 */
     private long requestGenerate() throws Exception {
         JsonNode generateData = data(mockMvc.perform(post("/api/v1/authoring/drafts/generate")
@@ -121,12 +217,80 @@ class AuthoringAcceptanceTest {
 
     /** 2) 브리지: 잡을 폴링해서 집는다 */
     private void claimNextAndAssert(long jobId) throws Exception {
+        JsonNode nextData = claimNextJob(jobId);
+        assertThat(nextData.path("prompt").asText()).contains("운영체제");
+        assertThat(nextData.path("outputSchema").path("required").toString()).contains("quizzes");
+    }
+
+    private JsonNode claimNextJob(long jobId) throws Exception {
         JsonNode nextData = data(mockMvc.perform(get("/api/v1/authoring/bridge/jobs/next")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
                 .andExpect(status().isOk()));
         assertThat(nextData.path("jobId").asLong()).isEqualTo(jobId);
-        assertThat(nextData.path("prompt").asText()).contains("운영체제");
-        assertThat(nextData.path("outputSchema").path("required").toString()).contains("quizzes");
+        return nextData;
+    }
+
+    private JsonNode requestOutline() throws Exception {
+        return data(mockMvc.perform(post("/api/v1/authoring/outlines")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "자료구조 입문",
+                                  "category": "CS",
+                                  "toc": "1. 배열과 연결 리스트\\n2. 스택과 큐\\n3. 트리"
+                                }
+                                """))
+                .andExpect(status().isAccepted()));
+    }
+
+    private JsonNode outlineDetail(long outlineId) throws Exception {
+        return data(mockMvc.perform(get("/api/v1/authoring/outlines/{outlineId}", outlineId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
+                .andExpect(status().isOk()));
+    }
+
+    private void submitBridgeResult(long jobId, String resultJson) throws Exception {
+        JsonNode resultData = data(mockMvc.perform(post("/api/v1/authoring/bridge/jobs/{jobId}/result", jobId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new BridgeResultRequestFixture("CLAUDE", resultJson))))
+                .andExpect(status().isOk()));
+        assertThat(resultData.path("status").asText()).isEqualTo("SUCCEEDED");
+    }
+
+    private void generateAndApproveStep(long stepId) throws Exception {
+        JsonNode generateData = data(mockMvc.perform(post("/api/v1/authoring/outline-steps/{stepId}/generate", stepId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"preset\":\"LIGHT_3\"}"))
+                .andExpect(status().isAccepted()));
+        long jobId = generateData.path("jobId").asLong();
+        JsonNode job = claimNextJob(jobId);
+        assertThat(job.path("kind").asText()).isEqualTo("GENERATE");
+        submitBridgeResult(jobId, GeneratedQuizJsonFixture.light3SetJson());
+
+        JsonNode jobStatus = data(mockMvc.perform(get("/api/v1/authoring/jobs/{jobId}", jobId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
+                .andExpect(status().isOk()));
+        long draftId = jobStatus.path("draftId").asLong();
+        assertThat(jobStatus.path("outlineStepId").asLong()).isEqualTo(stepId);
+        mockMvc.perform(post("/api/v1/authoring/drafts/{draftId}/approve", draftId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
+    }
+
+    private String outlineResultJson() {
+        return """
+                {
+                  "steps": [
+                    {"topic": "배열과 연결 리스트", "learningGoal": "선형 자료구조의 차이를 설명한다."},
+                    {"topic": "스택과 큐", "learningGoal": "스택과 큐의 동작 원리를 비교한다."},
+                    {"topic": "트리", "learningGoal": "트리의 구조와 순회를 설명한다."}
+                  ]
+                }
+                """;
     }
 
     /** 3) 브리지: 실행 로그 적재 → 4) 결과 제출(유효한 5문제 세트) */
