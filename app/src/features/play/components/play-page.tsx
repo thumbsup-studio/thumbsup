@@ -388,12 +388,8 @@ function QuestionRenderer({
         </div>
       ) : null}
 
-      {/*
-        답안은 엄지 도달 영역(하단)에 고정하되(PRODUCT.md 원칙 2), 질문은 남는 공간의
-        세로 중앙에 둔다. 질문이 짧고 코드 스니펫이 없을 때 위쪽에 붙어버려
-        화면 절반이 빈 여백이 되던 문제를 막는다.
-      */}
-      <div className="flex flex-1 flex-col justify-center">
+      {/* 질문은 카드 상단에 붙인다 — 읽는 순서가 위에서 아래로 흐르게. */}
+      <div>
         <div className="animate-rise-in">
           <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
             {getQuestionKindLabel(quiz.type)}
@@ -408,7 +404,12 @@ function QuestionRenderer({
         </div>
       </div>
 
-      <div className="space-y-4 pt-6">
+      {/*
+        my-auto — 위아래 여백을 같게 나눠 답안을 질문과 하단 버튼 사이 중앙에 띄운다.
+        mt-auto로 바닥에 붙이면 질문이 짧을 때 사이가 400px 가까이 벌어져
+        화면 한가운데가 구멍처럼 비었다.
+      */}
+      <div className="my-auto space-y-4 py-6">
         {quiz.type === "OX" ? (
           <fieldset className="grid grid-cols-2 gap-3" aria-label="O 또는 X 선택">
             <OxButton
