@@ -37,6 +37,7 @@ import studio.thumbsup.server.quiz.authoring.dto.OutlineCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineDetailResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineListResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineStepResponse;
+import studio.thumbsup.server.quiz.authoring.dto.PublishResponse;
 import studio.thumbsup.server.quiz.authoring.dto.ReorderStepRequest;
 import studio.thumbsup.server.quiz.authoring.dto.StepCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.UpdateOutlineRequest;
@@ -52,6 +53,9 @@ class AuthoringOutlineControllerTest {
     @Mock
     private AuthoringJobService jobService;
 
+    @Mock
+    private AuthoringPublishService publishService;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -60,7 +64,7 @@ class AuthoringOutlineControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(
-                        new AuthoringOutlineController(outlineService),
+                        new AuthoringOutlineController(outlineService, publishService),
                         new AuthoringOutlineStepController(outlineService, jobService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
@@ -163,6 +167,19 @@ class AuthoringOutlineControllerTest {
             verify(outlineService).updateStep(eq(4L), eq("새 주제"));
             verify(outlineService).deleteStep(eq(4L));
             verify(outlineService).reorderStep(eq(4L), eq("UP"));
+        }
+
+        @Test
+        @DisplayName("발행은 인증 사용자와 outlineId를 서비스에 위임한다")
+        void publishesOutline() throws Exception {
+            given(publishService.publish(7L, 1L)).willReturn(new PublishResponse(9L, 3));
+
+            mockMvc.perform(post("/api/v1/authoring/outlines/1/publish"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.courseId").value(9))
+                    .andExpect(jsonPath("$.data.stepCount").value(3));
+
+            verify(publishService).publish(7L, 1L);
         }
     }
 }

@@ -20,6 +20,7 @@ import studio.thumbsup.server.quiz.authoring.dto.JobCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineDetailResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineListResponse;
+import studio.thumbsup.server.quiz.authoring.dto.PublishResponse;
 import studio.thumbsup.server.quiz.authoring.dto.StepCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.UpdateOutlineRequest;
 
@@ -29,9 +30,11 @@ import studio.thumbsup.server.quiz.authoring.dto.UpdateOutlineRequest;
 public class AuthoringOutlineController {
 
     private final AuthoringOutlineService outlineService;
+    private final AuthoringPublishService publishService;
 
-    public AuthoringOutlineController(AuthoringOutlineService outlineService) {
+    public AuthoringOutlineController(AuthoringOutlineService outlineService, AuthoringPublishService publishService) {
         this.outlineService = outlineService;
+        this.publishService = publishService;
     }
 
     @Operation(summary = "뼈대를 생성하고 목차 변환 잡을 큐에 넣는다")
@@ -68,6 +71,12 @@ public class AuthoringOutlineController {
     public ApiResponse<JobCreatedResponse> regenerate(
             @AuthenticationPrincipal Long userId, @PathVariable Long outlineId) {
         return ApiResponse.success(new JobCreatedResponse(outlineService.regenerate(userId, outlineId)));
+    }
+
+    @Operation(summary = "승인된 뼈대를 학습자용 코스로 발행한다")
+    @PostMapping("/{outlineId}/publish")
+    public ApiResponse<PublishResponse> publish(@AuthenticationPrincipal Long userId, @PathVariable Long outlineId) {
+        return ApiResponse.success(publishService.publish(userId, outlineId));
     }
 
     @Operation(summary = "뼈대에 수동 스텝 추가")

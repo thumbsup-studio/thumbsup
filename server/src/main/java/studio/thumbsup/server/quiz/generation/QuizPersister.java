@@ -83,7 +83,8 @@ public class QuizPersister {
         return stepOrder;
     }
 
-    private int nextStepOrder() {
+    /** 라이브 스텝·문제 양쪽을 기준으로 다음 전역 step_order를 계산한다. */
+    public int nextStepOrder() {
         int maxQuizStepOrder = quizStepRepository.findMaxStepOrder().orElse(0);
         int maxQuizOrder = quizRepository.findMaxStepOrder().orElse(0);
         return Math.max(maxQuizStepOrder, maxQuizOrder) + 1;
