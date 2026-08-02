@@ -26,14 +26,17 @@ public class AuthoringDraftService {
 
     private final QuizDraftRepository quizDraftRepository;
     private final QuizDraftRevisionRepository quizDraftRevisionRepository;
+    private final AuthoringOutlineStepRepository outlineStepRepository;
     private final ObjectMapper objectMapper;
 
     public AuthoringDraftService(
             QuizDraftRepository quizDraftRepository,
             QuizDraftRevisionRepository quizDraftRevisionRepository,
+            AuthoringOutlineStepRepository outlineStepRepository,
             ObjectMapper objectMapper) {
         this.quizDraftRepository = quizDraftRepository;
         this.quizDraftRevisionRepository = quizDraftRevisionRepository;
+        this.outlineStepRepository = outlineStepRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -88,6 +91,19 @@ public class AuthoringDraftService {
         return quizDraftRepository
                 .findById(draftId)
                 .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_NOT_FOUND));
+    }
+
+    /** 뼈대 스텝 draft의 검수 프롬프트에 넣을 형제 스텝 주제를 일괄 조회한다. */
+    @Transactional(readOnly = true)
+    public List<String> outlineSiblingTopics(Long draftId) {
+        return outlineStepRepository
+                .findByDraftId(draftId)
+                .map(currentStep ->
+                        outlineStepRepository.findByOutlineIdOrderByOrderNoAsc(currentStep.getOutlineId()).stream()
+                                .filter(step -> !step.getId().equals(currentStep.getId()))
+                                .map(AuthoringOutlineStep::getTopic)
+                                .toList())
+                .orElse(List.of());
     }
 
     /**

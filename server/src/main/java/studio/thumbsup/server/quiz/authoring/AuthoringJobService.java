@@ -213,8 +213,8 @@ public class AuthoringJobService {
 
     private void validateReviewResult(GenerationJob job, ReviewResult result) {
         QuizDraft draft = draftService.getOrThrow(job.getDraftId());
-        if (draft.getOrigin() == QuizDraftOrigin.NEW) {
-            validator.validateSet(new GeneratedQuizSet(result.quizzes()));
+        if (draft.getOrigin() != QuizDraftOrigin.IMPROVE) {
+            validator.validateSet(new GeneratedQuizSet(result.quizzes()), draft.getPreset());
             return;
         }
         List<GeneratedQuizSet.GeneratedQuiz> quizzes = result.quizzes();
@@ -287,7 +287,11 @@ public class AuthoringJobService {
                     .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
             return improveReviewPrompt(sourceQuiz, step.getTopic(), draft.getCurrentPayload(), feedback);
         }
-        return AuthoringPromptFactory.reviewPrompt(draft.getTopic(), draft.getCurrentPayload(), feedback, List.of());
+        List<String> siblingTopics = draft.getOrigin() == QuizDraftOrigin.OUTLINE_STEP
+                ? draftService.outlineSiblingTopics(draft.getId())
+                : List.of();
+        return AuthoringPromptFactory.reviewPrompt(
+                draft.getTopic(), draft.getCurrentPayload(), feedback, siblingTopics);
     }
 
     private String improveReviewPrompt(Quiz sourceQuiz, String stepTopic, String currentPayloadJson, String feedback) {

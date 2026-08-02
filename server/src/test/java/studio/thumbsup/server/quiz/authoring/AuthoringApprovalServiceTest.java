@@ -30,6 +30,7 @@ import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
 import studio.thumbsup.server.quiz.generation.QuizGenerationException;
 import studio.thumbsup.server.quiz.generation.QuizPersister;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 @ExtendWith(MockitoExtension.class)
 class AuthoringApprovalServiceTest {
@@ -124,6 +125,43 @@ class AuthoringApprovalServiceTest {
             verify(quizPersister).persist("운영체제", set);
             assertThat(result.getStatus()).isEqualTo(QuizDraftStatus.APPROVED);
             assertThat(result.getApprovedBy()).isEqualTo(9L);
+        }
+
+        @Test
+        @DisplayName("OUTLINE_STEP draft는 검증만 하고 라이브에 쓰지 않는다")
+        void approves_outline_step_without_materializing() {
+            QuizDraft draft = QuizDraft.createForOutlineStep("운영체제", "{}", QuizPreset.LIGHT_3, 1L);
+            ReflectionTestUtils.setField(draft, "id", 3L);
+            given(draftService.getForUpdate(3L)).willReturn(draft);
+            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            given(validator.parse("{}")).willReturn(set);
+
+            QuizDraft result = approvalService.approve(9L, 3L);
+
+            verify(validator).validateHintSet(set, QuizPreset.LIGHT_3);
+            verify(quizPersister, never()).persist("운영체제", set);
+            assertThat(result.getStatus()).isEqualTo(QuizDraftStatus.APPROVED);
+            assertThat(result.getApprovedBy()).isEqualTo(9L);
+        }
+
+        @Test
+        @DisplayName("OUTLINE_STEP draft의 검증에 실패하면 승인되지 않는다")
+        void keeps_outline_step_draft_when_validation_fails() {
+            QuizDraft draft = QuizDraft.createForOutlineStep("운영체제", "{}", QuizPreset.BASIC_5, 1L);
+            ReflectionTestUtils.setField(draft, "id", 4L);
+            given(draftService.getForUpdate(4L)).willReturn(draft);
+            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            given(validator.parse("{}")).willReturn(set);
+            willThrow(new QuizGenerationException("힌트가 정답을 노출합니다"))
+                    .given(validator)
+                    .validateHintSet(set, QuizPreset.BASIC_5);
+
+            assertThatThrownBy(() -> approvalService.approve(9L, 4L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(exception -> ((BusinessException) exception).getErrorType())
+                    .isEqualTo(AuthoringErrorType.AUTHORING_DRAFT_REVIEW_REQUIRED);
+            assertThat(draft.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
+            verify(quizPersister, never()).persist("운영체제", set);
         }
 
         @Test

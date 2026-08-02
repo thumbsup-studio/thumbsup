@@ -96,7 +96,7 @@ public final class GeneratedQuizJsonFixture {
         return setJsonWithFirstQuiz(oxQuizJson());
     }
 
-    static String light3SetJson() {
+    public static String light3SetJson() {
         return "{\"quizzes\": [%s, %s, %s]}".formatted(oxQuizJson(), multipleChoiceQuizJson(), keywordBlankQuizJson());
     }
 

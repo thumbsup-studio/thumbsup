@@ -25,6 +25,7 @@ import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 /**
  * 승인(materialize) 통합 테스트 — 핵심 리스크인 IMPROVE의 in-place UPDATE(orphanRemoval clear→재추가)가
@@ -139,6 +140,23 @@ class AuthoringApprovalIntegrationTest {
 
         assertThat(quizStepRepository.count()).isEqualTo(stepCountBefore + 1);
         assertThat(quizRepository.count()).isEqualTo(quizCountBefore + 5);
+        assertThat(quizDraftRepository.findById(draft.getId()).orElseThrow().getStatus())
+                .isEqualTo(QuizDraftStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("뼈대 스텝 draft 승인은 quiz와 quiz_step을 INSERT하지 않는다")
+    void 뼈대_스텝_draft_승인은_라이브에_쓰지_않는다() throws Exception {
+        long stepCountBefore = quizStepRepository.count();
+        long quizCountBefore = quizRepository.count();
+        GeneratedQuizSet set = objectMapper.readValue(GeneratedQuizJsonFixture.light3SetJson(), GeneratedQuizSet.class);
+        QuizDraft draft = quizDraftRepository.saveAndFlush(
+                QuizDraft.createForOutlineStep("네트워크", objectMapper.writeValueAsString(set), QuizPreset.LIGHT_3, 1L));
+
+        approvalService.approve(9L, draft.getId());
+
+        assertThat(quizStepRepository.count()).isEqualTo(stepCountBefore);
+        assertThat(quizRepository.count()).isEqualTo(quizCountBefore);
         assertThat(quizDraftRepository.findById(draft.getId()).orElseThrow().getStatus())
                 .isEqualTo(QuizDraftStatus.APPROVED);
     }
