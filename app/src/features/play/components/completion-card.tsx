@@ -1,4 +1,4 @@
-import { CircleCheckIcon, DogIcon } from "@/components/icons";
+import { CircleCheckIcon } from "@/components/icons";
 import { type CompletionSummary, clampCompletion } from "@/features/play/completion-params";
 
 type CompletionCardProps = {
@@ -33,17 +33,6 @@ export function CompletionCard({ summary, totalCount }: CompletionCardProps) {
         <div className="flex items-center justify-between text-sm">
           <dt className="font-semibold text-ink-muted">최고 콤보</dt>
           <dd className="font-black text-ink">{safe.bestCombo}</dd>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <dt className="font-semibold text-ink-muted">보리</dt>
-          {/*
-            포만감 수치를 쓰지 않는다 — Mascot.MAX_FULLNESS(100) 캡 때문에
-            먹이 1회가 항상 +20%인 게 아니다. 사실인 문장만 쓴다.
-          */}
-          <dd className="flex items-center gap-1.5 font-black text-ink">
-            <DogIcon className="h-5 w-5" mood="happy" />
-            밥을 줬어요
-          </dd>
         </div>
       </dl>
     </div>

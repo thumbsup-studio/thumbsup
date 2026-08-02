@@ -11,6 +11,7 @@ type InsightRouteProps = {
       correct?: string;
       quizId?: string;
       streak?: string;
+      retry?: string;
     } & ReviewSearchParams &
       CompletionSearchParams
   >;
@@ -35,6 +36,7 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
         correctStreak={correctStreak}
         quizId={quizId}
         review={review}
+        wasRetry={params?.retry === "1"}
       />
     </RequireAuth>
   );

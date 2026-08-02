@@ -17,7 +17,11 @@ export function Progress({
       aria-label={label}
       className="h-2 w-full overflow-hidden rounded-chip bg-surface-muted"
     >
-      <div className="h-full rounded-chip bg-primary transition-all" style={{ width: `${pct}%` }} />
+      {/* 문제를 넘길 때 막대가 눈에 보이게 차오르도록 넉넉한 duration을 준다(이슈 211). */}
+      <div
+        className="h-full rounded-chip bg-primary transition-all duration-500 ease-out"
+        style={{ width: `${pct}%` }}
+      />
     </div>
   );
 }

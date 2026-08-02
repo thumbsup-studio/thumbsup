@@ -219,7 +219,7 @@ describe("InsightPage", () => {
     expect(screen.getByText(/브라우저 탭은/)).toBeInTheDocument();
   });
 
-  it("완주 요약을 받으면 정답 수·최고 콤보·보리 줄을 그린다", async () => {
+  it("완주 요약을 받으면 정답 수와 최고 콤보를 그린다", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
     render(
@@ -235,7 +235,6 @@ describe("InsightPage", () => {
 
     expect(within(card).getByText("정답")).toBeInTheDocument();
     expect(within(card).getByText("최고 콤보")).toBeInTheDocument();
-    expect(within(card).getByText("밥을 줬어요")).toBeInTheDocument();
   });
 
   it("조작된 완주 URL 값은 문제 수 상한으로 자른다", async () => {

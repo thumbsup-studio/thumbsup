@@ -80,11 +80,17 @@ export function reviewInsightHref(
   isCorrect: boolean,
   correctAfter: number,
   streakAfter: number,
+  /** 해설 화면 연출용 추가 파라미터. 값이 undefined인 키는 URL에 싣지 않는다. */
+  extra?: { retry?: string },
 ): string {
   return buildHref(
     REVIEW_INSIGHT_PATH,
     { ...ctx, correct: correctAfter, streak: streakAfter },
-    { quizId: String(quizId), correct: isCorrect ? "true" : "false" },
+    {
+      quizId: String(quizId),
+      correct: isCorrect ? "true" : "false",
+      ...(extra?.retry ? { retry: extra.retry } : {}),
+    },
   );
 }
 

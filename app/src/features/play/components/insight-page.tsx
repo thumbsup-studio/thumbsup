@@ -12,6 +12,7 @@ import {
   reviewDoneHref,
   reviewNextPlayHref,
 } from "@/features/history/review-params";
+import { getCelebration } from "@/features/play/celebration-logic";
 import {
   type CompletionSummary,
   clampCompletion,
@@ -23,12 +24,14 @@ import {
   getKeywordDescriptionMap,
   KeywordTooltipText,
 } from "@/features/play/components/keyword-tooltip-text";
+import { VerdictBanner } from "@/features/play/components/verdict-banner";
 import { getProgressPercent } from "@/features/play/play-logic";
 import {
   difficultyLabels,
   getInsightQuestionKindLabel,
   isUnauthorized,
 } from "@/features/play/quiz-shared";
+import { usePrefersReducedMotion } from "@/features/play/use-prefers-reduced-motion";
 import {
   type AnnotatedText,
   getQuizExplanation,
@@ -43,6 +46,8 @@ type InsightPageProps = {
   quizId: number | null;
   /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 꼬리질문 대신 다음 슬롯/완료로 진행한다. */
   review?: ReviewContext | null;
+  /** 첫 오답 뒤 재도전(이슈 63)으로 맞힌 경우 — 콤보와 별개로 특별 칭찬을 준다. */
+  wasRetry?: boolean;
 };
 
 export function InsightPage({
@@ -51,7 +56,9 @@ export function InsightPage({
   correctStreak = 0,
   quizId,
   review,
+  wasRetry = false,
 }: InsightPageProps) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const router = useRouter();
   const [explanation, setExplanation] = useState<QuizExplanationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +79,16 @@ export function InsightPage({
       : reviewNextPlayHref(review)
     : null;
   const isLastQuestion = explanation ? explanation.currentNumber >= explanation.totalCount : false;
+  // 보상 연출은 전부 이 화면에서 터진다 — 풀이 화면(S3)은 조작감만 맡는다.
+  // 난이도는 해설 응답에서 오므로, 로딩이 끝나기 전엔 기본값으로 계산해도 화면에 쓰이지 않는다.
+  const celebration = getCelebration({
+    combo: review?.streak ?? correctStreak,
+    correct,
+    difficulty: explanation?.difficulty ?? "EASY",
+    prefersReducedMotion,
+    quizId: quizId ?? 0,
+    wasRetry,
+  });
   // 팡파레는 이제 "연속 3정답"이 아니라 완주 퍼펙트에만 터진다(이슈 211).
   // 3콤보는 퀴즈 화면에서 이미 컨페티로 축하했으므로 여기서 또 터뜨리면 중복이다.
   const isPerfectRun =
@@ -193,29 +210,7 @@ export function InsightPage({
           ) : null}
           {!isLoading && !error && explanation ? (
             <>
-              <div
-                className={`rounded-control border px-4 py-4 ${
-                  correct
-                    ? "border-success/20 bg-success/10 text-success"
-                    : "border-danger/20 bg-danger/10 text-danger"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-black">{correct ? "정답이에요" : "오답이에요"}</p>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-ink-muted">
-                      {correct
-                        ? "핵심을 잘 짚었어요. 바로 개념을 정리해볼게요."
-                        : "괜찮아요. 틀린 지점을 먼저 짚고 넘어갈게요."}
-                    </p>
-                  </div>
-                  {correct ? (
-                    <span className="rounded-chip bg-surface px-3 py-1.5 text-xs font-black text-success">
-                      +10P
-                    </span>
-                  ) : null}
-                </div>
-              </div>
+              <VerdictBanner celebration={celebration} correct={correct} />
 
               {!correct ? (
                 <div className="mt-4 rounded-control border border-danger/20 bg-surface px-4 py-4">

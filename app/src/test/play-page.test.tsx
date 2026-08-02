@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
 import { getNextQuiz, getStepQuiz, requestQuizHint, submitQuizAnswer } from "@/lib/api/quiz";
-import { setPrefersReducedMotion } from "@/test/setup";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
@@ -74,10 +73,6 @@ describe("PlayPage", () => {
     vi.mocked(requestQuizHint).mockReset();
     vi.mocked(submitQuizAnswer).mockReset();
     window.localStorage.clear();
-    // 이 스위트는 연출 타이밍이 아니라 채점·라우팅 계약을 검증한다.
-    // 모션을 끄면 holdMs가 0이라 제출 즉시 이동해, 기존 단언을 그대로 쓸 수 있다.
-    // 연출 타이밍은 아래 "정답 판정 연출" describe에서 따로 본다.
-    setPrefersReducedMotion(true);
   });
 
   it("loads the next quiz from the API and submits an OX answer", async () => {
@@ -486,7 +481,10 @@ describe("PlayPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
       await waitFor(() => {
-        expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=8&correct=true&streak=3");
+        // 재도전으로 맞혔으므로 retry=1이 붙는다 — 해설 화면이 특별 칭찬을 고르는 근거.
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          "/insight?quizId=8&correct=true&streak=3&retry=1",
+        );
       });
     });
 
@@ -594,57 +592,33 @@ describe("PlayPage", () => {
     });
   });
 
-  describe("정답 판정 연출", () => {
-    it("정답이면 오버레이를 띄우고 유지 시간이 지난 뒤 해설로 넘어간다", async () => {
-      setPrefersReducedMotion(false);
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
-      vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
+  describe("해설 화면으로 넘길 값", () => {
+    it("재도전으로 맞히면 retry=1을 실어 해설 화면이 특별 칭찬을 고르게 한다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
+      vi.mocked(submitQuizAnswer)
+        .mockResolvedValueOnce({
+          isCorrect: false,
+          retryHint: { eliminatedChoiceId: 12, blankHints: null },
+        })
+        .mockResolvedValueOnce({ isCorrect: true, retryHint: null });
 
       render(<PlayPage />);
 
-      fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+      fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
-      expect(await screen.findByTestId("celebration-overlay")).toHaveAttribute(
-        "data-tier",
-        "subtle",
-      );
-      expect(mockRouter.push).not.toHaveBeenCalled();
-
-      await act(async () => {
-        vi.advanceTimersByTime(500);
-      });
-
-      expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=7&correct=true&streak=1");
-      vi.useRealTimers();
-    });
-
-    it("[계속]을 누르면 유지 시간을 기다리지 않고 한 번만 이동한다", async () => {
-      setPrefersReducedMotion(false);
-      vi.useFakeTimers({ shouldAdvanceTime: true });
-      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
-      vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
-
-      render(<PlayPage />);
-
-      fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+      await screen.findByText(/틀린 선택지 하나를 지웠어요/);
+      fireEvent.click(screen.getByRole("radio", { name: /스택/ }));
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
-      fireEvent.click(await screen.findByRole("button", { name: "계속" }));
-      expect(mockRouter.push).toHaveBeenCalledTimes(1);
-
-      // 타이머가 뒤늦게 발화해도 두 번째 이동은 없다.
-      await act(async () => {
-        vi.advanceTimersByTime(2000);
+      await waitFor(() => {
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          "/insight?quizId=8&correct=true&streak=1&retry=1",
+        );
       });
-
-      expect(mockRouter.push).toHaveBeenCalledTimes(1);
-      vi.useRealTimers();
     });
 
-    it("모션을 끈 사용자에게는 오버레이를 띄우되 즉시 이동한다", async () => {
-      setPrefersReducedMotion(true);
+    it("재도전 없이 맞히면 retry 파라미터를 붙이지 않는다", async () => {
       vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
       vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
 
@@ -658,26 +632,7 @@ describe("PlayPage", () => {
       });
     });
 
-    it("재도전 화면에서는 연출을 띄우지 않는다", async () => {
-      setPrefersReducedMotion(false);
-      vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
-      vi.mocked(submitQuizAnswer).mockResolvedValue({
-        isCorrect: false,
-        retryHint: { eliminatedChoiceId: 12, blankHints: null },
-      });
-
-      render(<PlayPage />);
-
-      fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
-      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
-
-      await screen.findByText(/틀린 선택지 하나를 지웠어요/);
-      expect(screen.queryByTestId("celebration-overlay")).not.toBeInTheDocument();
-      expect(mockRouter.push).not.toHaveBeenCalled();
-    });
-
     it("마지막 문제면 완주 요약 값을 URL에 싣는다", async () => {
-      setPrefersReducedMotion(true);
       vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 5, totalCount: 5 });
       vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
       window.localStorage.setItem(

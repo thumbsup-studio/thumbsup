@@ -9,8 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ReviewContext, reviewInsightHref } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
-import { type Celebration, getCelebration } from "@/features/play/celebration-logic";
-import { CelebrationOverlay } from "@/features/play/components/celebration-overlay";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { getProgressPercent } from "@/features/play/play-logic";
 import {
@@ -20,7 +18,6 @@ import {
   shuffleChoices,
 } from "@/features/play/quiz-shared";
 import { type PlaySession, recordAnswer, resetSession } from "@/features/play/session-progress";
-import { usePrefersReducedMotion } from "@/features/play/use-prefers-reduced-motion";
 import {
   getNextQuiz,
   getStepQuiz,
@@ -58,13 +55,6 @@ export function PlayPage({ review }: PlayPageProps) {
   // 재도전 힌트가 있으면 곧 "재도전 화면"이라는 뜻. hasUsedRetry는 이 문제에서 재도전을 이미 썼는지.
   const [retryHint, setRetryHint] = useState<RetryHint | null>(null);
   const [hasUsedRetry, setHasUsedRetry] = useState(false);
-  // 채점 결과를 화면에서 먼저 보여준 뒤 해설로 넘긴다(이슈 211).
-  const [celebration, setCelebration] = useState<Celebration | null>(null);
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const pendingHrefRef = useRef<string | null>(null);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 타이머와 [계속] 탭이 동시에 발화해도, StrictMode가 이펙트를 두 번 돌려도 라우팅은 한 번뿐이다.
-  const hasNavigatedRef = useRef(false);
 
   const reviewStep = review?.step ?? null;
   const reviewSlot = review?.slot ?? null;
@@ -148,16 +138,6 @@ export function PlayPage({ review }: PlayPageProps) {
     };
   }, [reloadKey, router, reviewStep, reviewSlot]);
 
-  // 화면을 떠난 뒤 타이머가 살아남아 엉뚱한 라우팅을 일으키지 않게 끊는다.
-  useEffect(() => {
-    return () => {
-      if (holdTimerRef.current !== null) {
-        clearTimeout(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
-    };
-  }, []);
-
   async function showHint() {
     if (!quiz || requestedHint || isHintLoading || isSubmitting || hasUsedRetry) {
       return;
@@ -190,54 +170,6 @@ export function PlayPage({ review }: PlayPageProps) {
     }
   }
 
-  function goToInsight() {
-    if (hasNavigatedRef.current) {
-      return;
-    }
-
-    hasNavigatedRef.current = true;
-    if (holdTimerRef.current !== null) {
-      clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-
-    const href = pendingHrefRef.current;
-    if (href !== null) {
-      router.push(href);
-    }
-  }
-
-  function startCelebration(
-    result: { combo: number; correct: boolean; wasRetry: boolean },
-    href: string,
-  ) {
-    if (!quiz) {
-      return;
-    }
-
-    const next = getCelebration({
-      combo: result.combo,
-      correct: result.correct,
-      difficulty: quiz.difficulty,
-      prefersReducedMotion,
-      quizId: quiz.quizId,
-      wasRetry: result.wasRetry,
-    });
-
-    pendingHrefRef.current = href;
-    setCelebration(next);
-
-    // holdMs가 0이면 타이머를 걸지 않고 곧바로 넘긴다 —
-    // 모션을 끈 사용자에게 0ms 타이머의 한 틱을 강요할 이유가 없고,
-    // 그래야 "제출 즉시 이동"이라는 기존 계약이 그대로 유지된다.
-    if (next.holdMs === 0) {
-      goToInsight();
-      return;
-    }
-
-    holdTimerRef.current = setTimeout(goToInsight, next.holdMs);
-  }
-
   async function submitAnswer() {
     if (!quiz || !submitEnabled) {
       return;
@@ -262,9 +194,10 @@ export function PlayPage({ review }: PlayPageProps) {
         // 복습: 오늘의 학습 스트릭·보리 포만감은 건드리지 않고, 복습 상태만 URL로 이어받는다.
         const correctAfter = review.correct + (result.isCorrect ? 1 : 0);
         const streakAfter = result.isCorrect ? review.streak + 1 : 0;
-        startCelebration(
-          { combo: streakAfter, correct: result.isCorrect, wasRetry: hasUsedRetry },
-          reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter),
+        router.push(
+          reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter, {
+            retry: hasUsedRetry && result.isCorrect ? "1" : undefined,
+          }),
         );
         return;
       }
@@ -272,12 +205,18 @@ export function PlayPage({ review }: PlayPageProps) {
       const session = recordAnswer(quiz.stepOrder, result.isCorrect);
       const isLastQuestion = currentNumber === totalCount;
       if (isLastQuestion) {
+        // 결과를 쓰지 않으므로 기다리지 않는다 — await하면 요청 타임아웃(15초)만큼 화면이 막힌다.
         void feedMascot().catch(() => {});
       }
 
-      startCelebration(
-        { combo: session.combo, correct: result.isCorrect, wasRetry: hasUsedRetry },
-        buildInsightHref(quiz.quizId, result.isCorrect, session, isLastQuestion),
+      router.push(
+        buildInsightHref(
+          quiz.quizId,
+          result.isCorrect,
+          session,
+          isLastQuestion,
+          hasUsedRetry && result.isCorrect,
+        ),
       );
     } catch (submitError) {
       if (isUnauthorized(submitError)) {
@@ -293,9 +232,6 @@ export function PlayPage({ review }: PlayPageProps) {
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-5 text-ink sm:px-6">
-      {celebration ? (
-        <CelebrationOverlay celebration={celebration} onContinue={goToInsight} />
-      ) : null}
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
         <header className="sticky top-4 z-10 rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between gap-3">
@@ -433,10 +369,11 @@ function QuestionRenderer({
   retryHint: RetryHint | null;
 }) {
   return (
-    <div className="flex flex-1 flex-col">
+    // key로 문제마다 새로 마운트시켜 진입 애니메이션이 슬롯마다 다시 재생되게 한다.
+    <div className="flex flex-1 flex-col" key={quiz.quizId}>
       {retryHint ? (
         <div
-          className="mb-4 flex items-start gap-3 rounded-control bg-warning/10 px-4 py-3"
+          className="animate-rise-in mb-4 flex items-start gap-3 rounded-control bg-warning/10 px-4 py-3"
           role="status"
           aria-live="polite"
         >
@@ -451,13 +388,13 @@ function QuestionRenderer({
         </div>
       ) : null}
 
-      <div>
+      <div className="animate-rise-in">
         <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
           {getQuestionKindLabel(quiz.type)}
         </p>
         <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
         {requestedHint ? (
-          <Card aria-live="polite" className="mt-4" role="status">
+          <Card aria-live="polite" className="animate-rise-in mt-4" role="status">
             <p className="text-xs font-bold text-ink-muted">힌트</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-ink">{requestedHint}</p>
           </Card>
@@ -495,26 +432,34 @@ function QuestionRenderer({
                 // 사용자가 처음 고른 오답은 다시 고를 수 있게 그대로 둔다(같은 답을 내면 오답 처리가 맞다).
                 const isEliminated = retryHint?.eliminatedChoiceId === choice.choiceId;
 
+                const isSelected = draft === String(choice.choiceId);
+
                 return (
                   <label
-                    className={`flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition ${
+                    className={`animate-choice-in flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition duration-150 ${
                       isEliminated
                         ? "border-border bg-surface-muted opacity-50"
-                        : draft === String(choice.choiceId)
+                        : isSelected
                           ? "border-primary bg-surface shadow-card"
-                          : "border-border bg-surface"
+                          : "border-border bg-surface active:scale-95"
                     }`}
                     key={choice.choiceId}
+                    // 선택지가 위에서부터 차례로 내려앉게 한다 — 넷이 한 번에 나타나면 밋밋하다.
+                    style={{ animationDelay: `${index * 55}ms` }}
                   >
                     <input
-                      checked={draft === String(choice.choiceId)}
+                      checked={isSelected}
                       className="sr-only"
                       disabled={isLocked || isEliminated}
                       name={String(quiz.quizId)}
                       onChange={() => onDraftChange(String(choice.choiceId))}
                       type="radio"
                     />
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-chip bg-ink text-xs text-primary-fg">
+                    <span
+                      className={`grid h-7 w-7 shrink-0 place-items-center rounded-chip text-xs transition duration-150 ${
+                        isSelected ? "bg-primary text-primary-fg" : "bg-ink text-primary-fg"
+                      }`}
+                    >
                       {optionLabels[index] ?? index + 1}
                     </span>
                     <span className={isEliminated ? "line-through" : undefined}>
@@ -565,8 +510,8 @@ function OxButton({
 
   return (
     <label
-      className={`flex min-h-28 items-center justify-center rounded-card border bg-surface text-5xl font-black transition ${
-        selected ? selectedClassName : "border-border text-ink-muted"
+      className={`animate-choice-in flex min-h-28 items-center justify-center rounded-card border bg-surface text-5xl font-black transition duration-150 ${
+        selected ? `${selectedClassName} scale-105` : "border-border text-ink-muted active:scale-95"
       }`}
     >
       <input
@@ -694,12 +639,18 @@ function buildInsightHref(
   correct: boolean,
   session: PlaySession,
   isLastQuestion: boolean,
+  /** 재도전(이슈 63)으로 **맞힌** 경우만 true — 해설 화면의 특별 칭찬에만 쓰인다. */
+  wasRetrySuccess: boolean,
 ) {
   const params = new URLSearchParams({
     quizId: String(quizId),
     correct: correct ? "true" : "false",
     streak: String(session.combo),
   });
+
+  if (wasRetrySuccess) {
+    params.set("retry", "1");
+  }
 
   if (isLastQuestion) {
     params.set("done", "1");
