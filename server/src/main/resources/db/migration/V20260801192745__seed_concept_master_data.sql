@@ -243,3 +243,11 @@ INSERT INTO quiz_concept (quiz_id, concept_id, created_at, updated_at) SELECT q.
 INSERT INTO quiz_concept (quiz_id, concept_id, created_at, updated_at) SELECT q.id, 29, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6) FROM quiz q WHERE q.step_order = 14 AND q.slot_order = 3;
 INSERT INTO quiz_concept (quiz_id, concept_id, created_at, updated_at) SELECT q.id, 46, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6) FROM quiz q WHERE q.step_order = 14 AND q.slot_order = 4;
 INSERT INTO quiz_concept (quiz_id, concept_id, created_at, updated_at) SELECT q.id, 14, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6) FROM quiz q WHERE q.step_order = 14 AND q.slot_order = 5;
+
+-- 위 70개 INSERT 중 하나라도 (step_order, slot_order)가 어긋나 매칭되는 quiz가 없으면 0건이 삽입되고도
+-- 조용히 성공하므로, 최종 건수를 70으로 단언해 그런 누락을 마이그레이션 시점에 즉시 실패시킨다.
+CREATE TEMPORARY TABLE _quiz_concept_seed_assertion (
+    actual_count INT NOT NULL CHECK (actual_count = 70)
+);
+INSERT INTO _quiz_concept_seed_assertion SELECT COUNT(*) FROM quiz_concept;
+DROP TEMPORARY TABLE _quiz_concept_seed_assertion;
