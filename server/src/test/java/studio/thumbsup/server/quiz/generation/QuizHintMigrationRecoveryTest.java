@@ -46,7 +46,7 @@ class QuizHintMigrationRecoveryTest {
         assertThat(queryString("SELECT MAX(version) FROM flyway_schema_history WHERE success = 1"))
                 .isEqualTo(SCHEMA_VERSION);
 
-        MigrateResult backfillResult = flyway().migrate();
+        MigrateResult backfillResult = flywayAt(BACKFILL_VERSION).migrate();
 
         assertThat(backfillResult.migrationsExecuted).isOne();
         assertThat(queryInt("SELECT COUNT(*) FROM quiz WHERE hint IS NOT NULL")).isEqualTo(73);
@@ -55,16 +55,18 @@ class QuizHintMigrationRecoveryTest {
         assertThat(queryString("SELECT MAX(version) FROM flyway_schema_history WHERE success = 1"))
                 .isEqualTo(BACKFILL_VERSION);
 
-        assertThat(flyway().migrate().migrationsExecuted).isZero();
+        assertThat(flywayAt(BACKFILL_VERSION).migrate().migrationsExecuted).isZero();
     }
 
     private Flyway flywayAt(String version) {
         return configuration().target(MigrationVersion.fromVersion(version)).load();
     }
 
-    private Flyway flyway() {
-        return configuration().load();
-    }
+    // 타겟 버전 없이 레포 전체 최신까지 실행 — 이후 마이그레이션이 추가될 때마다 이 테스트가 깨지는 원인이라
+    // flywayAt(BACKFILL_VERSION)으로 대체함 (#255). 사용처 없음.
+    // private Flyway flyway() {
+    //     return configuration().load();
+    // }
 
     private FluentConfiguration configuration() {
         return Flyway.configure()
