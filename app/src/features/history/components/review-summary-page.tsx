@@ -1,16 +1,26 @@
 import Link from "next/link";
 import { CircleCheckIcon, RotateCcwIcon } from "@/components/icons";
-import { REVIEW_STEP_TOTAL, reviewStartHref } from "@/features/history/review-params";
+import {
+  REVIEW_STEP_TOTAL,
+  reviewSingleHref,
+  reviewStartHref,
+} from "@/features/history/review-params";
 
 type ReviewSummaryPageProps = {
   step: number;
   /** 이번 스텝 재풀이에서 맞힌 개수 */
   correct: number;
   topic: string;
+  /** true면 문제 하나만 푼 단건 복습 — 결과 분모·다시 풀기 대상이 스텝 전체와 다르다. */
+  single: boolean;
+  /** 단건 복습일 때 다시 풀기 대상 슬롯 */
+  slot: number;
 };
 
-export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPageProps) {
-  const isPerfect = correct >= REVIEW_STEP_TOTAL;
+export function ReviewSummaryPage({ step, correct, topic, single, slot }: ReviewSummaryPageProps) {
+  const total = single ? 1 : REVIEW_STEP_TOTAL;
+  const isPerfect = correct >= total;
+  const retryHref = single ? reviewSingleHref(step, slot, topic) : reviewStartHref(step, topic);
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
@@ -34,7 +44,7 @@ export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPagePro
             <p className="text-sm font-medium text-ink-muted">이번 복습 결과</p>
             <p className="mt-2 text-3xl font-black">
               <span className="text-success">{correct}</span>
-              <span className="text-ink-muted"> / {REVIEW_STEP_TOTAL}</span>
+              <span className="text-ink-muted"> / {total}</span>
             </p>
             <p className="mt-2 text-sm font-medium text-ink-muted">
               {isPerfect
@@ -53,7 +63,7 @@ export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPagePro
           </Link>
           <Link
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
-            href={reviewStartHref(step, topic)}
+            href={retryHref}
           >
             <RotateCcwIcon className="size-5" />
             다시 풀기
