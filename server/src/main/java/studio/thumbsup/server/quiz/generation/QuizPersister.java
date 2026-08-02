@@ -49,11 +49,21 @@ public class QuizPersister {
     @Transactional
     int persist(Long courseId, String courseTopic, GeneratedQuizSet generated) {
         validateHintsBeforePersisting(generated);
+        return persistAtValidated(courseId, nextStepOrder(), courseTopic, DEFAULT_ESTIMATED_MINUTES, generated);
+    }
 
-        int stepOrder = quizRepository.findMaxStepOrder().map(max -> max + 1).orElse(1);
+    /** 이미 정해진 스텝 순서에 생성 결과를 저장한다 — 목차 발행처럼 스테이징 순서를 보존해야 하는 경로가 쓴다. */
+    @Transactional
+    public int persistAt(
+            Long courseId, int stepOrder, String courseTopic, int estimatedMinutes, GeneratedQuizSet generated) {
+        validateHintsBeforePersisting(generated);
+        return persistAtValidated(courseId, stepOrder, courseTopic, estimatedMinutes, generated);
+    }
 
+    private int persistAtValidated(
+            Long courseId, int stepOrder, String courseTopic, int estimatedMinutes, GeneratedQuizSet generated) {
         // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
-        quizStepRepository.save(QuizStep.create(stepOrder, courseId, courseTopic, DEFAULT_ESTIMATED_MINUTES));
+        quizStepRepository.save(QuizStep.create(stepOrder, courseId, courseTopic, estimatedMinutes));
 
         int slotOrder = 1;
         for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
@@ -71,6 +81,12 @@ public class QuizPersister {
             quizRepository.save(quiz);
         }
         return stepOrder;
+    }
+
+    private int nextStepOrder() {
+        int maxQuizStepOrder = quizStepRepository.findMaxStepOrder().orElse(0);
+        int maxQuizOrder = quizRepository.findMaxStepOrder().orElse(0);
+        return Math.max(maxQuizStepOrder, maxQuizOrder) + 1;
     }
 
     /** 뒤쪽 슬롯의 hint가 잘못돼도 스텝이나 앞쪽 문제를 먼저 쓰지 않도록 전체 세트를 저장 전에 검증한다. */
