@@ -59,6 +59,14 @@ public class AuthoringOutline extends BaseEntity {
         this.publishedCourseId = courseId;
     }
 
+    public void changeTitle(String title) {
+        this.title = title;
+    }
+
+    public void changeCategory(String category) {
+        this.category = category;
+    }
+
     public boolean isPublished() {
         return status == AuthoringOutlineStatus.PUBLISHED;
     }

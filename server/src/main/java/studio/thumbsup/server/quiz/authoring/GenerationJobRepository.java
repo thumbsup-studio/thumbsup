@@ -22,4 +22,9 @@ public interface GenerationJobRepository extends JpaRepository<GenerationJob, Lo
     Optional<GenerationJob> pickNextQueued(@Param("userId") Long userId);
 
     List<GenerationJob> findByDraftIdAndStatusIn(Long draftId, Collection<GenerationJobStatus> statuses);
+
+    List<GenerationJob> findByOutlineStepIdInAndStatusIn(
+            Collection<Long> outlineStepIds, Collection<GenerationJobStatus> statuses);
+
+    List<GenerationJob> findByOutlineStepIdAndStatusIn(Long outlineStepId, Collection<GenerationJobStatus> statuses);
 }
