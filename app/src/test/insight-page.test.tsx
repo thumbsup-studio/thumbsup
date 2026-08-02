@@ -302,7 +302,7 @@ describe("InsightPage", () => {
       <InsightPage
         correct
         quizId={7}
-        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환" }}
+        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환", single: false }}
       />,
     );
 
@@ -323,7 +323,7 @@ describe("InsightPage", () => {
       <InsightPage
         correct
         quizId={7}
-        review={{ step: 2, slot: 2, correct: 2, streak: 2, topic: "문맥 전환" }}
+        review={{ step: 2, slot: 2, correct: 2, streak: 2, topic: "문맥 전환", single: false }}
       />,
     );
 

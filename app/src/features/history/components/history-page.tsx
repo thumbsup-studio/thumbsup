@@ -9,9 +9,15 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Feedback } from "@/components/ui/feedback";
 import { Skeleton } from "@/components/ui/skeleton";
-import { reviewStartHref } from "@/features/history/review-params";
+import {
+  REVIEW_STEP_TOTAL,
+  reviewSingleHref,
+  reviewStartHref,
+} from "@/features/history/review-params";
 import { isUnauthorized } from "@/features/play/quiz-shared";
 import { type CompletedStep, getCompletedSteps } from "@/lib/api";
+
+const reviewSlots = Array.from({ length: REVIEW_STEP_TOTAL }, (_, index) => index + 1);
 
 export function HistoryPage() {
   const router = useRouter();
@@ -19,6 +25,7 @@ export function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [openStep, setOpenStep] = useState<number | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -99,27 +106,70 @@ export function HistoryPage() {
         {!isLoading && !error && steps ? (
           steps.length > 0 ? (
             <ul className="flex flex-col gap-3">
-              {steps.map((step) => (
-                <li key={step.stepOrder}>
-                  <Link
-                    className="flex items-center gap-4 rounded-card border border-border bg-surface p-5 shadow-card"
-                    href={reviewStartHref(step.stepOrder, step.topic)}
-                  >
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-chip bg-surface-muted text-sm font-bold text-ink-muted">
-                      {step.stepOrder}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-ink-muted">
-                        STEP {step.stepOrder}
-                      </span>
-                      <span className="mt-0.5 block truncate text-base font-semibold text-ink">
-                        {step.topic}
-                      </span>
-                    </span>
-                    <ChevronRightIcon className="size-5 shrink-0 text-ink-muted" />
-                  </Link>
-                </li>
-              ))}
+              {steps.map((step) => {
+                const isOpen = openStep === step.stepOrder;
+
+                return (
+                  <li key={step.stepOrder}>
+                    <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
+                      <button
+                        aria-expanded={isOpen}
+                        className="flex w-full items-center gap-4 p-5 text-left"
+                        onClick={() =>
+                          setOpenStep((current) =>
+                            current === step.stepOrder ? null : step.stepOrder,
+                          )
+                        }
+                        type="button"
+                      >
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-chip bg-surface-muted text-sm font-bold text-ink-muted">
+                          {step.stepOrder}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-semibold text-ink-muted">
+                            STEP {step.stepOrder}
+                          </span>
+                          <span className="mt-0.5 block truncate text-base font-semibold text-ink">
+                            {step.topic}
+                          </span>
+                        </span>
+                        <ChevronRightIcon
+                          className={`size-5 shrink-0 text-ink-muted transition-transform motion-safe:duration-200 ${
+                            isOpen ? "rotate-90" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {isOpen ? (
+                        <div className="border-t border-border p-4">
+                          <Link
+                            className="flex min-h-11 items-center justify-center rounded-control bg-primary px-4 text-sm font-bold text-primary-fg"
+                            href={reviewStartHref(step.stepOrder, step.topic)}
+                          >
+                            전체 복습 ({REVIEW_STEP_TOTAL}문제)
+                          </Link>
+
+                          <p className="mt-3 text-xs font-semibold text-ink-muted">
+                            문제 하나만 다시 풀기
+                          </p>
+                          <div className="mt-2 grid grid-cols-5 gap-2">
+                            {reviewSlots.map((slot) => (
+                              <Link
+                                aria-label={`${slot}번 문제 다시 풀기`}
+                                className="flex min-h-11 items-center justify-center rounded-control border border-border bg-surface-muted text-sm font-semibold text-ink"
+                                href={reviewSingleHref(step.stepOrder, slot, step.topic)}
+                                key={slot}
+                              >
+                                {slot}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <EmptyState
