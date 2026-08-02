@@ -13,9 +13,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import studio.thumbsup.server.common.entity.BaseEntity;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 /**
- * 승인 전 스테이징 영역의 문제 세트 draft — 승인되면 {@code Quiz}로 승격된다(#174 T6).
+ * 승인 전 스테이징 영역의 문제 세트 draft — 일반 draft는 승인되면 {@code Quiz}로 승격되고,
+ * {@code OUTLINE_STEP} draft는 뼈대 발행 시점까지 스테이징에 남는다.
  *
  * <p>{@link #sourceQuizId}는 다른 도메인(quiz)의 참조라 연관관계가 아니라 ID 값으로만 둔다
  * (server/docs/dto-and-query-patterns.md #2). {@code NEW} draft는 null, {@code IMPROVE} draft만 채워진다.
@@ -31,7 +33,7 @@ public class QuizDraft extends BaseEntity {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private QuizDraftOrigin origin;
 
     @Enumerated(EnumType.STRING)
@@ -46,6 +48,10 @@ public class QuizDraft extends BaseEntity {
     @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String currentPayload;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private QuizPreset preset;
+
     @Column(nullable = false)
     private Long createdBy;
 
@@ -53,21 +59,37 @@ public class QuizDraft extends BaseEntity {
 
     private Instant approvedAt;
 
-    private QuizDraft(QuizDraftOrigin origin, String topic, Long sourceQuizId, String currentPayload, Long createdBy) {
+    private QuizDraft(
+            QuizDraftOrigin origin,
+            String topic,
+            Long sourceQuizId,
+            String currentPayload,
+            QuizPreset preset,
+            Long createdBy) {
         this.origin = origin;
         this.status = QuizDraftStatus.DRAFT;
         this.topic = topic;
         this.sourceQuizId = sourceQuizId;
         this.currentPayload = currentPayload;
+        this.preset = preset;
         this.createdBy = createdBy;
     }
 
     public static QuizDraft createNew(String topic, String payloadJson, Long createdBy) {
-        return new QuizDraft(QuizDraftOrigin.NEW, topic, null, payloadJson, createdBy);
+        return new QuizDraft(QuizDraftOrigin.NEW, topic, null, payloadJson, null, createdBy);
     }
 
     public static QuizDraft createImprove(String topic, Long sourceQuizId, String payloadJson, Long createdBy) {
-        return new QuizDraft(QuizDraftOrigin.IMPROVE, topic, sourceQuizId, payloadJson, createdBy);
+        return new QuizDraft(QuizDraftOrigin.IMPROVE, topic, sourceQuizId, payloadJson, null, createdBy);
+    }
+
+    public static QuizDraft createForOutlineStep(String topic, String payloadJson, QuizPreset preset, Long createdBy) {
+        return new QuizDraft(QuizDraftOrigin.OUTLINE_STEP, topic, null, payloadJson, preset, createdBy);
+    }
+
+    /** 배포 전 생성된 draft는 preset 컬럼이 NULL이다 — 그 시절 유일한 구성이던 BASIC_5로 해석한다. */
+    public QuizPreset getPreset() {
+        return preset == null ? QuizPreset.BASIC_5 : preset;
     }
 
     public void applyRevision(String payloadJson) {
