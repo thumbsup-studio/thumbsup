@@ -1,6 +1,6 @@
 import type { BridgeCli, BridgeConfig } from "./config.js";
 
-export type BridgeJob = { jobId: number; kind: "GENERATE" | "REVIEW"; prompt: string; outputSchema: unknown };
+export type BridgeJob = { jobId: number; kind: "GENERATE" | "REVIEW" | "OUTLINE"; prompt: string; outputSchema: unknown };
 export type ResultOutcome = { jobId: number; status: "SUCCEEDED" | "FAILED"; error?: string };
 
 type Envelope<T> = { code: string; message: string; data: T };
