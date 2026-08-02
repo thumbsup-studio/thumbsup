@@ -87,8 +87,9 @@ public class HistoryService {
                         relatedStepsByConceptId.getOrDefault(id, List.of())))
                 .toList();
 
+        Set<Long> nodeIds = conceptById.keySet();
         List<Edge> edges =
-                conceptRelationRepository.findBySourceConceptIdInAndTargetConceptIdIn(conceptIds, conceptIds).stream()
+                conceptRelationRepository.findBySourceConceptIdInAndTargetConceptIdIn(nodeIds, nodeIds).stream()
                         .sorted(Comparator.comparing(ConceptRelation::getSourceConceptId)
                                 .thenComparing(ConceptRelation::getTargetConceptId))
                         .map(r -> new Edge(
