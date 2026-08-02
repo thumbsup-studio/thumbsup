@@ -497,7 +497,10 @@ describe("PlayPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
       await waitFor(() => {
-        expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=8&correct=true&streak=3");
+        // 재도전으로 맞혔으므로 retry=1이 붙는다 — 해설 화면이 특별 칭찬을 고르는 근거.
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          "/insight?quizId=8&correct=true&streak=3&retry=1",
+        );
       });
     });
 
@@ -602,6 +605,67 @@ describe("PlayPage", () => {
       expect(screen.getByText(/시 ○ ○ ○ \(4글자\)/)).toBeInTheDocument();
       expect(screen.getByText(/데 ○ ○ \(3글자\)/)).toBeInTheDocument();
       expect(mockRouter.push).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("해설 화면으로 넘길 값", () => {
+    it("재도전으로 맞히면 retry=1을 실어 해설 화면이 특별 칭찬을 고르게 한다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
+      vi.mocked(submitQuizAnswer)
+        .mockResolvedValueOnce({
+          isCorrect: false,
+          retryHint: { eliminatedChoiceId: 12, blankHints: null },
+        })
+        .mockResolvedValueOnce({ isCorrect: true, retryHint: null });
+
+      render(<PlayPage />);
+
+      fireEvent.click(await screen.findByRole("radio", { name: /뮤텍스/ }));
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      await screen.findByText(/틀린 선택지 하나를 지웠어요/);
+      fireEvent.click(screen.getByRole("radio", { name: /스택/ }));
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      await waitFor(() => {
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          "/insight?quizId=8&correct=true&streak=1&retry=1",
+        );
+      });
+    });
+
+    it("재도전 없이 맞히면 retry 파라미터를 붙이지 않는다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+      vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
+
+      render(<PlayPage />);
+
+      fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      await waitFor(() => {
+        expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=7&correct=true&streak=1");
+      });
+    });
+
+    it("마지막 문제면 완주 요약 값을 URL에 싣는다", async () => {
+      vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 5, totalCount: 5 });
+      vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
+      window.localStorage.setItem(
+        "thumbsup:play-session:1",
+        JSON.stringify({ answered: 4, correct: 3, combo: 1, bestCombo: 2 }),
+      );
+
+      render(<PlayPage />);
+
+      fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+      fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+      await waitFor(() => {
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          "/insight?quizId=7&correct=true&streak=2&done=1&c=4&bc=2&a=5",
+        );
+      });
     });
   });
 });

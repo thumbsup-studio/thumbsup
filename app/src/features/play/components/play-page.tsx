@@ -17,6 +17,7 @@ import {
   isUnauthorized,
   shuffleChoices,
 } from "@/features/play/quiz-shared";
+import { type PlaySession, recordAnswer, resetSession } from "@/features/play/session-progress";
 import {
   getNextQuiz,
   getStepQuiz,
@@ -31,7 +32,6 @@ import {
 type AnswerDraft = boolean | string | string[] | null;
 
 const optionLabels = ["A", "B", "C", "D"];
-const correctStreakStorageKeyPrefix = "thumbsup:insight-correct-streak:api-quiz";
 const defaultStepTotal = 5;
 
 type PlayPageProps = {
@@ -110,7 +110,7 @@ export function PlayPage({ review }: PlayPageProps) {
         if (!ignore) {
           // 스트릭(연속 정답)은 일반 학습 세션에서만 추적 — 복습은 세션 진행으로 치지 않는다.
           if (reviewStep === null && nextQuiz.slotOrder === 1) {
-            resetCorrectStreak(nextQuiz.stepOrder);
+            resetSession(nextQuiz.stepOrder);
           }
           setQuiz(nextQuiz);
         }
@@ -195,17 +195,28 @@ export function PlayPage({ review }: PlayPageProps) {
         const correctAfter = review.correct + (result.isCorrect ? 1 : 0);
         const streakAfter = result.isCorrect ? review.streak + 1 : 0;
         router.push(
-          reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter),
+          reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter, {
+            retry: hasUsedRetry && result.isCorrect ? "1" : undefined,
+          }),
         );
         return;
       }
 
-      const nextStreak = updateCorrectStreak(quiz.stepOrder, result.isCorrect);
-      if (currentNumber === totalCount) {
+      const session = recordAnswer(quiz.stepOrder, result.isCorrect);
+      const isLastQuestion = currentNumber === totalCount;
+      if (isLastQuestion) {
+        // 결과를 쓰지 않으므로 기다리지 않는다 — await하면 요청 타임아웃(15초)만큼 화면이 막힌다.
         void feedMascot().catch(() => {});
       }
+
       router.push(
-        `/insight?quizId=${quiz.quizId}&correct=${result.isCorrect ? "true" : "false"}&streak=${nextStreak}`,
+        buildInsightHref(
+          quiz.quizId,
+          result.isCorrect,
+          session,
+          isLastQuestion,
+          hasUsedRetry && result.isCorrect,
+        ),
       );
     } catch (submitError) {
       if (isUnauthorized(submitError)) {
@@ -358,10 +369,11 @@ function QuestionRenderer({
   retryHint: RetryHint | null;
 }) {
   return (
-    <div className="flex flex-1 flex-col">
+    // key로 문제마다 새로 마운트시켜 진입 애니메이션이 슬롯마다 다시 재생되게 한다.
+    <div className="flex flex-1 flex-col" key={quiz.quizId}>
       {retryHint ? (
         <div
-          className="mb-4 flex items-start gap-3 rounded-control bg-warning/10 px-4 py-3"
+          className="animate-rise-in mb-4 flex items-start gap-3 rounded-control bg-warning/10 px-4 py-3"
           role="status"
           aria-live="polite"
         >
@@ -376,20 +388,28 @@ function QuestionRenderer({
         </div>
       ) : null}
 
+      {/* 질문은 카드 상단에 붙인다 — 읽는 순서가 위에서 아래로 흐르게. */}
       <div>
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
-          {getQuestionKindLabel(quiz.type)}
-        </p>
-        <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
-        {requestedHint ? (
-          <Card aria-live="polite" className="mt-4" role="status">
-            <p className="text-xs font-bold text-ink-muted">힌트</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-ink">{requestedHint}</p>
-          </Card>
-        ) : null}
+        <div className="animate-rise-in">
+          <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
+            {getQuestionKindLabel(quiz.type)}
+          </p>
+          <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
+          {requestedHint ? (
+            <Card aria-live="polite" className="animate-rise-in mt-4" role="status">
+              <p className="text-xs font-bold text-ink-muted">힌트</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-ink">{requestedHint}</p>
+            </Card>
+          ) : null}
+        </div>
       </div>
 
-      <div className="mt-auto space-y-4 pt-6">
+      {/*
+        my-auto — 위아래 여백을 같게 나눠 답안을 질문과 하단 버튼 사이 중앙에 띄운다.
+        mt-auto로 바닥에 붙이면 질문이 짧을 때 사이가 400px 가까이 벌어져
+        화면 한가운데가 구멍처럼 비었다.
+      */}
+      <div className="my-auto space-y-4 py-6">
         {quiz.type === "OX" ? (
           <fieldset className="grid grid-cols-2 gap-3" aria-label="O 또는 X 선택">
             <OxButton
@@ -420,26 +440,34 @@ function QuestionRenderer({
                 // 사용자가 처음 고른 오답은 다시 고를 수 있게 그대로 둔다(같은 답을 내면 오답 처리가 맞다).
                 const isEliminated = retryHint?.eliminatedChoiceId === choice.choiceId;
 
+                const isSelected = draft === String(choice.choiceId);
+
                 return (
                   <label
-                    className={`flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition ${
+                    className={`animate-choice-in flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition duration-150 ${
                       isEliminated
                         ? "border-border bg-surface-muted opacity-50"
-                        : draft === String(choice.choiceId)
+                        : isSelected
                           ? "border-primary bg-surface shadow-card"
-                          : "border-border bg-surface"
+                          : "border-border bg-surface active:scale-95"
                     }`}
                     key={choice.choiceId}
+                    // 선택지가 위에서부터 차례로 내려앉게 한다 — 넷이 한 번에 나타나면 밋밋하다.
+                    style={{ animationDelay: `${index * 55}ms` }}
                   >
                     <input
-                      checked={draft === String(choice.choiceId)}
+                      checked={isSelected}
                       className="sr-only"
                       disabled={isLocked || isEliminated}
                       name={String(quiz.quizId)}
                       onChange={() => onDraftChange(String(choice.choiceId))}
                       type="radio"
                     />
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-chip bg-ink text-xs text-primary-fg">
+                    <span
+                      className={`grid h-7 w-7 shrink-0 place-items-center rounded-chip text-xs transition duration-150 ${
+                        isSelected ? "bg-primary text-primary-fg" : "bg-ink text-primary-fg"
+                      }`}
+                    >
                       {optionLabels[index] ?? index + 1}
                     </span>
                     <span className={isEliminated ? "line-through" : undefined}>
@@ -490,8 +518,8 @@ function OxButton({
 
   return (
     <label
-      className={`flex min-h-28 items-center justify-center rounded-card border bg-surface text-5xl font-black transition ${
-        selected ? selectedClassName : "border-border text-ink-muted"
+      className={`animate-choice-in flex min-h-28 items-center justify-center rounded-card border bg-surface text-5xl font-black transition duration-150 ${
+        selected ? `${selectedClassName} scale-105` : "border-border text-ink-muted active:scale-95"
       }`}
     >
       <input
@@ -607,24 +635,37 @@ function getSubmittedAnswers(quiz: QuizNextResponse, draft: AnswerDraft) {
   return Array.isArray(draft) ? draft.map((answer) => answer.trim()) : [];
 }
 
-function getCorrectStreakStorageKey(stepOrder: number) {
-  return `${correctStreakStorageKeyPrefix}:${stepOrder}`;
-}
+/**
+ * 해설 화면 URL. 마지막 문제면 완주 요약에 쓸 값을 함께 싣는다.
+ *
+ * localStorage 대신 URL로 넘기는 이유: 뒤로가기·bfcache에서 화면과 값이 어긋나는 문제를
+ * PR 160에서 이미 겪었다. URL이면 그 화면의 상태가 주소에 고정된다.
+ * 브라우저가 만든 값이라 신뢰하지 않으며, 해설 화면이 totalCount로 잘라 쓴다.
+ */
+function buildInsightHref(
+  quizId: number,
+  correct: boolean,
+  session: PlaySession,
+  isLastQuestion: boolean,
+  /** 재도전(이슈 63)으로 **맞힌** 경우만 true — 해설 화면의 특별 칭찬에만 쓰인다. */
+  wasRetrySuccess: boolean,
+) {
+  const params = new URLSearchParams({
+    quizId: String(quizId),
+    correct: correct ? "true" : "false",
+    streak: String(session.combo),
+  });
 
-function resetCorrectStreak(stepOrder: number) {
-  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), "0");
-}
+  if (wasRetrySuccess) {
+    params.set("retry", "1");
+  }
 
-function readCorrectStreak(stepOrder: number) {
-  const value = Number(window.localStorage.getItem(getCorrectStreakStorageKey(stepOrder)) ?? 0);
+  if (isLastQuestion) {
+    params.set("done", "1");
+    params.set("c", String(session.correct));
+    params.set("bc", String(session.bestCombo));
+    params.set("a", String(session.answered));
+  }
 
-  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
-}
-
-function updateCorrectStreak(stepOrder: number, correct: boolean) {
-  const nextStreak = correct ? readCorrectStreak(stepOrder) + 1 : 0;
-
-  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), String(nextStreak));
-
-  return nextStreak;
+  return `/insight?${params.toString()}`;
 }

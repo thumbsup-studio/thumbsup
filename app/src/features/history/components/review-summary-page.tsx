@@ -5,6 +5,7 @@ import {
   reviewSingleHref,
   reviewStartHref,
 } from "@/features/history/review-params";
+import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
 
 type ReviewSummaryPageProps = {
   step: number;
@@ -24,6 +25,11 @@ export function ReviewSummaryPage({ step, correct, topic, single, slot }: Review
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
+      {/*
+        단건 복습(이슈 190)은 분모가 1이라 한 문제만 맞혀도 isPerfect가 된다.
+        팡파레는 "한 판을 완주하고 전부 맞혔을 때"라는 사다리 꼭대기라, 여기선 터뜨리지 않는다.
+      */}
+      {!single && isPerfect ? <FanfareOverlay playKey={`review:${step}`} /> : null}
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
           <div className="flex flex-col items-center gap-3">

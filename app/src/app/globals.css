@@ -69,10 +69,90 @@
       opacity: 1;
     }
   }
+
+  /* 정답 판정 연출(이슈 211) — 체크 팝 · 콤보/배지 칩 바운스 */
+  --animate-celebration-pop: celebration-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-combo-bounce: combo-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* 풀이 화면 조작감 — 카드 진입 · 선택지 스태거 · 체크 그려지기 */
+  --animate-rise-in: rise-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-choice-in: choice-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-check-draw: check-draw 0.4s cubic-bezier(0.65, 0, 0.35, 1) both;
+  @keyframes celebration-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes choice-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  /* stroke-dasharray를 100으로 두고 offset을 0까지 당겨 체크가 그려지는 것처럼 보이게 한다. */
+  @keyframes check-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes combo-bounce {
+    0% {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.8);
+    }
+    60% {
+      opacity: 1;
+      transform: translateY(-0.25rem) scale(1.08);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/*
+ * 모션 줄이기를 켠 사용자에겐 애니메이션을 사실상 끈다.
+ * 연출 등급·유지 시간은 celebration-logic이 이미 눌러 두지만,
+ * CSS 애니메이션은 JS를 거치지 않으므로 여기서 한 번 더 막는다.
+ * 바텀시트 등 기존 애니메이션에도 함께 적용된다 — 의도한 개선이다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: 모션 줄이기 설정은 기존 애니메이션보다 우선해야 한다. */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 모션 줄이기 설정은 기존 애니메이션보다 우선해야 한다. */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 모션 줄이기 설정은 기존 애니메이션보다 우선해야 한다. */
+    transition-duration: 0.01ms !important;
+  }
 }

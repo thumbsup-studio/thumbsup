@@ -26,12 +26,17 @@ export function Button({
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  // active:scale-95 — 누르는 감각을 모든 버튼이 공유하게 한다(이슈 211).
+  // prefers-reduced-motion은 globals.css의 전역 가드가 duration을 눌러 처리한다.
+  const base =
+    "inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-4 py-3 text-base font-semibold transition duration-150 active:scale-95 disabled:opacity-60 disabled:pointer-events-none";
+
   return (
     <button
       type="button"
       disabled={isDisabled}
       aria-busy={loading}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-4 py-3 text-base font-semibold transition-colors disabled:opacity-60 disabled:pointer-events-none ${VARIANT[variant]} ${className}`}
+      className={`${base} ${VARIANT[variant]} ${className}`}
       {...props}
     >
       {loading ? (
