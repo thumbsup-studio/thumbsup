@@ -88,6 +88,6 @@ public class AuthoringBridgeController {
     /** result/fail 둘 다 종결 후 최신 상태를 다시 읽어 SSE status 이벤트로 흘려보낸다. */
     private void notifyStreamStatus(Long jobId) {
         JobStatusResponse status = jobService.getJobStatus(jobId);
-        jobLogStreamService.notifyStatus(jobId, status.status(), status.draftId(), status.error());
+        jobLogStreamService.notifyStatus(jobId, status.status(), status.draftId(), status.error(), status.outlineId());
     }
 }

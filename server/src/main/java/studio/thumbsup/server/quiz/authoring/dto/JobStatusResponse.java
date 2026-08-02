@@ -13,7 +13,9 @@ public record JobStatusResponse(
         String error,
         OffsetDateTime createdAt,
         OffsetDateTime startedAt,
-        OffsetDateTime finishedAt) {
+        OffsetDateTime finishedAt,
+        Long outlineId,
+        Long outlineStepId) {
 
     public static JobStatusResponse from(GenerationJob job) {
         return new JobStatusResponse(
@@ -24,7 +26,9 @@ public record JobStatusResponse(
                 job.getError(),
                 toKst(job.getCreatedAt()),
                 toKst(job.getStartedAt()),
-                toKst(job.getFinishedAt()));
+                toKst(job.getFinishedAt()),
+                job.getOutlineId(),
+                job.getOutlineStepId());
     }
 
     private static OffsetDateTime toKst(Instant instant) {

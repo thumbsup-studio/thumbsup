@@ -78,11 +78,16 @@ public class JobLogStreamService {
 
     /** 잡이 SUCCEEDED/FAILED로 종결된 직후 호출 — status 이벤트를 보내고 구독을 전부 끝맺는다. */
     public void notifyStatus(Long jobId, String status, Long draftId, String error) {
+        notifyStatus(jobId, status, draftId, error, null);
+    }
+
+    /** 종료 상태에 뼈대 참조를 함께 보낸다 — 기존 호출자 호환을 위해 기존 overload도 유지한다. */
+    public void notifyStatus(Long jobId, String status, Long draftId, String error, Long outlineId) {
         List<SseEmitter> subscribers = emittersByJobId.remove(jobId);
         if (subscribers == null) {
             return;
         }
-        SseEmitter.SseEventBuilder event = statusEvent(status, draftId, error);
+        SseEmitter.SseEventBuilder event = statusEvent(status, draftId, error, outlineId);
         for (SseEmitter emitter : subscribers) {
             if (trySend(emitter, event)) {
                 emitter.complete();
@@ -91,7 +96,8 @@ public class JobLogStreamService {
     }
 
     private void sendTerminalStatusAndComplete(SseEmitter emitter, GenerationJob job) {
-        SseEmitter.SseEventBuilder event = statusEvent(job.getStatus().name(), job.getDraftId(), job.getError());
+        SseEmitter.SseEventBuilder event =
+                statusEvent(job.getStatus().name(), job.getDraftId(), job.getError(), job.getOutlineId());
         if (trySend(emitter, event)) {
             emitter.complete();
         }
@@ -131,13 +137,13 @@ public class JobLogStreamService {
                 .data(new LogEventPayload(log.getSeq(), log.getLine()), MediaType.APPLICATION_JSON);
     }
 
-    private SseEmitter.SseEventBuilder statusEvent(String status, Long draftId, String error) {
+    private SseEmitter.SseEventBuilder statusEvent(String status, Long draftId, String error, Long outlineId) {
         return SseEmitter.event()
                 .name("status")
-                .data(new StatusEventPayload(status, draftId, error), MediaType.APPLICATION_JSON);
+                .data(new StatusEventPayload(status, draftId, error, outlineId), MediaType.APPLICATION_JSON);
     }
 
     private record LogEventPayload(int seq, String line) {}
 
-    private record StatusEventPayload(String status, Long draftId, String error) {}
+    private record StatusEventPayload(String status, Long draftId, String error, Long outlineId) {}
 }
