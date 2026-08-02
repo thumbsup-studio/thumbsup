@@ -54,7 +54,12 @@ export function NewOutlineSheet({ open, onClose }: { open: boolean; onClose: () 
         AI가 목차를 학습 순서에 맞는 스텝 목록으로 재구성해요.
       </p>
       <div className="mt-4 flex flex-col gap-3">
-        <Input label="제목" onChange={(event) => setTitle(event.target.value)} value={title} />
+        <Input
+          label="제목"
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="예: 네트워크 기초"
+          value={title}
+        />
         <Input
           label="분류"
           onChange={(event) => setCategory(event.target.value)}
