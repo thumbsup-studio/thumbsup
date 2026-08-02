@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ReviewContext, reviewInsightHref } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
+import { type Celebration, getCelebration } from "@/features/play/celebration-logic";
+import { CelebrationOverlay } from "@/features/play/components/celebration-overlay";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { getProgressPercent } from "@/features/play/play-logic";
 import {
@@ -17,6 +19,8 @@ import {
   isUnauthorized,
   shuffleChoices,
 } from "@/features/play/quiz-shared";
+import { type PlaySession, recordAnswer, resetSession } from "@/features/play/session-progress";
+import { usePrefersReducedMotion } from "@/features/play/use-prefers-reduced-motion";
 import {
   getNextQuiz,
   getStepQuiz,
@@ -31,7 +35,6 @@ import {
 type AnswerDraft = boolean | string | string[] | null;
 
 const optionLabels = ["A", "B", "C", "D"];
-const correctStreakStorageKeyPrefix = "thumbsup:insight-correct-streak:api-quiz";
 const defaultStepTotal = 5;
 
 type PlayPageProps = {
@@ -55,6 +58,13 @@ export function PlayPage({ review }: PlayPageProps) {
   // 재도전 힌트가 있으면 곧 "재도전 화면"이라는 뜻. hasUsedRetry는 이 문제에서 재도전을 이미 썼는지.
   const [retryHint, setRetryHint] = useState<RetryHint | null>(null);
   const [hasUsedRetry, setHasUsedRetry] = useState(false);
+  // 채점 결과를 화면에서 먼저 보여준 뒤 해설로 넘긴다(이슈 211).
+  const [celebration, setCelebration] = useState<Celebration | null>(null);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const pendingHrefRef = useRef<string | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 타이머와 [계속] 탭이 동시에 발화해도, StrictMode가 이펙트를 두 번 돌려도 라우팅은 한 번뿐이다.
+  const hasNavigatedRef = useRef(false);
 
   const reviewStep = review?.step ?? null;
   const reviewSlot = review?.slot ?? null;
@@ -110,7 +120,7 @@ export function PlayPage({ review }: PlayPageProps) {
         if (!ignore) {
           // 스트릭(연속 정답)은 일반 학습 세션에서만 추적 — 복습은 세션 진행으로 치지 않는다.
           if (reviewStep === null && nextQuiz.slotOrder === 1) {
-            resetCorrectStreak(nextQuiz.stepOrder);
+            resetSession(nextQuiz.stepOrder);
           }
           setQuiz(nextQuiz);
         }
@@ -137,6 +147,16 @@ export function PlayPage({ review }: PlayPageProps) {
       hintRequestGeneration.current += 1;
     };
   }, [reloadKey, router, reviewStep, reviewSlot]);
+
+  // 화면을 떠난 뒤 타이머가 살아남아 엉뚱한 라우팅을 일으키지 않게 끊는다.
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current !== null) {
+        clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+    };
+  }, []);
 
   async function showHint() {
     if (!quiz || requestedHint || isHintLoading || isSubmitting || hasUsedRetry) {
@@ -170,6 +190,54 @@ export function PlayPage({ review }: PlayPageProps) {
     }
   }
 
+  function goToInsight() {
+    if (hasNavigatedRef.current) {
+      return;
+    }
+
+    hasNavigatedRef.current = true;
+    if (holdTimerRef.current !== null) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+
+    const href = pendingHrefRef.current;
+    if (href !== null) {
+      router.push(href);
+    }
+  }
+
+  function startCelebration(
+    result: { combo: number; correct: boolean; wasRetry: boolean },
+    href: string,
+  ) {
+    if (!quiz) {
+      return;
+    }
+
+    const next = getCelebration({
+      combo: result.combo,
+      correct: result.correct,
+      difficulty: quiz.difficulty,
+      prefersReducedMotion,
+      quizId: quiz.quizId,
+      wasRetry: result.wasRetry,
+    });
+
+    pendingHrefRef.current = href;
+    setCelebration(next);
+
+    // holdMs가 0이면 타이머를 걸지 않고 곧바로 넘긴다 —
+    // 모션을 끈 사용자에게 0ms 타이머의 한 틱을 강요할 이유가 없고,
+    // 그래야 "제출 즉시 이동"이라는 기존 계약이 그대로 유지된다.
+    if (next.holdMs === 0) {
+      goToInsight();
+      return;
+    }
+
+    holdTimerRef.current = setTimeout(goToInsight, next.holdMs);
+  }
+
   async function submitAnswer() {
     if (!quiz || !submitEnabled) {
       return;
@@ -194,18 +262,22 @@ export function PlayPage({ review }: PlayPageProps) {
         // 복습: 오늘의 학습 스트릭·보리 포만감은 건드리지 않고, 복습 상태만 URL로 이어받는다.
         const correctAfter = review.correct + (result.isCorrect ? 1 : 0);
         const streakAfter = result.isCorrect ? review.streak + 1 : 0;
-        router.push(
+        startCelebration(
+          { combo: streakAfter, correct: result.isCorrect, wasRetry: hasUsedRetry },
           reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter),
         );
         return;
       }
 
-      const nextStreak = updateCorrectStreak(quiz.stepOrder, result.isCorrect);
-      if (currentNumber === totalCount) {
+      const session = recordAnswer(quiz.stepOrder, result.isCorrect);
+      const isLastQuestion = currentNumber === totalCount;
+      if (isLastQuestion) {
         void feedMascot().catch(() => {});
       }
-      router.push(
-        `/insight?quizId=${quiz.quizId}&correct=${result.isCorrect ? "true" : "false"}&streak=${nextStreak}`,
+
+      startCelebration(
+        { combo: session.combo, correct: result.isCorrect, wasRetry: hasUsedRetry },
+        buildInsightHref(quiz.quizId, result.isCorrect, session, isLastQuestion),
       );
     } catch (submitError) {
       if (isUnauthorized(submitError)) {
@@ -221,6 +293,9 @@ export function PlayPage({ review }: PlayPageProps) {
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-5 text-ink sm:px-6">
+      {celebration ? (
+        <CelebrationOverlay celebration={celebration} onContinue={goToInsight} />
+      ) : null}
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
         <header className="sticky top-4 z-10 rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between gap-3">
@@ -607,24 +682,31 @@ function getSubmittedAnswers(quiz: QuizNextResponse, draft: AnswerDraft) {
   return Array.isArray(draft) ? draft.map((answer) => answer.trim()) : [];
 }
 
-function getCorrectStreakStorageKey(stepOrder: number) {
-  return `${correctStreakStorageKeyPrefix}:${stepOrder}`;
-}
+/**
+ * 해설 화면 URL. 마지막 문제면 완주 요약에 쓸 값을 함께 싣는다.
+ *
+ * localStorage 대신 URL로 넘기는 이유: 뒤로가기·bfcache에서 화면과 값이 어긋나는 문제를
+ * PR 160에서 이미 겪었다. URL이면 그 화면의 상태가 주소에 고정된다.
+ * 브라우저가 만든 값이라 신뢰하지 않으며, 해설 화면이 totalCount로 잘라 쓴다.
+ */
+function buildInsightHref(
+  quizId: number,
+  correct: boolean,
+  session: PlaySession,
+  isLastQuestion: boolean,
+) {
+  const params = new URLSearchParams({
+    quizId: String(quizId),
+    correct: correct ? "true" : "false",
+    streak: String(session.combo),
+  });
 
-function resetCorrectStreak(stepOrder: number) {
-  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), "0");
-}
+  if (isLastQuestion) {
+    params.set("done", "1");
+    params.set("c", String(session.correct));
+    params.set("bc", String(session.bestCombo));
+    params.set("a", String(session.answered));
+  }
 
-function readCorrectStreak(stepOrder: number) {
-  const value = Number(window.localStorage.getItem(getCorrectStreakStorageKey(stepOrder)) ?? 0);
-
-  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
-}
-
-function updateCorrectStreak(stepOrder: number, correct: boolean) {
-  const nextStreak = correct ? readCorrectStreak(stepOrder) + 1 : 0;
-
-  window.localStorage.setItem(getCorrectStreakStorageKey(stepOrder), String(nextStreak));
-
-  return nextStreak;
+  return `/insight?${params.toString()}`;
 }
