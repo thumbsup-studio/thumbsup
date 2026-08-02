@@ -1,5 +1,6 @@
 import { RequireAuth } from "@/features/auth/require-auth";
 import { parseReviewContext, type ReviewSearchParams } from "@/features/history/review-params";
+import { type CompletionSearchParams, parseCompletion } from "@/features/play/completion-params";
 import { InsightPage } from "@/features/play/components/insight-page";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,8 @@ type InsightRouteProps = {
       correct?: string;
       quizId?: string;
       streak?: string;
-    } & ReviewSearchParams
+    } & ReviewSearchParams &
+      CompletionSearchParams
   >;
 };
 
@@ -22,10 +24,13 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
   const rawStreak = Number(params?.streak ?? 0);
   const correctStreak = Number.isFinite(rawStreak) ? Math.max(0, Math.trunc(rawStreak)) : 0;
   const review = parseReviewContext(params);
+  // 상한 검증(clamp)은 totalCount를 아는 클라이언트에서 한다.
+  const completion = parseCompletion(params);
 
   return (
     <RequireAuth>
       <InsightPage
+        completion={completion}
         correct={params?.correct === "true"}
         correctStreak={correctStreak}
         quizId={quizId}

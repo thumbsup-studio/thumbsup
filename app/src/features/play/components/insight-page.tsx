@@ -13,6 +13,8 @@ import {
   reviewDoneHref,
   reviewNextPlayHref,
 } from "@/features/history/review-params";
+import type { CompletionSummary } from "@/features/play/completion-params";
+import { CompletionCard } from "@/features/play/components/completion-card";
 import {
   getKeywordDescriptionMap,
   KeywordTooltipText,
@@ -33,6 +35,8 @@ const FANFARE_SRC = "/lottie/fanfare.lottie";
 const FANFARE_VERTICAL_SRC = "/lottie/fanfare-vertical.lottie";
 
 type InsightPageProps = {
+  /** 값이 있으면 이 문제로 스텝 한 판이 끝났다는 뜻 — 완주 요약 카드를 그린다. */
+  completion?: CompletionSummary | null;
   correct: boolean;
   correctStreak?: number;
   quizId: number | null;
@@ -40,7 +44,13 @@ type InsightPageProps = {
   review?: ReviewContext | null;
 };
 
-export function InsightPage({ correct, correctStreak = 0, quizId, review }: InsightPageProps) {
+export function InsightPage({
+  completion = null,
+  correct,
+  correctStreak = 0,
+  quizId,
+  review,
+}: InsightPageProps) {
   const router = useRouter();
   const [explanation, setExplanation] = useState<QuizExplanationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -293,6 +303,10 @@ export function InsightPage({ correct, correctStreak = 0, quizId, review }: Insi
                     node={explanation.explanationExample}
                   />
                 </div>
+              ) : null}
+
+              {completion ? (
+                <CompletionCard summary={completion} totalCount={explanation.totalCount} />
               ) : null}
 
               <div className="mt-auto flex flex-col gap-2.5 pt-5">

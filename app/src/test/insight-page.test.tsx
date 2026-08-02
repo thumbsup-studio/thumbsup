@@ -217,6 +217,67 @@ describe("InsightPage", () => {
     expect(screen.getByText(/브라우저 탭은/)).toBeInTheDocument();
   });
 
+  it("완주 요약을 받으면 정답 수·최고 콤보·보리 줄을 그린다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <InsightPage completion={{ answered: 5, bestCombo: 3, correct: 4 }} correct quizId={1} />,
+    );
+
+    const cardTitle = await screen.findByText("오늘의 학습 완료");
+    const card = cardTitle.closest(".rounded-control");
+    expect(card).not.toBeNull();
+    if (!(card instanceof HTMLElement)) {
+      return;
+    }
+
+    expect(within(card).getByText("정답")).toBeInTheDocument();
+    expect(within(card).getByText("최고 콤보")).toBeInTheDocument();
+    expect(within(card).getByText("밥을 줬어요")).toBeInTheDocument();
+  });
+
+  it("조작된 완주 URL 값은 문제 수 상한으로 자른다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <InsightPage
+        completion={{ answered: 999, bestCombo: 999, correct: 999 }}
+        correct
+        quizId={1}
+      />,
+    );
+
+    await screen.findByText("오늘의 학습 완료");
+    expect(screen.queryByText("999")).not.toBeInTheDocument();
+  });
+
+  it("마이그레이션된 세션(answered 불일치)은 정답 줄을 감춘다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <InsightPage completion={{ answered: 0, bestCombo: 2, correct: 0 }} correct quizId={1} />,
+    );
+
+    const cardTitle = await screen.findByText("오늘의 학습 완료");
+    const card = cardTitle.closest(".rounded-control");
+    expect(card).not.toBeNull();
+    if (!(card instanceof HTMLElement)) {
+      return;
+    }
+
+    expect(within(card).queryByText("정답")).not.toBeInTheDocument();
+    expect(within(card).getByText("최고 콤보")).toBeInTheDocument();
+  });
+
+  it("완주가 아니면 카드를 그리지 않는다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct quizId={1} />);
+
+    await screen.findByText(/정답이에요/);
+    expect(screen.queryByText("오늘의 학습 완료")).not.toBeInTheDocument();
+  });
+
   it("shows fanfare from the third consecutive correct answer and hides it on completion", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
