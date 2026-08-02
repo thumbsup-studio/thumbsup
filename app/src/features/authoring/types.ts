@@ -3,10 +3,13 @@
  * 필드명은 서버 REST 계약(docs/plans/2026-07-14-quiz-authoring-{app,server}.md)과 1:1.
  */
 
-export type DraftOrigin = "NEW" | "IMPROVE";
+export type DraftOrigin = "NEW" | "IMPROVE" | "OUTLINE_STEP";
 export type DraftStatus = "DRAFT" | "APPROVED";
-export type JobKind = "GENERATE" | "REVIEW";
+export type JobKind = "GENERATE" | "REVIEW" | "OUTLINE";
 export type JobRunStatus = "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
+export type OutlineStatus = "DRAFT" | "PUBLISHED";
+export type OutlineStepFillState = "EMPTY" | "GENERATING" | "REVIEWING" | "APPROVED";
+export type QuizPreset = "BASIC_5" | "LIGHT_3" | "DEEP_7";
 
 export type DraftSummary = {
   draftId: number;
@@ -43,6 +46,36 @@ export type JobStatus = {
   createdAt: string;
   startedAt: string | null;
   finishedAt: string | null;
+  outlineId: number | null;
+  outlineStepId: number | null;
+};
+
+export type OutlineSummary = {
+  outlineId: number;
+  title: string;
+  category: string;
+  status: OutlineStatus;
+  stepCount: number;
+  approvedStepCount: number;
+};
+
+export type OutlineStep = {
+  stepId: number;
+  orderNo: number;
+  topic: string;
+  learningGoal: string | null;
+  fillState: OutlineStepFillState;
+  draftId: number | null;
+  activeJobId: number | null;
+};
+
+export type OutlineDetail = {
+  outlineId: number;
+  title: string;
+  category: string;
+  status: OutlineStatus;
+  toc: string | null;
+  steps: OutlineStep[];
 };
 
 export type AuthoringStepQuiz = {

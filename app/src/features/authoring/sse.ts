@@ -9,7 +9,12 @@ import { tokenStore } from "@/lib/api/token-store";
 
 export type SseHandlers = {
   onLog: (entry: { seq: number; line: string }) => void;
-  onStatus: (status: { status: string; draftId: number | null; error: string | null }) => void;
+  onStatus: (status: {
+    status: string;
+    draftId: number | null;
+    error: string | null;
+    outlineId: number | null;
+  }) => void;
   onError: (error: unknown) => void;
 };
 

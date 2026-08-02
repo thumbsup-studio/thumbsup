@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { JobStatus } from "@/features/authoring/types";
 import { ApiError } from "@/lib/api";
 import { getJob } from "./api";
 import { streamJobLogs } from "./sse";
@@ -8,7 +9,14 @@ import { streamJobLogs } from "./sse";
 export type JobStreamState =
   | { phase: "connecting" }
   | { phase: "streaming" }
-  | { phase: "done"; status: string; draftId: number | null; error: string | null }
+  | {
+      phase: "done";
+      kind: JobStatus["kind"];
+      status: string;
+      draftId: number | null;
+      outlineId: number | null;
+      error: string | null;
+    }
   | { phase: "error" }
   | { phase: "unauthorized" };
 
@@ -46,7 +54,14 @@ export function useJobLogStream(jobId: number, onLine: (line: string) => void): 
         const job = await getJob(jobId);
         if (cancelled) return;
         if (TERMINAL_STATUSES.has(job.status)) {
-          setState({ phase: "done", status: job.status, draftId: job.draftId, error: job.error });
+          setState({
+            phase: "done",
+            kind: job.kind,
+            status: job.status,
+            draftId: job.draftId,
+            outlineId: job.outlineId,
+            error: job.error,
+          });
           return;
         }
         setState({ phase: "streaming" });
@@ -56,7 +71,9 @@ export function useJobLogStream(jobId: number, onLine: (line: string) => void): 
             onLog: (entry) => onLineRef.current(entry.line),
             onStatus: (status) => {
               settled = true;
-              if (!cancelled) setState({ phase: "done", ...status });
+              if (!cancelled) {
+                setState({ phase: "done", kind: job.kind, ...status });
+              }
             },
             onError: () => {
               settled = true;
@@ -75,8 +92,10 @@ export function useJobLogStream(jobId: number, onLine: (line: string) => void): 
           TERMINAL_STATUSES.has(recheckedJob.status)
             ? {
                 phase: "done",
+                kind: recheckedJob.kind,
                 status: recheckedJob.status,
                 draftId: recheckedJob.draftId,
+                outlineId: recheckedJob.outlineId,
                 error: recheckedJob.error,
               }
             : { phase: "error" },

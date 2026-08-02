@@ -6,10 +6,85 @@ import type {
   DraftDetail,
   DraftSummary,
   JobStatus,
+  OutlineDetail,
+  OutlineSummary,
+  QuizPreset,
 } from "./types";
 
 export function generateDraft(topic: string): Promise<{ jobId: number }> {
   return apiRequest("/authoring/drafts/generate", { method: "POST", body: { topic } });
+}
+
+export function createOutline(
+  title: string,
+  category: string,
+  toc: string,
+): Promise<{ outlineId: number; jobId: number }> {
+  return apiRequest("/authoring/outlines", {
+    method: "POST",
+    body: { title, category, toc },
+  });
+}
+
+export async function getOutlines(): Promise<OutlineSummary[]> {
+  const data = await apiRequest<{ outlines: OutlineSummary[] }>("/authoring/outlines");
+  return data.outlines;
+}
+
+export function getOutline(outlineId: number): Promise<OutlineDetail> {
+  return apiRequest(`/authoring/outlines/${outlineId}`);
+}
+
+export async function updateOutline(
+  outlineId: number,
+  body: { title?: string; category?: string },
+): Promise<void> {
+  await apiRequest<null>(`/authoring/outlines/${outlineId}`, { method: "PATCH", body });
+}
+
+export function regenerateOutline(outlineId: number): Promise<{ jobId: number }> {
+  return apiRequest(`/authoring/outlines/${outlineId}/outline-jobs`, { method: "POST" });
+}
+
+export function publishOutline(
+  outlineId: number,
+): Promise<{ courseId: number; stepCount: number }> {
+  return apiRequest(`/authoring/outlines/${outlineId}/publish`, { method: "POST" });
+}
+
+export function addOutlineStep(outlineId: number, topic: string): Promise<{ stepId: number }> {
+  return apiRequest(`/authoring/outlines/${outlineId}/steps`, {
+    method: "POST",
+    body: { topic },
+  });
+}
+
+export async function updateOutlineStep(stepId: number, topic: string): Promise<void> {
+  await apiRequest<null>(`/authoring/outline-steps/${stepId}`, {
+    method: "PATCH",
+    body: { topic },
+  });
+}
+
+export async function deleteOutlineStep(stepId: number): Promise<void> {
+  await apiRequest<null>(`/authoring/outline-steps/${stepId}`, { method: "DELETE" });
+}
+
+export async function reorderOutlineStep(stepId: number, direction: "UP" | "DOWN"): Promise<void> {
+  await apiRequest<null>(`/authoring/outline-steps/${stepId}/order`, {
+    method: "PATCH",
+    body: { direction },
+  });
+}
+
+export function generateStepQuizzes(
+  stepId: number,
+  preset: QuizPreset,
+): Promise<{ jobId: number }> {
+  return apiRequest(`/authoring/outline-steps/${stepId}/generate`, {
+    method: "POST",
+    body: { preset },
+  });
 }
 
 export function improveQuiz(
