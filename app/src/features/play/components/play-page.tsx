@@ -388,20 +388,27 @@ function QuestionRenderer({
         </div>
       ) : null}
 
-      <div className="animate-rise-in">
-        <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
-          {getQuestionKindLabel(quiz.type)}
-        </p>
-        <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
-        {requestedHint ? (
-          <Card aria-live="polite" className="animate-rise-in mt-4" role="status">
-            <p className="text-xs font-bold text-ink-muted">힌트</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-ink">{requestedHint}</p>
-          </Card>
-        ) : null}
+      {/*
+        답안은 엄지 도달 영역(하단)에 고정하되(PRODUCT.md 원칙 2), 질문은 남는 공간의
+        세로 중앙에 둔다. 질문이 짧고 코드 스니펫이 없을 때 위쪽에 붙어버려
+        화면 절반이 빈 여백이 되던 문제를 막는다.
+      */}
+      <div className="flex flex-1 flex-col justify-center">
+        <div className="animate-rise-in">
+          <p className="text-xs font-bold text-ink-muted uppercase tracking-normal">
+            {getQuestionKindLabel(quiz.type)}
+          </p>
+          <h2 className="mt-2 text-2xl font-black leading-8">{quiz.questionText}</h2>
+          {requestedHint ? (
+            <Card aria-live="polite" className="animate-rise-in mt-4" role="status">
+              <p className="text-xs font-bold text-ink-muted">힌트</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-ink">{requestedHint}</p>
+            </Card>
+          ) : null}
+        </div>
       </div>
 
-      <div className="mt-auto space-y-4 pt-6">
+      <div className="space-y-4 pt-6">
         {quiz.type === "OX" ? (
           <fieldset className="grid grid-cols-2 gap-3" aria-label="O 또는 X 선택">
             <OxButton
