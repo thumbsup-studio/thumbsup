@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CircleCheckIcon, RotateCcwIcon } from "@/components/icons";
 import { REVIEW_STEP_TOTAL, reviewStartHref } from "@/features/history/review-params";
+import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
 
 type ReviewSummaryPageProps = {
   step: number;
@@ -14,6 +15,7 @@ export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPagePro
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
+      {isPerfect ? <FanfareOverlay playKey={`review:${step}`} /> : null}
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
           <div className="flex flex-col items-center gap-3">

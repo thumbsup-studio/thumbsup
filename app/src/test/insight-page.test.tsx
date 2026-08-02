@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InsightPage } from "@/features/play/components/insight-page";
 import { getQuizExplanation } from "@/lib/api/quiz";
+import { setPrefersReducedMotion } from "@/test/setup";
 
 const mockRouter = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -117,6 +118,7 @@ describe("InsightPage", () => {
     mockRouter.replace.mockClear();
     vi.mocked(getQuizExplanation).mockReset();
     lottieCompleteListenersBySrc.clear();
+    window.sessionStorage.clear();
   });
 
   it("loads explanation by quiz id and renders quiz context", async () => {
@@ -278,64 +280,17 @@ describe("InsightPage", () => {
     expect(screen.queryByText("오늘의 학습 완료")).not.toBeInTheDocument();
   });
 
-  it("shows fanfare from the third consecutive correct answer and hides it on completion", async () => {
+  it("완주 퍼펙트면 팡파레를 두 겹으로 띄우고 재생이 끝나면 감춘다", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
-    render(<InsightPage correct quizId={7} correctStreak={3} />);
-
-    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
-      "data-sources",
-      "/lottie/fanfare.lottie",
+    render(
+      <InsightPage completion={{ answered: 5, bestCombo: 5, correct: 5 }} correct quizId={1} />,
     );
-    await waitFor(() => {
-      expect(getLottieListeners("/lottie/fanfare.lottie").size).toBeGreaterThan(0);
-    });
-
-    act(() => {
-      for (const listener of getLottieListeners("/lottie/fanfare.lottie")) {
-        listener();
-      }
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
-    });
-  });
-
-  it("uses vertical fanfare only for the fourth consecutive correct answer", async () => {
-    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
-
-    render(<InsightPage correct quizId={7} correctStreak={4} />);
-
-    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
-      "data-sources",
-      "/lottie/fanfare-vertical.lottie",
-    );
-    expect(screen.getAllByTestId("dotlottie-canvas")).toHaveLength(1);
-    expect(screen.getByTestId("dotlottie-canvas")).toHaveAttribute(
-      "data-src",
-      "/lottie/fanfare-vertical.lottie",
-    );
-  });
-
-  it("overlays both fanfares from the fifth consecutive correct answer and dismisses on vertical completion", async () => {
-    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
-
-    render(<InsightPage correct quizId={7} correctStreak={5} />);
 
     expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
       "data-sources",
       "/lottie/fanfare.lottie,/lottie/fanfare-vertical.lottie",
     );
-    expect(screen.getAllByTestId("dotlottie-canvas")).toHaveLength(2);
-
-    act(() => {
-      for (const listener of getLottieListeners("/lottie/fanfare.lottie")) {
-        listener();
-      }
-    });
-
-    expect(screen.getByTestId("lottie-fanfare")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(getLottieListeners("/lottie/fanfare-vertical.lottie").size).toBeGreaterThan(0);
@@ -352,43 +307,49 @@ describe("InsightPage", () => {
     });
   });
 
-  it("shows fanfare in review mode when the review streak reaches three and keeps review completion CTA", async () => {
-    vi.mocked(getQuizExplanation).mockResolvedValue({
-      ...explanation,
-      currentNumber: 5,
-      totalCount: 5,
-    });
-
-    render(
-      <InsightPage
-        correct
-        quizId={7}
-        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환" }}
-      />,
-    );
-
-    expect(await screen.findByTestId("lottie-fanfare")).toHaveAttribute(
-      "data-sources",
-      "/lottie/fanfare.lottie",
-    );
-    expect(screen.getByRole("link", { name: "복습 완료" })).toHaveAttribute(
-      "href",
-      "/history/done?step=2&slot=5&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98",
-    );
-  });
-
-  it("does not show fanfare in review mode below the review streak threshold", async () => {
+  it("하나라도 틀린 완주에는 팡파레가 없다", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
     render(
-      <InsightPage
-        correct
-        quizId={7}
-        review={{ step: 2, slot: 2, correct: 2, streak: 2, topic: "문맥 전환" }}
-      />,
+      <InsightPage completion={{ answered: 5, bestCombo: 3, correct: 4 }} correct quizId={1} />,
     );
 
-    expect(await screen.findByText("운영체제")).toBeInTheDocument();
+    await screen.findByText("오늘의 학습 완료");
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+  });
+
+  it("모션 줄이기를 켠 사용자는 퍼펙트 팡파레도 보지 않는다", async () => {
+    setPrefersReducedMotion(true);
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <InsightPage completion={{ answered: 5, bestCombo: 5, correct: 5 }} correct quizId={1} />,
+    );
+
+    await screen.findByText("오늘의 학습 완료");
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+  });
+
+  it("연속 정답만으로는 더 이상 팡파레가 뜨지 않는다 — 퀴즈 화면에서 이미 축하했다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct correctStreak={5} quizId={1} />);
+
+    await screen.findByText(/정답이에요/);
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+  });
+
+  it("같은 완주 화면에 다시 들어오면 팡파레를 반복하지 않는다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+    const summary = { answered: 5, bestCombo: 5, correct: 5 };
+
+    const first = render(<InsightPage completion={summary} correct quizId={1} />);
+    await screen.findByTestId("lottie-fanfare");
+    first.unmount();
+
+    render(<InsightPage completion={summary} correct quizId={1} />);
+
+    await screen.findByText("오늘의 학습 완료");
     expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
 

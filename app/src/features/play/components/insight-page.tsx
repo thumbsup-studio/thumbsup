@@ -1,6 +1,5 @@
 "use client";
 
-import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { HelpCircleIcon } from "@/components/icons";
@@ -13,8 +12,13 @@ import {
   reviewDoneHref,
   reviewNextPlayHref,
 } from "@/features/history/review-params";
-import type { CompletionSummary } from "@/features/play/completion-params";
+import {
+  type CompletionSummary,
+  clampCompletion,
+  isPerfectCompletion,
+} from "@/features/play/completion-params";
 import { CompletionCard } from "@/features/play/components/completion-card";
+import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
 import {
   getKeywordDescriptionMap,
   KeywordTooltipText,
@@ -30,9 +34,6 @@ import {
   getQuizExplanation,
   type QuizExplanationResponse,
 } from "@/lib/api/quiz";
-
-const FANFARE_SRC = "/lottie/fanfare.lottie";
-const FANFARE_VERTICAL_SRC = "/lottie/fanfare-vertical.lottie";
 
 type InsightPageProps = {
   /** 값이 있으면 이 문제로 스텝 한 판이 끝났다는 뜻 — 완주 요약 카드를 그린다. */
@@ -56,25 +57,6 @@ export function InsightPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [fanfarePlayer, setFanfarePlayer] = useState<DotLottie | null>(null);
-  const [dismissedFanfareKey, setDismissedFanfareKey] = useState<string | null>(null);
-
-  const rewardStreak = review?.streak ?? correctStreak;
-  const fanfareKey =
-    quizId !== null && correct && rewardStreak >= 3
-      ? `${review ? "review" : "daily"}:${quizId}:${rewardStreak}`
-      : null;
-  const fanfareSources = getFanfareSources(rewardStreak);
-  const fanfareCompleteSource = fanfareSources.includes(FANFARE_VERTICAL_SRC)
-    ? FANFARE_VERTICAL_SRC
-    : fanfareSources[0];
-  const showFanfare =
-    fanfareKey !== null &&
-    fanfareCompleteSource !== undefined &&
-    dismissedFanfareKey !== fanfareKey &&
-    !isLoading &&
-    !error &&
-    explanation !== null;
   const keywordDict = useMemo(
     () => getKeywordDescriptionMap(explanation?.keywords ?? []),
     [explanation],
@@ -90,6 +72,15 @@ export function InsightPage({
       : reviewNextPlayHref(review)
     : null;
   const isLastQuestion = explanation ? explanation.currentNumber >= explanation.totalCount : false;
+  // 팡파레는 이제 "연속 3정답"이 아니라 완주 퍼펙트에만 터진다(이슈 211).
+  // 3콤보는 퀴즈 화면에서 이미 컨페티로 축하했으므로 여기서 또 터뜨리면 중복이다.
+  const isPerfectRun =
+    completion !== null &&
+    explanation !== null &&
+    isPerfectCompletion(
+      clampCompletion(completion, explanation.totalCount),
+      explanation.totalCount,
+    );
 
   useEffect(() => {
     if (quizId === null) {
@@ -138,43 +129,9 @@ export function InsightPage({
     };
   }, [quizId, reloadKey, router]);
 
-  useEffect(() => {
-    if (!fanfarePlayer) {
-      return undefined;
-    }
-
-    function dismissFanfare() {
-      setDismissedFanfareKey(fanfareKey);
-    }
-
-    fanfarePlayer.addEventListener("complete", dismissFanfare);
-
-    return () => {
-      fanfarePlayer.removeEventListener("complete", dismissFanfare);
-    };
-  }, [fanfareKey, fanfarePlayer]);
-
   return (
     <main className="relative flex min-h-screen flex-col bg-bg px-4 py-5 text-ink sm:px-6">
-      {showFanfare ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-50"
-          data-sources={fanfareSources.join(",")}
-          data-testid="lottie-fanfare"
-        >
-          {fanfareSources.map((source) => (
-            <DotLottieReact
-              autoplay
-              className="absolute inset-0 h-screen w-screen"
-              dotLottieRefCallback={source === fanfareCompleteSource ? setFanfarePlayer : undefined}
-              key={source}
-              loop={false}
-              src={source}
-            />
-          ))}
-        </div>
-      ) : null}
+      {isPerfectRun && quizId !== null ? <FanfareOverlay playKey={`daily:${quizId}`} /> : null}
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
         <header className="rounded-card border border-border bg-surface p-4 shadow-card">
@@ -411,20 +368,4 @@ function getPrimaryFollowUpQuestion(
     followUpQuestions[0] ??
     null
   );
-}
-
-function getFanfareSources(streak: number) {
-  if (streak >= 5) {
-    return [FANFARE_SRC, FANFARE_VERTICAL_SRC];
-  }
-
-  if (streak === 4) {
-    return [FANFARE_VERTICAL_SRC];
-  }
-
-  if (streak === 3) {
-    return [FANFARE_SRC];
-  }
-
-  return [];
 }
