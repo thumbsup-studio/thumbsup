@@ -35,13 +35,20 @@ class AuthoringDraftServiceTest {
     private QuizDraftRevisionRepository quizDraftRevisionRepository;
 
     @Mock
+    private AuthoringOutlineRepository outlineRepository;
+
+    @Mock
     private AuthoringOutlineStepRepository outlineStepRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private AuthoringDraftService service() {
         return new AuthoringDraftService(
-                quizDraftRepository, quizDraftRevisionRepository, outlineStepRepository, objectMapper);
+                quizDraftRepository,
+                quizDraftRevisionRepository,
+                outlineRepository,
+                outlineStepRepository,
+                objectMapper);
     }
 
     private static GeneratedQuizSet.GeneratedQuiz sampleGeneratedQuiz() {

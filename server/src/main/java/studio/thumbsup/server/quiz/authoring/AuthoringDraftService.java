@@ -26,16 +26,19 @@ public class AuthoringDraftService {
 
     private final QuizDraftRepository quizDraftRepository;
     private final QuizDraftRevisionRepository quizDraftRevisionRepository;
+    private final AuthoringOutlineRepository outlineRepository;
     private final AuthoringOutlineStepRepository outlineStepRepository;
     private final ObjectMapper objectMapper;
 
     public AuthoringDraftService(
             QuizDraftRepository quizDraftRepository,
             QuizDraftRevisionRepository quizDraftRevisionRepository,
+            AuthoringOutlineRepository outlineRepository,
             AuthoringOutlineStepRepository outlineStepRepository,
             ObjectMapper objectMapper) {
         this.quizDraftRepository = quizDraftRepository;
         this.quizDraftRevisionRepository = quizDraftRevisionRepository;
+        this.outlineRepository = outlineRepository;
         this.outlineStepRepository = outlineStepRepository;
         this.objectMapper = objectMapper;
     }
@@ -104,6 +107,25 @@ public class AuthoringDraftService {
                                 .map(AuthoringOutlineStep::getTopic)
                                 .toList())
                 .orElse(List.of());
+    }
+
+    @Transactional
+    public AuthoringOutline getOutlineForUpdate(Long outlineId) {
+        return outlineRepository
+                .findByIdForUpdate(outlineId)
+                .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasFilledOutlineSteps(Long outlineId) {
+        return outlineStepRepository.existsByOutlineIdAndDraftIdIsNotNull(outlineId);
+    }
+
+    @Transactional
+    public void replaceOutlineSteps(Long outlineId, List<AuthoringOutlineStep> steps) {
+        outlineStepRepository.deleteByOutlineId(outlineId);
+        outlineStepRepository.flush();
+        outlineStepRepository.saveAll(steps);
     }
 
     /**

@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
@@ -76,6 +79,22 @@ public class AuthoringJobService {
     }
 
     @Transactional
+    public Long enqueueOutline(Long userId, Long outlineId) {
+        AuthoringOutline outline = draftService.getOutlineForUpdate(outlineId);
+        if (outline.isPublished()) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_PUBLISHED);
+        }
+        if (draftService.hasFilledOutlineSteps(outlineId)) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_FILLED);
+        }
+
+        String prompt =
+                AuthoringPromptFactory.outlinePrompt(outline.getTitle(), outline.getCategory(), outline.getTocSource());
+        GenerationJob job = generationJobRepository.save(GenerationJob.createOutline(userId, outlineId, prompt));
+        return job.getId();
+    }
+
+    @Transactional
     public ImproveEnqueued enqueueImprove(Long userId, Long quizId, String instruction) {
         // PESSIMISTIC_WRITE로 원본 quiz를 잠근다(#174 I2) — 아직 draft가 없는 시점부터 동시 요청을
         // 직렬화해야 hasOpenImproveDraft check-then-act가 중복 improve draft를 만들지 않는다.
@@ -134,6 +153,8 @@ public class AuthoringJobService {
         try {
             if (job.getKind() == GenerationJobKind.GENERATE) {
                 handleGenerateResult(job, resultJson);
+            } else if (job.getKind() == GenerationJobKind.OUTLINE) {
+                handleOutlineResult(job, resultJson);
             } else {
                 handleReviewResult(job, resultJson);
             }
@@ -170,7 +191,7 @@ public class AuthoringJobService {
     /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 claimNext 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public Optional<BridgeJobResponse> claimNextForBridge(Long userId) {
-        return claimNext(userId).map(job -> BridgeJobResponse.from(job, readOutputSchema(job.getKind())));
+        return claimNext(userId).map(job -> BridgeJobResponse.from(job, readOutputSchema(job)));
     }
 
     /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 submitResult 결과를 DTO로 감싸 돌려준다. */
@@ -211,6 +232,55 @@ public class AuthoringJobService {
         draftService.applyReview(job, result);
     }
 
+    private void handleOutlineResult(GenerationJob job, String resultJson) throws JsonProcessingException {
+        String cleaned = validator.stripMarkdownFence(resultJson);
+        OutlineResult result = objectMapper.readValue(cleaned, OutlineResult.class);
+        List<AuthoringOutlineStep> steps = validatedOutlineSteps(job.getOutlineId(), result);
+        if (draftService.hasFilledOutlineSteps(job.getOutlineId())) {
+            throw new QuizGenerationException("잡 실행 중 문제가 채워진 뼈대는 재생성할 수 없습니다.");
+        }
+        draftService.replaceOutlineSteps(job.getOutlineId(), steps);
+    }
+
+    private List<AuthoringOutlineStep> validatedOutlineSteps(Long outlineId, OutlineResult result) {
+        List<OutlineResult.OutlineStepResult> results = result.steps();
+        if (results == null || results.size() < 3 || results.size() > 20) {
+            throw new QuizGenerationException(
+                    "뼈대 스텝 수는 3~20개여야 합니다: %d개".formatted(results == null ? 0 : results.size()));
+        }
+
+        Set<String> topics = new HashSet<>();
+        List<AuthoringOutlineStep> steps = new java.util.ArrayList<>();
+        for (int index = 0; index < results.size(); index++) {
+            steps.add(validatedOutlineStep(outlineId, index, results.get(index), topics));
+        }
+        return steps;
+    }
+
+    private AuthoringOutlineStep validatedOutlineStep(
+            Long outlineId, int index, OutlineResult.OutlineStepResult resultStep, Set<String> topics) {
+        if (resultStep == null
+                || resultStep.topic() == null
+                || resultStep.topic().isBlank()) {
+            throw new QuizGenerationException("%d번 스텝의 topic이 비어 있습니다.".formatted(index + 1));
+        }
+        String topic = resultStep.topic().trim();
+        if (topic.length() > 30) {
+            throw new QuizGenerationException("%d번 스텝의 topic은 30자 이내여야 합니다.".formatted(index + 1));
+        }
+        if (!topics.add(topic.toLowerCase(Locale.ROOT))) {
+            throw new QuizGenerationException("뼈대 스텝 topic이 중복됩니다: %s".formatted(topic));
+        }
+        if (resultStep.learningGoal() == null || resultStep.learningGoal().isBlank()) {
+            throw new QuizGenerationException("%d번 스텝의 learningGoal이 비어 있습니다.".formatted(index + 1));
+        }
+        String learningGoal = resultStep.learningGoal().trim();
+        if (learningGoal.length() > 500) {
+            throw new QuizGenerationException("%d번 스텝의 learningGoal은 500자 이내여야 합니다.".formatted(index + 1));
+        }
+        return AuthoringOutlineStep.create(outlineId, index + 1, topic, learningGoal);
+    }
+
     private void validateReviewResult(GenerationJob job, ReviewResult result) {
         QuizDraft draft = draftService.getOrThrow(job.getDraftId());
         if (draft.getOrigin() != QuizDraftOrigin.IMPROVE) {
@@ -228,9 +298,15 @@ public class AuthoringJobService {
         validator.validateSingle(quizzes.get(0), sourceQuiz.getType(), sourceQuiz.getDifficulty());
     }
 
-    private JsonNode readOutputSchema(GenerationJobKind kind) {
-        String schema =
-                kind == GenerationJobKind.GENERATE ? AuthoringOutputSchemas.GENERATE : AuthoringOutputSchemas.REVIEW;
+    private JsonNode readOutputSchema(GenerationJob job) {
+        String schema;
+        if (job.getKind() == GenerationJobKind.GENERATE) {
+            schema = AuthoringOutputSchemas.generateFor(job.getPreset());
+        } else if (job.getKind() == GenerationJobKind.OUTLINE) {
+            schema = AuthoringOutputSchemas.OUTLINE;
+        } else {
+            schema = AuthoringOutputSchemas.REVIEW;
+        }
         try {
             return objectMapper.readTree(schema);
         } catch (JsonProcessingException e) {
