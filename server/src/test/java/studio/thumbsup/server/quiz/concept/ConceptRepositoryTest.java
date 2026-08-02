@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz.concept;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Set;
@@ -115,8 +116,7 @@ class ConceptRepositoryTest {
         void rejects_duplicate_name() {
             saveConcept("뮤텍스");
 
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    DataIntegrityViolationException.class, () -> saveConcept("뮤텍스"));
+            assertThatThrownBy(() -> saveConcept("뮤텍스")).isInstanceOf(DataIntegrityViolationException.class);
         }
     }
 
@@ -132,10 +132,9 @@ class ConceptRepositoryTest {
             conceptDescriptionRepository.saveAndFlush(
                     ConceptFixture.conceptDescription(concept.getId(), "PCB에 상태를 저장·복원하는 작업이다.", 2));
 
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    DataIntegrityViolationException.class,
-                    () -> conceptDescriptionRepository.saveAndFlush(
-                            ConceptFixture.conceptDescription(concept.getId(), "다른 문장", 2)));
+            assertThatThrownBy(() -> conceptDescriptionRepository.saveAndFlush(
+                            ConceptFixture.conceptDescription(concept.getId(), "다른 문장", 2)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
@@ -143,10 +142,9 @@ class ConceptRepositoryTest {
         void rejects_description_with_unknown_step_order() {
             Concept concept = saveConcept("문맥 전환");
 
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    DataIntegrityViolationException.class,
-                    () -> conceptDescriptionRepository.saveAndFlush(
-                            ConceptFixture.conceptDescription(concept.getId(), "고아 설명 문장", 99)));
+            assertThatThrownBy(() -> conceptDescriptionRepository.saveAndFlush(
+                            ConceptFixture.conceptDescription(concept.getId(), "고아 설명 문장", 99)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
@@ -179,9 +177,9 @@ class ConceptRepositoryTest {
             Concept b = saveConcept("세마포어");
             quizConceptRepository.saveAndFlush(ConceptFixture.quizConcept(quiz.getId(), a.getId()));
 
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    DataIntegrityViolationException.class,
-                    () -> quizConceptRepository.saveAndFlush(ConceptFixture.quizConcept(quiz.getId(), b.getId())));
+            assertThatThrownBy(() ->
+                            quizConceptRepository.saveAndFlush(ConceptFixture.quizConcept(quiz.getId(), b.getId())))
+                    .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
@@ -234,9 +232,8 @@ class ConceptRepositoryTest {
             Concept concept = saveConcept("뮤텍스");
             userConceptRepository.saveAndFlush(UserConcept.create(1L, concept.getId()));
 
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    DataIntegrityViolationException.class,
-                    () -> userConceptRepository.saveAndFlush(UserConcept.create(1L, concept.getId())));
+            assertThatThrownBy(() -> userConceptRepository.saveAndFlush(UserConcept.create(1L, concept.getId())))
+                    .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
@@ -262,6 +259,23 @@ class ConceptRepositoryTest {
 
             assertThat(found).extracting(UserConcept::getConceptId).containsExactlyInAnyOrder(a.getId(), b.getId());
         }
+
+        @Test
+        @DisplayName("유저·개념 id 목록으로 조회하면 해당 유저의 요청한 개념만 반환한다(중복 학습 기록 방지용)")
+        void finds_by_user_id_and_concept_id_in() {
+            Concept a = saveConcept("뮤텍스");
+            Concept b = saveConcept("세마포어");
+            Concept c = saveConcept("교착 상태");
+            userConceptRepository.save(UserConcept.create(1L, a.getId()));
+            userConceptRepository.save(UserConcept.create(1L, b.getId()));
+            userConceptRepository.save(UserConcept.create(1L, c.getId())); // 조회 대상 아님
+            userConceptRepository.save(UserConcept.create(2L, a.getId())); // 다른 유저 — 섞이면 안 됨
+
+            List<UserConcept> found =
+                    userConceptRepository.findByUserIdAndConceptIdIn(1L, Set.of(a.getId(), b.getId()));
+
+            assertThat(found).extracting(UserConcept::getConceptId).containsExactlyInAnyOrder(a.getId(), b.getId());
+        }
     }
 
     @Nested
@@ -275,9 +289,9 @@ class ConceptRepositoryTest {
             Concept concept = saveConcept("뮤텍스");
             userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), 3));
 
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    DataIntegrityViolationException.class,
-                    () -> userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), 3)));
+            assertThatThrownBy(() ->
+                            userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), 3)))
+                    .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
