@@ -105,7 +105,7 @@ class QuizServiceStreakTest {
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
-            verify(eventPublisher).publishEvent(new QuizStepCompletedEvent(USER_ID, TODAY_KST));
+            verify(eventPublisher).publishEvent(new QuizStepCompletedEvent(USER_ID, TODAY_KST, 1));
         }
 
         @Test

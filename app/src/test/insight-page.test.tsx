@@ -317,6 +317,29 @@ describe("InsightPage", () => {
     expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
 
+  // 복습 팡파레는 /history/done의 퍼펙트로 옮겼다(이슈 211). 여기선 더 이상 뜨지 않는다.
+  it("복습 연속 정답만으로는 해설 화면에 팡파레가 뜨지 않고, 복습 완료 CTA는 그대로다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue({
+      ...explanation,
+      currentNumber: 5,
+      totalCount: 5,
+    });
+
+    render(
+      <InsightPage
+        correct
+        quizId={7}
+        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환", single: false }}
+      />,
+    );
+
+    expect(await screen.findByRole("link", { name: "복습 완료" })).toHaveAttribute(
+      "href",
+      "/history/done?step=2&slot=5&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98",
+    );
+    expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
+  });
+
   it("모션 줄이기를 켠 사용자는 퍼펙트 팡파레도 보지 않는다", async () => {
     setPrefersReducedMotion(true);
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
