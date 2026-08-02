@@ -26,16 +26,9 @@ import studio.thumbsup.server.quiz.authoring.dto.JobStatusResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
 import studio.thumbsup.server.quiz.generation.QuizGenerationException;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
-/**
- * 잡 큐(#174)의 유일한 진입점 — 대시보드가 잡을 만들고(enqueue*), 브리지가 폴링·결과 제출(claimNext/submitResult/failJob)하고,
- * 누구나 상태를 조회(getJobWithExpiry)하는 모든 흐름이 이 서비스를 거친다.
- *
- * <p>만료는 스케줄러 없이 lazy하게 평가한다 — QUEUED 30분·RUNNING 10분을 넘긴 잡은 가드·조회 시점에
- * 비로소 FAILED로 굳는다. {@link #claimNext}는 {@link GenerationJobRepository#pickNextQueued}의
- * {@code FOR UPDATE SKIP LOCKED} 락이 이 메서드의 {@code @Transactional} 경계가 끝날 때까지 유지되도록
- * pick과 {@code markRunning}을 한 트랜잭션 안에서 처리한다(#174 T1 리뷰에서 확립된 계약).
- */
+/** 잡 생성·폴링·결과 제출·상태 조회를 담당하는 저작 잡 큐의 유일한 진입점. */
 @Service
 public class AuthoringJobService {
 
@@ -68,7 +61,6 @@ public class AuthoringJobService {
         this.clock = clock;
     }
 
-    /** 잡 생성 결과를 컨트롤러에 돌려주는 값 — draft와 잡을 함께 만드는 유일한 진입점(enqueueImprove)의 반환 타입. */
     public record ImproveEnqueued(Long draftId, Long jobId) {}
 
     @Transactional
@@ -91,6 +83,28 @@ public class AuthoringJobService {
         String prompt =
                 AuthoringPromptFactory.outlinePrompt(outline.getTitle(), outline.getCategory(), outline.getTocSource());
         GenerationJob job = generationJobRepository.save(GenerationJob.createOutline(userId, outlineId, prompt));
+        return job.getId();
+    }
+
+    @Transactional
+    public Long enqueueStepGenerate(Long userId, Long stepId, QuizPreset preset) {
+        if (preset == null) {
+            throw new BusinessException(CommonErrorType.INVALID_INPUT);
+        }
+        AuthoringOutlineStep step = draftService.getOutlineStepOrThrow(stepId);
+        AuthoringOutline outline = draftService.getOutlineForUpdate(step.getOutlineId());
+        if (outline.isPublished()) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_PUBLISHED);
+        }
+        if (step.getDraftId() != null) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_FILLED);
+        }
+        guardOutlineStepHasNoActiveJob(stepId, clock.instant());
+
+        OutlineStepContext context = draftService.outlineStepContext(stepId);
+        String prompt = AuthoringPromptFactory.generatePrompt(context, preset);
+        GenerationJob job = generationJobRepository.save(
+                GenerationJob.createStepGenerate(userId, stepId, step.getTopic(), preset, prompt));
         return job.getId();
     }
 
@@ -130,10 +144,7 @@ public class AuthoringJobService {
         return job.getId();
     }
 
-    /**
-     * pick과 상태 변경(markRunning)을 이 메서드의 트랜잭션 경계 안에서 함께 처리한다 — 분리하면
-     * {@code SKIP LOCKED} 락이 조회 직후 풀려 동시 폴링과 경합할 수 있다.
-     */
+    /** pick과 markRunning을 같은 트랜잭션에서 처리해 SKIP LOCKED 경쟁을 막는다. */
     @Transactional
     public Optional<GenerationJob> claimNext(Long userId) {
         Instant now = clock.instant();
@@ -182,36 +193,27 @@ public class AuthoringJobService {
         return job;
     }
 
-    /** 컨트롤러(#174 T7)가 엔티티를 직접 만지지 않도록 조회 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public JobStatusResponse getJobStatus(Long jobId) {
         return JobStatusResponse.from(getJobWithExpiry(jobId));
     }
 
-    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 claimNext 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public Optional<BridgeJobResponse> claimNextForBridge(Long userId) {
         return claimNext(userId).map(job -> BridgeJobResponse.from(job, readOutputSchema(job)));
     }
 
-    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 submitResult 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public BridgeResultResponse submitResultForBridge(Long userId, Long jobId, BridgeCli cli, String resultJson) {
         return BridgeResultResponse.from(submitResult(userId, jobId, cli, resultJson));
     }
 
-    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 반환값 없이 위임한다 — {@code /fail}은 항상 data:null. */
     @Transactional
     public void failJobForBridge(Long userId, Long jobId, String error) {
         failJob(userId, jobId, error);
     }
 
-    /**
-     * 로그 적재 가능 여부(#174 T8) — 잡 존재·소유권은 여기서 확인해 못 찾으면 404, 남의 잡이면 403이다.
-     * RUNNING이 아니면(이미 종결된 잡에 뒤늦게 도착한 flush 등) 예외 없이 false만 돌려준다 — 컨트롤러가
-     * 이 경우 append를 조용히 건너뛴다. 브리지의 finally 안전망 flush가 result 직후 늦게 도착해도
-     * 500/409로 브리지를 놀라게 하지 않기 위한 선택이다(브리프에 명시 없어 T8 구현 시 판단, 리포트 참고).
-     */
+    /** 로그 적재 전 잡 존재·소유권을 확인하고 RUNNING 여부를 반환한다. */
     @Transactional(readOnly = true)
     public boolean canAppendLogs(Long userId, Long jobId) {
         GenerationJob job = findJobOrThrow(jobId);
@@ -221,8 +223,12 @@ public class AuthoringJobService {
 
     private void handleGenerateResult(GenerationJob job, String resultJson) {
         GeneratedQuizSet generated = validator.parse(resultJson);
-        validator.validateSet(generated);
-        draftService.createFromGenerate(job, generated);
+        validator.validateSet(generated, job.getPreset());
+        if (job.getOutlineStepId() == null) {
+            draftService.createFromGenerate(job, generated);
+        } else {
+            draftService.createFromGenerate(job, generated, job.getPreset());
+        }
     }
 
     private void handleReviewResult(GenerationJob job, String resultJson) throws JsonProcessingException {
@@ -339,6 +345,15 @@ public class AuthoringJobService {
         activeJobs.forEach(job -> expireIfNeeded(job, now));
         boolean stillActive = activeJobs.stream().anyMatch(GenerationJob::isActive);
         if (stillActive) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_JOB_ACTIVE);
+        }
+    }
+
+    private void guardOutlineStepHasNoActiveJob(Long stepId, Instant now) {
+        List<GenerationJob> activeJobs = generationJobRepository.findByOutlineStepIdAndStatusIn(
+                stepId, List.of(GenerationJobStatus.QUEUED, GenerationJobStatus.RUNNING));
+        activeJobs.forEach(job -> expireIfNeeded(job, now));
+        if (activeJobs.stream().anyMatch(GenerationJob::isActive)) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_JOB_ACTIVE);
         }
     }

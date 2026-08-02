@@ -99,6 +99,32 @@ class AuthoringDraftServiceTest {
 
             assertThat(job.getDraftId()).isEqualTo(100L);
         }
+
+        @Test
+        @DisplayName("스텝 생성 잡은 OUTLINE_STEP draft를 만들고 뼈대 스텝에 연결한다")
+        void creates_outline_step_draft_and_links_step() {
+            GenerationJob job = GenerationJob.createStepGenerate(
+                    1L, 10L, "프로세스", studio.thumbsup.server.quiz.generation.QuizPreset.LIGHT_3, "prompt");
+            ReflectionTestUtils.setField(job, "id", 11L);
+            AuthoringOutlineStep step = AuthoringOutlineStep.create(1L, 1, "프로세스", null);
+            ReflectionTestUtils.setField(step, "id", 10L);
+            given(outlineStepRepository.findById(10L)).willReturn(Optional.of(step));
+            given(quizDraftRepository.save(any())).willAnswer(invocation -> {
+                QuizDraft draft = invocation.getArgument(0);
+                ReflectionTestUtils.setField(draft, "id", 100L);
+                return draft;
+            });
+
+            QuizDraft draft = service()
+                    .createFromGenerate(
+                            job,
+                            new GeneratedQuizSet(List.of(sampleGeneratedQuiz())),
+                            studio.thumbsup.server.quiz.generation.QuizPreset.LIGHT_3);
+
+            assertThat(draft.getOrigin()).isEqualTo(QuizDraftOrigin.OUTLINE_STEP);
+            assertThat(draft.getPreset()).isEqualTo(studio.thumbsup.server.quiz.generation.QuizPreset.LIGHT_3);
+            assertThat(step.getDraftId()).isEqualTo(100L);
+        }
     }
 
     @Nested

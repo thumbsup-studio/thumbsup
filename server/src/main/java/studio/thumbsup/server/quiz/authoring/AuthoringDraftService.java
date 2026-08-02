@@ -3,7 +3,10 @@ package studio.thumbsup.server.quiz.authoring;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
@@ -13,6 +16,7 @@ import studio.thumbsup.server.quiz.authoring.dto.DraftListResponse;
 import studio.thumbsup.server.quiz.authoring.dto.DraftSummaryResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.QuizGenerationException;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 /**
  * draft 스테이징 영역(#174)의 저장·조회를 담당한다. GENERATE/REVIEW 잡 결과를 draft·revision으로
@@ -46,11 +50,23 @@ public class AuthoringDraftService {
     /** GENERATE 잡 결과로 새 draft를 만들고 rev1을 남긴다. */
     @Transactional
     public QuizDraft createFromGenerate(GenerationJob job, GeneratedQuizSet set) {
+        return createFromGenerate(job, set, job.getPreset());
+    }
+
+    /** 스텝 생성 결과는 프리셋과 OUTLINE_STEP origin을 보존하고 대상 스텝에 draft를 연결한다. */
+    @Transactional
+    public QuizDraft createFromGenerate(GenerationJob job, GeneratedQuizSet set, QuizPreset preset) {
         String payloadJson = writeValueAsString(set);
-        QuizDraft draft =
-                quizDraftRepository.save(QuizDraft.createNew(job.getTopic(), payloadJson, job.getAssigneeUserId()));
+        QuizDraft draft = job.getOutlineStepId() == null
+                ? quizDraftRepository.save(QuizDraft.createNew(job.getTopic(), payloadJson, job.getAssigneeUserId()))
+                : quizDraftRepository.save(
+                        QuizDraft.createForOutlineStep(job.getTopic(), payloadJson, preset, job.getAssigneeUserId()));
         quizDraftRevisionRepository.save(
                 QuizDraftRevision.create(draft.getId(), FIRST_REVISION_NO, payloadJson, null, null, job.getId()));
+        if (job.getOutlineStepId() != null) {
+            AuthoringOutlineStep step = getOutlineStepOrThrow(job.getOutlineStepId());
+            step.attachDraft(draft.getId());
+        }
         job.attachDraft(draft.getId());
         return draft;
     }
@@ -107,6 +123,38 @@ public class AuthoringDraftService {
                                 .map(AuthoringOutlineStep::getTopic)
                                 .toList())
                 .orElse(List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public AuthoringOutlineStep getOutlineStepOrThrow(Long stepId) {
+        return outlineStepRepository
+                .findById(stepId)
+                .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_NOT_FOUND));
+    }
+
+    /** 스텝 생성 prompt에 앞뒤 스텝과 이미 승인된 같은 코스 문제를 일괄 주입한다. */
+    @Transactional(readOnly = true)
+    public OutlineStepContext outlineStepContext(Long stepId) {
+        AuthoringOutlineStep current = getOutlineStepOrThrow(stepId);
+        AuthoringOutline outline = outlineRepository
+                .findById(current.getOutlineId())
+                .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_NOT_FOUND));
+        List<AuthoringOutlineStep> steps =
+                outlineStepRepository.findByOutlineIdOrderByOrderNoAsc(current.getOutlineId());
+        int currentIndex = indexOfStep(steps, stepId);
+        String prevTopic = currentIndex > 0 ? steps.get(currentIndex - 1).getTopic() : null;
+        String nextTopic = currentIndex >= 0 && currentIndex + 1 < steps.size()
+                ? steps.get(currentIndex + 1).getTopic()
+                : null;
+        return new OutlineStepContext(
+                outline.getTitle(),
+                current.getOrderNo(),
+                steps.size(),
+                current.getTopic(),
+                current.getLearningGoal(),
+                prevTopic,
+                nextTopic,
+                approvedSiblingQuestions(current, steps));
     }
 
     @Transactional
@@ -182,5 +230,50 @@ public class AuthoringDraftService {
         } catch (JsonProcessingException e) {
             throw new QuizGenerationException("draft payload를 JSON으로 파싱하지 못했습니다.", e);
         }
+    }
+
+    private int indexOfStep(List<AuthoringOutlineStep> steps, Long stepId) {
+        for (int index = 0; index < steps.size(); index++) {
+            if (steps.get(index).getId().equals(stepId)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private List<String> approvedSiblingQuestions(AuthoringOutlineStep current, List<AuthoringOutlineStep> steps) {
+        List<Long> draftIds = steps.stream()
+                .filter(step -> !step.getId().equals(current.getId()))
+                .map(AuthoringOutlineStep::getDraftId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        if (draftIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, QuizDraft> drafts = new HashMap<>();
+        quizDraftRepository.findByIdIn(draftIds).forEach(draft -> drafts.put(draft.getId(), draft));
+        List<String> questions = new ArrayList<>();
+        steps.stream()
+                .filter(step -> !step.getId().equals(current.getId()))
+                .filter(step -> step.getDraftId() != null)
+                .map(step -> drafts.get(step.getDraftId()))
+                .filter(draft -> draft != null && draft.getStatus() == QuizDraftStatus.APPROVED)
+                .forEach(draft -> appendQuestionTexts(questions, draft.getCurrentPayload()));
+        return questions;
+    }
+
+    private void appendQuestionTexts(List<String> questions, String payload) {
+        JsonNode quizzes = readTree(payload).path("quizzes");
+        if (!quizzes.isArray()) {
+            return;
+        }
+        quizzes.forEach(quiz -> {
+            JsonNode questionText = quiz.get("questionText");
+            if (questionText != null
+                    && !questionText.isNull()
+                    && !questionText.asText().isBlank()) {
+                questions.add(questionText.asText());
+            }
+        });
     }
 }

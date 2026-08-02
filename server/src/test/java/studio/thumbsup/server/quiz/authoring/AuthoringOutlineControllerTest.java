@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import studio.thumbsup.server.common.exception.GlobalExceptionHandler;
 import studio.thumbsup.server.quiz.authoring.dto.CreateOutlineRequest;
 import studio.thumbsup.server.quiz.authoring.dto.CreateOutlineStepRequest;
+import studio.thumbsup.server.quiz.authoring.dto.GenerateStepRequest;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineDetailResponse;
 import studio.thumbsup.server.quiz.authoring.dto.OutlineListResponse;
@@ -40,12 +41,16 @@ import studio.thumbsup.server.quiz.authoring.dto.ReorderStepRequest;
 import studio.thumbsup.server.quiz.authoring.dto.StepCreatedResponse;
 import studio.thumbsup.server.quiz.authoring.dto.UpdateOutlineRequest;
 import studio.thumbsup.server.quiz.authoring.dto.UpdateOutlineStepRequest;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 @ExtendWith(MockitoExtension.class)
 class AuthoringOutlineControllerTest {
 
     @Mock
     private AuthoringOutlineService outlineService;
+
+    @Mock
+    private AuthoringJobService jobService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -56,7 +61,7 @@ class AuthoringOutlineControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(
                         new AuthoringOutlineController(outlineService),
-                        new AuthoringOutlineStepController(outlineService))
+                        new AuthoringOutlineStepController(outlineService, jobService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
@@ -120,6 +125,7 @@ class AuthoringOutlineControllerTest {
         void enqueuesJobs() throws Exception {
             given(outlineService.regenerate(7L, 1L)).willReturn(3L);
             given(outlineService.addStep(1L, "프로세스")).willReturn(new StepCreatedResponse(4L));
+            given(jobService.enqueueStepGenerate(7L, 4L, QuizPreset.LIGHT_3)).willReturn(5L);
 
             mockMvc.perform(post("/api/v1/authoring/outlines/1/outline-jobs"))
                     .andExpect(status().isAccepted())
@@ -129,6 +135,11 @@ class AuthoringOutlineControllerTest {
                             .content(objectMapper.writeValueAsString(new CreateOutlineStepRequest("프로세스"))))
                     .andExpect(status().isAccepted())
                     .andExpect(jsonPath("$.data.stepId").value(4));
+            mockMvc.perform(post("/api/v1/authoring/outline-steps/4/generate")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new GenerateStepRequest(QuizPreset.LIGHT_3))))
+                    .andExpect(status().isAccepted())
+                    .andExpect(jsonPath("$.data.jobId").value(5));
         }
 
         @Test
