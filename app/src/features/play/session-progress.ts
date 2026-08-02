@@ -7,7 +7,7 @@
  */
 
 const SESSION_KEY_PREFIX = "thumbsup:play-session";
-/** #211 이전 형식(숫자 스트릭). 배포 시점에 진행 중이던 세션을 위해 1회만 읽고 지운다. */
+/** 이전 형식(숫자 스트릭). 배포 시점에 진행 중이던 세션을 위해 1회만 읽고 지운다. */
 const LEGACY_STREAK_KEY_PREFIX = "thumbsup:insight-correct-streak:api-quiz";
 
 export type PlaySession = {
