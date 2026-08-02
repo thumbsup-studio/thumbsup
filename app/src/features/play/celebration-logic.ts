@@ -42,10 +42,11 @@ export type CelebrationInput = {
 const HARD_BADGE = "난이도 상 정복";
 const RETRY_BADGE = "다시 잡았어요";
 
+// PRODUCT.md 톤: "옆자리 선배 개발자가 엄지 척" — 구호처럼 들리는 표현은 쓰지 않는다.
 const PRAISE_BY_TIER: Record<CorrectTier, readonly string[]> = {
   subtle: ["정확해요", "잘 짚었어요", "바로 그거예요", "깔끔하네요"],
-  combo: ["연속으로 맞히고 있어요", "감 잡았네요", "리듬 탔어요", "속도가 붙었어요"],
-  confetti: ["흐름 타네요", "완전히 이해했네요", "실무에서도 통하겠어요", "멈출 줄을 모르네요"],
+  combo: ["연속으로 맞히고 있어요", "감 잡았네요", "속도가 붙었어요"],
+  confetti: ["완전히 이해했네요", "실무에서도 통하겠어요", "이 구간은 확실하네요"],
 };
 
 const HARD_PRAISE = ["어려운 걸 맞혔어요", "이건 진짜 까다로운 문제였어요", "상 난이도를 넘었어요"];
