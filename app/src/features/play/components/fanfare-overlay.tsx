@@ -1,7 +1,7 @@
 "use client";
 
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   hasPlayedCompletionFanfare,
   markCompletionFanfarePlayed,
@@ -28,6 +28,7 @@ export function FanfareOverlay({ playKey }: FanfareOverlayProps) {
   // 첫 렌더에서 sessionStorage를 읽으면 SSR과 어긋나므로 마운트 후에 판정한다.
   const [hasChecked, setHasChecked] = useState(false);
   const [shouldPlay, setShouldPlay] = useState(false);
+  const decidedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     // 첫 이펙트는 훅의 상태가 갱신되기 전일 수 있어 matchMedia를 한 번 더 직접 확인한다.
@@ -39,6 +40,14 @@ export function FanfareOverlay({ playKey }: FanfareOverlayProps) {
       setShouldPlay(false);
       return;
     }
+
+    // 재생 여부 판정은 playKey당 딱 한 번만 한다.
+    // StrictMode(개발)는 이펙트를 두 번 돌리는데, 첫 실행이 sessionStorage에 "재생함"을
+    // 기록하므로 두 번째 실행이 그대로 판정하면 방금 띄운 팡파레를 스스로 꺼버린다.
+    if (decidedKeyRef.current === playKey) {
+      return;
+    }
+    decidedKeyRef.current = playKey;
 
     const alreadyPlayed = hasPlayedCompletionFanfare(playKey);
     if (!alreadyPlayed) {

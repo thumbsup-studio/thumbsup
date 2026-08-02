@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InsightPage } from "@/features/play/components/insight-page";
 import { getQuizExplanation } from "@/lib/api/quiz";
@@ -277,6 +278,20 @@ describe("InsightPage", () => {
 
     await screen.findByText(/정답이에요/);
     expect(screen.queryByText("오늘의 학습 완료")).not.toBeInTheDocument();
+  });
+
+  // StrictMode(개발)는 이펙트를 두 번 돌린다. 첫 실행이 sessionStorage에 "재생함"을
+  // 기록하므로, 두 번째 실행이 그대로 판정하면 방금 띄운 팡파레를 스스로 꺼버린다.
+  it("StrictMode로 이펙트가 두 번 실행돼도 퍼펙트 팡파레가 살아 있다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(
+      <StrictMode>
+        <InsightPage completion={{ answered: 5, bestCombo: 5, correct: 5 }} correct quizId={1} />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByTestId("lottie-fanfare")).toBeInTheDocument();
   });
 
   it("완주 퍼펙트면 팡파레를 두 겹으로 띄우고 재생이 끝나면 감춘다", async () => {

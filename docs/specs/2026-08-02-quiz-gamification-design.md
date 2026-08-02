@@ -1,7 +1,7 @@
 # 퀴즈 게이미피케이션 설계 — #211 · #197
 
-- **날짜**: 2026-08-02
-- **상태**: 승인 (구현 대기)
+- **날짜**: 2026-08-02 작성 · 2026-08-03 개정(§3-1)
+- **상태**: 구현 완료 — PR #262
 - **관련 이슈**: [#211 문제 풀 때 게임적인 효과 — 정답 피드백·이펙트 (S3)](https://github.com/thumbsup-studio/thumbsup/issues/211) · [#197 정답 피드백 칭찬 강화 — 문구 다양화·맥락별 연출 (S4)](https://github.com/thumbsup-studio/thumbsup/issues/197)
 - **브랜치**: `feat/211-quiz-gamification`
 - **리뷰**: Codex(`gpt-5.6-luna`, effort=max) 읽기 전용 설계 리뷰 1회 — 지적 11건 반영, 3건 반박(§13)
@@ -28,18 +28,21 @@
 
 **결정: 팡파레 발동 조건을 "연속 3정답"에서 "완주 + 퍼펙트"로 좁힌다.** 세션에서 최대 콤보는 곧 퍼펙트이므로 사다리 꼭대기와 완주 순간이 하나로 모이고, 사다리 전체가 화면을 넘나들며 한 번씩만 터진다.
 
-| 콤보 | S3 (퀴즈 화면) | S4 (해설 화면) |
-|---|---|---|
-| 1 | 체크 팝 + 칭찬 1줄 (`subtle`) | — |
-| 2 | + 콤보 칩 바운스 (`combo`) | — |
-| 3+ | + 칩 주변 컨페티 (`confetti`) | — |
-| 퍼펙트 | 컨페티 | **완주 카드 + 풀스크린 팡파레** |
+> ⚠️ 아래 표의 화면 배치는 **§3-1 개정으로 바뀌었다.** 연출은 전부 S4(해설)에서 일어난다. 등급 사다리 자체는 그대로다.
+
+| 콤보 | 연출 (전부 S4 해설 화면) |
+|---|---|
+| 1 | 배너 팝 + 체크 그려지기 + 칭찬 1줄 (`subtle`) |
+| 2 | + 콤보 칩 바운스 (`combo`) |
+| 3+ | + 컨페티 (`confetti`) |
+| 퍼펙트 완주 | + **완주 카드 + 풀스크린 팡파레** |
 
 - **퍼펙트 정의**: `correct >= totalCount`. **5를 하드코딩하지 않는다** — `QuizNextResponse.totalCount`는 옵셔널(`quiz.ts:22-24`)이고 없으면 `defaultStepTotal`(5)로 fallback하는 기존 규칙을 그대로 쓴다.
 - **재도전(#63) 성공도 퍼펙트에 포함한다.** `play-page.tsx:184-186`의 기존 주석("재도전 성공이 연속을 잇도록")과 일관되게, 최종 정답이면 정답으로 센다.
 **복습 플로우** — 같은 규칙을 적용한다. 구체적으로:
-- S3 오버레이는 복습에서도 그대로 뜬다(복습은 `PlayPage`를 재사용하므로 `ReviewContext.streak`을 `combo`로 넘기면 끝)
-- `insight-page.tsx`의 복습 팡파레(현행 `review.streak >= 3`)를 **제거**하고, `ReviewSummaryPage`에 **퍼펙트(`correct >= REVIEW_STEP_TOTAL`) 팡파레를 추가**한다. `ReviewSummaryPage:13`이 이미 `isPerfect`를 계산하고 있어 조건은 그대로 쓴다
+- 해설 화면 연출은 복습에서도 그대로 뜬다 — `ReviewContext.streak`을 `combo`로 넘기면 끝이다
+- `insight-page.tsx`의 복습 팡파레(기존 `review.streak >= 3`)를 **제거**하고, `ReviewSummaryPage`에 **퍼펙트 팡파레를 추가**한다
+- **단건 복습(`single`, 이슈 190)은 팡파레에서 제외한다.** 분모가 1이라 한 문제만 맞혀도 `isPerfect`가 되는데, 팡파레는 "한 판 완주 + 전부 정답"이라는 사다리 꼭대기를 뜻한다
 - 복습에는 완주 요약 카드를 새로 만들지 않는다 — `ReviewSummaryPage`가 이미 그 역할이고, `bestCombo`는 복습 URL에 없으므로 표시하지 않는다
 - **#172 동작 변경.**
 
@@ -70,19 +73,23 @@
 
 ## 4. 판정 직후 흐름
 
-```
+```text
 [정답 확인] 탭
   → submitQuizAnswer()
   → (오답 + 중·상 난이도 + 재도전 미사용 → 기존 재도전 분기로. 연출 없음)
-  → applyAnswer(session, isCorrect)             … session-progress
+  → applyAnswer(session, isCorrect)   … session-progress
+  → router.push('/insight?...')       … 지연 없이 즉시
+
+해설 화면 진입
   → getCelebration({..., prefersReducedMotion}) … celebration-logic
-  → CelebrationOverlay 렌더 + 선택지 채색
-  → holdMs 경과 또는 사용자가 [계속] 탭 → router.push('/insight?...')
+  → VerdictBanner 렌더 (배너 팝 · 체크 그려지기 · 콤보 칩 · 배지)
+  → tier가 confetti면 fireConfetti()
+  → 완주면 CompletionCard, 퍼펙트면 FanfareOverlay
 ```
 
-자동 이동의 유일한 위험(기다리기 싫은데 못 넘어감)은 **[계속] 버튼**으로 해소한다. `prefers-reduced-motion: reduce`면 `holdMs = 0`.
+풀이 화면은 **지연도 오버레이도 두지 않는다.** 제출 즉시 라우팅하는 기존 계약을 그대로 쓰고, 조작감은 CSS 마이크로 인터랙션이 맡는다(§5-1).
 
-**중복 내비게이션 차단**: `navigateOnce` ref로 `router.push`를 1회로 묶고, 언마운트 시 `clearTimeout`한다. 타이머와 탭이 동시에 발화하거나 React StrictMode가 이펙트를 두 번 돌려도 이동은 한 번이다.
+`holdMs`는 `Celebration` 계약에 남아 있으나 **현재 소비자가 없다** — 판정 지연을 되살릴 경우를 위한 자리다. 쓰지 않는 값이 계약에 남는 게 부담이면 제거해도 무방하다.
 
 ## 5. 아키텍처 — 3계층 분리
 
@@ -138,37 +145,67 @@ getCelebration(input: {
 - **오답은 `tier: "none"` + 응원 문구.** 콤보가 깨진 것을 시각적으로 강조하지 않는다 — `PRODUCT.md` 브랜드 톤("훈계하거나 과장된 축하 문구를 쓰지 않는다")
 - **`prefersReducedMotion`이 true면 `holdMs = 0`, `tier`는 최대 `subtle`.** 순수 함수가 결정하므로 테스트 가능하다.
 
-`holdMs` 초안: `subtle` 500 / `combo` 700 / `confetti` 1000 / `none` 400 — Storybook에서 튜닝해 확정한다.
+`holdMs` 초안: `subtle` 500 / `combo` 700 / `confetti` 1000 / `none` 400. §3-1 개정으로 **현재 소비자가 없다**(즉시 라우팅) — 판정 지연을 되살릴 때를 위한 자리다.
 
-### (c) `app/src/features/play/components/celebration-overlay.tsx` — 표현 (신규 + stories)
+## 5-1. 풀이 화면(S3) 조작감
 
-`Celebration`을 받아 그리기만 한다. canvas-confetti·CSS 애니메이션이 전부 여기 갇힌다.
+§3-1 개정으로 S3는 보상 대신 **조작감**을 맡는다. 전부 CSS라 `prefers-reduced-motion` 전역 가드가 그대로 적용된다.
 
-- `components/ui/`가 아니라 feature 하위 — 퀴즈 전용이라 디자인 시스템 프리미티브가 아니다. (`check:design`의 stories 강제는 `components/ui/`에만 적용되므로 이 스토리는 게이트 대상이 아니다. 그럼에도 **연출 강도 튜닝용**으로 동봉한다 — #211 완료 기준 3번을 여기서 반복 재생하며 맞춘다.)
-- **[계속]은 `min-h-12` `<button>`** — `div onClick`이 아니다. 키보드·스크린리더로 접근 가능해야 하고 터치 타깃 48px를 지킨다.
-- 기존 `Chip`(`components/ui/chip.tsx`)·`CheckIcon` 재사용
-- **컨페티 색은 `getComputedStyle(document.documentElement)`로 CSS 변수에서 읽는다** — 소스에 raw hex를 넣지 않아 `check:design` 통과. **변수가 비어 있으면 컨페티를 생략한다**(하드코딩 fallback 금지)
-- canvas-confetti 호출에 `disableForReducedMotion: true`
-- canvas-confetti는 **사용자 이벤트 핸들러 안에서** `await import("canvas-confetti")` — 모듈 top-level이나 render 중에 호출하지 않는다. SSR `document` 접근을 피하고 초기 번들에서 빠진다.
+| 대상 | 처리 |
+|---|---|
+| 문제 카드·힌트·재도전 배너 | `--animate-rise-in` (0.32s). `key={quiz.quizId}`로 슬롯마다 재생 |
+| 선택지 등장 | `--animate-choice-in` + `animationDelay: index * 55ms` 스태거 |
+| 선택지 누름 | `active:scale-95` + `transition duration-150` |
+| 선택 상태 | 번호 배지가 `bg-ink` → `bg-primary`로 전환 |
+| 모든 버튼 | `Button`에 `active:scale-95` — 앱 전체가 같은 촉감을 공유 |
+| 진행바 | `Progress`에 `duration-500 ease-out` |
+
+**레이아웃** — 질문은 카드 상단에 붙이고, 답안 블록은 `my-auto`로 질문과 하단 액션 버튼 사이 중앙에 띄운다. `mt-auto`로 답안을 바닥에 붙이면 질문이 짧을 때 사이가 400px 가까이 벌어져 화면 한가운데가 구멍처럼 빈다.
+
+### (c) `app/src/features/play/components/verdict-banner.tsx` — 표현 (신규)
+
+`Celebration`을 받아 해설 화면 맨 위의 정답/오답 배너를 그린다. 보상의 순간이 여기 한 곳에 모인다.
+
+- 기존 `Chip`(`components/ui/chip.tsx`)·`AlertCircleIcon` 재사용. 체크는 `stroke-dasharray` + `--animate-check-draw`로 그려지는 것처럼 낸다
+- 색만으로 정오답을 구분하지 않는다 — 아이콘과 문구를 항상 함께 낸다
+- `tier === "confetti"`면 `fireConfetti()`를 호출하되 `useRef` 가드로 StrictMode 이중 실행에도 한 번만 터뜨린다
+
+### (c-2) `app/src/features/play/confetti.ts` — 컨페티 (신규)
+
+- **색은 `getComputedStyle(document.documentElement)`로 CSS 변수에서 읽는다** — 소스에 raw hex를 넣지 않아 `check:design` 통과. **변수가 비어 있으면 컨페티를 생략한다**(하드코딩 fallback 금지)
+- `disableForReducedMotion: true`
+- **이펙트 안에서** `await import("canvas-confetti")` — 모듈 top-level이나 render 중에 호출하지 않는다. SSR `document` 접근을 피하고 초기 번들에서 빠진다
+- 절대 throw하지 않는다
+
+### (c-3) `app/src/features/play/components/fanfare-overlay.tsx` — 팡파레 (신규)
+
+일일 완주 퍼펙트와 복습 퍼펙트가 공유한다.
+
+- `playKey`(`daily:{quizId}` / `review:{step}`)별 **one-shot** — sessionStorage로 재진입 시 재생을 막는다
+- **판정은 `useRef` 가드로 `playKey`당 한 번만.** StrictMode는 이펙트를 두 번 돌리는데, 첫 실행이 sessionStorage에 "재생함"을 기록하므로 두 번째 실행이 그대로 판정하면 **방금 띄운 팡파레를 스스로 끈다**(실제로 재현된 버그)
+- 모션 줄이기 사용자에겐 재생하지 않는다
+
+### (c-4) 삭제된 것
+
+`celebration-overlay.tsx`(바텀시트)와 그 스토리는 §3-1 개정으로 제거됐다. 연출 강도 튜닝용 스토리 자리는 후속 이슈에서 다시 마련한다.
 
 ## 6. 완주 요약 카드
 
 마지막 문제의 해설 화면 하단에 렌더한다(새 라우트 없음).
 
-```
+```text
 [CircleCheckIcon] 오늘의 학습 완료
   정답        4 / 5        ← answered === totalCount 일 때만
   최고 콤보    3
-  보리        밥을 줬어요
 [      홈으로 가기      ]
 ```
 
 - 퍼펙트면 기존 `fanfare.lottie` 풀스크린 재생
-- **아이콘은 이모지가 아니라 기존 컴포넌트를 쓴다** — `CircleCheckIcon`·`DogIcon`(`components/icons.tsx`). `ReviewSummaryPage:20-22`가 이미 `CircleCheckIcon`으로 같은 성격의 완료 헤더를 그리고 있어 시각적으로 맞춘다.
-- **보리 줄에 숫자를 쓰지 않는다.** `Mascot.MAX_FULLNESS = 100` 캡 때문에 포만감이 90이면 `FEED_AMOUNT = 20`을 줘도 +10만 오른다. "+20%"는 항상 참이 아니다.
-- **`feedMascot()`은 현행 fire-and-forget 유지**(`play-page.tsx:205`). await하면 `client.ts:38`의 `REQUEST_TIMEOUT_MS = 15_000` 때문에 축하 연출이 최대 15초 막힌다. 카드가 포만감 수치를 안 쓰므로 응답이 필요 없다.
+- **아이콘은 이모지가 아니라 기존 컴포넌트를 쓴다** — `CircleCheckIcon`(`components/icons.tsx`). `ReviewSummaryPage`가 이미 같은 성격의 완료 헤더를 그리고 있어 시각적으로 맞춘다.
+- **보리 줄은 두지 않는다.** 초안엔 "밥을 줬어요"가 있었으나 §3-1 개정에서 뺐다 — 마스코트를 여기서 부를 이유가 없고, `Mascot.MAX_FULLNESS = 100` 캡 때문에 수치를 쓰면 부정확해진다.
+- **`feedMascot()`은 현행 fire-and-forget 유지**(`play-page.tsx`). await하면 `client.ts`의 `REQUEST_TIMEOUT_MS = 15_000` 때문에 화면이 최대 15초 막힌다. 카드가 포만감을 안 쓰므로 응답이 필요 없다.
 
-**URL 파라미터**: 마지막 문제에서 `/insight?...&done=1&c=4&bc=3`. localStorage로 넘기면 뒤로가기·bfcache에서 값이 흔들린다(PR #160에서 이미 겪은 문제). 복습 모드가 쓰는 URL 패턴과도 동일하다.
+**URL 파라미터**: 마지막 문제에서 `/insight?...&done=1&c=4&bc=3&a=5`. 재도전으로 맞힌 경우 `retry=1`도 함께 싣는다(맞힌 경우에만 — 틀린 재도전엔 특별 칭찬이 없다). localStorage로 넘기면 뒤로가기·bfcache에서 값이 흔들린다(PR #160에서 이미 겪은 문제). 복습 모드가 쓰는 URL 패턴과도 동일하다.
 
 **신뢰 경계**: `c`·`bc`는 브라우저가 만든 값이므로 **`clamp(0, totalCount)`로 검증**하고, 완주 팡파레는 **one-shot**(같은 파라미터로 재진입하면 카드는 보이되 팡파레는 재생하지 않음 — 기존 `dismissedFanfareKey` 패턴 재사용)으로 처리한다. 서명·서버 토큰은 도입하지 않는다(§13 반박 1).
 
