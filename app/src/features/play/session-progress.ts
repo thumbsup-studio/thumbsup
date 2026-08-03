@@ -52,11 +52,15 @@ function safeGet(key: string): string | null {
   }
 }
 
-function safeSet(key: string, value: string) {
+/** 저장에 성공했는지 돌려준다 — 구키를 지워도 되는지 판단하는 쪽이 알아야 한다. */
+function safeSet(key: string, value: string): boolean {
   try {
     window.localStorage.setItem(key, value);
+
+    return true;
   } catch {
     /* 위 주석 참고 */
+    return false;
   }
 }
 
@@ -100,13 +104,13 @@ function parseSession(raw: string | null): PlaySession | null {
   }
 }
 
-function migrateLegacy(stepOrder: number): PlaySession | null {
+/** 구키를 읽어 세션 형태로 바꾼다 — 지우는 건 새 키에 옮겨 적은 쪽이 판단한다. */
+function readLegacy(stepOrder: number): PlaySession | null {
   const raw = safeGet(legacyKey(stepOrder));
   if (raw === null) {
     return null;
   }
 
-  safeRemove(legacyKey(stepOrder));
   const combo = toCount(raw);
 
   // answered·correct는 구키에 없어 복원할 수 없다. 0으로 두면
@@ -120,19 +124,23 @@ export function readSession(stepOrder: number): PlaySession {
     return stored;
   }
 
-  // migrateLegacy는 구키를 지우므로 옮겨 적기까지 해야 한 쌍이 된다.
-  // 저장하지 않으면 "읽기만 했는데 콤보가 사라지는" 상태가 된다 — 화면 표시용 읽기가 늘면 바로 드러난다.
-  const migrated = migrateLegacy(stepOrder);
+  const migrated = readLegacy(stepOrder);
   if (migrated !== null) {
-    writeSession(stepOrder, migrated);
+    // 새 키에 옮겨 적는 데 성공했을 때만 구키를 지운다. 순서를 뒤집으면 저장이 실패한 순간
+    // 유일한 사본이 사라져 콤보가 영구 소실된다(사파리 프라이빗 모드·쿼터 초과).
+    if (writeSession(stepOrder, migrated)) {
+      safeRemove(legacyKey(stepOrder));
+    }
+
     return migrated;
   }
 
   return emptySession;
 }
 
-export function writeSession(stepOrder: number, session: PlaySession) {
-  safeSet(sessionKey(stepOrder), JSON.stringify(session));
+/** 저장 성공 여부를 돌려준다 — 구키 정리처럼 저장이 실제로 됐는지에 달린 후속 처리가 있다. */
+export function writeSession(stepOrder: number, session: PlaySession): boolean {
+  return safeSet(sessionKey(stepOrder), JSON.stringify(session));
 }
 
 export function resetSession(stepOrder: number) {
