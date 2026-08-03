@@ -1,5 +1,7 @@
 package studio.thumbsup.server.quiz.generation;
 
+import studio.thumbsup.server.quiz.QuizType;
+
 /**
  * 저작 브리지에 보낼 프롬프트를 조립한다 — 요구 스키마는 {@link GeneratedQuizSet}과 1:1로 맞춰져 있다.
  * 난이도·유형 매핑은 세션 설계(#19)를 그대로 따른다: 하(EASY)=OX, 중(MEDIUM)=사지선다, 상(HARD)=키워드 빈칸.
@@ -49,22 +51,6 @@ public final class QuizGenerationPromptBuilder {
                 }
               ]
             }
-            """;
-
-    private static final String SLOT_COMPOSITION = """
-            난이도 구성(정확히 이 순서·개수를 지켜야 함):
-            1. EASY(OX) — 참/거짓 판정 문제. choices와 answerKeywords는 null, correctAnswer는 "O" 또는 "X".
-            2. EASY(OX) — 위와 같은 유형, 다른 소재.
-            3. MEDIUM(MULTIPLE_CHOICE) — 4지선다, choices 배열에 정확히 4개, 그중 정답 1개만 isCorrect=true.
-               correctAnswer와 answerKeywords는 null.
-            4. MEDIUM(MULTIPLE_CHOICE) — 위와 같은 유형, 다른 소재.
-            5. HARD(KEYWORD_BLANK) — 빈칸 채우기. questionText에 빈칸(___)을 포함하고, answerKeywords는
-               "빈칸 개수만큼의 배열"이어야 한다 — 배열 원소 하나가 빈칸 하나다. 빈칸이 1개면 answerKeywords도
-               원소 1개짜리 배열이다. 절대로 같은 뜻의 다른 표현(동의어·약어/전체 이름 등)을 별도 빈칸으로
-               쪼개서 배열 길이를 늘리지 마라 — 동의어는 그 빈칸에 해당하는 원소 안에 함께 나열한다.
-               예: 빈칸 1개, 정답이 "PCB"와 "Process Control Block" 둘 다 인정되면
-               answerKeywords = [["PCB", "Process Control Block"]] (배열 길이 1, 안쪽에 동의어 2개).
-               choices와 correctAnswer는 null.
             """;
 
     private static final String COMMON_REQUIREMENTS = """
@@ -149,7 +135,11 @@ public final class QuizGenerationPromptBuilder {
 
     /** 저작 파이프라인(#174)의 {@code AuthoringPromptFactory}가 콘텐츠 난이도 힌트 없이 재사용한다. */
     public static String build(String courseTopic) {
-        return build(courseTopic, GenerationLevel.STANDARD);
+        return build(courseTopic, QuizPreset.BASIC_5);
+    }
+
+    public static String build(String courseTopic, QuizPreset preset) {
+        return build(courseTopic, preset, GenerationLevel.STANDARD);
     }
 
     /**
@@ -157,8 +147,12 @@ public final class QuizGenerationPromptBuilder {
      * 콘텐츠 깊이를 조절한다. STANDARD는 별도 힌트를 넣지 않는다(기존 동작과 동일 — 모델 판단에 맡긴다).
      */
     static String build(String courseTopic, GenerationLevel level) {
+        return build(courseTopic, QuizPreset.BASIC_5, level);
+    }
+
+    private static String build(String courseTopic, QuizPreset preset, GenerationLevel level) {
         return """
-                "%s" 주제로 학습 퀴즈 5문제를 한 세트로 생성해줘. 오직 아래 JSON 스키마와 정확히 일치하는
+                "%s" 주제로 학습 퀴즈 %d문제를 한 세트로 생성해줘. 오직 아래 JSON 스키마와 정확히 일치하는
                 JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는 절대 포함하지 마.
 
                 %s
@@ -167,7 +161,40 @@ public final class QuizGenerationPromptBuilder {
                 JSON 스키마:
                 %s
                 """.formatted(
-                courseTopic, SLOT_COMPOSITION, contentLevelHint(level), COMMON_REQUIREMENTS, MARKER_RULES, SCHEMA);
+                        courseTopic,
+                        preset.quizCount(),
+                        slotComposition(preset),
+                        contentLevelHint(level),
+                        COMMON_REQUIREMENTS,
+                        MARKER_RULES,
+                        SCHEMA);
+    }
+
+    private static String slotComposition(QuizPreset preset) {
+        StringBuilder composition = new StringBuilder("난이도 구성(정확히 이 순서·개수를 지켜야 함):\n");
+        for (int index = 0; index < preset.slots().size(); index++) {
+            QuizPreset.Slot slot = preset.slots().get(index);
+            composition
+                    .append("%d. %s(%s) — ".formatted(index + 1, slot.difficulty(), slot.type()))
+                    .append(slotDescription(slot.type()))
+                    .append('\n');
+        }
+        return composition.toString();
+    }
+
+    private static String slotDescription(QuizType type) {
+        if (type == QuizType.OX) {
+            return "참/거짓 판정 문제. choices와 answerKeywords는 null, correctAnswer는 \"O\" 또는 \"X\".";
+        }
+        if (type == QuizType.MULTIPLE_CHOICE) {
+            return "4지선다, choices 배열에 정확히 4개, 그중 정답 1개만 isCorrect=true. correctAnswer와 answerKeywords는 null.";
+        }
+        return """
+                빈칸 채우기. questionText에 빈칸(___)을 포함하고, answerKeywords는 "빈칸 개수만큼의 배열"이어야 한다 —
+                배열 원소 하나가 빈칸 하나다. 빈칸이 1개면 answerKeywords도 원소 1개짜리 배열이다. 절대로 같은 뜻의
+                다른 표현(동의어·약어/전체 이름 등)을 별도 빈칸으로 쪼개서 배열 길이를 늘리지 마라 — 동의어는 그
+                빈칸에 해당하는 원소 안에 함께 나열한다. choices와 correctAnswer는 null.
+                """;
     }
 
     // if-else 사용 이유: enum switch 표현식은 컴파일러가 안전장치로 java.lang.MatchException 생성 코드를

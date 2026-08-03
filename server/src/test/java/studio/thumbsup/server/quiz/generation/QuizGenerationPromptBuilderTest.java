@@ -75,6 +75,17 @@ class QuizGenerationPromptBuilderTest {
     }
 
     @Test
+    @DisplayName("LIGHT_3 프롬프트의 슬롯 구성은 3개만 지시한다")
+    void light3_prompt_lists_three_slots() {
+        String prompt = QuizGenerationPromptBuilder.build("프로세스", QuizPreset.LIGHT_3);
+
+        assertThat(prompt)
+                .contains("1. EASY(OX)")
+                .contains("3. HARD(KEYWORD_BLANK)")
+                .doesNotContain("4.");
+    }
+
+    @Test
     @DisplayName("모든 유형에 한 문장 힌트와 유형별 정답 누출 금지 규칙을 요구한다")
     void requires_safe_one_sentence_hint_for_every_type() {
         String prompt = QuizGenerationPromptBuilder.build("운영체제");

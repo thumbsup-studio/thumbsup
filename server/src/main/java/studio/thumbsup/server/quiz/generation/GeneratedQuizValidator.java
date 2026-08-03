@@ -14,23 +14,15 @@ import studio.thumbsup.server.quiz.QuizType;
 /**
  * 생성 응답 문자열을 파싱하고, 생성된 문제가 저장 가능한 형태인지 검증한다. 저작 파이프라인(#174)의
  * GENERATE/REVIEW/IMPROVE 잡이 같은 검증 규칙을 재사용한다 —
- * {@link #validateSet}은 스텝 생성(5슬롯 고정 구성), {@link #validateSingle}은 검수·개선 단건에 쓴다.
+ * {@link #validateSet}은 스텝 생성 세트, {@link #validateSingle}은 검수·개선 단건에 쓴다.
  */
 @Component
 public class GeneratedQuizValidator {
 
-    private static final int EXPECTED_QUIZ_COUNT = 5;
     private static final int EXPECTED_CHOICE_COUNT = 4;
     private static final int EXPECTED_SUMMARY_LINES = 3;
     /** 첫 블록만 고정한다 — 그 뒤 블록의 개수·라벨은 문제 성격에 맞게 모델이 정한다(#133 팀 결정). */
     private static final String FIRST_BLOCK_LABEL = "해설";
-
-    private static final List<Expected> EXPECTED_SLOTS = List.of(
-            new Expected(QuizType.OX, QuizDifficulty.EASY),
-            new Expected(QuizType.OX, QuizDifficulty.EASY),
-            new Expected(QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM),
-            new Expected(QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM),
-            new Expected(QuizType.KEYWORD_BLANK, QuizDifficulty.HARD));
 
     private final ObjectMapper objectMapper;
 
@@ -61,28 +53,37 @@ public class GeneratedQuizValidator {
     }
 
     public void validateSet(GeneratedQuizSet generated) {
-        List<GeneratedQuizSet.GeneratedQuiz> quizzes = generated.quizzes();
-        if (quizzes == null || quizzes.size() != EXPECTED_QUIZ_COUNT) {
-            throw new QuizGenerationException(
-                    "생성된 문제 개수가 %d개가 아닙니다: %s".formatted(EXPECTED_QUIZ_COUNT, quizzes == null ? 0 : quizzes.size()));
-        }
-        for (int i = 0; i < EXPECTED_QUIZ_COUNT; i++) {
-            Expected expected = EXPECTED_SLOTS.get(i);
-            validateSlot("슬롯 %d".formatted(i + 1), quizzes.get(i), expected.type(), expected.difficulty());
+        validateSet(generated, QuizPreset.BASIC_5);
+    }
+
+    public void validateSet(GeneratedQuizSet generated, QuizPreset preset) {
+        List<GeneratedQuizSet.GeneratedQuiz> quizzes = requireSlotCount(generated, preset);
+        for (int index = 0; index < preset.quizCount(); index++) {
+            QuizPreset.Slot slot = preset.slots().get(index);
+            validateSlot("슬롯 %d".formatted(index + 1), quizzes.get(index), slot.type(), slot.difficulty());
         }
     }
 
     /** 기존 draft 승인 시 새 필드인 hint만 최신 정책으로 재검증한다. 나머지 필드는 생성·REVIEW 제출 때 검증한다. */
     public void validateHintSet(GeneratedQuizSet generated) {
+        validateHintSet(generated, QuizPreset.BASIC_5);
+    }
+
+    public void validateHintSet(GeneratedQuizSet generated, QuizPreset preset) {
+        List<GeneratedQuizSet.GeneratedQuiz> quizzes = requireSlotCount(generated, preset);
+        for (int index = 0; index < preset.quizCount(); index++) {
+            QuizPreset.Slot slot = preset.slots().get(index);
+            validateHintSlot("슬롯 %d".formatted(index + 1), quizzes.get(index), slot.type(), slot.difficulty());
+        }
+    }
+
+    private List<GeneratedQuizSet.GeneratedQuiz> requireSlotCount(GeneratedQuizSet generated, QuizPreset preset) {
         List<GeneratedQuizSet.GeneratedQuiz> quizzes = generated.quizzes();
-        if (quizzes == null || quizzes.size() != EXPECTED_QUIZ_COUNT) {
+        if (quizzes == null || quizzes.size() != preset.quizCount()) {
             throw new QuizGenerationException(
-                    "생성된 문제 개수가 %d개가 아닙니다: %s".formatted(EXPECTED_QUIZ_COUNT, quizzes == null ? 0 : quizzes.size()));
+                    "생성된 문제 개수가 %d개가 아닙니다: %s".formatted(preset.quizCount(), quizzes == null ? 0 : quizzes.size()));
         }
-        for (int index = 0; index < EXPECTED_QUIZ_COUNT; index++) {
-            Expected expected = EXPECTED_SLOTS.get(index);
-            validateHintSlot("슬롯 %d".formatted(index + 1), quizzes.get(index), expected.type(), expected.difficulty());
-        }
+        return quizzes;
     }
 
     /** 기존 IMPROVE draft 승인 시 원본 유형·난이도를 유지하는지와 hint만 재검증한다. */
@@ -387,6 +388,4 @@ public class GeneratedQuizValidator {
             throw new QuizGenerationException("%s의 %s가 비어 있습니다.".formatted(location, field));
         }
     }
-
-    private record Expected(QuizType type, QuizDifficulty difficulty) {}
 }

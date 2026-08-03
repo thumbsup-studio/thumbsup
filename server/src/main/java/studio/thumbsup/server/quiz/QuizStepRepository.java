@@ -30,6 +30,10 @@ public interface QuizStepRepository extends JpaRepository<QuizStep, Long> {
     @Query("SELECT MAX(s.stepOrder) FROM QuizStep s WHERE s.courseId = :courseId")
     Optional<Integer> findMaxStepOrderByCourseId(Long courseId);
 
+    /** 전체 라이브 스텝 중 가장 큰 순서 — 문제 행이 비어 있는 스텝도 다음 순서 계산에 포함한다. */
+    @Query("SELECT MAX(s.stepOrder) FROM QuizStep s")
+    Optional<Integer> findMaxStepOrder();
+
     /** 그 코스에 실제 저장된 스텝 수 — 홈 화면 "N/전체" 표시에 쓴다. */
     long countByCourseId(Long courseId);
 }

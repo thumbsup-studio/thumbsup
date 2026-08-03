@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 class AuthoringPromptFactoryTest {
 
@@ -22,6 +23,52 @@ class AuthoringPromptFactoryTest {
 
             assertThat(prompt).contains("CS 강사"); // SYSTEM_PROMPT 병합 확인
             assertThat(prompt).contains("운영체제");
+        }
+
+        @Test
+        @DisplayName("뼈대 맥락 프롬프트는 앞뒤 스텝과 기존 문제를 읽기 전용 맥락으로 넣는다")
+        void context_prompt_includes_neighbours() {
+            var context = new OutlineStepContext(
+                    "운영체제 첫걸음",
+                    3,
+                    10,
+                    "CPU 스케줄링",
+                    "선점·비선점 스케줄링을 구분한다",
+                    "프로세스와 스레드",
+                    "프로세스 동기화",
+                    List.of("문맥 교환 비용이 큰 이유는?"));
+
+            String prompt = AuthoringPromptFactory.generatePrompt(context, QuizPreset.BASIC_5);
+
+            assertThat(prompt)
+                    .contains("운영체제 첫걸음")
+                    .contains("3/10")
+                    .contains("선점·비선점 스케줄링을 구분한다")
+                    .contains("프로세스와 스레드")
+                    .contains("프로세스 동기화")
+                    .contains("문맥 교환 비용이 큰 이유는?");
+        }
+
+        @Test
+        @DisplayName("앞뒤 스텝이 없는 첫·마지막 스텝은 해당 섹션을 아예 넣지 않는다")
+        void omits_missing_neighbour_sections() {
+            var context = new OutlineStepContext("코스", 1, 1, "주제", "목표", null, null, List.of());
+
+            String prompt = AuthoringPromptFactory.generatePrompt(context, QuizPreset.BASIC_5);
+
+            assertThat(prompt).doesNotContain("[앞 스텝]").doesNotContain("[뒤 스텝]");
+        }
+
+        @Test
+        @DisplayName("뼈대 프롬프트는 목차 원문과 스텝 수 범위를 함께 지시한다")
+        void outline_prompt_carries_toc_and_range() {
+            String prompt = AuthoringPromptFactory.outlinePrompt("네트워크 기초", "네트워크", "1장 네트워크 첫걸음");
+
+            assertThat(prompt)
+                    .contains("네트워크 기초")
+                    .contains("1장 네트워크 첫걸음")
+                    .contains("3")
+                    .contains("20");
         }
     }
 
@@ -92,6 +139,22 @@ class AuthoringPromptFactoryTest {
                     .contains("hint");
             assertThat(objectMapper.readTree(AuthoringOutputSchemas.REVIEW).toString())
                     .contains("hint");
+        }
+
+        @Test
+        @DisplayName("GENERATE 스키마는 프리셋 문제 수를 반영하고 OUTLINE 스키마는 스텝 3~20개를 요구한다")
+        void output_schemas_follow_preset_and_outline_contract() throws Exception {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            assertThat(objectMapper
+                            .readTree(AuthoringOutputSchemas.generateFor(QuizPreset.LIGHT_3))
+                            .toString())
+                    .contains("\"minItems\":3")
+                    .contains("\"maxItems\":3");
+            assertThat(objectMapper.readTree(AuthoringOutputSchemas.OUTLINE).toString())
+                    .contains("\"minItems\":3")
+                    .contains("\"maxItems\":20")
+                    .contains("learningGoal");
         }
     }
 }

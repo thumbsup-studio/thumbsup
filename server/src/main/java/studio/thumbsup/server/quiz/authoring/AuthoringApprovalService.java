@@ -57,6 +57,9 @@ public class AuthoringApprovalService {
                 // 배포 전에 저장된 legacy draft를 포함해, 승인 시점의 최종 payload도 다시 검증한다.
                 validator.validateHintSet(set);
                 quizPersister.persist(draft.getTopic(), set);
+            } else if (draft.getOrigin() == QuizDraftOrigin.OUTLINE_STEP) {
+                // 뼈대 스텝은 발행 때 한꺼번에 라이브로 간다 — 여기서 쓰면 발행 게이트가 뚫린다.
+                validator.validateHintSet(set, draft.getPreset());
             } else {
                 materializeImprove(draft, set);
             }

@@ -4,10 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
@@ -23,22 +25,11 @@ import studio.thumbsup.server.quiz.authoring.dto.JobStatusResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
 import studio.thumbsup.server.quiz.generation.QuizGenerationException;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
-/**
- * 잡 큐(#174)의 유일한 진입점 — 대시보드가 잡을 만들고(enqueue*), 브리지가 폴링·결과 제출(claimNext/submitResult/failJob)하고,
- * 누구나 상태를 조회(getJobWithExpiry)하는 모든 흐름이 이 서비스를 거친다.
- *
- * <p>만료는 스케줄러 없이 lazy하게 평가한다 — QUEUED 30분·RUNNING 10분을 넘긴 잡은 가드·조회 시점에
- * 비로소 FAILED로 굳는다. {@link #claimNext}는 {@link GenerationJobRepository#pickNextQueued}의
- * {@code FOR UPDATE SKIP LOCKED} 락이 이 메서드의 {@code @Transactional} 경계가 끝날 때까지 유지되도록
- * pick과 {@code markRunning}을 한 트랜잭션 안에서 처리한다(#174 T1 리뷰에서 확립된 계약).
- */
+/** 잡 생성·폴링·결과 제출·상태 조회를 담당하는 저작 잡 큐의 유일한 진입점. */
 @Service
 public class AuthoringJobService {
-
-    private static final String EXPIRY_MESSAGE = "시간 초과로 만료되었습니다";
-    private static final Duration QUEUED_EXPIRY = Duration.ofMinutes(30);
-    private static final Duration RUNNING_EXPIRY = Duration.ofMinutes(10);
 
     private final GenerationJobRepository generationJobRepository;
     private final QuizRepository quizRepository;
@@ -46,6 +37,7 @@ public class AuthoringJobService {
     private final AuthoringDraftService draftService;
     private final GeneratedQuizValidator validator;
     private final ObjectMapper objectMapper;
+    private final GenerationJobActivityGuard activityGuard;
     private final Clock clock;
 
     public AuthoringJobService(
@@ -62,16 +54,56 @@ public class AuthoringJobService {
         this.draftService = draftService;
         this.validator = validator;
         this.objectMapper = objectMapper;
+        this.activityGuard = new GenerationJobActivityGuard(generationJobRepository);
         this.clock = clock;
     }
 
-    /** 잡 생성 결과를 컨트롤러에 돌려주는 값 — draft와 잡을 함께 만드는 유일한 진입점(enqueueImprove)의 반환 타입. */
     public record ImproveEnqueued(Long draftId, Long jobId) {}
 
     @Transactional
     public Long enqueueGenerate(Long userId, String topic) {
         String prompt = AuthoringPromptFactory.generatePrompt(topic);
         GenerationJob job = generationJobRepository.save(GenerationJob.createGenerate(userId, topic, prompt));
+        return job.getId();
+    }
+
+    @Transactional
+    public Long enqueueOutline(Long userId, Long outlineId) {
+        AuthoringOutline outline = draftService.getOutlineForUpdate(outlineId);
+        if (outline.isPublished()) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_PUBLISHED);
+        }
+        if (draftService.hasFilledOutlineSteps(outlineId)) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_FILLED);
+        }
+        activityGuard.guardOutline(outlineId, clock.instant());
+
+        String prompt =
+                AuthoringPromptFactory.outlinePrompt(outline.getTitle(), outline.getCategory(), outline.getTocSource());
+        GenerationJob job = generationJobRepository.save(GenerationJob.createOutline(userId, outlineId, prompt));
+        return job.getId();
+    }
+
+    @Transactional
+    public Long enqueueStepGenerate(Long userId, Long stepId, QuizPreset preset) {
+        if (preset == null) {
+            throw new BusinessException(CommonErrorType.INVALID_INPUT);
+        }
+        AuthoringOutlineStep step = draftService.getOutlineStepOrThrow(stepId);
+        AuthoringOutline outline = draftService.getOutlineForUpdate(step.getOutlineId());
+        if (outline.isPublished()) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_PUBLISHED);
+        }
+        if (step.getDraftId() != null) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_FILLED);
+        }
+        activityGuard.guardOutlineStep(stepId, clock.instant());
+        activityGuard.guardOutline(step.getOutlineId(), clock.instant());
+
+        OutlineStepContext context = draftService.outlineStepContext(stepId);
+        String prompt = AuthoringPromptFactory.generatePrompt(context, preset);
+        GenerationJob job = generationJobRepository.save(
+                GenerationJob.createStepGenerate(userId, stepId, step.getTopic(), preset, prompt));
         return job.getId();
     }
 
@@ -104,17 +136,14 @@ public class AuthoringJobService {
         if (draft.getStatus() == QuizDraftStatus.APPROVED) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_ALREADY_APPROVED);
         }
-        guardDraftHasNoActiveJob(draftId, clock.instant());
+        activityGuard.guardDraft(draftId, clock.instant());
 
         String prompt = reviewPromptForDraft(draft, feedback);
         GenerationJob job = generationJobRepository.save(GenerationJob.createReview(userId, draftId, feedback, prompt));
         return job.getId();
     }
 
-    /**
-     * pick과 상태 변경(markRunning)을 이 메서드의 트랜잭션 경계 안에서 함께 처리한다 — 분리하면
-     * {@code SKIP LOCKED} 락이 조회 직후 풀려 동시 폴링과 경합할 수 있다.
-     */
+    /** pick과 markRunning을 같은 트랜잭션에서 처리해 SKIP LOCKED 경쟁을 막는다. */
     @Transactional
     public Optional<GenerationJob> claimNext(Long userId) {
         Instant now = clock.instant();
@@ -134,6 +163,8 @@ public class AuthoringJobService {
         try {
             if (job.getKind() == GenerationJobKind.GENERATE) {
                 handleGenerateResult(job, resultJson);
+            } else if (job.getKind() == GenerationJobKind.OUTLINE) {
+                handleOutlineResult(job, resultJson);
             } else {
                 handleReviewResult(job, resultJson);
             }
@@ -157,40 +188,31 @@ public class AuthoringJobService {
     @Transactional
     public GenerationJob getJobWithExpiry(Long jobId) {
         GenerationJob job = findJobOrThrow(jobId);
-        expireIfNeeded(job, clock.instant());
+        activityGuard.expireIfNeeded(job, clock.instant());
         return job;
     }
 
-    /** 컨트롤러(#174 T7)가 엔티티를 직접 만지지 않도록 조회 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public JobStatusResponse getJobStatus(Long jobId) {
         return JobStatusResponse.from(getJobWithExpiry(jobId));
     }
 
-    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 claimNext 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public Optional<BridgeJobResponse> claimNextForBridge(Long userId) {
-        return claimNext(userId).map(job -> BridgeJobResponse.from(job, readOutputSchema(job.getKind())));
+        return claimNext(userId).map(job -> BridgeJobResponse.from(job, readOutputSchema(job)));
     }
 
-    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 submitResult 결과를 DTO로 감싸 돌려준다. */
     @Transactional
     public BridgeResultResponse submitResultForBridge(Long userId, Long jobId, BridgeCli cli, String resultJson) {
         return BridgeResultResponse.from(submitResult(userId, jobId, cli, resultJson));
     }
 
-    /** 컨트롤러(#174 T8)가 엔티티를 직접 만지지 않도록 반환값 없이 위임한다 — {@code /fail}은 항상 data:null. */
     @Transactional
     public void failJobForBridge(Long userId, Long jobId, String error) {
         failJob(userId, jobId, error);
     }
 
-    /**
-     * 로그 적재 가능 여부(#174 T8) — 잡 존재·소유권은 여기서 확인해 못 찾으면 404, 남의 잡이면 403이다.
-     * RUNNING이 아니면(이미 종결된 잡에 뒤늦게 도착한 flush 등) 예외 없이 false만 돌려준다 — 컨트롤러가
-     * 이 경우 append를 조용히 건너뛴다. 브리지의 finally 안전망 flush가 result 직후 늦게 도착해도
-     * 500/409로 브리지를 놀라게 하지 않기 위한 선택이다(브리프에 명시 없어 T8 구현 시 판단, 리포트 참고).
-     */
+    /** 로그 적재 전 잡 존재·소유권을 확인하고 RUNNING 여부를 반환한다. */
     @Transactional(readOnly = true)
     public boolean canAppendLogs(Long userId, Long jobId) {
         GenerationJob job = findJobOrThrow(jobId);
@@ -200,8 +222,12 @@ public class AuthoringJobService {
 
     private void handleGenerateResult(GenerationJob job, String resultJson) {
         GeneratedQuizSet generated = validator.parse(resultJson);
-        validator.validateSet(generated);
-        draftService.createFromGenerate(job, generated);
+        validator.validateSet(generated, job.getPreset());
+        if (job.getOutlineStepId() == null) {
+            draftService.createFromGenerate(job, generated);
+        } else {
+            draftService.createFromGenerate(job, generated, job.getPreset());
+        }
     }
 
     private void handleReviewResult(GenerationJob job, String resultJson) throws JsonProcessingException {
@@ -211,10 +237,62 @@ public class AuthoringJobService {
         draftService.applyReview(job, result);
     }
 
+    private void handleOutlineResult(GenerationJob job, String resultJson) throws JsonProcessingException {
+        String cleaned = validator.stripMarkdownFence(resultJson);
+        OutlineResult result = objectMapper.readValue(cleaned, OutlineResult.class);
+        List<AuthoringOutlineStep> steps = validatedOutlineSteps(job.getOutlineId(), result);
+        // 검사와 교체 사이에 스텝 채우기 결과가 draft를 붙이면 그 draft가 고아가 된다 —
+        // 스텝 생성 경로와 같은 뼈대 행을 잠가 두 경로를 직렬화한다.
+        draftService.getOutlineForUpdate(job.getOutlineId());
+        if (draftService.hasFilledOutlineSteps(job.getOutlineId())) {
+            throw new QuizGenerationException("잡 실행 중 문제가 채워진 뼈대는 재생성할 수 없습니다.");
+        }
+        draftService.replaceOutlineSteps(job.getOutlineId(), steps);
+    }
+
+    private List<AuthoringOutlineStep> validatedOutlineSteps(Long outlineId, OutlineResult result) {
+        List<OutlineResult.OutlineStepResult> results = result.steps();
+        if (results == null || results.size() < 3 || results.size() > 20) {
+            throw new QuizGenerationException(
+                    "뼈대 스텝 수는 3~20개여야 합니다: %d개".formatted(results == null ? 0 : results.size()));
+        }
+
+        Set<String> topics = new HashSet<>();
+        List<AuthoringOutlineStep> steps = new java.util.ArrayList<>();
+        for (int index = 0; index < results.size(); index++) {
+            steps.add(validatedOutlineStep(outlineId, index, results.get(index), topics));
+        }
+        return steps;
+    }
+
+    private AuthoringOutlineStep validatedOutlineStep(
+            Long outlineId, int index, OutlineResult.OutlineStepResult resultStep, Set<String> topics) {
+        if (resultStep == null
+                || resultStep.topic() == null
+                || resultStep.topic().isBlank()) {
+            throw new QuizGenerationException("%d번 스텝의 topic이 비어 있습니다.".formatted(index + 1));
+        }
+        String topic = resultStep.topic().trim();
+        if (topic.length() > 30) {
+            throw new QuizGenerationException("%d번 스텝의 topic은 30자 이내여야 합니다.".formatted(index + 1));
+        }
+        if (!topics.add(topic.toLowerCase(Locale.ROOT))) {
+            throw new QuizGenerationException("뼈대 스텝 topic이 중복됩니다: %s".formatted(topic));
+        }
+        if (resultStep.learningGoal() == null || resultStep.learningGoal().isBlank()) {
+            throw new QuizGenerationException("%d번 스텝의 learningGoal이 비어 있습니다.".formatted(index + 1));
+        }
+        String learningGoal = resultStep.learningGoal().trim();
+        if (learningGoal.length() > 500) {
+            throw new QuizGenerationException("%d번 스텝의 learningGoal은 500자 이내여야 합니다.".formatted(index + 1));
+        }
+        return AuthoringOutlineStep.create(outlineId, index + 1, topic, learningGoal);
+    }
+
     private void validateReviewResult(GenerationJob job, ReviewResult result) {
         QuizDraft draft = draftService.getOrThrow(job.getDraftId());
-        if (draft.getOrigin() == QuizDraftOrigin.NEW) {
-            validator.validateSet(new GeneratedQuizSet(result.quizzes()));
+        if (draft.getOrigin() != QuizDraftOrigin.IMPROVE) {
+            validator.validateSet(new GeneratedQuizSet(result.quizzes()), draft.getPreset());
             return;
         }
         List<GeneratedQuizSet.GeneratedQuiz> quizzes = result.quizzes();
@@ -228,9 +306,15 @@ public class AuthoringJobService {
         validator.validateSingle(quizzes.get(0), sourceQuiz.getType(), sourceQuiz.getDifficulty());
     }
 
-    private JsonNode readOutputSchema(GenerationJobKind kind) {
-        String schema =
-                kind == GenerationJobKind.GENERATE ? AuthoringOutputSchemas.GENERATE : AuthoringOutputSchemas.REVIEW;
+    private JsonNode readOutputSchema(GenerationJob job) {
+        String schema;
+        if (job.getKind() == GenerationJobKind.GENERATE) {
+            schema = AuthoringOutputSchemas.generateFor(job.getPreset());
+        } else if (job.getKind() == GenerationJobKind.OUTLINE) {
+            schema = AuthoringOutputSchemas.OUTLINE;
+        } else {
+            schema = AuthoringOutputSchemas.REVIEW;
+        }
         try {
             return objectMapper.readTree(schema);
         } catch (JsonProcessingException e) {
@@ -256,25 +340,9 @@ public class AuthoringJobService {
         }
     }
 
-    /** package-private — {@code AuthoringApprovalService}(T6)의 승인 가드가 재사용한다. */
+    /** package-private — {@code AuthoringApprovalService}의 승인 가드가 재사용한다. */
     void guardDraftHasNoActiveJob(Long draftId, Instant now) {
-        List<GenerationJob> activeJobs = generationJobRepository.findByDraftIdAndStatusIn(
-                draftId, List.of(GenerationJobStatus.QUEUED, GenerationJobStatus.RUNNING));
-        activeJobs.forEach(job -> expireIfNeeded(job, now));
-        boolean stillActive = activeJobs.stream().anyMatch(GenerationJob::isActive);
-        if (stillActive) {
-            throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_JOB_ACTIVE);
-        }
-    }
-
-    private void expireIfNeeded(GenerationJob job, Instant now) {
-        boolean queuedExpired = job.getStatus() == GenerationJobStatus.QUEUED
-                && Duration.between(job.getCreatedAt(), now).compareTo(QUEUED_EXPIRY) > 0;
-        boolean runningExpired = job.getStatus() == GenerationJobStatus.RUNNING
-                && Duration.between(job.getStartedAt(), now).compareTo(RUNNING_EXPIRY) > 0;
-        if (queuedExpired || runningExpired) {
-            job.fail(null, EXPIRY_MESSAGE, now);
-        }
+        activityGuard.guardDraft(draftId, now);
     }
 
     private String reviewPromptForDraft(QuizDraft draft, String feedback) {
@@ -287,7 +355,11 @@ public class AuthoringJobService {
                     .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
             return improveReviewPrompt(sourceQuiz, step.getTopic(), draft.getCurrentPayload(), feedback);
         }
-        return AuthoringPromptFactory.reviewPrompt(draft.getTopic(), draft.getCurrentPayload(), feedback, List.of());
+        List<String> siblingTopics = draft.getOrigin() == QuizDraftOrigin.OUTLINE_STEP
+                ? draftService.outlineSiblingTopics(draft.getId())
+                : List.of();
+        return AuthoringPromptFactory.reviewPrompt(
+                draft.getTopic(), draft.getCurrentPayload(), feedback, siblingTopics);
     }
 
     private String improveReviewPrompt(Quiz sourceQuiz, String stepTopic, String currentPayloadJson, String feedback) {

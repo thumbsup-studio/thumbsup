@@ -102,5 +102,14 @@ class QuizStepRepositoryTest {
 
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("전체 quiz_step 중 가장 큰 step_order를 반환한다")
+        void finds_global_max_step_order() {
+            quizStepRepository.save(QuizStep.create(4, courseA, "A4", 3));
+            quizStepRepository.save(QuizStep.create(9, courseB, "B9", 3));
+
+            assertThat(quizStepRepository.findMaxStepOrder()).contains(9);
+        }
     }
 }

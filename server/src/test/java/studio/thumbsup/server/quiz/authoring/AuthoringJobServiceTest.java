@@ -33,6 +33,7 @@ import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
+import studio.thumbsup.server.quiz.generation.QuizPreset;
 
 @ExtendWith(MockitoExtension.class)
 class AuthoringJobServiceTest {
@@ -232,6 +233,52 @@ class AuthoringJobServiceTest {
             assertThat(result.getStatus()).isEqualTo(GenerationJobStatus.SUCCEEDED);
             assertThat(result.getCli()).isEqualTo(BridgeCli.CLAUDE);
             verify(draftService).createFromGenerate(eq(job), any(GeneratedQuizSet.class));
+        }
+
+        @Test
+        @DisplayName("OUTLINE_STEP draft의 REVIEW 결과는 프리셋 슬롯 수로 검증한다")
+        void validates_outline_step_review_as_set() {
+            GenerationJob job = GenerationJob.createReview(1L, 51L, "피드백", "p");
+            ReflectionTestUtils.setField(job, "id", 14L);
+            job.markRunning(NOW.minus(Duration.ofSeconds(30)));
+            given(generationJobRepository.findById(14L)).willReturn(Optional.of(job));
+
+            QuizDraft outlineDraft = QuizDraft.createForOutlineStep("운영체제", "{}", QuizPreset.LIGHT_3, 1L);
+            given(draftService.getOrThrow(51L)).willReturn(outlineDraft);
+            given(draftService.applyReview(eq(job), any(ReviewResult.class))).willReturn(outlineDraft);
+
+            String light3ReviewJson = GeneratedQuizJsonFixture.light3SetJson()
+                    .replace("{\"quizzes\":", "{\"reviewSummary\":\"수정함\",\"quizzes\":");
+
+            GenerationJob result = service.submitResult(1L, 14L, BridgeCli.CODEX, light3ReviewJson);
+
+            assertThat(result.getStatus()).isEqualTo(GenerationJobStatus.SUCCEEDED);
+            verify(draftService).applyReview(eq(job), any(ReviewResult.class));
+        }
+
+        @Test
+        @DisplayName("OUTLINE_STEP draft 검수 프롬프트에는 같은 뼈대의 형제 스텝이 포함된다")
+        void includes_outline_sibling_topics_in_review_prompt() {
+            GenerationJob job = GenerationJob.createReview(1L, 52L, "피드백", "p");
+            QuizDraft draft = QuizDraft.createForOutlineStep("CPU 스케줄링", "{}", QuizPreset.BASIC_5, 1L);
+            ReflectionTestUtils.setField(draft, "id", 52L);
+            given(draftService.getForUpdate(52L)).willReturn(draft);
+            given(generationJobRepository.findByDraftIdAndStatusIn(
+                            eq(52L), eq(List.of(GenerationJobStatus.QUEUED, GenerationJobStatus.RUNNING))))
+                    .willReturn(List.of());
+            given(draftService.outlineSiblingTopics(52L)).willReturn(List.of("프로세스와 스레드", "프로세스 동기화"));
+            given(generationJobRepository.save(any())).willAnswer(invocation -> {
+                GenerationJob saved = invocation.getArgument(0);
+                ReflectionTestUtils.setField(saved, "id", 202L);
+                return saved;
+            });
+
+            Long jobId = service.enqueueReview(1L, 52L, "문제를 더 명확하게");
+
+            assertThat(jobId).isEqualTo(202L);
+            ArgumentCaptor<GenerationJob> captor = ArgumentCaptor.forClass(GenerationJob.class);
+            verify(generationJobRepository).save(captor.capture());
+            assertThat(captor.getValue().getPrompt()).contains("프로세스와 스레드").contains("프로세스 동기화");
         }
 
         @Test
