@@ -96,6 +96,22 @@ public final class GeneratedQuizJsonFixture {
         return setJsonWithFirstQuiz(oxQuizJson());
     }
 
+    public static String light3SetJson() {
+        return "{\"quizzes\": [%s, %s, %s]}".formatted(oxQuizJson(), multipleChoiceQuizJson(), keywordBlankQuizJson());
+    }
+
+    static String deep7SetWithWrongSlot5Json() {
+        return "{\"quizzes\": [%s, %s, %s, %s, %s, %s, %s]}"
+                .formatted(
+                        oxQuizJson(),
+                        oxQuizJson(),
+                        multipleChoiceQuizJson(),
+                        multipleChoiceQuizJson(),
+                        keywordBlankQuizJson(),
+                        keywordBlankQuizJson(),
+                        keywordBlankQuizJson());
+    }
+
     /** 첫 슬롯만 바꿔 끼운 5문제 세트 — 나머지 네 문제는 항상 유효하므로 검증 실패의 원인이 첫 문제로 좁혀진다. */
     static String setJsonWithFirstQuiz(String firstQuizJson) {
         return "{\"quizzes\": [%s, %s, %s, %s, %s]}"

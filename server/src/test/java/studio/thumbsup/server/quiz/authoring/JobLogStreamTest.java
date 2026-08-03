@@ -118,4 +118,20 @@ class JobLogStreamTest {
 
         assertThat(body).contains("event:status").contains("SUCCEEDED");
     }
+
+    @Test
+    @DisplayName("OUTLINE 잡의 status 이벤트에 outlineId를 싣는다")
+    void streams_outline_id_in_status_event() throws Exception {
+        GenerationJob job = generationJobRepository.save(GenerationJob.createOutline(USER_ID, 88L, "prompt"));
+        job.markRunning(Instant.now());
+        job.succeed(BridgeCli.CLAUDE, Instant.now());
+        generationJobRepository.save(job);
+
+        MvcResult started = mockMvc.perform(get("/api/v1/authoring/jobs/{jobId}/stream", job.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken()))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        assertThat(bodyOf(started)).contains("event:status").contains("\"outlineId\":88");
+    }
 }

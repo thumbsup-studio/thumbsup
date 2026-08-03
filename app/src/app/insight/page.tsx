@@ -2,6 +2,7 @@ import { RequireAuth } from "@/features/auth/require-auth";
 import { parseReviewContext, type ReviewSearchParams } from "@/features/history/review-params";
 import { type CompletionSearchParams, parseCompletion } from "@/features/play/completion-params";
 import { InsightPage } from "@/features/play/components/insight-page";
+import { type CourseSearchParams, parseCourseId } from "@/features/play/course-params";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,8 @@ type InsightRouteProps = {
       streak?: string;
       retry?: string;
     } & ReviewSearchParams &
-      CompletionSearchParams
+      CompletionSearchParams &
+      CourseSearchParams
   >;
 };
 
@@ -27,6 +29,7 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
   const review = parseReviewContext(params);
   // 상한 검증(clamp)은 totalCount를 아는 클라이언트에서 한다.
   const completion = parseCompletion(params);
+  const courseId = parseCourseId(params?.courseId);
 
   return (
     <RequireAuth>
@@ -34,6 +37,7 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
         completion={completion}
         correct={params?.correct === "true"}
         correctStreak={correctStreak}
+        courseId={courseId}
         quizId={quizId}
         review={review}
         wasRetry={params?.retry === "1"}

@@ -25,6 +25,7 @@ import {
   KeywordTooltipText,
 } from "@/features/play/components/keyword-tooltip-text";
 import { VerdictBanner } from "@/features/play/components/verdict-banner";
+import { buildPlayHref, COURSE_LIST_PATH } from "@/features/play/course-params";
 import {
   comboVisibleFrom,
   difficultyLabels,
@@ -43,6 +44,8 @@ type InsightPageProps = {
   completion?: CompletionSummary | null;
   correct: boolean;
   correctStreak?: number;
+  /** 코스 탭에서 진입한 세션이면 실린다 — "다음 문제"가 같은 코스로 이어지게 한다. */
+  courseId?: number;
   quizId: number | null;
   /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 꼬리질문 대신 다음 슬롯/완료로 진행한다. */
   review?: ReviewContext | null;
@@ -54,6 +57,7 @@ export function InsightPage({
   completion = null,
   correct,
   correctStreak = 0,
+  courseId,
   quizId,
   review,
   wasRetry = false,
@@ -81,6 +85,9 @@ export function InsightPage({
   const isLastQuestion = explanation ? explanation.currentNumber >= explanation.totalCount : false;
   // 풀이 화면에서 오렌지로 달아오른 진행바가 해설로 넘어오며 파랑으로 식으면 흐름이 끊긴다.
   const comboForDisplay = review?.streak ?? correctStreak;
+  // 코스 탭에서 들어온 세션이면 다음 문제로 같은 코스로 이어지고, 완주 뒤에는 코스 목록으로 돌아간다.
+  const playHref = buildPlayHref(courseId);
+  const completionDestination = getCompletionDestination(courseId);
   // 보상 연출은 전부 이 화면에서 터진다 — 풀이 화면(S3)은 조작감만 맡는다.
   // 난이도는 해설 응답에서 오므로, 로딩이 끝나기 전엔 기본값으로 계산해도 화면에 쓰이지 않는다.
   const celebration = getCelebration({
@@ -158,7 +165,7 @@ export function InsightPage({
             <a
               aria-label={review ? "복습 목록으로 돌아가기" : "문제로 돌아가기"}
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              href={review ? "/history" : "/play"}
+              href={review ? "/history/review" : playHref}
             >
               ‹
             </a>
@@ -277,9 +284,13 @@ export function InsightPage({
                     {primaryFollowUpQuestion ? (
                       <a
                         className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-                        href={`/follow-up?quizId=${quizId ?? ""}&correct=${
-                          correct ? "true" : "false"
-                        }&streak=${correctStreak}&fq=${primaryFollowUpQuestion.followUpQuestionId}`}
+                        href={getFollowUpHref(
+                          quizId,
+                          correct,
+                          correctStreak,
+                          primaryFollowUpQuestion.followUpQuestionId,
+                          courseId,
+                        )}
                       >
                         <HelpCircleIcon className="h-5 w-5" />
                         꼬리 질문 풀기
@@ -300,9 +311,9 @@ export function InsightPage({
                           ? "flex min-h-12 w-full items-center justify-center rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
                           : "flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
                       }
-                      href={isLastQuestion ? "/" : "/play"}
+                      href={isLastQuestion ? completionDestination.href : playHref}
                     >
-                      {isLastQuestion ? "홈으로 가기" : "다음 문제 풀기"}
+                      {isLastQuestion ? completionDestination.label : "다음 문제 풀기"}
                     </a>
                   </>
                 )}
@@ -342,6 +353,34 @@ function AnnotatedParagraph({
 }
 
 const getQuestionKindLabel = getInsightQuestionKindLabel;
+
+/** 완주 후 목적지 — 코스 탭에서 진입했으면 코스 목록으로, 아니면 홈으로 돌아간다. */
+function getCompletionDestination(courseId: number | undefined) {
+  return courseId
+    ? { href: COURSE_LIST_PATH, label: "코스 목록으로 가기" }
+    : { href: "/", label: "홈으로 가기" };
+}
+
+/** 꼬리 질문 화면 URL — courseId가 있으면 그대로 실어 해설로 돌아올 때 코스를 유지한다. */
+function getFollowUpHref(
+  quizId: number | null,
+  correct: boolean,
+  correctStreak: number,
+  followUpQuestionId: number,
+  courseId: number | undefined,
+) {
+  const params = new URLSearchParams({
+    quizId: String(quizId ?? ""),
+    correct: correct ? "true" : "false",
+    streak: String(correctStreak),
+    fq: String(followUpQuestionId),
+  });
+  if (courseId) {
+    params.set("courseId", String(courseId));
+  }
+
+  return `/follow-up?${params.toString()}`;
+}
 
 function getSummaryItems(lines: AnnotatedText[]) {
   const occurrences = new Map<string, number>();

@@ -1,7 +1,7 @@
 import { getEventListeners } from "node:events";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliAdapter } from "../src/adapters/types.js";
-import { BridgeApi } from "../src/api.js";
+import { BridgeApi, type BridgeJob } from "../src/api.js";
 import type { BridgeConfig } from "../src/config.js";
 import { runLoop, runOnce } from "../src/runner.js";
 import { FakeServer } from "./fixtures/fake-server.js";
@@ -69,6 +69,32 @@ describe("runOnce", () => {
     const resultBody = resultReq?.body as { cli: string; resultJson: string };
     expect(resultBody.cli).toBe("CLAUDE");
     expect(JSON.parse(resultBody.resultJson)).toHaveProperty("quizzes");
+  });
+
+  it("OUTLINE 잡도 CLI 실행 후 result를 제출한다", async () => {
+    const outlineJob: BridgeJob = {
+      jobId: 7,
+      kind: "OUTLINE",
+      prompt: "목차를 만들어라",
+      outputSchema: { type: "array" },
+    };
+    server.on("GET", "/api/v1/authoring/bridge/jobs/next", () => ({
+      status: 200,
+      body: {
+        code: "SUCCESS",
+        message: "",
+        data: outlineJob,
+      },
+    }));
+    server.on("POST", "/api/v1/authoring/bridge/jobs/7/result", () => ({
+      status: 200,
+      body: { code: "SUCCESS", message: "", data: { jobId: 7, status: "SUCCEEDED" } },
+    }));
+
+    const outcome = await runOnce({ api, adapter: fakeClaudeAdapter, logFlushMs: 10 });
+
+    expect(outcome).toBe("done");
+    expect(server.received.some((request) => request.path === "/api/v1/authoring/bridge/jobs/7/result")).toBe(true);
   });
 
   it("어댑터가 throw하면 fail을 제출한다", async () => {

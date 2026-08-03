@@ -1,6 +1,7 @@
 package studio.thumbsup.server.quiz.authoring;
 
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface QuizDraftRepository extends JpaRepository<QuizDraft, Long> {
 
     List<QuizDraft> findByStatusOrderByUpdatedAtDesc(QuizDraftStatus status);
+
+    List<QuizDraft> findByIdIn(Collection<Long> ids);
 
     boolean existsBySourceQuizIdAndStatus(Long sourceQuizId, QuizDraftStatus status);
 

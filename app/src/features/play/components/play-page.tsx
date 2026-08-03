@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { type ReviewContext, reviewInsightHref } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
+import { COURSE_LIST_PATH } from "@/features/play/course-params";
 import {
   comboVisibleFrom,
   difficultyLabels,
@@ -40,11 +41,13 @@ type AnswerDraft = boolean | string | string[] | null;
 const optionLabels = ["A", "B", "C", "D"];
 
 type PlayPageProps = {
+  /** 코스 탭에서 특정 코스로 진입했을 때만 실린다. 생략 시 서버 기본 코스. 복습 모드에선 쓰이지 않는다. */
+  courseId?: number;
   /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 문제를 슬롯 순서로 받아 진행한다. */
   review?: ReviewContext | null;
 };
 
-export function PlayPage({ review }: PlayPageProps) {
+export function PlayPage({ courseId, review }: PlayPageProps) {
   const router = useRouter();
   const [quiz, setQuiz] = useState<QuizNextResponse | null>(null);
   const [draft, setDraft] = useState<AnswerDraft>(null);
@@ -77,6 +80,8 @@ export function PlayPage({ review }: PlayPageProps) {
 
     return isReview ? shuffleChoices(choices) : choices;
   }, [quiz, isReview]);
+
+  const backDestination = getBackDestination(review, courseId);
 
   const totalCount = quiz?.totalCount ?? 0;
   const currentNumber = quiz?.slotOrder ?? 1;
@@ -128,7 +133,7 @@ export function PlayPage({ review }: PlayPageProps) {
         const nextQuiz =
           reviewStep !== null && reviewSlot !== null
             ? await getStepQuiz(reviewStep, reviewSlot)
-            : await getNextQuiz();
+            : await getNextQuiz(courseId);
         if (!ignore) {
           // 스트릭(연속 정답)은 일반 학습 세션에서만 추적 — 복습은 세션 진행으로 치지 않는다.
           if (reviewStep === null && nextQuiz.slotOrder === 1) {
@@ -158,7 +163,7 @@ export function PlayPage({ review }: PlayPageProps) {
       ignore = true;
       hintRequestGeneration.current += 1;
     };
-  }, [reloadKey, router, reviewStep, reviewSlot]);
+  }, [reloadKey, router, reviewStep, reviewSlot, courseId]);
 
   async function showHint() {
     if (!quiz || requestedHint || isHintLoading || isSubmitting || hasUsedRetry) {
@@ -238,6 +243,7 @@ export function PlayPage({ review }: PlayPageProps) {
           session,
           isLastQuestion,
           hasUsedRetry && result.isCorrect,
+          courseId,
         ),
       );
     } catch (submitError) {
@@ -259,8 +265,8 @@ export function PlayPage({ review }: PlayPageProps) {
           <div className="flex items-center justify-between gap-3">
             <a
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              aria-label={review ? "복습 목록으로 돌아가기" : "홈으로 돌아가기"}
-              href={review ? "/history" : "/"}
+              aria-label={backDestination.label}
+              href={backDestination.href}
             >
               ‹
             </a>
@@ -648,6 +654,22 @@ function maskBlankHint(hint: RetryHintBlank) {
 
 const getQuestionKindLabel = getPlayQuestionKindLabel;
 
+/** 상단 뒤로가기 버튼의 목적지 — 진입 경로(복습·코스 탭·홈)에 따라 돌아갈 곳이 다르다. */
+function getBackDestination(
+  review: ReviewContext | null | undefined,
+  courseId: number | undefined,
+) {
+  if (review) {
+    return { label: "복습 목록으로 돌아가기", href: "/history/review" };
+  }
+
+  if (courseId) {
+    return { label: "코스 목록으로 돌아가기", href: COURSE_LIST_PATH };
+  }
+
+  return { label: "홈으로 돌아가기", href: "/" };
+}
+
 function canSubmitAnswer(quiz: QuizNextResponse, draft: AnswerDraft) {
   if (quiz.type === "OX") {
     return typeof draft === "boolean";
@@ -690,6 +712,8 @@ function buildInsightHref(
   isLastQuestion: boolean,
   /** 재도전(이슈 63)으로 **맞힌** 경우만 true — 해설 화면의 특별 칭찬에만 쓰인다. */
   wasRetrySuccess: boolean,
+  /** 코스 탭에서 진입한 세션이면 실어서, 해설 화면의 "다음 문제"가 같은 코스로 이어지게 한다. */
+  courseId?: number,
 ) {
   const params = new URLSearchParams({
     quizId: String(quizId),
@@ -706,6 +730,10 @@ function buildInsightHref(
     params.set("c", String(session.correct));
     params.set("bc", String(session.bestCombo));
     params.set("a", String(session.answered));
+  }
+
+  if (courseId) {
+    params.set("courseId", String(courseId));
   }
 
   return `/insight?${params.toString()}`;

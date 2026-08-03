@@ -126,6 +126,33 @@ class QuizPersisterTest {
     }
 
     @Test
+    @DisplayName("문제 세트를 지정한 step_order와 예상 시간으로 저장한다")
+    void persists_at_explicit_step_order_and_estimated_minutes() {
+        GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
+
+        int stepOrder = persister().persistAt(1L, 42, "명시적 스텝", 7, generated);
+
+        assertThat(stepOrder).isEqualTo(42);
+        ArgumentCaptor<QuizStep> captor = ArgumentCaptor.forClass(QuizStep.class);
+        verify(quizStepRepository).save(captor.capture());
+        assertThat(captor.getValue().getStepOrder()).isEqualTo(42);
+        assertThat(captor.getValue().getTopic()).isEqualTo("명시적 스텝");
+        assertThat(captor.getValue().getEstimatedMinutes()).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("quiz에는 비어 있어도 quiz_step에 이미 있는 마지막 순서를 재사용하지 않는다")
+    void does_not_reuse_step_order_that_exists_only_in_quiz_step() {
+        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
+        given(quizStepRepository.findMaxStepOrder()).willReturn(Optional.of(7));
+        GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
+
+        int stepOrder = persister().persist(1L, "빈 문제 스텝", generated);
+
+        assertThat(stepOrder).isEqualTo(8);
+    }
+
+    @Test
     @DisplayName("스텝 주제(QuizStep)도 함께 저장한다")
     void saves_quiz_step_topic() {
         given(quizRepository.findMaxStepOrder()).willReturn(Optional.of(3));

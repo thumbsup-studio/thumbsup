@@ -102,5 +102,71 @@ class QuizStepRepositoryTest {
 
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("stepOrder=0 placeholder(quiz FK sentinel, #257)는 결과에서 제외한다")
+        void excludes_step_zero_placeholder() {
+            quizStepRepository.save(QuizStep.create(0, courseA, "(미배정)", 0));
+            quizStepRepository.save(QuizStep.create(1, courseA, "A1", 3));
+
+            List<QuizStep> result = quizStepRepository.findByCourseIdInOrderByCourseIdAscStepOrderAsc(List.of(courseA));
+
+            assertThat(result).extracting(QuizStep::getStepOrder).containsExactly(1);
+        }
+
+        @Test
+        @DisplayName("전체 quiz_step 중 가장 큰 step_order를 반환한다")
+        void finds_global_max_step_order() {
+            quizStepRepository.save(QuizStep.create(4, courseA, "A4", 3));
+            quizStepRepository.save(QuizStep.create(9, courseB, "B9", 3));
+
+            assertThat(quizStepRepository.findMaxStepOrder()).contains(9);
+        }
+    }
+
+    @Nested
+    @DisplayName("findMinStepOrderByCourseId")
+    class FindMinStepOrderByCourseId {
+
+        @Test
+        @DisplayName("코스의 실제 시작 스텝(stepOrder 최솟값)을 반환한다")
+        void returns_min_step_order() {
+            quizStepRepository.save(QuizStep.create(3, courseA, "A3", 3));
+            quizStepRepository.save(QuizStep.create(1, courseA, "A1", 3));
+
+            assertThat(quizStepRepository.findMinStepOrderByCourseId(courseA)).contains(1);
+        }
+
+        @Test
+        @DisplayName("stepOrder=0 placeholder(quiz FK sentinel, #257)는 시작 스텝 계산에서 제외한다")
+        void excludes_step_zero_placeholder() {
+            quizStepRepository.save(QuizStep.create(0, courseA, "(미배정)", 0));
+            quizStepRepository.save(QuizStep.create(1, courseA, "A1", 3));
+
+            assertThat(quizStepRepository.findMinStepOrderByCourseId(courseA)).contains(1);
+        }
+
+        @Test
+        @DisplayName("placeholder를 제외하면 실제 스텝이 없는 코스는 빈 값을 반환한다")
+        void returns_empty_when_only_placeholder_exists() {
+            quizStepRepository.save(QuizStep.create(0, courseA, "(미배정)", 0));
+
+            assertThat(quizStepRepository.findMinStepOrderByCourseId(courseA)).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("countByCourseId")
+    class CountByCourseId {
+
+        @Test
+        @DisplayName("stepOrder=0 placeholder(quiz FK sentinel, #257)를 제외한 실제 스텝 수를 반환한다")
+        void excludes_step_zero_placeholder() {
+            quizStepRepository.save(QuizStep.create(0, courseA, "(미배정)", 0));
+            quizStepRepository.save(QuizStep.create(1, courseA, "A1", 3));
+            quizStepRepository.save(QuizStep.create(2, courseA, "A2", 3));
+
+            assertThat(quizStepRepository.countByCourseId(courseA)).isEqualTo(2);
+        }
     }
 }

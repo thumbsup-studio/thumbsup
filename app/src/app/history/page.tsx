@@ -1,12 +1,12 @@
 import { RequireAuth } from "@/features/auth/require-auth";
-import { HistoryPage } from "@/features/history/components/history-page";
+import { HistoryGraphPage } from "@/features/history-graph/components/history-graph-page";
 
 export const dynamic = "force-dynamic";
 
 export default function History() {
   return (
     <RequireAuth>
-      <HistoryPage />
+      <HistoryGraphPage />
     </RequireAuth>
   );
 }

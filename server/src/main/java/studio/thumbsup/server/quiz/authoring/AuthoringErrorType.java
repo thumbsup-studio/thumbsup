@@ -15,7 +15,12 @@ public enum AuthoringErrorType implements ErrorType {
     AUTHORING_DRAFT_ALREADY_APPROVED(HttpStatus.CONFLICT, "이미 승인된 draft입니다."),
     AUTHORING_DRAFT_REVIEW_REQUIRED(HttpStatus.CONFLICT, "현재 draft가 최신 검증 규칙을 충족하지 않습니다. REVIEW 후 다시 승인해 주세요."),
     AUTHORING_JOB_NOT_CLAIMABLE(HttpStatus.CONFLICT, "결과를 제출할 수 있는 상태가 아닙니다."),
-    AUTHORING_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 코스입니다.");
+    AUTHORING_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 코스입니다."),
+    AUTHORING_OUTLINE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 뼈대입니다."),
+    AUTHORING_OUTLINE_STEP_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 뼈대 스텝입니다."),
+    AUTHORING_OUTLINE_PUBLISHED(HttpStatus.CONFLICT, "이미 발행된 뼈대는 수정할 수 없습니다."),
+    AUTHORING_OUTLINE_NOT_READY(HttpStatus.CONFLICT, "모든 스텝이 승인된 뒤 발행할 수 있습니다."),
+    AUTHORING_OUTLINE_STEP_FILLED(HttpStatus.CONFLICT, "이미 문제가 연결된 뼈대 스텝입니다.");
 
     private final HttpStatus status;
     private final String message;

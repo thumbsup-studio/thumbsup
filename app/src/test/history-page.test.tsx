@@ -32,6 +32,7 @@ describe("HistoryPage", () => {
 
     expect(await screen.findByText("STEP 2")).toBeInTheDocument();
     expect(screen.getByText("반복문 기초")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "지식 그래프" })).toHaveAttribute("href", "/history");
   });
 
   it("스텝을 누르면 전체 복습과 문제 번호별 재풀이 링크가 펼쳐진다", async () => {

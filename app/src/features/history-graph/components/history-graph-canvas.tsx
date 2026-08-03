@@ -217,16 +217,6 @@ function getStableGraphPositions(
   edges: HistoryGraphEdge[],
 ): Map<string, GraphPosition> {
   const positions = new Map<string, GraphPosition>();
-  const positionedNodes = nodes.filter((node) => node.position);
-
-  if (positionedNodes.length === nodes.length) {
-    for (const node of positionedNodes) {
-      positions.set(node.id, node.position ?? { x: 0, y: 0 });
-    }
-
-    return positions;
-  }
-
   const depths = getNodeDepths(nodes, edges);
   const depthGroups = new Map<number, HistoryGraphNode[]>();
   const fallbackDepth = Math.max(1, ...Array.from(depths.values())) + 1;

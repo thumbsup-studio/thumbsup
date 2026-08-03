@@ -62,13 +62,38 @@ class AuthoringJobControllerTest {
                     null,
                     OffsetDateTime.now(),
                     OffsetDateTime.now(),
-                    OffsetDateTime.now());
+                    OffsetDateTime.now(),
+                    null,
+                    null);
             given(jobService.getJobStatus(eq(1L))).willReturn(response);
 
             mockMvc.perform(get("/api/v1/authoring/jobs/1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.jobId").value(1))
-                    .andExpect(jsonPath("$.data.status").value("SUCCEEDED"));
+                    .andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+                    .andExpect(jsonPath("$.data.draftId").value(10));
+        }
+
+        @Test
+        @DisplayName("OUTLINE 잡 상태는 outlineId·outlineStepId를 포함한다")
+        void returns_outline_references() throws Exception {
+            JobStatusResponse response = new JobStatusResponse(
+                    2L,
+                    "OUTLINE",
+                    "SUCCEEDED",
+                    null,
+                    null,
+                    OffsetDateTime.now(),
+                    null,
+                    OffsetDateTime.now(),
+                    90L,
+                    null);
+            given(jobService.getJobStatus(eq(2L))).willReturn(response);
+
+            mockMvc.perform(get("/api/v1/authoring/jobs/2"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.kind").value("OUTLINE"))
+                    .andExpect(jsonPath("$.data.outlineId").value(90));
         }
     }
 }

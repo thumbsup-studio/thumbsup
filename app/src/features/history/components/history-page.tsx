@@ -81,15 +81,25 @@ export function HistoryPage() {
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-ink-muted">복습</p>
-          <h2 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
-            완료한 스텝을 다시 풀어보세요.
-          </h2>
-          {steps && steps.length > 0 ? (
-            <p className="mt-2 text-sm font-medium text-ink-muted">완료한 스텝 {steps.length}개</p>
-          ) : null}
-        </div>
+        <header className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold tracking-wide text-ink-muted">복습</p>
+            <h2 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
+              완료한 스텝을 다시 풀어보세요.
+            </h2>
+            {steps && steps.length > 0 ? (
+              <p className="mt-2 text-sm font-medium text-ink-muted">
+                완료한 스텝 {steps.length}개
+              </p>
+            ) : null}
+          </div>
+          <Link
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control bg-surface px-4 text-sm font-bold text-ink shadow-card"
+            href="/history"
+          >
+            지식 그래프
+          </Link>
+        </header>
 
         <p aria-live="polite" className="sr-only">
           {liveText}

@@ -10,16 +10,22 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.event.QuizStepCompletedEvent;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.common.response.CursorCodec;
+import studio.thumbsup.server.common.response.CursorMeta;
+import studio.thumbsup.server.common.response.CursorPage;
 import studio.thumbsup.server.common.time.TimeZones;
 import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
+import studio.thumbsup.server.quiz.dto.QuizAttemptHistoryResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizHintResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
@@ -193,10 +199,34 @@ public class QuizService {
         validateAccessible(userId, courseId, quiz.getStepOrder());
 
         boolean isCorrect = grade(quiz, request.answers());
-        quizAttemptRepository.save(QuizAttempt.create(quiz, userId, isCorrect));
+        String selectedAnswer = String.join(",", request.answers());
+        quizAttemptRepository.save(QuizAttempt.create(quiz, userId, isCorrect, selectedAnswer));
         advanceProgressIfStepCompleted(userId, courseId, quiz.getStepOrder());
 
         return new AnswerSubmitResponse(isCorrect, RetryHintBuilder.build(quiz, request.answers(), isCorrect));
+    }
+
+    /**
+     * 유저가 지금까지 제출한 모든 풀이 시도를 최신순으로 반환한다(#261, 풀이 기록 열람 #191).
+     * 같은 문제를 여러 번 풀었어도 시도마다 별도 항목으로 내려간다 — "최신만 vs 회차별"은
+     * API가 정하지 않고 클라이언트가 결정한다.
+     */
+    public CursorPage<QuizAttemptHistoryResponse> getAttemptHistory(Long userId, String cursor, int size) {
+        List<QuizAttempt> fetched = fetchAttemptPage(userId, cursor, size + 1); // hasNext 판별용으로 1개 더 조회
+        boolean hasNext = fetched.size() > size;
+        List<QuizAttempt> pageItems = hasNext ? fetched.subList(0, size) : fetched;
+        String nextCursor = pageItems.isEmpty()
+                ? null
+                : CursorCodec.encodeId(pageItems.get(pageItems.size() - 1).getId());
+        return new CursorPage<>(QuizAttemptHistoryResponse.from(pageItems), CursorMeta.of(hasNext, nextCursor));
+    }
+
+    private List<QuizAttempt> fetchAttemptPage(Long userId, String cursor, int fetchSize) {
+        Pageable pageable = PageRequest.of(0, fetchSize);
+        if (cursor == null) {
+            return quizAttemptRepository.findPageByUserId(userId, pageable);
+        }
+        return quizAttemptRepository.findPageByUserIdBeforeId(userId, CursorCodec.decodeId(cursor), pageable);
     }
 
     /** stepOrder가 속한 코스 id — quiz.step_order로부터 역으로 찾는다. 존재하지 않는 스텝이면 QUIZ_NOT_FOUND. */

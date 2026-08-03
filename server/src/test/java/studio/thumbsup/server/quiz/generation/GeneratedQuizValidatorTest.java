@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.oxQuizJson;
 import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.setJsonWithFirstQuiz;
+import static studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture.validSetJson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,48 @@ class GeneratedQuizValidatorTest {
             assertThatThrownBy(() -> validator.parse("이건 JSON이 아니에요"))
                     .isInstanceOf(QuizGenerationException.class)
                     .hasMessageContaining("파싱하지 못했습니다");
+        }
+    }
+
+    @Nested
+    @DisplayName("프리셋별 슬롯 검증은")
+    class PresetValidation {
+
+        @Test
+        @DisplayName("LIGHT_3에 3문제를 주면 통과한다")
+        void accepts_three_quizzes_for_light3() {
+            GeneratedQuizSet set = validator.parse(GeneratedQuizJsonFixture.light3SetJson());
+
+            assertThatCode(() -> validator.validateSet(set, QuizPreset.LIGHT_3)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("LIGHT_3에 5문제를 주면 개수 불일치로 거부한다")
+        void rejects_five_quizzes_for_light3() {
+            GeneratedQuizSet set = validator.parse(validSetJson());
+
+            assertThatThrownBy(() -> validator.validateSet(set, QuizPreset.LIGHT_3))
+                    .isInstanceOf(QuizGenerationException.class)
+                    .hasMessageContaining("3");
+        }
+
+        @Test
+        @DisplayName("DEEP_7의 5번 슬롯에 객관식이 아닌 문제가 오면 거부한다")
+        void rejects_wrong_type_at_deep7_slot5() {
+            GeneratedQuizSet set = validator.parse(GeneratedQuizJsonFixture.deep7SetWithWrongSlot5Json());
+
+            assertThatThrownBy(() -> validator.validateSet(set, QuizPreset.DEEP_7))
+                    .isInstanceOf(QuizGenerationException.class);
+        }
+
+        @Test
+        @DisplayName("무인자 오버로드는 BASIC_5와 똑같이 동작한다")
+        void legacy_overload_delegates_to_basic5() {
+            GeneratedQuizSet set = validator.parse(validSetJson());
+
+            assertThatCode(() -> validator.validateSet(set)).doesNotThrowAnyException();
+            assertThatThrownBy(() -> validator.validateSet(set, QuizPreset.LIGHT_3))
+                    .isInstanceOf(QuizGenerationException.class);
         }
     }
 

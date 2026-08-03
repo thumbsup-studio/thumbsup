@@ -1,7 +1,21 @@
 export { login, logout, refresh, signup } from "./auth";
 export { type ApiResponse, apiRequest, type RequestOptions } from "./client";
+export {
+  type CourseItem,
+  type CourseListResponse,
+  type CourseStep,
+  type CourseStepState,
+  getCourses,
+} from "./course";
 export { ApiError, ErrorCode, type ErrorCodeValue, type FieldError, NetworkError } from "./errors";
 export { sendFeedback } from "./feedback";
+export {
+  getHistoryGraph,
+  type HistoryGraphEdge,
+  type HistoryGraphNode,
+  type HistoryGraphRelatedStep,
+  type HistoryGraphResponse,
+} from "./history";
 export {
   type AnnotatedText,
   type AnswerSubmitResponse,

@@ -3,7 +3,10 @@ package studio.thumbsup.server.quiz;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,8 +15,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studio.thumbsup.server.common.response.ApiResponse;
+import studio.thumbsup.server.common.response.CursorPage;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitResponse;
+import studio.thumbsup.server.quiz.dto.QuizAttemptHistoryResponse;
 import studio.thumbsup.server.quiz.dto.QuizExplanationResponse;
 import studio.thumbsup.server.quiz.dto.QuizHintResponse;
 import studio.thumbsup.server.quiz.dto.QuizNextResponse;
@@ -24,6 +29,7 @@ import studio.thumbsup.server.quiz.dto.QuizStepHistoryResponse;
  * 엔티티는 만질 수 없다(ArchUnit 강제) — DTO 변환은 Service에서 끝난다.
  */
 @Tag(name = "Quiz", description = "퀴즈 문제")
+@Validated
 @RestController
 @RequestMapping("/api/v1/quizzes")
 public class QuizController {
@@ -119,5 +125,22 @@ public class QuizController {
             @PathVariable Long quizId,
             @Valid @RequestBody AnswerSubmitRequest request) {
         return ApiResponse.success(quizService.submitAnswer(userId, quizId, request));
+    }
+
+    @Operation(
+            summary = "내 풀이 기록 조회",
+            description = "유저가 지금까지 제출한 모든 문제 풀이 시도를 최신순(커서 페이지네이션)으로 반환한다. "
+                    + "같은 문제를 여러 번 풀었으면 시도마다 별도 항목으로 내려간다 — 최신만 보여줄지는 클라이언트가 결정한다")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "code=INVALID_INPUT — size가 1~100 범위를 벗어나거나 cursor가 잘못됨")
+    @GetMapping("/attempts")
+    public ApiResponse<QuizAttemptHistoryResponse> getAttemptHistory(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        CursorPage<QuizAttemptHistoryResponse> page = quizService.getAttemptHistory(userId, cursor, size);
+        return ApiResponse.success(page.data(), page.meta());
     }
 }

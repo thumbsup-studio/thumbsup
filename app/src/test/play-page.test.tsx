@@ -148,6 +148,34 @@ describe("PlayPage", () => {
     expect(screen.queryByText("1연속")).not.toBeInTheDocument();
   });
 
+  it("코스 탭에서 진입하면 courseId로 다음 문제를 요청하고 해설 화면까지 courseId를 이어 싣는다", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
+
+    render(<PlayPage courseId={2} />);
+
+    fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+    expect(getNextQuiz).toHaveBeenCalledWith(2);
+    await waitFor(() => {
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        "/insight?quizId=7&correct=true&streak=1&courseId=2",
+      );
+    });
+  });
+
+  it("코스 탭 진입 시 뒤로가기 버튼이 코스 목록으로 이어진다", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
+
+    render(<PlayPage courseId={2} />);
+
+    expect(await screen.findByRole("link", { name: "코스 목록으로 돌아가기" })).toHaveAttribute(
+      "href",
+      "/course",
+    );
+  });
+
   it("renders multiple choice choices and submits the selected choice id", async () => {
     vi.mocked(getNextQuiz).mockResolvedValue(multipleChoiceQuiz);
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: false, retryHint: null });

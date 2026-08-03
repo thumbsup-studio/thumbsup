@@ -34,10 +34,21 @@ class AuthoringDraftServiceTest {
     @Mock
     private QuizDraftRevisionRepository quizDraftRevisionRepository;
 
+    @Mock
+    private AuthoringOutlineRepository outlineRepository;
+
+    @Mock
+    private AuthoringOutlineStepRepository outlineStepRepository;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private AuthoringDraftService service() {
-        return new AuthoringDraftService(quizDraftRepository, quizDraftRevisionRepository, objectMapper);
+        return new AuthoringDraftService(
+                quizDraftRepository,
+                quizDraftRevisionRepository,
+                outlineRepository,
+                outlineStepRepository,
+                objectMapper);
     }
 
     private static GeneratedQuizSet.GeneratedQuiz sampleGeneratedQuiz() {
@@ -87,6 +98,35 @@ class AuthoringDraftServiceTest {
             assertThat(revisionCaptor.getValue().getJobId()).isEqualTo(10L);
 
             assertThat(job.getDraftId()).isEqualTo(100L);
+        }
+
+        @Test
+        @DisplayName("스텝 생성 잡은 OUTLINE_STEP draft를 만들고 뼈대 스텝에 연결한다")
+        void creates_outline_step_draft_and_links_step() {
+            GenerationJob job = GenerationJob.createStepGenerate(
+                    1L, 10L, "프로세스", studio.thumbsup.server.quiz.generation.QuizPreset.LIGHT_3, "prompt");
+            ReflectionTestUtils.setField(job, "id", 11L);
+            AuthoringOutlineStep step = AuthoringOutlineStep.create(1L, 1, "프로세스", null);
+            ReflectionTestUtils.setField(step, "id", 10L);
+            given(outlineStepRepository.findById(10L)).willReturn(Optional.of(step));
+            // draft를 붙이기 전에 뼈대 행을 잠근다 — 재생성 경로와 직렬화하기 위한 락이다.
+            given(outlineRepository.findByIdForUpdate(1L))
+                    .willReturn(Optional.of(AuthoringOutline.create("코스", "CS", "목차", 1L)));
+            given(quizDraftRepository.save(any())).willAnswer(invocation -> {
+                QuizDraft draft = invocation.getArgument(0);
+                ReflectionTestUtils.setField(draft, "id", 100L);
+                return draft;
+            });
+
+            QuizDraft draft = service()
+                    .createFromGenerate(
+                            job,
+                            new GeneratedQuizSet(List.of(sampleGeneratedQuiz())),
+                            studio.thumbsup.server.quiz.generation.QuizPreset.LIGHT_3);
+
+            assertThat(draft.getOrigin()).isEqualTo(QuizDraftOrigin.OUTLINE_STEP);
+            assertThat(draft.getPreset()).isEqualTo(studio.thumbsup.server.quiz.generation.QuizPreset.LIGHT_3);
+            assertThat(step.getDraftId()).isEqualTo(100L);
         }
     }
 

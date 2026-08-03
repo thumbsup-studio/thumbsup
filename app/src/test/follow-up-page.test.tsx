@@ -125,4 +125,67 @@ describe("FollowUpPage", () => {
       "/insight?quizId=100&correct=true&streak=2",
     );
   });
+
+  it("코스 탭에서 이어져 온 세션이면 해설로 돌아가기·건너뛰기 링크가 courseId를 유지한다", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    render(
+      <FollowUpPage
+        correct
+        correctStreak={2}
+        courseId={2}
+        followUpQuestionId={1}
+        questionIndex={0}
+        quizId={100}
+        session={mockPlaySession}
+      />,
+    );
+
+    expect(await screen.findByRole("link", { name: "해설로 돌아가기" })).toHaveAttribute(
+      "href",
+      "/insight?quizId=100&correct=true&streak=2&courseId=2",
+    );
+    expect(screen.getByRole("link", { name: "이 질문 건너뛰기" })).toHaveAttribute(
+      "href",
+      "/play?question=1&courseId=2",
+    );
+  });
+
+  it("코스 세션의 마지막 질문에서는 완료 버튼이 코스 목록으로 돌아가기로 표시된다", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    render(
+      <FollowUpPage
+        correct
+        correctStreak={2}
+        courseId={2}
+        followUpQuestionId={1}
+        questionIndex={mockPlaySession.questions.length - 1}
+        quizId={100}
+        session={mockPlaySession}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "답 확인하기" }));
+
+    const finishLink = screen.getByRole("link", { name: "코스 목록으로 돌아가기" });
+    expect(finishLink).toHaveAttribute("href", "/course");
+    expect(screen.queryByRole("link", { name: "홈으로 돌아가기" })).not.toBeInTheDocument();
+  });
+
+  it("기본(코스 없음) 세션의 마지막 질문에서는 완료 버튼이 홈으로 돌아가기로 표시된다", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    render(
+      <FollowUpPage
+        correct
+        correctStreak={2}
+        followUpQuestionId={1}
+        questionIndex={mockPlaySession.questions.length - 1}
+        quizId={100}
+        session={mockPlaySession}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "답 확인하기" }));
+
+    expect(screen.getByRole("link", { name: "홈으로 돌아가기" })).toHaveAttribute("href", "/");
+  });
 });
