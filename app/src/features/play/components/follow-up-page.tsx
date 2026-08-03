@@ -16,6 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchFollowUpQuestion } from "@/features/play/api";
 import { AnnotatedTooltipText } from "@/features/play/components/keyword-tooltip-text";
+import { COURSE_LIST_PATH, getInsightHref } from "@/features/play/course-params";
 import { getProgressPercent } from "@/features/play/play-logic";
 import type { FollowUpQuestionDetail, PlaySession, ServerDifficulty } from "@/features/play/types";
 import { ApiError } from "@/lib/api";
@@ -23,6 +24,8 @@ import { ApiError } from "@/lib/api";
 type FollowUpPageProps = {
   correct: boolean;
   correctStreak?: number;
+  /** 코스 탭에서 이어져 온 세션이면 실린다 — 해설로 돌아갈 때도 같은 코스를 유지한다. */
+  courseId?: number;
   followUpQuestionId: number;
   questionIndex: number;
   quizId: number | null;
@@ -45,6 +48,7 @@ const followUpDifficultyLabels: Record<ServerDifficulty, string> = {
 export function FollowUpPage({
   correct,
   correctStreak = 0,
+  courseId,
   followUpQuestionId,
   questionIndex,
   quizId,
@@ -55,11 +59,9 @@ export function FollowUpPage({
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const total = session.questions.length;
   const isLastQuestion = questionIndex === total - 1;
-  const nextHref = isLastQuestion ? "/" : `/play?question=${questionIndex + 1}`;
+  const nextHref = getNextHref(isLastQuestion, questionIndex, courseId);
   // 해설 화면은 quizId로 해설을 다시 불러오므로 왕복 내내 quizId를 유지한다(question 스킴 아님).
-  const insightHref = `/insight?quizId=${quizId ?? ""}&correct=${
-    correct ? "true" : "false"
-  }&streak=${correctStreak}`;
+  const insightHref = getInsightHref(quizId, correct, correctStreak, courseId);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -270,6 +272,20 @@ export function FollowUpPage({
       </div>
     </main>
   );
+}
+
+/** 다음 질문(또는 완료) 목적지 — 코스 탭에서 이어져 온 세션이면 courseId를 유지한다. */
+function getNextHref(isLastQuestion: boolean, questionIndex: number, courseId: number | undefined) {
+  if (isLastQuestion) {
+    return courseId ? COURSE_LIST_PATH : "/";
+  }
+
+  const params = new URLSearchParams({ question: String(questionIndex + 1) });
+  if (courseId) {
+    params.set("courseId", String(courseId));
+  }
+
+  return `/play?${params.toString()}`;
 }
 
 /** 로딩 중 골격 — 헤더+본문 카드 레이아웃을 본뜬다(home-screen.tsx의 HomeSkeleton 패턴 참고). */

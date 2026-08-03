@@ -125,4 +125,28 @@ describe("FollowUpPage", () => {
       "/insight?quizId=100&correct=true&streak=2",
     );
   });
+
+  it("코스 탭에서 이어져 온 세션이면 해설로 돌아가기·건너뛰기 링크가 courseId를 유지한다", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    render(
+      <FollowUpPage
+        correct
+        correctStreak={2}
+        courseId={2}
+        followUpQuestionId={1}
+        questionIndex={0}
+        quizId={100}
+        session={mockPlaySession}
+      />,
+    );
+
+    expect(await screen.findByRole("link", { name: "해설로 돌아가기" })).toHaveAttribute(
+      "href",
+      "/insight?quizId=100&correct=true&streak=2&courseId=2",
+    );
+    expect(screen.getByRole("link", { name: "이 질문 건너뛰기" })).toHaveAttribute(
+      "href",
+      "/play?question=1&courseId=2",
+    );
+  });
 });

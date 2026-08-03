@@ -153,6 +153,40 @@ describe("InsightPage", () => {
     expect(screen.queryByRole("link", { name: "다음 문제 풀기" })).not.toBeInTheDocument();
   });
 
+  it("코스 탭에서 진입한 세션이면 다음 문제·뒤로가기 링크가 같은 코스로 이어진다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
+
+    render(<InsightPage correct correctStreak={0} courseId={2} quizId={7} />);
+
+    expect(await screen.findByRole("link", { name: "다음 문제 풀기" })).toHaveAttribute(
+      "href",
+      "/play?courseId=2",
+    );
+    expect(screen.getByRole("link", { name: "문제로 돌아가기" })).toHaveAttribute(
+      "href",
+      "/play?courseId=2",
+    );
+    expect(screen.getByRole("link", { name: "꼬리 질문 풀기" })).toHaveAttribute(
+      "href",
+      "/follow-up?quizId=7&correct=true&streak=0&fq=10&courseId=2",
+    );
+  });
+
+  it("코스 탭에서 진입한 마지막 문제면 코스 목록으로 돌아간다", async () => {
+    vi.mocked(getQuizExplanation).mockResolvedValue({
+      ...explanation,
+      currentNumber: 5,
+      totalCount: 5,
+    });
+
+    render(<InsightPage correct correctStreak={0} courseId={2} quizId={7} />);
+
+    expect(await screen.findByRole("link", { name: "코스 목록으로 가기" })).toHaveAttribute(
+      "href",
+      "/course",
+    );
+  });
+
   it("renders every server summary line without hard-coding three items", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 

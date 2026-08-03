@@ -1,18 +1,21 @@
 import { redirect } from "next/navigation";
 import { FollowUpPage } from "@/features/play/components/follow-up-page";
+import { type CourseSearchParams, getInsightHref, parseCourseId } from "@/features/play/course-params";
 import { mockPlaySession } from "@/features/play/mock-play-session";
 import { clampQuestionIndex } from "@/features/play/play-logic";
 
 export const dynamic = "force-dynamic";
 
 type FollowUpRouteProps = {
-  searchParams?: Promise<{
-    correct?: string;
-    fq?: string;
-    question?: string;
-    quizId?: string;
-    streak?: string;
-  }>;
+  searchParams?: Promise<
+    {
+      correct?: string;
+      fq?: string;
+      question?: string;
+      quizId?: string;
+      streak?: string;
+    } & CourseSearchParams
+  >;
 };
 
 export default async function FollowUp({ searchParams }: FollowUpRouteProps) {
@@ -30,18 +33,18 @@ export default async function FollowUp({ searchParams }: FollowUpRouteProps) {
   // 소수는 다른 퀴즈로 절삭되지 않도록 양의 정수만 허용한다.
   const rawQuizId = Number(params?.quizId);
   const quizId = Number.isInteger(rawQuizId) && rawQuizId > 0 ? rawQuizId : null;
+  const courseId = parseCourseId(params?.courseId);
 
   // 유효하지 않은 꼬리질문 id로 직접 진입하면 해설로 돌려보낸다(방어).
   if (!Number.isFinite(followUpQuestionId) || followUpQuestionId <= 0) {
-    redirect(
-      `/insight?quizId=${quizId ?? ""}&correct=${correct ? "true" : "false"}&streak=${correctStreak}`,
-    );
+    redirect(getInsightHref(quizId, correct, correctStreak, courseId));
   }
 
   return (
     <FollowUpPage
       correct={correct}
       correctStreak={correctStreak}
+      courseId={courseId}
       followUpQuestionId={followUpQuestionId}
       questionIndex={questionIndex}
       quizId={quizId}
