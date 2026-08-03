@@ -12,8 +12,9 @@ import lombok.NoArgsConstructor;
 import studio.thumbsup.server.common.entity.BaseEntity;
 
 /**
- * 학습 코스 엔티티 — MVP는 코스 1개("CS 기초")뿐이라 유저의 관심 코스 선택 같은 기능은 없다.
- * 홈은 항상 가장 먼저 생성된 코스(id 최솟값)를 "기본 코스"로 취급한다.
+ * 학습 코스 엔티티 — 유저의 명시적 구독 없이 진행 기록({@code QuizProgress}) 존재 여부로 "학습 중"을
+ * 판정한다(#240). 홈은 진행 기록이 없는 신규 유저에게만 가장 먼저 생성된 코스(id 최솟값)를 기본
+ * 코스로 보여준다.
  */
 @Getter
 @Entity

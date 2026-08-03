@@ -8,7 +8,12 @@ import studio.thumbsup.server.quiz.course.Course;
 public final class QuizFixture {
 
     public static Course course(Long id) {
-        Course course = Course.create("CS 기초", "CS");
+        return course(id, "CS 기초");
+    }
+
+    /** 홈 코스 목록(#240)처럼 여러 코스를 구분해야 하는 테스트용. */
+    public static Course course(Long id, String title) {
+        Course course = Course.create(title, "CS");
         ReflectionTestUtils.setField(course, "id", id);
         return course;
     }
