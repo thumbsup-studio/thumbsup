@@ -4,12 +4,13 @@ export type HomeCourse = {
   subtitle: string;
   progress: number;
   total: number;
+  /** 완주 여부 — 마지막 스텝 풀 차례와 구분하기 위한 서버 플래그. */
+  completed: boolean;
   durationLabel: string;
 };
 
 export type HomeData = {
   streakDays: number;
-  todayCompleted: boolean;
   character: {
     name: string;
     fullness: number;

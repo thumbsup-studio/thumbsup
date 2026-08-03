@@ -5,6 +5,8 @@
   --color-primary: #2f63ff; /* CTA·선택 상태 */
   --color-primary-fg: #ffffff; /* primary 위 텍스트 */
   --color-accent: #f5923e; /* 스트릭·긴급 */
+  --color-badge: #ffce31; /* 완주 배지 골드 배경 */
+  --color-badge-fg: #4a3200; /* 완주 배지 위 텍스트 — 골드 배경에서 대비 4.5:1↑ */
   /* OX 시맨틱 (quiz-types-board.png) */
   --color-ox-o: #3fc27c;
   --color-ox-x: #ee6868;
@@ -142,6 +144,15 @@ body {
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/* 가로 스크롤 캐러셀에서 스크롤바를 숨긴다 — 위치는 점 인디케이터·화살표가 대신 알려준다. */
+@utility scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /*

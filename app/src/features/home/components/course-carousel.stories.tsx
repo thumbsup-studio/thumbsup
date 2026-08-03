@@ -12,6 +12,7 @@ const osCourse: HomeCourse = {
   subtitle: "프로세스와 스레드",
   progress: 3,
   total: 8,
+  completed: false,
   durationLabel: "3분이면 끝나요",
 };
 
@@ -21,6 +22,7 @@ const designPatternCourse: HomeCourse = {
   subtitle: "팩토리 메서드와 추상 팩토리",
   progress: 1,
   total: 2,
+  completed: false,
   durationLabel: "3분이면 끝나요",
 };
 
@@ -30,13 +32,25 @@ const networkCourse: HomeCourse = {
   subtitle: "TCP 3-way handshake",
   progress: 0,
   total: 10,
+  completed: false,
   durationLabel: "5분이면 끝나요",
+};
+
+/** 완주 코스 — 칩·"스텝 완주" 문구·"다시 풀기" CTA로 진행중과 구분된다. */
+const completedCourse: HomeCourse = {
+  courseId: 4,
+  title: "자료구조",
+  subtitle: "해시 테이블",
+  progress: 4,
+  total: 5,
+  completed: true,
+  durationLabel: "3분이면 끝나요",
 };
 
 const meta: Meta<typeof CourseCarousel> = {
   title: "Home/CourseCarousel",
   component: CourseCarousel,
-  args: { courses: [designPatternCourse, osCourse, networkCourse], completed: false },
+  args: { courses: [designPatternCourse, osCourse, networkCourse] },
   decorators: [
     (Story) => (
       <div className="mx-auto w-full max-w-md">
@@ -53,6 +67,6 @@ export const SingleCourse: StoryObj<typeof CourseCarousel> = {
   args: { courses: [osCourse] },
 };
 
-export const TodayCompleted: StoryObj<typeof CourseCarousel> = {
-  args: { completed: true },
+export const WithCompletedCourse: StoryObj<typeof CourseCarousel> = {
+  args: { courses: [completedCourse, osCourse] },
 };

@@ -10,7 +10,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 
 const baseData: HomeData = {
   streakDays: 12,
-  todayCompleted: false,
   character: {
     name: "보리",
     fullness: 62,
@@ -22,6 +21,7 @@ const baseData: HomeData = {
       subtitle: "프로세스와 스레드",
       progress: 3,
       total: 8,
+      completed: false,
       durationLabel: "3분이면 끝나요",
     },
   ],
@@ -33,6 +33,7 @@ const secondCourse: HomeData["courses"][number] = {
   subtitle: "팩토리 메서드와 추상 팩토리",
   progress: 1,
   total: 2,
+  completed: false,
   durationLabel: "3분이면 끝나요",
 };
 
@@ -75,10 +76,12 @@ describe("HomePage", () => {
       </AppToastProvider>,
     );
 
+    expect(screen.getByRole("heading", { name: "최근 학습 코스" })).toBeInTheDocument();
     expect(screen.getByText("운영체제")).toBeInTheDocument();
     expect(screen.getByText("프로세스와 스레드")).toBeInTheDocument();
-    expect(screen.getByText("총 8개 중 3개 코스 진행중")).toBeInTheDocument();
-    expect(screen.getByText("코스 진행중")).toBeInTheDocument();
+    // progress(완료 3) + 1 = 4번째 스텝을 풀 차례.
+    expect(screen.getByText("총 8개 스텝 중 4번째 진행중")).toBeInTheDocument();
+    expect(screen.getByText("스텝 진행중")).toBeInTheDocument();
     expect(screen.getByText("3분이면 끝나요")).toBeInTheDocument();
   });
 
@@ -109,22 +112,6 @@ describe("HomePage", () => {
     expect(pushMock).toHaveBeenCalledWith("/profile");
   });
 
-  it("keeps the start link and swaps the chip when today's learning is already done", () => {
-    render(
-      <AppToastProvider>
-        <HomePage
-          data={{ ...baseData, todayCompleted: true }}
-          now={new Date("2026-07-08T08:00:00+09:00")}
-        />
-      </AppToastProvider>,
-    );
-
-    // 오늘 학습을 마쳐도 추가 풀이를 막지 않는다 — CTA는 유지하고 칩만 완료 상태로 바뀐다(#23).
-    expect(screen.getByRole("link", { name: "시작하기" })).toBeInTheDocument();
-    expect(screen.getByText("오늘 학습 완료")).toBeInTheDocument();
-    expect(screen.queryByText("오늘의 학습")).not.toBeInTheDocument();
-  });
-
   it("renders every course as a carousel slide with a position indicator", () => {
     render(
       <AppToastProvider>
@@ -141,7 +128,88 @@ describe("HomePage", () => {
     expect(links[1]).toHaveAttribute("href", "/play?courseId=1");
     expect(screen.getByText("디자인 패턴")).toBeInTheDocument();
     expect(screen.getByText("운영체제")).toBeInTheDocument();
-    expect(screen.getByText("2개 코스 중 1번째")).toBeInTheDocument();
+    // 위치 문구는 aria-live로 감싸 스와이프 전환도 스크린리더에 안내한다(TC-23-27).
+    const indicator = screen.getByText("2개 코스 중 1번째");
+    expect(indicator).toBeInTheDocument();
+    expect(indicator.closest("p")).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("moves between slides with the arrow buttons (TC-23-26)", () => {
+    const originalScrollTo = Element.prototype.scrollTo;
+    const scrollToMock = vi.fn();
+    Element.prototype.scrollTo = scrollToMock as unknown as typeof Element.prototype.scrollTo;
+    try {
+      render(
+        <AppToastProvider>
+          <HomePage
+            data={{ ...baseData, courses: [secondCourse, ...baseData.courses] }}
+            now={new Date("2026-07-08T08:00:00+09:00")}
+          />
+        </AppToastProvider>,
+      );
+
+      // 첫 슬라이드에서는 이전 버튼이 비활성 — 스와이프 없이 버튼만으로도 전환 가능해야 한다.
+      expect(screen.getByRole("button", { name: "이전 코스" })).toBeDisabled();
+
+      // offsetLeft는 positioned 조상(여기선 문서) 기준이라 리스트 자신의 페이지 좌표가 섞인다.
+      // 가운데 정렬 레이아웃을 흉내 내 리스트 100px, 두 번째 슬라이드 512px로 두면
+      // 스크롤 목표는 리스트 기준 상대값인 412px이어야 한다.
+      const slides = screen.getAllByRole("listitem");
+      const list = slides[0]?.parentElement;
+      if (!list || !slides[1]) {
+        throw new Error("carousel list not rendered");
+      }
+      Object.defineProperty(list, "offsetLeft", { value: 100 });
+      Object.defineProperty(slides[1], "offsetLeft", { value: 512 });
+
+      fireEvent.click(screen.getByRole("button", { name: "다음 코스" }));
+      expect(scrollToMock).toHaveBeenCalledWith({ left: 412 });
+    } finally {
+      Element.prototype.scrollTo = originalScrollTo;
+    }
+  });
+
+  it("marks a completed course with the chip and swaps the CTA and progress label", () => {
+    const completedCourse = {
+      ...baseData.courses[0],
+      progress: 7,
+      total: 8,
+      completed: true,
+    } as HomeData["courses"][number];
+    render(
+      <AppToastProvider>
+        <HomePage
+          data={{ ...baseData, courses: [completedCourse] }}
+          now={new Date("2026-07-08T08:00:00+09:00")}
+        />
+      </AppToastProvider>,
+    );
+
+    // 완주는 "마지막 스텝 풀 차례"(8/8 진행중)와 다르게 칩·문구로 구분된다.
+    expect(screen.getByText("완주")).toBeInTheDocument();
+    expect(screen.getByText("스텝 완주")).toBeInTheDocument();
+    expect(screen.getByText("총 8개 스텝 완주")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "다시 풀기" })).toBeInTheDocument();
+    expect(screen.queryByText("스텝 진행중")).not.toBeInTheDocument();
+  });
+
+  it("shows the list rule tooltip on hover and hides it on leave", () => {
+    render(
+      <AppToastProvider>
+        <HomePage data={baseData} now={new Date("2026-07-08T08:00:00+09:00")} />
+      </AppToastProvider>,
+    );
+
+    const infoButton = screen.getByRole("button", { name: "최근 학습 코스 안내" });
+    fireEvent.mouseEnter(infoButton);
+    expect(screen.getByText(/최대 10개까지 보여드려요/)).toBeInTheDocument();
+    expect(screen.getByText(/하단의 코스 탭에서 볼 수 있어요/)).toBeInTheDocument();
+    fireEvent.mouseLeave(infoButton);
+    expect(screen.queryByText(/최대 10개까지 보여드려요/)).not.toBeInTheDocument();
+
+    // 터치 환경은 호버가 없으므로 탭(클릭) 토글로도 열린다.
+    fireEvent.click(infoButton);
+    expect(screen.getByText(/최대 10개까지 보여드려요/)).toBeInTheDocument();
   });
 
   it("renders a single course without the position indicator", () => {

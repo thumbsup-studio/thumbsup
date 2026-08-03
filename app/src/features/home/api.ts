@@ -28,6 +28,7 @@ type HomeResponse = {
     completedCount: number;
     totalCount: number;
     estimatedMinutes: number;
+    completed: boolean;
   }>;
 };
 
@@ -39,7 +40,6 @@ type MascotResponse = {
 function toHomeData(home: HomeResponse, mascot: MascotResponse): HomeData {
   return {
     streakDays: home.streakDays,
-    todayCompleted: home.todayCompleted,
     character: mascot,
     courses: home.courses.map((course) => ({
       courseId: course.courseId,
@@ -47,6 +47,7 @@ function toHomeData(home: HomeResponse, mascot: MascotResponse): HomeData {
       subtitle: course.unitTitle,
       progress: course.completedCount,
       total: course.totalCount,
+      completed: course.completed,
       durationLabel: formatDuration(course.estimatedMinutes),
     })),
   };
