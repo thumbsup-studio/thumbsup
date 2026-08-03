@@ -31,7 +31,7 @@ const tabIcons: Record<TabKey, { empty: string; full: string }> = {
 const tabItems: { key: TabKey; label: string }[] = [
   { key: "home", label: "홈" },
   { key: "history", label: "히스토리" },
-  // { key: "course", label: "코스" },
+  { key: "course", label: "코스" },
   { key: "profile", label: "프로필" },
 ];
 
