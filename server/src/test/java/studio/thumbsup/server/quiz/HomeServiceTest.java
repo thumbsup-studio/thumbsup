@@ -112,6 +112,8 @@ class HomeServiceTest {
             assertThat(item.order()).isEqualTo(6);
             assertThat(item.completedCount()).isEqualTo(2);
             assertThat(item.totalCount()).isEqualTo(3);
+            // 마지막 스텝을 풀 차례일 뿐 아직 완주가 아니다 — 완주(커서 초과)와 구분돼야 한다.
+            assertThat(item.completed()).isFalse();
         }
 
         @Test
@@ -151,6 +153,8 @@ class HomeServiceTest {
 
             assertThat(response.courses().get(0).order()).isEqualTo(3);
             assertThat(response.courses().get(0).unitTitle()).isEqualTo("A3");
+            // 커서(99)가 마지막 스텝(3)을 넘었으므로 완주로 표시된다.
+            assertThat(response.courses().get(0).completed()).isTrue();
         }
 
         @Test

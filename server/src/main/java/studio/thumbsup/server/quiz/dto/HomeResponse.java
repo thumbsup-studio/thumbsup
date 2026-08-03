@@ -25,14 +25,19 @@ public record HomeResponse(int streakDays, int points, boolean todayCompleted, L
             int order,
             int completedCount,
             int totalCount,
-            int estimatedMinutes) {
+            int estimatedMinutes,
+            boolean completed) {
 
         /**
          * {@code completedCount}는 정렬된 코스 스텝 목록에서 현재 스텝 앞에 있는 스텝 수다 — stepOrder는
          * 코스 무관 전역 순번인 데다 중간 스텝 삭제로 코스 안에서도 비연속일 수 있어(예: 1, 3만 남은 코스),
          * 번호 뺄셈으로는 완료 수를 구할 수 없다. 목록 인덱스는 호출부(HomeService)가 계산해 넘긴다.
+         *
+         * <p>{@code completed}는 완주 여부다 — 완주 시 커서가 마지막 스텝으로 클램프되면
+         * completedCount만으로는 "마지막 스텝 풀 차례"와 완주를 구분할 수 없어 별도 필드로 내린다.
          */
-        public static CourseLearning of(Course course, QuizStep current, int completedCount, int totalCount) {
+        public static CourseLearning of(
+                Course course, QuizStep current, int completedCount, int totalCount, boolean completed) {
             return new CourseLearning(
                     course.getId(),
                     course.getTitle(),
@@ -41,7 +46,8 @@ public record HomeResponse(int streakDays, int points, boolean todayCompleted, L
                     current.getStepOrder(),
                     completedCount,
                     totalCount,
-                    current.getEstimatedMinutes());
+                    current.getEstimatedMinutes(),
+                    completed);
         }
     }
 }
