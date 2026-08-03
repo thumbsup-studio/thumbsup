@@ -80,18 +80,20 @@ export function HistoryGraphPage() {
           graph.nodes.some((node) => node.id === current) ? current : (graph.nodes[0]?.id ?? null),
         );
       } catch (loadError) {
+        if (ignore) {
+          return;
+        }
+
         if (isUnauthorized(loadError)) {
           router.replace("/login");
           return;
         }
 
-        if (!ignore) {
-          setLoadState({
-            status: "error",
-            graph: null,
-            message: "지식 그래프를 불러오지 못했어요.",
-          });
-        }
+        setLoadState({
+          status: "error",
+          graph: null,
+          message: "지식 그래프를 불러오지 못했어요.",
+        });
       }
     }
 
@@ -192,6 +194,8 @@ export function HistoryGraphPage() {
 }
 
 function NodeDetailCard({ node }: { node: HistoryGraphNode }) {
+  const descriptions = getDescriptionItems(node.id, node.description);
+
   return (
     <section className="rounded-card border border-border bg-surface p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
@@ -205,11 +209,8 @@ function NodeDetailCard({ node }: { node: HistoryGraphNode }) {
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
-        {node.description.map((description) => (
-          <p
-            className="break-keep text-sm font-medium leading-6 text-ink-muted"
-            key={`${node.id}-${description}`}
-          >
+        {descriptions.map(({ description, key }) => (
+          <p className="break-keep text-sm font-medium leading-6 text-ink-muted" key={key}>
             {description}
           </p>
         ))}
@@ -236,6 +237,20 @@ function NodeDetailCard({ node }: { node: HistoryGraphNode }) {
       </div>
     </section>
   );
+}
+
+function getDescriptionItems(nodeId: string, descriptions: string[]) {
+  const seen = new Map<string, number>();
+
+  return descriptions.map((description) => {
+    const occurrence = seen.get(description) ?? 0;
+    seen.set(description, occurrence + 1);
+
+    return {
+      description,
+      key: `${nodeId}-${description}-${occurrence}`,
+    };
+  });
 }
 
 function HistoryGraphSkeleton() {
