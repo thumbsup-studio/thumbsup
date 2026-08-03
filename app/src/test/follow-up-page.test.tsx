@@ -149,4 +149,43 @@ describe("FollowUpPage", () => {
       "/play?question=1&courseId=2",
     );
   });
+
+  it("코스 세션의 마지막 질문에서는 완료 버튼이 코스 목록으로 돌아가기로 표시된다", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    render(
+      <FollowUpPage
+        correct
+        correctStreak={2}
+        courseId={2}
+        followUpQuestionId={1}
+        questionIndex={mockPlaySession.questions.length - 1}
+        quizId={100}
+        session={mockPlaySession}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "답 확인하기" }));
+
+    const finishLink = screen.getByRole("link", { name: "코스 목록으로 돌아가기" });
+    expect(finishLink).toHaveAttribute("href", "/course");
+    expect(screen.queryByRole("link", { name: "홈으로 돌아가기" })).not.toBeInTheDocument();
+  });
+
+  it("기본(코스 없음) 세션의 마지막 질문에서는 완료 버튼이 홈으로 돌아가기로 표시된다", async () => {
+    fetchFollowUpQuestion.mockResolvedValue(detail);
+    render(
+      <FollowUpPage
+        correct
+        correctStreak={2}
+        followUpQuestionId={1}
+        questionIndex={mockPlaySession.questions.length - 1}
+        quizId={100}
+        session={mockPlaySession}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "답 확인하기" }));
+
+    expect(screen.getByRole("link", { name: "홈으로 돌아가기" })).toHaveAttribute("href", "/");
+  });
 });

@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { FollowUpPage } from "@/features/play/components/follow-up-page";
-import { type CourseSearchParams, getInsightHref, parseCourseId } from "@/features/play/course-params";
+import {
+  type CourseSearchParams,
+  getInsightHref,
+  parseCourseId,
+} from "@/features/play/course-params";
 import { mockPlaySession } from "@/features/play/mock-play-session";
 import { clampQuestionIndex } from "@/features/play/play-logic";
 

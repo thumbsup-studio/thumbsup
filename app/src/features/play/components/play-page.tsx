@@ -614,7 +614,10 @@ function maskBlankHint(hint: RetryHintBlank) {
 const getQuestionKindLabel = getPlayQuestionKindLabel;
 
 /** 상단 뒤로가기 버튼의 목적지 — 진입 경로(복습·코스 탭·홈)에 따라 돌아갈 곳이 다르다. */
-function getBackDestination(review: ReviewContext | null | undefined, courseId: number | undefined) {
+function getBackDestination(
+  review: ReviewContext | null | undefined,
+  courseId: number | undefined,
+) {
   if (review) {
     return { label: "복습 목록으로 돌아가기", href: "/history/review" };
   }

@@ -60,6 +60,7 @@ export function FollowUpPage({
   const total = session.questions.length;
   const isLastQuestion = questionIndex === total - 1;
   const nextHref = getNextHref(isLastQuestion, questionIndex, courseId);
+  const nextLabel = getNextLabel(isLastQuestion, courseId);
   // 해설 화면은 quizId로 해설을 다시 불러오므로 왕복 내내 quizId를 유지한다(question 스킴 아님).
   const insightHref = getInsightHref(quizId, correct, correctStreak, courseId);
 
@@ -246,7 +247,7 @@ export function FollowUpPage({
                   className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
                   href={nextHref}
                 >
-                  {isLastQuestion ? "홈으로 돌아가기" : "다음 문제로"}
+                  {nextLabel}
                   <ArrowRightIcon className="h-5 w-5" />
                 </a>
               </>
@@ -286,6 +287,15 @@ function getNextHref(isLastQuestion: boolean, questionIndex: number, courseId: n
   }
 
   return `/play?${params.toString()}`;
+}
+
+/** 완료 버튼 레이블 — getNextHref의 목적지(코스 목록 vs 홈)와 짝을 맞춘다. */
+function getNextLabel(isLastQuestion: boolean, courseId: number | undefined) {
+  if (!isLastQuestion) {
+    return "다음 문제로";
+  }
+
+  return courseId ? "코스 목록으로 돌아가기" : "홈으로 돌아가기";
 }
 
 /** 로딩 중 골격 — 헤더+본문 카드 레이아웃을 본뜬다(home-screen.tsx의 HomeSkeleton 패턴 참고). */

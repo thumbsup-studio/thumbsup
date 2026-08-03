@@ -14,7 +14,7 @@ export const COURSE_LIST_PATH = "/course";
 export function parseCourseId(value: string | undefined): number | undefined {
   const parsed = Number(value);
 
-  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : undefined;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 /** 다음 문제 진입 경로 — courseId가 있으면 그 코스로, 없으면 기본 코스로(서버가 처리). */
