@@ -154,19 +154,4 @@ class QuizStepRepositoryTest {
             assertThat(quizStepRepository.findMinStepOrderByCourseId(courseA)).isEmpty();
         }
     }
-
-    @Nested
-    @DisplayName("countByCourseId")
-    class CountByCourseId {
-
-        @Test
-        @DisplayName("stepOrder=0 placeholder(quiz FK sentinel, #257)를 제외한 실제 스텝 수를 반환한다")
-        void excludes_step_zero_placeholder() {
-            quizStepRepository.save(QuizStep.create(0, courseA, "(미배정)", 0));
-            quizStepRepository.save(QuizStep.create(1, courseA, "A1", 3));
-            quizStepRepository.save(QuizStep.create(2, courseA, "A2", 3));
-
-            assertThat(quizStepRepository.countByCourseId(courseA)).isEqualTo(2);
-        }
-    }
 }

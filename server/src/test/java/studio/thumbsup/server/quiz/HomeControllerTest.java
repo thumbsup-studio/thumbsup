@@ -1,7 +1,6 @@
 package studio.thumbsup.server.quiz;
 
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -61,30 +60,37 @@ class HomeControllerTest {
     class GetHome {
 
         @Test
-        @DisplayName("성공하면 200과 스트릭·포인트·오늘의 학습 데이터를 반환한다")
+        @DisplayName("성공하면 200과 스트릭·포인트·학습 중인 코스 목록을 반환한다")
         void returns_200_with_home_data_on_success() throws Exception {
             authenticateAs(7L);
             HomeResponse response = new HomeResponse(
-                    5, 320, true, new HomeResponse.TodayLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3));
-            given(homeService.getHome(eq(7L), isNull())).willReturn(response);
+                    5,
+                    320,
+                    true,
+                    List.of(
+                            new HomeResponse.CourseLearning(2L, "네트워크", 5L, "TCP", 5, 1, 3, 3),
+                            new HomeResponse.CourseLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3)));
+            given(homeService.getHome(eq(7L))).willReturn(response);
 
             mockMvc.perform(get("/api/v1/home"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
                     .andExpect(jsonPath("$.data.streakDays").value(5))
                     .andExpect(jsonPath("$.data.points").value(320))
-                    .andExpect(jsonPath("$.data.today.courseTitle").value("CS 기초"))
-                    .andExpect(jsonPath("$.data.today.unitTitle").value("스택과 큐"))
-                    .andExpect(jsonPath("$.data.today.totalCount").value(3))
+                    .andExpect(jsonPath("$.data.courses.length()").value(2))
+                    .andExpect(jsonPath("$.data.courses[0].courseId").value(2))
+                    .andExpect(jsonPath("$.data.courses[0].courseTitle").value("네트워크"))
+                    .andExpect(jsonPath("$.data.courses[0].unitTitle").value("TCP"))
+                    .andExpect(jsonPath("$.data.courses[0].totalCount").value(3))
+                    .andExpect(jsonPath("$.data.courses[1].courseId").value(1))
                     .andExpect(jsonPath("$.data.todayCompleted").value(true));
         }
 
         @Test
-        @DisplayName("기본 코스가 준비되지 않았으면 404 COURSE_NOT_FOUND를 반환한다")
+        @DisplayName("코스가 준비되지 않았으면 404 COURSE_NOT_FOUND를 반환한다")
         void returns_404_when_course_not_found() throws Exception {
             authenticateAs(7L);
-            given(homeService.getHome(eq(7L), isNull()))
-                    .willThrow(new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
+            given(homeService.getHome(eq(7L))).willThrow(new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
 
             mockMvc.perform(get("/api/v1/home"))
                     .andExpect(status().isNotFound())
