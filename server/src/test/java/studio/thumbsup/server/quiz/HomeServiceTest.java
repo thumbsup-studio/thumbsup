@@ -95,7 +95,7 @@ class HomeServiceTest {
         }
 
         @Test
-        @DisplayName("완료한 스텝 수는 커서-시작스텝, 전체 스텝 수는 그 코스의 스텝 개수로 계산한다")
+        @DisplayName("완료한 스텝 수는 정렬된 스텝 목록에서 현재 스텝 앞의 개수, 전체 스텝 수는 그 코스의 스텝 개수로 계산한다")
         void computes_completed_and_total_counts_per_course() {
             homeService = service();
             given(quizProgressRepository.findTop10ByUserIdOrderByUpdatedAtDescIdDesc(USER_ID))
@@ -112,6 +112,27 @@ class HomeServiceTest {
             assertThat(item.order()).isEqualTo(6);
             assertThat(item.completedCount()).isEqualTo(2);
             assertThat(item.totalCount()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("스텝 번호가 비연속인 코스(중간 스텝 삭제)에서도 완료 수는 실제 앞 스텝 개수로 계산한다")
+        void computes_completed_count_by_position_when_step_orders_are_non_contiguous() {
+            homeService = service();
+            given(quizProgressRepository.findTop10ByUserIdOrderByUpdatedAtDescIdDesc(USER_ID))
+                    .willReturn(List.of(progressAt(COURSE_A, 3)));
+            given(courseRepository.findAllById(List.of(COURSE_A)))
+                    .willReturn(List.of(QuizFixture.course(COURSE_A, "코스A")));
+            given(quizStepRepository.findByCourseIdInOrderByCourseIdAscStepOrderAsc(List.of(COURSE_A)))
+                    .willReturn(List.of(step(1, COURSE_A, "A1"), step(3, COURSE_A, "A3")));
+            given(userProgressPort.getSnapshot(USER_ID, TODAY_KST)).willReturn(UserProgressSnapshot.empty());
+
+            HomeResponse response = homeService.getHome(USER_ID);
+
+            // 번호 뺄셈(3-1=2)이면 2/2로 완주처럼 보인다 — 마지막 스텝에 머무는 동안은 완료 수 < 전체여야 한다.
+            HomeResponse.CourseLearning item = response.courses().get(0);
+            assertThat(item.completedCount()).isEqualTo(1);
+            assertThat(item.totalCount()).isEqualTo(2);
+            assertThat(item.completedCount()).isLessThan(item.totalCount());
         }
 
         @Test

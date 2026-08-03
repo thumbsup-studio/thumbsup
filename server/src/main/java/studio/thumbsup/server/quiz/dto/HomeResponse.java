@@ -28,18 +28,18 @@ public record HomeResponse(int streakDays, int points, boolean todayCompleted, L
             int estimatedMinutes) {
 
         /**
-         * {@code minStepOrder}는 이 코스의 시작 스텝 번호다 — stepOrder가 코스 무관 전역 순번이라 항상 1은
-         * 아니다(예: 디자인패턴 코스는 13부터 시작). "1을 빼면 완료 수"라는 가정은 첫 코스(1부터 시작)에만
-         * 우연히 맞았을 뿐이라, 실제 시작 스텝을 받아 완료 수를 계산한다.
+         * {@code completedCount}는 정렬된 코스 스텝 목록에서 현재 스텝 앞에 있는 스텝 수다 — stepOrder는
+         * 코스 무관 전역 순번인 데다 중간 스텝 삭제로 코스 안에서도 비연속일 수 있어(예: 1, 3만 남은 코스),
+         * 번호 뺄셈으로는 완료 수를 구할 수 없다. 목록 인덱스는 호출부(HomeService)가 계산해 넘긴다.
          */
-        public static CourseLearning of(Course course, QuizStep current, int minStepOrder, int totalCount) {
+        public static CourseLearning of(Course course, QuizStep current, int completedCount, int totalCount) {
             return new CourseLearning(
                     course.getId(),
                     course.getTitle(),
                     current.getId(),
                     current.getTopic(),
                     current.getStepOrder(),
-                    current.getStepOrder() - minStepOrder,
+                    completedCount,
                     totalCount,
                     current.getEstimatedMinutes());
         }

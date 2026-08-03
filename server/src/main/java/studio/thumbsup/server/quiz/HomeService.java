@@ -102,13 +102,14 @@ public class HomeService {
         if (course == null || steps.isEmpty()) {
             return Optional.empty();
         }
-        int minStepOrder = steps.get(0).getStepOrder();
-        int maxStepOrder = steps.get(steps.size() - 1).getStepOrder();
+        int maxStepOrder = steps.getLast().getStepOrder();
         int cursor = clamp(cursorStepOrder, maxStepOrder);
-        return steps.stream()
-                .filter(step -> step.getStepOrder() == cursor)
-                .findFirst()
-                .map(step -> CourseLearning.of(course, step, minStepOrder, steps.size()));
+        for (int i = 0; i < steps.size(); i++) {
+            if (steps.get(i).getStepOrder() == cursor) {
+                return Optional.of(CourseLearning.of(course, steps.get(i), i, steps.size()));
+            }
+        }
+        return Optional.empty();
     }
 
     /**
