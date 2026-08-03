@@ -156,7 +156,7 @@ export function InsightPage({
             <a
               aria-label={review ? "복습 목록으로 돌아가기" : "문제로 돌아가기"}
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
-              href={review ? "/history" : "/play"}
+              href={review ? "/history/review" : "/play"}
             >
               ‹
             </a>

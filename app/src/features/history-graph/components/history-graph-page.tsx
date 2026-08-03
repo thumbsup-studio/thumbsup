@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppTabBar } from "@/components/app-tab-bar";
-import { ArrowLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { ChevronRightIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Feedback } from "@/components/ui/feedback";
 import { Skeleton } from "@/components/ui/skeleton";
 import { reviewStartHref } from "@/features/history/review-params";
-import { getMockHistoryGraph } from "../mock-graph";
+import { HistoryGraphCanvas } from "@/features/history-graph/components/history-graph-canvas";
+import { isUnauthorized } from "@/features/play/quiz-shared";
+import { getHistoryGraph } from "@/lib/api";
 import type { HistoryGraphNode, HistoryGraphResponse } from "../types";
-import { HistoryGraphCanvas } from "./history-graph-canvas";
 
 type LoadState =
   | { status: "loading"; graph: null; message: null }
@@ -69,21 +70,30 @@ export function HistoryGraphPage() {
       setLoadState({ status: "loading", graph: null, message: null });
 
       try {
-        const graph = await getMockHistoryGraph();
+        const graph = await getHistoryGraph();
         if (ignore) {
           return;
         }
 
         setLoadState({ status: "ready", graph, message: null });
-        setSelectedNodeId((current) => current ?? graph.nodes[0]?.id ?? null);
-      } catch {
-        if (!ignore) {
-          setLoadState({
-            status: "error",
-            graph: null,
-            message: "지식 그래프를 불러오지 못했어요.",
-          });
+        setSelectedNodeId((current) =>
+          graph.nodes.some((node) => node.id === current) ? current : (graph.nodes[0]?.id ?? null),
+        );
+      } catch (loadError) {
+        if (ignore) {
+          return;
         }
+
+        if (isUnauthorized(loadError)) {
+          router.replace("/login");
+          return;
+        }
+
+        setLoadState({
+          status: "error",
+          graph: null,
+          message: "지식 그래프를 불러오지 못했어요.",
+        });
       }
     }
 
@@ -92,7 +102,7 @@ export function HistoryGraphPage() {
     return () => {
       ignore = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, router]);
 
   const graph = loadState.graph;
   const selectedNode = useMemo(() => {
@@ -125,13 +135,6 @@ export function HistoryGraphPage() {
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
         <header className="flex items-start gap-3">
-          <Link
-            aria-label="히스토리로 돌아가기"
-            className="grid min-h-11 min-w-11 place-items-center rounded-control bg-surface text-ink shadow-card"
-            href="/history"
-          >
-            <ArrowLeftIcon className="size-5" />
-          </Link>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold tracking-wide text-ink-muted">히스토리</p>
             <h1 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
@@ -141,6 +144,12 @@ export function HistoryGraphPage() {
               배운 개념이 어떻게 이어지는지 한눈에 확인해요.
             </p>
           </div>
+          <Link
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control bg-primary px-4 text-sm font-bold text-primary-fg shadow-card"
+            href="/history/review"
+          >
+            복습하기
+          </Link>
         </header>
 
         <p aria-live="polite" className="sr-only">
@@ -185,6 +194,8 @@ export function HistoryGraphPage() {
 }
 
 function NodeDetailCard({ node }: { node: HistoryGraphNode }) {
+  const descriptions = getDescriptionItems(node.id, node.description);
+
   return (
     <section className="rounded-card border border-border bg-surface p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
@@ -197,9 +208,13 @@ function NodeDetailCard({ node }: { node: HistoryGraphNode }) {
         </span>
       </div>
 
-      <p className="mt-4 break-keep text-sm font-medium leading-6 text-ink-muted">
-        {node.description}
-      </p>
+      <div className="mt-4 flex flex-col gap-2">
+        {descriptions.map(({ description, key }) => (
+          <p className="break-keep text-sm font-medium leading-6 text-ink-muted" key={key}>
+            {description}
+          </p>
+        ))}
+      </div>
 
       <div className="mt-5">
         <p className="text-xs font-semibold tracking-wide text-ink-muted">관련 스텝</p>
@@ -222,6 +237,20 @@ function NodeDetailCard({ node }: { node: HistoryGraphNode }) {
       </div>
     </section>
   );
+}
+
+function getDescriptionItems(nodeId: string, descriptions: string[]) {
+  const seen = new Map<string, number>();
+
+  return descriptions.map((description) => {
+    const occurrence = seen.get(description) ?? 0;
+    seen.set(description, occurrence + 1);
+
+    return {
+      description,
+      key: `${nodeId}-${description}-${occurrence}`,
+    };
+  });
 }
 
 function HistoryGraphSkeleton() {

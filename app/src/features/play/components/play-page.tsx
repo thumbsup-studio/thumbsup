@@ -238,7 +238,7 @@ export function PlayPage({ review }: PlayPageProps) {
             <a
               className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
               aria-label={review ? "복습 목록으로 돌아가기" : "홈으로 돌아가기"}
-              href={review ? "/history" : "/"}
+              href={review ? "/history/review" : "/"}
             >
               ‹
             </a>
