@@ -1,5 +1,11 @@
 export { login, logout, refresh, signup } from "./auth";
-export { type ApiResponse, apiRequest, type RequestOptions } from "./client";
+export {
+  type ApiResponse,
+  apiRequest,
+  apiRequestWithMeta,
+  type CursorMeta,
+  type RequestOptions,
+} from "./client";
 export {
   type CourseItem,
   type CourseListResponse,
@@ -21,11 +27,14 @@ export {
   type AnswerSubmitResponse,
   type CompletedStep,
   type CompletedStepsResponse,
+  getAttemptHistory,
   getCompletedSteps,
   getNextQuiz,
   getQuizExplanation,
   getStepQuiz,
   type Highlight,
+  type QuizAttemptHistoryItem,
+  type QuizAttemptHistoryResponse,
   type QuizChoice,
   type QuizDifficulty,
   type QuizExplanationResponse,

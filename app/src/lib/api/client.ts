@@ -11,7 +11,7 @@
 import { ApiError, ErrorCode, type FieldError, NetworkError } from "./errors";
 import { type Tokens, tokenStore } from "./token-store";
 
-type CursorMeta = { hasNext: boolean; nextCursor: string | null };
+export type CursorMeta = { hasNext: boolean; nextCursor: string | null };
 
 export type ApiResponse<T> = {
   code: string;
@@ -99,7 +99,12 @@ async function doRefresh(): Promise<boolean> {
   }
 }
 
-export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+type EnvelopeResult<T> = { data: T; meta: CursorMeta | null };
+
+async function apiRequestEnvelope<T>(
+  path: string,
+  opts: RequestOptions = {},
+): Promise<EnvelopeResult<T>> {
   if (!BASE_URL) {
     throw new Error("API 베이스 URL이 비어 있습니다.");
   }
@@ -127,7 +132,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
 
   if (res.status === 401 && envelope?.code === ErrorCode.TOKEN_EXPIRED && auth && !_retried) {
     const refreshed = await tryRefresh();
-    if (refreshed) return apiRequest<T>(path, { ...opts, _retried: true });
+    if (refreshed) return apiRequestEnvelope<T>(path, { ...opts, _retried: true });
   }
 
   if (!res.ok || !envelope || envelope.code !== SUCCESS_CODE) {
@@ -139,5 +144,18 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
     });
   }
 
-  return envelope.data as T;
+  return { data: envelope.data as T, meta: envelope.meta };
+}
+
+export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+  const { data } = await apiRequestEnvelope<T>(path, opts);
+  return data;
+}
+
+/** 커서 페이지네이션처럼 `meta`(hasNext/nextCursor)가 필요한 목록 API 전용 — 그 외엔 {@link apiRequest}를 쓴다. */
+export async function apiRequestWithMeta<T>(
+  path: string,
+  opts: RequestOptions = {},
+): Promise<EnvelopeResult<T>> {
+  return apiRequestEnvelope<T>(path, opts);
 }
