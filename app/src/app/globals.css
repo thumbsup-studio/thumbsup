@@ -45,6 +45,12 @@
   /* 그림자 */
   --shadow-card: 0 24px 60px rgba(15, 23, 42, 0.1);
   --shadow-hero: 0 24px 48px rgba(47, 99, 255, 0.24);
+  /*
+    선택지 버튼의 두께감 — 아래에 단색 면을 깔아 물리적인 키캡처럼 보이게 하고,
+    누르는 동안 translate-y로 내려앉혀 눌림을 만든다(듀오링고 계열 레퍼런스).
+  */
+  --shadow-choice: 0 4px 0 var(--color-border);
+  --shadow-choice-selected: 0 4px 0 var(--color-primary);
 
   /* 폰트 */
   --font-sans: var(--font-pretendard), ui-sans-serif, system-ui, sans-serif;

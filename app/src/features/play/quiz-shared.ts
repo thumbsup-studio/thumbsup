@@ -1,5 +1,8 @@
 import type { QuizChoice, QuizDifficulty, QuizType } from "@/lib/api/quiz";
 
+/** 이 수부터 연속 정답을 화면에 띄운다 — 1은 "연속"이라 부를 수 없다. 풀이·해설 화면이 같은 기준을 쓴다. */
+export const comboVisibleFrom = 2;
+
 export const difficultyLabels: Record<QuizDifficulty, string> = {
   EASY: "난이도 하",
   MEDIUM: "난이도 중",

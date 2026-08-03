@@ -20,7 +20,8 @@ public record QuizNextResponse(
         List<ChoiceItem> choices,
         Integer blankCount,
         int stepOrder,
-        int slotOrder) {
+        int slotOrder,
+        int totalCount) {
 
     public record ChoiceItem(Long choiceId, String content, int displayOrder) {
 
@@ -29,7 +30,11 @@ public record QuizNextResponse(
         }
     }
 
-    public static QuizNextResponse from(Quiz quiz) {
+    /**
+     * @param totalCount 이 문제가 속한 스텝의 전체 문제 수 — 앱의 진행 표시(n/총)와 완주 판정에 쓰인다(#266).
+     *     스텝마다 문제 수가 다를 수 있어 클라이언트가 상수로 가정할 수 없다.
+     */
+    public static QuizNextResponse from(Quiz quiz, int totalCount) {
         List<ChoiceItem> choiceItems = quiz.getType() == QuizType.MULTIPLE_CHOICE
                 ? quiz.getChoices().stream().map(ChoiceItem::from).toList()
                 : null;
@@ -48,6 +53,7 @@ public record QuizNextResponse(
                 choiceItems,
                 blankCount,
                 quiz.getStepOrder(),
-                quiz.getSlotOrder());
+                quiz.getSlotOrder(),
+                totalCount);
     }
 }

@@ -22,7 +22,7 @@ class QuizNextResponseTest {
             quiz.addAnswerKeyword(1, "시스템 콜");
             quiz.addAnswerKeyword(1, "시스템 호출");
 
-            QuizNextResponse response = QuizNextResponse.from(quiz);
+            QuizNextResponse response = QuizNextResponse.from(quiz, 5);
 
             assertThat(response.blankCount()).isEqualTo(1);
         }
@@ -36,7 +36,7 @@ class QuizNextResponseTest {
             quiz.addAnswerKeyword(2, "운영체제");
             quiz.addAnswerKeyword(2, "OS");
 
-            QuizNextResponse response = QuizNextResponse.from(quiz);
+            QuizNextResponse response = QuizNextResponse.from(quiz, 5);
 
             assertThat(response.blankCount()).isEqualTo(2);
         }
@@ -47,8 +47,9 @@ class QuizNextResponseTest {
             Quiz oxQuiz = quiz(QuizType.OX, "TCP는 연결 지향 프로토콜이다.");
             Quiz multipleChoiceQuiz = quiz(QuizType.MULTIPLE_CHOICE, "운영체제의 역할로 옳은 것은?");
 
-            assertThat(QuizNextResponse.from(oxQuiz).blankCount()).isNull();
-            assertThat(QuizNextResponse.from(multipleChoiceQuiz).blankCount()).isNull();
+            assertThat(QuizNextResponse.from(oxQuiz, 5).blankCount()).isNull();
+            assertThat(QuizNextResponse.from(multipleChoiceQuiz, 5).blankCount())
+                    .isNull();
         }
     }
 

@@ -29,6 +29,7 @@ const oxQuiz = {
   blankCount: null,
   stepOrder: 1,
   slotOrder: 1,
+  totalCount: 5,
 };
 
 const multipleChoiceQuiz = {
@@ -46,6 +47,7 @@ const multipleChoiceQuiz = {
   blankCount: null,
   stepOrder: 1,
   slotOrder: 2,
+  totalCount: 5,
 };
 
 const keywordBlankQuiz = {
@@ -58,6 +60,7 @@ const keywordBlankQuiz = {
   blankCount: 1,
   stepOrder: 1,
   slotOrder: 3,
+  totalCount: 5,
 };
 
 function renderedChoiceOrder() {
@@ -93,6 +96,56 @@ describe("PlayPage", () => {
       expect(submitQuizAnswer).toHaveBeenCalledWith(7, ["O"]);
     });
     expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=7&correct=true&streak=1");
+  });
+
+  it("스텝의 문제 수가 5가 아니어도 서버가 준 totalCount로 표시한다", async () => {
+    // 스텝마다 문제 수가 달라, 5로 고정하면 3문제짜리 스텝은 완주에 닿지 못한다(이슈 266).
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, totalCount: 3 });
+
+    render(<PlayPage />);
+
+    expect(await screen.findByText("1/3")).toBeInTheDocument();
+    expect(screen.getByLabelText("문제 진행률")).toHaveAttribute("aria-valuemax", "3");
+  });
+
+  it("마지막 문제를 풀면 완주로 처리한다 — 총 문제 수가 3이어도", async () => {
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 3, totalCount: 3 });
+    vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
+
+    render(<PlayPage />);
+
+    fireEvent.click(await screen.findByRole("radio", { name: "O" }));
+    fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
+
+    await waitFor(() => {
+      // done=1이 완주 표시 — totalCount가 5로 고정돼 있으면 3번째 문제로는 여기 닿지 못한다.
+      expect(mockRouter.push).toHaveBeenCalledWith(expect.stringContaining("done=1"));
+    });
+  });
+
+  it("연속 정답이 2 이상이면 콤보를 화면에 띄운다", async () => {
+    window.localStorage.setItem(
+      "thumbsup:play-session:1",
+      JSON.stringify({ answered: 2, correct: 2, combo: 2, bestCombo: 2 }),
+    );
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 3 });
+
+    render(<PlayPage />);
+
+    expect(await screen.findByText("2연속")).toBeInTheDocument();
+  });
+
+  it("연속 정답이 1이면 콤보를 띄우지 않는다", async () => {
+    window.localStorage.setItem(
+      "thumbsup:play-session:1",
+      JSON.stringify({ answered: 1, correct: 1, combo: 1, bestCombo: 1 }),
+    );
+    vi.mocked(getNextQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 2 });
+
+    render(<PlayPage />);
+
+    await screen.findByText("프로세스는 자원을 독립적으로 가진다.");
+    expect(screen.queryByText("1연속")).not.toBeInTheDocument();
   });
 
   it("코스 탭에서 진입하면 courseId로 다음 문제를 요청하고 해설 화면까지 courseId를 이어 싣는다", async () => {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyAnswer,
   emptySession,
@@ -63,6 +63,34 @@ describe("세션 영속화", () => {
     // answered·correct는 구키에 없어 복원할 수 없다 — 완주 카드가 정답 줄을 감추는 근거.
     expect(readSession(4)).toEqual({ answered: 0, correct: 0, combo: 3, bestCombo: 3 });
     expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:4")).toBeNull();
+  });
+
+  it("구키를 옮긴 뒤 다시 읽어도 콤보가 살아 있다", () => {
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:9", "3");
+
+    // 구키를 지우기만 하고 새 키에 적지 않으면 두 번째 읽기에서 콤보가 사라진다.
+    // 화면 표시용으로 읽기가 늘어난 뒤에도 안전해야 한다.
+    expect(readSession(9).combo).toBe(3);
+    expect(readSession(9).combo).toBe(3);
+  });
+
+  it("구키를 옮기는 저장이 실패하면 구키를 지우지 않아 다음 읽기에서 콤보가 살아 있다", () => {
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:10", "3");
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota exceeded", "QuotaExceededError");
+    });
+
+    try {
+      // 저장이 막혀도 이번 읽기는 콤보를 돌려준다.
+      expect(readSession(10).combo).toBe(3);
+      expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:10")).toBe("3");
+    } finally {
+      setItem.mockRestore();
+    }
+
+    // 저장이 다시 가능해지면 그때 옮겨 적고 구키를 지운다.
+    expect(readSession(10).combo).toBe(3);
+    expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:10")).toBeNull();
   });
 
   it("깨진 JSON이 저장돼 있어도 빈 세션으로 복구한다", () => {
