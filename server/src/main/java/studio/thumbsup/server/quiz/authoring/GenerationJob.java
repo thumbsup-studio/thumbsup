@@ -20,8 +20,9 @@ import studio.thumbsup.server.quiz.generation.QuizPreset;
  * 로컬 브리지가 폴링·실행하는 생성/검수 잡 — 큐 테이블을 겸한다({@code pickNextQueued}가
  * {@code FOR UPDATE SKIP LOCKED}로 동시 폴링을 안전하게 처리한다).
  *
- * <p>{@code GENERATE}는 {@link #topic}만, {@code REVIEW}는 {@link #draftId}·{@link #feedback}만,
- * {@code OUTLINE}은 {@link #outlineId}만 채워진다 — 종류별로 static factory를 분리해 이 조합을 강제한다.
+ * <p>{@code GENERATE}는 {@link #topic}만(뼈대 스텝 채우기면 {@link #outlineStepId}·{@link #preset}까지),
+ * {@code REVIEW}는 {@link #draftId}·{@link #feedback}만, {@code OUTLINE}은 {@link #outlineId}만 채워진다 —
+ * 종류별로 static factory를 분리해 이 조합을 강제한다.
  */
 @Getter
 @Entity

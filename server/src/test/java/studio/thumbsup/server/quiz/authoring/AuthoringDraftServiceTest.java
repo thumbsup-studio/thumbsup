@@ -109,6 +109,9 @@ class AuthoringDraftServiceTest {
             AuthoringOutlineStep step = AuthoringOutlineStep.create(1L, 1, "프로세스", null);
             ReflectionTestUtils.setField(step, "id", 10L);
             given(outlineStepRepository.findById(10L)).willReturn(Optional.of(step));
+            // draft를 붙이기 전에 뼈대 행을 잠근다 — 재생성 경로와 직렬화하기 위한 락이다.
+            given(outlineRepository.findByIdForUpdate(1L))
+                    .willReturn(Optional.of(AuthoringOutline.create("코스", "CS", "목차", 1L)));
             given(quizDraftRepository.save(any())).willAnswer(invocation -> {
                 QuizDraft draft = invocation.getArgument(0);
                 ReflectionTestUtils.setField(draft, "id", 100L);

@@ -80,7 +80,7 @@ public class AuthoringOutlineController {
     }
 
     @Operation(summary = "뼈대에 수동 스텝 추가")
-    @ResponseStatus(HttpStatus.ACCEPTED)
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/{outlineId}/steps")
     public ApiResponse<StepCreatedResponse> addStep(
             @PathVariable Long outlineId, @Valid @RequestBody CreateOutlineStepRequest request) {

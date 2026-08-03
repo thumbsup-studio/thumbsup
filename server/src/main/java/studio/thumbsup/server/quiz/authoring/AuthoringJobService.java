@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -32,16 +31,13 @@ import studio.thumbsup.server.quiz.generation.QuizPreset;
 @Service
 public class AuthoringJobService {
 
-    private static final String EXPIRY_MESSAGE = "시간 초과로 만료되었습니다";
-    private static final Duration QUEUED_EXPIRY = Duration.ofMinutes(30);
-    private static final Duration RUNNING_EXPIRY = Duration.ofMinutes(10);
-
     private final GenerationJobRepository generationJobRepository;
     private final QuizRepository quizRepository;
     private final QuizStepRepository quizStepRepository;
     private final AuthoringDraftService draftService;
     private final GeneratedQuizValidator validator;
     private final ObjectMapper objectMapper;
+    private final GenerationJobActivityGuard activityGuard;
     private final Clock clock;
 
     public AuthoringJobService(
@@ -58,6 +54,7 @@ public class AuthoringJobService {
         this.draftService = draftService;
         this.validator = validator;
         this.objectMapper = objectMapper;
+        this.activityGuard = new GenerationJobActivityGuard(generationJobRepository);
         this.clock = clock;
     }
 
@@ -79,6 +76,7 @@ public class AuthoringJobService {
         if (draftService.hasFilledOutlineSteps(outlineId)) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_FILLED);
         }
+        activityGuard.guardOutline(outlineId, clock.instant());
 
         String prompt =
                 AuthoringPromptFactory.outlinePrompt(outline.getTitle(), outline.getCategory(), outline.getTocSource());
@@ -99,7 +97,8 @@ public class AuthoringJobService {
         if (step.getDraftId() != null) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_STEP_FILLED);
         }
-        guardOutlineStepHasNoActiveJob(stepId, clock.instant());
+        activityGuard.guardOutlineStep(stepId, clock.instant());
+        activityGuard.guardOutline(step.getOutlineId(), clock.instant());
 
         OutlineStepContext context = draftService.outlineStepContext(stepId);
         String prompt = AuthoringPromptFactory.generatePrompt(context, preset);
@@ -137,7 +136,7 @@ public class AuthoringJobService {
         if (draft.getStatus() == QuizDraftStatus.APPROVED) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_ALREADY_APPROVED);
         }
-        guardDraftHasNoActiveJob(draftId, clock.instant());
+        activityGuard.guardDraft(draftId, clock.instant());
 
         String prompt = reviewPromptForDraft(draft, feedback);
         GenerationJob job = generationJobRepository.save(GenerationJob.createReview(userId, draftId, feedback, prompt));
@@ -189,7 +188,7 @@ public class AuthoringJobService {
     @Transactional
     public GenerationJob getJobWithExpiry(Long jobId) {
         GenerationJob job = findJobOrThrow(jobId);
-        expireIfNeeded(job, clock.instant());
+        activityGuard.expireIfNeeded(job, clock.instant());
         return job;
     }
 
@@ -242,6 +241,9 @@ public class AuthoringJobService {
         String cleaned = validator.stripMarkdownFence(resultJson);
         OutlineResult result = objectMapper.readValue(cleaned, OutlineResult.class);
         List<AuthoringOutlineStep> steps = validatedOutlineSteps(job.getOutlineId(), result);
+        // 검사와 교체 사이에 스텝 채우기 결과가 draft를 붙이면 그 draft가 고아가 된다 —
+        // 스텝 생성 경로와 같은 뼈대 행을 잠가 두 경로를 직렬화한다.
+        draftService.getOutlineForUpdate(job.getOutlineId());
         if (draftService.hasFilledOutlineSteps(job.getOutlineId())) {
             throw new QuizGenerationException("잡 실행 중 문제가 채워진 뼈대는 재생성할 수 없습니다.");
         }
@@ -338,34 +340,9 @@ public class AuthoringJobService {
         }
     }
 
-    /** package-private — {@code AuthoringApprovalService}(T6)의 승인 가드가 재사용한다. */
+    /** package-private — {@code AuthoringApprovalService}의 승인 가드가 재사용한다. */
     void guardDraftHasNoActiveJob(Long draftId, Instant now) {
-        List<GenerationJob> activeJobs = generationJobRepository.findByDraftIdAndStatusIn(
-                draftId, List.of(GenerationJobStatus.QUEUED, GenerationJobStatus.RUNNING));
-        activeJobs.forEach(job -> expireIfNeeded(job, now));
-        boolean stillActive = activeJobs.stream().anyMatch(GenerationJob::isActive);
-        if (stillActive) {
-            throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_JOB_ACTIVE);
-        }
-    }
-
-    private void guardOutlineStepHasNoActiveJob(Long stepId, Instant now) {
-        List<GenerationJob> activeJobs = generationJobRepository.findByOutlineStepIdAndStatusIn(
-                stepId, List.of(GenerationJobStatus.QUEUED, GenerationJobStatus.RUNNING));
-        activeJobs.forEach(job -> expireIfNeeded(job, now));
-        if (activeJobs.stream().anyMatch(GenerationJob::isActive)) {
-            throw new BusinessException(AuthoringErrorType.AUTHORING_DRAFT_JOB_ACTIVE);
-        }
-    }
-
-    private void expireIfNeeded(GenerationJob job, Instant now) {
-        boolean queuedExpired = job.getStatus() == GenerationJobStatus.QUEUED
-                && Duration.between(job.getCreatedAt(), now).compareTo(QUEUED_EXPIRY) > 0;
-        boolean runningExpired = job.getStatus() == GenerationJobStatus.RUNNING
-                && Duration.between(job.getStartedAt(), now).compareTo(RUNNING_EXPIRY) > 0;
-        if (queuedExpired || runningExpired) {
-            job.fail(null, EXPIRY_MESSAGE, now);
-        }
+        activityGuard.guardDraft(draftId, now);
     }
 
     private String reviewPromptForDraft(QuizDraft draft, String feedback) {

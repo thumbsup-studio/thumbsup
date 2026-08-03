@@ -137,7 +137,8 @@ class AuthoringOutlineControllerTest {
             mockMvc.perform(post("/api/v1/authoring/outlines/1/steps")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(new CreateOutlineStepRequest("프로세스"))))
-                    .andExpect(status().isAccepted())
+                    // 스텝 추가는 잡을 만들지 않고 즉시 저장한다 — 202가 아니라 201이다.
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.stepId").value(4));
             mockMvc.perform(post("/api/v1/authoring/outline-steps/4/generate")
                             .contentType(MediaType.APPLICATION_JSON)

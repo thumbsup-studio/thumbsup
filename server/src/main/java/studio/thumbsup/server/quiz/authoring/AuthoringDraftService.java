@@ -65,6 +65,9 @@ public class AuthoringDraftService {
                 QuizDraftRevision.create(draft.getId(), FIRST_REVISION_NO, payloadJson, null, null, job.getId()));
         if (job.getOutlineStepId() != null) {
             AuthoringOutlineStep step = getOutlineStepOrThrow(job.getOutlineStepId());
+            // 뼈대 재생성(handleOutlineResult)이 스텝을 통째로 교체하는 경로와 같은 행을 잠근다 —
+            // 잠그지 않으면 방금 붙인 draft가 교체에 쓸려 고아로 남는다.
+            getOutlineForUpdate(step.getOutlineId());
             step.attachDraft(draft.getId());
         }
         job.attachDraft(draft.getId());

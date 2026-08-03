@@ -27,4 +27,6 @@ public interface GenerationJobRepository extends JpaRepository<GenerationJob, Lo
             Collection<Long> outlineStepIds, Collection<GenerationJobStatus> statuses);
 
     List<GenerationJob> findByOutlineStepIdAndStatusIn(Long outlineStepId, Collection<GenerationJobStatus> statuses);
+
+    List<GenerationJob> findByOutlineIdAndStatusIn(Long outlineId, Collection<GenerationJobStatus> statuses);
 }
