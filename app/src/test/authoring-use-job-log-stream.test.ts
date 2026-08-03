@@ -20,6 +20,8 @@ const RUNNING_JOB = {
   createdAt: "2026-07-14T00:00:00Z",
   startedAt: "2026-07-14T00:00:01Z",
   finishedAt: null,
+  outlineId: null,
+  outlineStepId: null,
 };
 
 beforeEach(() => {
@@ -39,8 +41,10 @@ describe("useJobLogStream — 스트림 EOF/세션 만료 복원력", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         phase: "done",
+        kind: "GENERATE",
         status: "SUCCEEDED",
         draftId: 42,
+        outlineId: null,
         error: null,
       }),
     );
@@ -59,7 +63,12 @@ describe("useJobLogStream — 스트림 EOF/세션 만료 복원력", () => {
   it("status/error 이벤트로 이미 종료된 경우엔 EOF 재확인을 하지 않는다", async () => {
     getJobMock.mockResolvedValueOnce(RUNNING_JOB);
     streamJobLogsMock.mockImplementation(async (_jobId, handlers) => {
-      handlers.onStatus({ status: "FAILED", draftId: null, error: "검증 실패" });
+      handlers.onStatus({
+        status: "FAILED",
+        draftId: null,
+        error: "검증 실패",
+        outlineId: null,
+      });
     });
 
     const { result } = renderHook(() => useJobLogStream(7, vi.fn()));
@@ -67,8 +76,10 @@ describe("useJobLogStream — 스트림 EOF/세션 만료 복원력", () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         phase: "done",
+        kind: "GENERATE",
         status: "FAILED",
         draftId: null,
+        outlineId: null,
         error: "검증 실패",
       }),
     );

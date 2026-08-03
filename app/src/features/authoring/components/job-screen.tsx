@@ -98,15 +98,52 @@ function JobStream({ jobId, onRetry }: { jobId: number; onRetry: () => void }) {
 
       {streamState.phase === "done" ? (
         streamState.status === "SUCCEEDED" ? (
-          <Feedback tone="success">
-            문제 생성이 완료됐어요.{" "}
-            <Link
-              className="font-semibold underline"
-              href={`/authoring/drafts/${streamState.draftId}`}
-            >
-              Draft 보러가기
-            </Link>
-          </Feedback>
+          streamState.kind === "OUTLINE" ? (
+            <Feedback tone="success">
+              뼈대 생성이 완료됐어요.{" "}
+              {streamState.outlineId !== null ? (
+                <Link
+                  className="font-semibold underline"
+                  href={`/authoring/outlines/${streamState.outlineId}`}
+                >
+                  뼈대 확인하기
+                </Link>
+              ) : null}
+            </Feedback>
+          ) : streamState.outlineId !== null ? (
+            <Feedback tone="success">
+              문제 생성이 완료됐어요.{" "}
+              <Link
+                className="font-semibold underline"
+                href={`/authoring/outlines/${streamState.outlineId}`}
+              >
+                뼈대로 돌아가기
+              </Link>
+              {streamState.draftId !== null ? (
+                <>
+                  {" · "}
+                  <Link
+                    className="font-semibold underline"
+                    href={`/authoring/drafts/${streamState.draftId}`}
+                  >
+                    Draft 보러가기
+                  </Link>
+                </>
+              ) : null}
+            </Feedback>
+          ) : (
+            <Feedback tone="success">
+              문제 생성이 완료됐어요.{" "}
+              {streamState.draftId !== null ? (
+                <Link
+                  className="font-semibold underline"
+                  href={`/authoring/drafts/${streamState.draftId}`}
+                >
+                  Draft 보러가기
+                </Link>
+              ) : null}
+            </Feedback>
+          )
         ) : (
           <Feedback tone="error">
             {streamState.error ?? "생성에 실패했어요."} Draft 화면에서 다시 시도해 주세요.

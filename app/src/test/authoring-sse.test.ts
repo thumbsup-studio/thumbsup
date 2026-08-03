@@ -61,7 +61,7 @@ describe("streamJobLogs", () => {
         .fn()
         .mockResolvedValue(
           sseResponse([
-            'event: status\ndata: {"status":"SUCCEEDED","draftId":42,"error":null}\n\n',
+            'event: status\ndata: {"status":"SUCCEEDED","draftId":42,"error":null,"outlineId":9}\n\n',
           ]),
         ),
     );
@@ -73,7 +73,12 @@ describe("streamJobLogs", () => {
       new AbortController().signal,
     );
 
-    expect(onStatus).toHaveBeenCalledWith({ status: "SUCCEEDED", draftId: 42, error: null });
+    expect(onStatus).toHaveBeenCalledWith({
+      status: "SUCCEEDED",
+      draftId: 42,
+      error: null,
+      outlineId: 9,
+    });
   });
 
   it("Authorization 헤더에 tokenStore의 access 토큰을 붙인다", async () => {

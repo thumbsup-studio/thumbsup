@@ -19,7 +19,11 @@ type LoadState =
   | { status: "error" }
   | { status: "success"; draft: DraftDetail };
 
-const ORIGIN_LABEL: Record<DraftOrigin, string> = { NEW: "신규", IMPROVE: "개선" };
+const ORIGIN_LABEL: Record<DraftOrigin, string> = {
+  NEW: "신규",
+  IMPROVE: "개선",
+  OUTLINE_STEP: "스텝",
+};
 const STATUS_LABEL: Record<DraftStatus, string> = { DRAFT: "검토중", APPROVED: "승인됨" };
 
 function formatDateTime(iso: string): string {

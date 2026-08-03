@@ -18,7 +18,11 @@ type LoadState =
   | { status: "error" }
   | { status: "success"; drafts: DraftSummary[] };
 
-const ORIGIN_LABEL: Record<DraftSummary["origin"], string> = { NEW: "신규", IMPROVE: "개선" };
+const ORIGIN_LABEL: Record<DraftSummary["origin"], string> = {
+  NEW: "신규",
+  IMPROVE: "개선",
+  OUTLINE_STEP: "스텝",
+};
 const STATUS_LABEL: Record<DraftStatus, string> = { DRAFT: "검토중", APPROVED: "승인됨" };
 
 /** Draft 목록 화면 — status 필터(DRAFT 기본/APPROVED)로 조회, "문제 생성"으로 새 draft를 만든다. */
