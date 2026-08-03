@@ -63,7 +63,7 @@ export function ReviewSummaryPage({ step, correct, topic, single, slot }: Review
         <div className="mt-auto flex flex-col gap-2.5 pt-6">
           <Link
             className="flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-            href="/history"
+            href="/history/review"
           >
             복습 목록으로
           </Link>

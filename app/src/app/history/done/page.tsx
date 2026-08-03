@@ -13,7 +13,7 @@ export default async function ReviewDone({ searchParams }: ReviewDoneRouteProps)
   const context = parseReviewContext(await searchParams);
 
   if (!context) {
-    redirect("/history");
+    redirect("/history/review");
   }
 
   return (
