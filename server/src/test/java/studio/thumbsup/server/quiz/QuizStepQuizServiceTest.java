@@ -78,11 +78,13 @@ class QuizStepQuizServiceTest {
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
             given(quizRepository.findByStepOrderAndSlotOrder(1, 3)).willReturn(Optional.of(quizWithId(30L, 1, 3)));
+            given(quizRepository.countByStepOrder(1)).willReturn(4L);
 
             QuizNextResponse response = service().getStepQuiz(USER_ID, 1, 3);
 
             assertThat(response.quizId()).isEqualTo(30L);
             assertThat(response.slotOrder()).isEqualTo(3);
+            assertThat(response.totalCount()).isEqualTo(4);
         }
 
         @Test

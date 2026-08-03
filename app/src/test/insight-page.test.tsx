@@ -253,7 +253,7 @@ describe("InsightPage", () => {
     expect(screen.queryByText("999")).not.toBeInTheDocument();
   });
 
-  it("마이그레이션된 세션(answered 불일치)은 정답 줄을 감춘다", async () => {
+  it("마이그레이션된 세션(answered 불일치)은 정답·정확도 값을 비운다", async () => {
     vi.mocked(getQuizExplanation).mockResolvedValue(explanation);
 
     render(
@@ -267,7 +267,9 @@ describe("InsightPage", () => {
       return;
     }
 
-    expect(within(card).queryByText("정답")).not.toBeInTheDocument();
+    // 칸은 남기되 복원할 수 없는 값은 0 대신 —로 둔다 — 틀린 숫자를 보여주지 않는다.
+    expect(within(card).getByText("정답")).toBeInTheDocument();
+    expect(within(card).getAllByText("—")).toHaveLength(2);
     expect(within(card).getByText("최고 콤보")).toBeInTheDocument();
   });
 

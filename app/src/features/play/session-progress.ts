@@ -115,7 +115,20 @@ function migrateLegacy(stepOrder: number): PlaySession | null {
 }
 
 export function readSession(stepOrder: number): PlaySession {
-  return parseSession(safeGet(sessionKey(stepOrder))) ?? migrateLegacy(stepOrder) ?? emptySession;
+  const stored = parseSession(safeGet(sessionKey(stepOrder)));
+  if (stored !== null) {
+    return stored;
+  }
+
+  // migrateLegacy는 구키를 지우므로 옮겨 적기까지 해야 한 쌍이 된다.
+  // 저장하지 않으면 "읽기만 했는데 콤보가 사라지는" 상태가 된다 — 화면 표시용 읽기가 늘면 바로 드러난다.
+  const migrated = migrateLegacy(stepOrder);
+  if (migrated !== null) {
+    writeSession(stepOrder, migrated);
+    return migrated;
+  }
+
+  return emptySession;
 }
 
 export function writeSession(stepOrder: number, session: PlaySession) {

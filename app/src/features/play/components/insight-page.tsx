@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { HelpCircleIcon } from "@/components/icons";
 import { Feedback } from "@/components/ui/feedback";
-import { Progress } from "@/components/ui/progress";
+import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   isLastReviewSlot,
@@ -25,8 +25,8 @@ import {
   KeywordTooltipText,
 } from "@/features/play/components/keyword-tooltip-text";
 import { VerdictBanner } from "@/features/play/components/verdict-banner";
-import { getProgressPercent } from "@/features/play/play-logic";
 import {
+  comboVisibleFrom,
   difficultyLabels,
   getInsightQuestionKindLabel,
   isUnauthorized,
@@ -79,6 +79,8 @@ export function InsightPage({
       : reviewNextPlayHref(review)
     : null;
   const isLastQuestion = explanation ? explanation.currentNumber >= explanation.totalCount : false;
+  // 풀이 화면에서 오렌지로 달아오른 진행바가 해설로 넘어오며 파랑으로 식으면 흐름이 끊긴다.
+  const comboForDisplay = review?.streak ?? correctStreak;
   // 보상 연출은 전부 이 화면에서 터진다 — 풀이 화면(S3)은 조작감만 맡는다.
   // 난이도는 해설 응답에서 오므로, 로딩이 끝나기 전엔 기본값으로 계산해도 화면에 쓰이지 않는다.
   const celebration = getCelebration({
@@ -189,14 +191,15 @@ export function InsightPage({
                 <span>해설을 준비하고 있어요</span>
               )}
             </div>
-            <Progress
+            {/*
+              풀이 화면과 같은 칸을 쓰되, 여기서는 방금 그 문제를 푼 뒤라 currentNumber만큼 채운다 —
+              정답 확인 후 넘어오면서 칸이 하나 차오르는 게 보인다.
+            */}
+            <SegmentedProgress
+              hot={comboForDisplay >= comboVisibleFrom}
               label="해설 진행률"
-              max={100}
-              value={
-                explanation
-                  ? getProgressPercent(explanation.currentNumber - 1, explanation.totalCount)
-                  : 0
-              }
+              total={explanation?.totalCount ?? 0}
+              value={explanation?.currentNumber ?? 0}
             />
           </div>
         </header>

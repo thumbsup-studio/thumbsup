@@ -19,8 +19,11 @@ export type QuizNextResponse = {
   blankCount: number | null;
   stepOrder: number;
   slotOrder: number;
-  /** 서버가 추가하면 사용하고, 없으면 MVP 기본 5문제 세트로 fallback한다. */
-  totalCount?: number;
+  /**
+   * 이 문제가 속한 스텝의 전체 문제 수(이슈 266). 스텝마다 문제 수가 달라 클라이언트가
+   * 상수로 가정할 수 없다 — 진행 표시와 완주 판정이 모두 이 값을 기준으로 한다.
+   */
+  totalCount: number;
 };
 
 /** 빈칸 하나에 대한 재도전 힌트. answerLength는 공백을 제외한 글자 수. */

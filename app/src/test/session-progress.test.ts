@@ -65,6 +65,15 @@ describe("세션 영속화", () => {
     expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:4")).toBeNull();
   });
 
+  it("구키를 옮긴 뒤 다시 읽어도 콤보가 살아 있다", () => {
+    window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:9", "3");
+
+    // 구키를 지우기만 하고 새 키에 적지 않으면 두 번째 읽기에서 콤보가 사라진다.
+    // 화면 표시용으로 읽기가 늘어난 뒤에도 안전해야 한다.
+    expect(readSession(9).combo).toBe(3);
+    expect(readSession(9).combo).toBe(3);
+  });
+
   it("깨진 JSON이 저장돼 있어도 빈 세션으로 복구한다", () => {
     window.localStorage.setItem("thumbsup:play-session:5", "{not json");
 

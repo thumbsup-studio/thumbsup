@@ -72,14 +72,15 @@ class QuizControllerTest {
         void returns_200_with_quiz_data_on_success() throws Exception {
             authenticateAs(7L);
             QuizNextResponse response = new QuizNextResponse(
-                    1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 1);
+                    1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 1, 5);
             given(quizService.getNextQuiz(eq(7L), isNull())).willReturn(response);
 
             mockMvc.perform(get("/api/v1/quizzes/next"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
                     .andExpect(jsonPath("$.data.quizId").value(1))
-                    .andExpect(jsonPath("$.data.type").value("OX"));
+                    .andExpect(jsonPath("$.data.type").value("OX"))
+                    .andExpect(jsonPath("$.data.totalCount").value(5));
         }
 
         @Test
@@ -137,7 +138,7 @@ class QuizControllerTest {
         void returns_200_with_slot_quiz() throws Exception {
             authenticateAs(7L);
             QuizNextResponse response = new QuizNextResponse(
-                    30L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 3);
+                    30L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 3, 4);
             given(quizService.getStepQuiz(eq(7L), eq(1), eq(3))).willReturn(response);
 
             mockMvc.perform(get("/api/v1/quizzes/steps/1/3"))

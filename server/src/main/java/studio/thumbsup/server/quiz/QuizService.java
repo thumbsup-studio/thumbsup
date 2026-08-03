@@ -104,7 +104,8 @@ public class QuizService {
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
 
-        return QuizNextResponse.from(next);
+        // 스텝 문제를 이미 전부 읽었으므로 총 문제 수는 추가 쿼리 없이 그 크기를 그대로 쓴다.
+        return QuizNextResponse.from(next, stepQuizzes.size());
     }
 
     /**
@@ -135,7 +136,7 @@ public class QuizService {
         Quiz quiz = quizRepository
                 .findByStepOrderAndSlotOrder(stepOrder, slotOrder)
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        return QuizNextResponse.from(quiz);
+        return QuizNextResponse.from(quiz, Math.toIntExact(quizRepository.countByStepOrder(stepOrder)));
     }
 
     /**

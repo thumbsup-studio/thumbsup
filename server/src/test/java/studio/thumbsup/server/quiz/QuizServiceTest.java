@@ -112,6 +112,23 @@ class QuizServiceTest {
         }
 
         @Test
+        @DisplayName("스텝의 문제 수가 5가 아니어도 실제 개수를 totalCount로 반환한다")
+        void returns_actual_step_size_as_total_count() {
+            quizService = service();
+            given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
+                    .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
+            given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
+            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1))
+                    .willReturn(List.of(quizWithId(10L, 1, 1), quizWithId(11L, 1, 2), quizWithId(12L, 1, 3)));
+            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+                    .willReturn(List.of());
+
+            QuizNextResponse response = quizService.getNextQuiz(USER_ID, COURSE_ID);
+
+            assertThat(response.totalCount()).isEqualTo(3);
+        }
+
+        @Test
         @DisplayName("오답으로 시도한 문제도 건너뛰고 다음 문제로 선형 진행한다")
         void skips_quiz_even_with_only_incorrect_attempt() {
             quizService = service();

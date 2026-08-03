@@ -2,22 +2,28 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FlameIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Feedback } from "@/components/ui/feedback";
-import { Progress } from "@/components/ui/progress";
+import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ReviewContext, reviewInsightHref } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
-import { getProgressPercent } from "@/features/play/play-logic";
 import {
+  comboVisibleFrom,
   difficultyLabels,
   getPlayQuestionKindLabel,
   isUnauthorized,
   shuffleChoices,
 } from "@/features/play/quiz-shared";
-import { type PlaySession, recordAnswer, resetSession } from "@/features/play/session-progress";
+import {
+  type PlaySession,
+  readSession,
+  recordAnswer,
+  resetSession,
+} from "@/features/play/session-progress";
 import {
   getNextQuiz,
   getStepQuiz,
@@ -32,7 +38,6 @@ import {
 type AnswerDraft = boolean | string | string[] | null;
 
 const optionLabels = ["A", "B", "C", "D"];
-const defaultStepTotal = 5;
 
 type PlayPageProps = {
   /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 문제를 슬롯 순서로 받아 진행한다. */
@@ -58,7 +63,12 @@ export function PlayPage({ review }: PlayPageProps) {
 
   const reviewStep = review?.step ?? null;
   const reviewSlot = review?.slot ?? null;
+  const reviewStreak = review?.streak ?? null;
   const isReview = reviewStep !== null && reviewSlot !== null;
+
+  // 문제 화면에 띄울 현재 연속 정답 수. 일반 학습은 로컬 세션에, 복습은 URL에 실려 온다.
+  // localStorage는 서버에서 읽을 수 없으므로 첫 렌더 뒤(effect)에 채운다 — hydration 불일치 방지.
+  const [combo, setCombo] = useState(0);
 
   // 복습은 매번 다른 순서로 보여줘야 번호 암기를 막을 수 있어 문제를 새로 받을 때마다 한 번 섞는다.
   // 선택을 바꿔 리렌더될 때 순서가 흔들리지 않도록 quiz에 묶어 기억해 둔다.
@@ -68,8 +78,9 @@ export function PlayPage({ review }: PlayPageProps) {
     return isReview ? shuffleChoices(choices) : choices;
   }, [quiz, isReview]);
 
-  const totalCount = quiz?.totalCount ?? defaultStepTotal;
+  const totalCount = quiz?.totalCount ?? 0;
   const currentNumber = quiz?.slotOrder ?? 1;
+  const isComboVisible = combo >= comboVisibleFrom;
   const submitEnabled = quiz
     ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading
     : false;
@@ -79,8 +90,19 @@ export function PlayPage({ review }: PlayPageProps) {
       return "문제를 불러오는 중";
     }
 
-    return `${totalCount}문제 중 ${currentNumber}번째, ${difficultyLabels[quiz.difficulty]}`;
-  }, [currentNumber, quiz, totalCount]);
+    const position = `${totalCount}문제 중 ${currentNumber}번째, ${difficultyLabels[quiz.difficulty]}`;
+
+    return combo >= comboVisibleFrom ? `${position}. ${combo}연속 정답 중` : position;
+  }, [combo, currentNumber, quiz, totalCount]);
+
+  useEffect(() => {
+    if (!quiz) {
+      setCombo(0);
+      return;
+    }
+
+    setCombo(reviewStreak ?? readSession(quiz.stepOrder).combo);
+  }, [quiz, reviewStreak]);
 
   useEffect(() => {
     let ignore = false;
@@ -252,11 +274,25 @@ export function PlayPage({ review }: PlayPageProps) {
             </div>
           </div>
           <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-ink-muted">
+            <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-ink-muted">
               {quiz ? (
                 <>
-                  <span>
-                    {currentNumber}/{totalCount}
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-black text-ink">
+                      {currentNumber}/{totalCount}
+                    </span>
+                    {isComboVisible ? (
+                      // 연속 정답 수는 sr-only live region이 이미 읽어 주므로 칩은 시각 전용.
+                      <span
+                        aria-hidden="true"
+                        className="animate-combo-bounce flex items-center gap-1 rounded-chip bg-accent/10 px-2 py-0.5 text-accent"
+                        // 콤보가 오를 때마다 다시 튀어오르게 한다.
+                        key={combo}
+                      >
+                        <FlameIcon className="h-3.5 w-3.5" />
+                        {combo}연속
+                      </span>
+                    ) : null}
                   </span>
                   <span>{difficultyLabels[quiz.difficulty]}</span>
                 </>
@@ -264,10 +300,11 @@ export function PlayPage({ review }: PlayPageProps) {
                 <span>문제를 준비하고 있어요</span>
               )}
             </div>
-            <Progress
+            <SegmentedProgress
+              hot={isComboVisible}
               label="문제 진행률"
-              max={100}
-              value={quiz ? getProgressPercent(currentNumber - 1, totalCount) : 0}
+              total={totalCount}
+              value={currentNumber - 1}
             />
           </div>
           <p aria-live="polite" className="sr-only">
@@ -444,12 +481,13 @@ function QuestionRenderer({
 
                 return (
                   <label
+                    // 그림자로 두께를 만들고 누르는 동안 그만큼 내려앉혀 실제 버튼처럼 눌리게 한다.
                     className={`animate-choice-in flex min-h-14 w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold leading-6 transition duration-150 ${
                       isEliminated
                         ? "border-border bg-surface-muted opacity-50"
                         : isSelected
-                          ? "border-primary bg-surface shadow-card"
-                          : "border-border bg-surface active:scale-95"
+                          ? "border-primary bg-surface shadow-choice-selected active:translate-y-1 active:shadow-none"
+                          : "border-border bg-surface shadow-choice active:translate-y-1 active:shadow-none"
                     }`}
                     key={choice.choiceId}
                     // 선택지가 위에서부터 차례로 내려앉게 한다 — 넷이 한 번에 나타나면 밋밋하다.
@@ -518,8 +556,11 @@ function OxButton({
 
   return (
     <label
+      // 고르기 전에는 두께를 줘 눌리는 버튼처럼, 고른 뒤에는 떠오르듯 커지게 한다.
       className={`animate-choice-in flex min-h-28 items-center justify-center rounded-card border bg-surface text-5xl font-black transition duration-150 ${
-        selected ? `${selectedClassName} scale-105` : "border-border text-ink-muted active:scale-95"
+        selected
+          ? `${selectedClassName} scale-105`
+          : "border-border text-ink-muted shadow-choice active:translate-y-1 active:shadow-none"
       }`}
     >
       <input
