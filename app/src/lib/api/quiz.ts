@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, apiRequestWithMeta, type CursorMeta } from "./client";
 
 export type QuizType = "OX" | "MULTIPLE_CHOICE" | "KEYWORD_BLANK";
 export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD";
@@ -96,6 +96,25 @@ export type CompletedStepsResponse = {
   steps: CompletedStep[];
 };
 
+/**
+ * 유저가 지금까지 제출한 풀이 시도 1건. `selectedAnswer`는 서버가 이미 사람이 읽을 문구로
+ * 변환해서 준다(사지선다는 선택지 텍스트, 빈칸은 쉼표로 이어붙인 값) — 프론트는 타입별 분기 없이
+ * 그대로 표시하면 된다. 이 필드가 도입되기 전 기록은 null.
+ */
+export type QuizAttemptHistoryItem = {
+  attemptId: number;
+  quizId: number;
+  type: QuizType;
+  questionText: string;
+  selectedAnswer: string | null;
+  isCorrect: boolean;
+  submittedAt: string;
+};
+
+export type QuizAttemptHistoryResponse = {
+  items: QuizAttemptHistoryItem[];
+};
+
 /** courseId 생략 시 서버가 기본 코스를 쓴다(코스 탭에서 코스를 지정해 진입할 때만 넘긴다). */
 export function getNextQuiz(courseId?: number): Promise<QuizNextResponse> {
   return apiRequest<QuizNextResponse>(
@@ -131,4 +150,16 @@ export function requestQuizHint(quizId: number): Promise<QuizHintResponse> {
 
 export function getQuizExplanation(quizId: number): Promise<QuizExplanationResponse> {
   return apiRequest<QuizExplanationResponse>(`/quizzes/${quizId}/explanation`);
+}
+
+/** 내가 푼 문제 히스토리(이슈 191) — 최신순 커서 페이지네이션. */
+export function getAttemptHistory(
+  cursor: string | null,
+  size?: number,
+): Promise<{ data: QuizAttemptHistoryResponse; meta: CursorMeta | null }> {
+  const query = new URLSearchParams();
+  if (cursor) query.set("cursor", cursor);
+  if (size) query.set("size", String(size));
+  const qs = query.toString();
+  return apiRequestWithMeta<QuizAttemptHistoryResponse>(`/quizzes/attempts${qs ? `?${qs}` : ""}`);
 }
