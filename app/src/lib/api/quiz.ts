@@ -96,8 +96,11 @@ export type CompletedStepsResponse = {
   steps: CompletedStep[];
 };
 
-export function getNextQuiz(): Promise<QuizNextResponse> {
-  return apiRequest<QuizNextResponse>("/quizzes/next");
+/** courseId 생략 시 서버가 기본 코스를 쓴다(코스 탭에서 코스를 지정해 진입할 때만 넘긴다). */
+export function getNextQuiz(courseId?: number): Promise<QuizNextResponse> {
+  return apiRequest<QuizNextResponse>(
+    courseId ? `/quizzes/next?courseId=${courseId}` : "/quizzes/next",
+  );
 }
 
 /** 유저가 완료한(현재 진행 스텝보다 이전) 스텝 목록 — 히스토리 복습 화면용. */

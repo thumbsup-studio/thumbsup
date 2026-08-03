@@ -7,7 +7,7 @@ import { AppToastProvider } from "@/providers/app-toast-provider";
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 
-function renderTabBar(activeTab: "home" | "history" | "profile") {
+function renderTabBar(activeTab: "home" | "history" | "course" | "profile") {
   return render(
     <AppToastProvider>
       <AppTabBar activeTab={activeTab} />
@@ -56,6 +56,21 @@ describe("AppTabBar", () => {
     expect(historyIcon).toHaveAttribute("src", "/icons/tabs/history-full.png");
   });
 
+  it("uses the full course png icon when the course tab is active", () => {
+    renderTabBar("course");
+
+    const courseTab = screen.getByRole("button", { name: "코스" });
+    const courseIcon = courseTab.querySelector('img[alt=""]');
+
+    expect(courseTab).toHaveAttribute("aria-current", "page");
+    expect(courseTab).toHaveAttribute("data-state", "active");
+    expect(courseTab.querySelector("[data-icon-variant]")).toHaveAttribute(
+      "data-icon-variant",
+      "full",
+    );
+    expect(courseIcon).toHaveAttribute("src", "/icons/tabs/course-full.png");
+  });
+
   it("routes to /history when the history tab is pressed from another tab", () => {
     pushMock.mockClear();
     renderTabBar("home");
@@ -63,6 +78,15 @@ describe("AppTabBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "히스토리" }));
 
     expect(pushMock).toHaveBeenCalledWith("/history");
+  });
+
+  it("routes to /course when the course tab is pressed", () => {
+    pushMock.mockClear();
+    renderTabBar("home");
+
+    fireEvent.click(screen.getByRole("button", { name: "코스" }));
+
+    expect(pushMock).toHaveBeenCalledWith("/course");
   });
 
   it("routes to /profile when the profile tab is pressed", () => {

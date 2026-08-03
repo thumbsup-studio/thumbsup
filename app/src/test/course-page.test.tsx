@@ -1,0 +1,102 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CoursePage } from "@/features/course/components/course-page";
+import { type CourseItem, getCourses } from "@/lib/api/course";
+
+const mockRouter = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => mockRouter,
+}));
+
+vi.mock("@/lib/api/course", () => ({
+  getCourses: vi.fn(),
+}));
+
+const courseWithMixedSteps: CourseItem = {
+  courseId: 1,
+  title: "운영체제",
+  category: "CS",
+  steps: [
+    { stepOrder: 1, topic: "프로세스와 스레드", estimatedMinutes: 10, state: "COMPLETED" },
+    { stepOrder: 2, topic: "동기화", estimatedMinutes: 12, state: "SOLVABLE" },
+    { stepOrder: 3, topic: "교착 상태", estimatedMinutes: 15, state: "LOCKED" },
+  ],
+};
+
+describe("CoursePage", () => {
+  beforeEach(() => {
+    vi.mocked(getCourses).mockReset();
+    mockRouter.push.mockReset();
+    mockRouter.replace.mockReset();
+  });
+
+  it("코스 목록과 스텝을 상태와 함께 불러와 보여준다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseWithMixedSteps] });
+
+    render(<CoursePage />);
+
+    expect(await screen.findByText("운영체제")).toBeInTheDocument();
+    expect(screen.getByText("프로세스와 스레드")).toBeInTheDocument();
+    expect(screen.getByText("동기화")).toBeInTheDocument();
+    expect(screen.getByText("교착 상태")).toBeInTheDocument();
+    expect(screen.getByText("완료")).toBeInTheDocument();
+    expect(screen.getByText("풀기")).toBeInTheDocument();
+    expect(screen.getByText("잠김")).toBeInTheDocument();
+  });
+
+  it("완료 스텝은 복습 링크로, 풀 수 있는 스텝은 해당 코스의 다음 문제로 진입한다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseWithMixedSteps] });
+
+    render(<CoursePage />);
+
+    const completedLink = await screen.findByRole("link", { name: /프로세스와 스레드/ });
+    expect(completedLink).toHaveAttribute(
+      "href",
+      "/play?step=1&slot=1&rc=0&rs=0&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4%EC%99%80+%EC%8A%A4%EB%A0%88%EB%93%9C",
+    );
+
+    const solvableLink = screen.getByRole("link", { name: /동기화/ });
+    expect(solvableLink).toHaveAttribute("href", "/play?courseId=1");
+  });
+
+  it("잠긴 스텝은 링크가 없고 클릭할 수 없다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseWithMixedSteps] });
+
+    render(<CoursePage />);
+
+    await screen.findByText("교착 상태");
+
+    expect(screen.queryByRole("link", { name: /교착 상태/ })).not.toBeInTheDocument();
+  });
+
+  it("코스가 없으면 빈 상태를 보여준다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [] });
+
+    render(<CoursePage />);
+
+    expect(await screen.findByText("등록된 코스가 없어요")).toBeInTheDocument();
+  });
+
+  it("목록을 불러오지 못하면 에러를 보여준다", async () => {
+    vi.mocked(getCourses).mockRejectedValue(new Error("network"));
+
+    render(<CoursePage />);
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("코스 목록을 불러오지 못했어요.");
+  });
+
+  it("인증이 만료되면 로그인 화면으로 보낸다", async () => {
+    vi.mocked(getCourses).mockRejectedValue({ status: 401 });
+
+    render(<CoursePage />);
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith("/login");
+    });
+  });
+});

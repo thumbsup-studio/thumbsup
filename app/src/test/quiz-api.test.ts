@@ -54,6 +54,31 @@ describe("quiz api", () => {
     expect(callInit(fetchMock, 0).headers.Authorization).toBe("Bearer acc");
   });
 
+  it("코스를 지정하면 courseId 쿼리로 다음 문제를 요청한다", async () => {
+    tokenStore.set({ accessToken: "acc", refreshToken: "ref" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        200,
+        envelope("SUCCESS", {
+          quizId: 20,
+          type: "OX",
+          difficulty: "EASY",
+          questionText: "싱글턴은 전역 상태를 만든다.",
+          codeSnippet: null,
+          choices: null,
+          blankCount: null,
+          stepOrder: 13,
+          slotOrder: 1,
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getNextQuiz(2);
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/quizzes/next?courseId=2");
+  });
+
   it("submits answers as ordered string values", async () => {
     tokenStore.set({ accessToken: "acc", refreshToken: "ref" });
     const fetchMock = vi
