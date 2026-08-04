@@ -22,6 +22,7 @@ import { type CourseItem, type CourseStep, getCourses } from "@/lib/api/course";
 export function CoursePage() {
   const router = useRouter();
   const [courses, setCourses] = useState<CourseItem[] | null>(null);
+  const [openCourseId, setOpenCourseId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -42,6 +43,7 @@ export function CoursePage() {
         const response = await getCourses();
         if (!ignore) {
           setCourses(response.items);
+          setOpenCourseId(findDefaultOpenCourseId(response.items) ?? null);
         }
       } catch (loadError) {
         if (isUnauthorized(loadError)) {
@@ -81,8 +83,10 @@ export function CoursePage() {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
         <div>
           <p className="text-xs font-semibold tracking-wide text-ink-muted">코스</p>
-          <h2 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
-            전체 코스에서 지금 풀 수 있는 스텝을 확인해 보세요.
+          <h2 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-ink">
+            원하는 코스를 선택해
+            <br />
+            학습을 시작해보세요.
           </h2>
         </div>
 
@@ -103,7 +107,15 @@ export function CoursePage() {
             <ul className="flex flex-col gap-4">
               {courses.map((course) => (
                 <li key={course.courseId}>
-                  <CourseCard course={course} />
+                  <CourseCard
+                    course={course}
+                    isOpen={openCourseId === course.courseId}
+                    onToggle={() =>
+                      setOpenCourseId((current) =>
+                        current === course.courseId ? null : course.courseId,
+                      )
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -124,25 +136,64 @@ export function CoursePage() {
   );
 }
 
-function CourseCard({ course }: { course: CourseItem }) {
+function CourseCard({
+  course,
+  isOpen,
+  onToggle,
+}: {
+  course: CourseItem;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
-      <div className="flex items-center justify-between gap-3 border-b border-border p-5">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-ink-muted">{course.category}</p>
-          <h3 className="mt-0.5 truncate text-lg font-bold text-ink">{course.title}</h3>
-        </div>
-        <Chip>스텝 {course.steps.length}개</Chip>
-      </div>
-      <ul className="divide-y divide-border">
-        {course.steps.map((step) => (
-          <li key={step.stepOrder}>
-            <CourseStepRow courseId={course.courseId} step={step} />
-          </li>
-        ))}
-      </ul>
+      <button
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between gap-3 p-5 text-left"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-semibold text-ink-muted">
+            {course.category}
+          </span>
+          <span className="mt-0.5 block truncate text-lg font-bold text-ink">{course.title}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {isCourseCompleted(course) ? (
+            <span className="rounded-chip bg-badge px-2 py-1 text-xs font-bold text-badge-fg">
+              완주
+            </span>
+          ) : null}
+          <Chip>스텝 {course.steps.length}개</Chip>
+          <ChevronRightIcon
+            aria-hidden="true"
+            className={`size-5 shrink-0 text-ink-muted transition-transform motion-safe:duration-200 ${
+              isOpen ? "rotate-90" : ""
+            }`}
+          />
+        </span>
+      </button>
+      {isOpen ? (
+        <ul className="divide-y divide-border border-t border-border">
+          {course.steps.map((step) => (
+            <li key={step.stepOrder}>
+              <CourseStepRow courseId={course.courseId} step={step} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
+}
+
+/** 목록에서 '풀 수 있는(SOLVABLE) 스텝'이 있는 첫 코스 — 기본으로 펼쳐서 보여준다. */
+function findDefaultOpenCourseId(courses: CourseItem[]): number | undefined {
+  return courses.find((course) => course.steps.some((step) => step.state === "SOLVABLE"))?.courseId;
+}
+
+function isCourseCompleted(course: CourseItem): boolean {
+  return course.steps.length > 0 && course.steps.every((step) => step.state === "COMPLETED");
 }
 
 function CourseStepRow({ courseId, step }: { courseId: number; step: CourseStep }) {
