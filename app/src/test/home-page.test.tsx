@@ -189,7 +189,10 @@ describe("HomePage", () => {
     expect(screen.getByText("완주")).toBeInTheDocument();
     expect(screen.getByText("스텝 완주")).toBeInTheDocument();
     expect(screen.getByText("총 8개 스텝 완주")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "다시 풀기" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "복습하기" })).toHaveAttribute(
+      "href",
+      "/course?courseId=1",
+    );
     expect(screen.queryByText("스텝 진행중")).not.toBeInTheDocument();
   });
 

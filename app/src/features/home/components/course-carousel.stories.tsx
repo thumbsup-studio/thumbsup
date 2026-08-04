@@ -36,7 +36,7 @@ const networkCourse: HomeCourse = {
   durationLabel: "5분이면 끝나요",
 };
 
-/** 완주 코스 — 칩·"스텝 완주" 문구·"다시 풀기" CTA로 진행중과 구분된다. */
+/** 완주 코스 — 칩·"스텝 완주" 문구·"복습하기" CTA로 진행중과 구분된다. */
 const completedCourse: HomeCourse = {
   courseId: 4,
   title: "자료구조",

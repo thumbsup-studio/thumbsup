@@ -156,4 +156,24 @@ describe("CoursePage", () => {
     expect(screen.getByText("완주")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /운영체제/ })?.textContent).not.toContain("완주");
   });
+
+  it("홈의 복습하기로 지정된 코스가 있으면 기본 규칙 대신 그 코스를 펼친다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseWithMixedSteps, courseCompleted] });
+
+    render(<CoursePage initialOpenCourseId={courseCompleted.courseId} />);
+
+    await screen.findByText("배열");
+
+    expect(screen.queryByText("동기화")).not.toBeInTheDocument();
+  });
+
+  it("지정된 코스 id가 목록에 없으면 기본 규칙(풀 수 있는 스텝이 있는 첫 코스)으로 펼친다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseWithMixedSteps, courseCompleted] });
+
+    render(<CoursePage initialOpenCourseId={999} />);
+
+    await screen.findByText("동기화");
+
+    expect(screen.queryByText("배열")).not.toBeInTheDocument();
+  });
 });
