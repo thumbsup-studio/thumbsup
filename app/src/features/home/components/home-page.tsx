@@ -2,8 +2,8 @@
 
 import { AppTabBar } from "@/components/app-tab-bar";
 import { CharacterBlock } from "@/features/home/components/character-block";
+import { CourseCarousel } from "@/features/home/components/course-carousel";
 import { StreakBlock } from "@/features/home/components/streak-block";
-import { TodayCourseCard } from "@/features/home/components/today-course-card";
 import { WelcomeBlock } from "@/features/home/components/welcome-block";
 import type { HomeData } from "@/features/home/types";
 
@@ -29,11 +29,20 @@ export function HomePage({ data, now }: HomePageProps) {
 
         <CharacterBlock name={data.character.name} fullness={data.character.fullness} />
 
-        <TodayCourseCard
-          course={data.todayCourse}
-          startHref="/play"
-          completed={data.todayCompleted}
-        />
+        <section aria-labelledby="recent-courses-heading" className="space-y-3">
+          <div>
+            {/* 시각 크기는 h1(WelcomeBlock text-2xl)급, 문서 아웃라인상으론 h1 아래 섹션이라 h2 유지. */}
+            <h2 className="text-2xl font-semibold tracking-tight" id="recent-courses-heading">
+              최근 학습 코스
+            </h2>
+            <p className="mt-1 text-sm font-medium text-ink-muted">
+              최근에 푼 순서로 최대 10개까지 보여드려요.
+              <br />
+              전체 코스는 하단의 코스 탭에서 볼 수 있어요.
+            </p>
+          </div>
+          <CourseCarousel courses={data.courses} />
+        </section>
 
         <div className="sticky bottom-4 mt-auto pt-1">
           <AppTabBar activeTab="home" />
