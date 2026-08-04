@@ -19,7 +19,7 @@ import { type CourseItem, type CourseStep, getCourses } from "@/lib/api/course";
  * 코스 탭 화면(이슈 220) — 코스 목록 API가 계산한 스텝 상태(완료/풀기/잠김)를 그대로
  * 활성/비활성 표시에 매핑만 한다. 구독·선택 액션은 없다 — 유저의 전체 코스가 항상 노출된다.
  */
-export function CoursePage() {
+export function CoursePage({ initialOpenCourseId }: { initialOpenCourseId?: number } = {}) {
   const router = useRouter();
   const [courses, setCourses] = useState<CourseItem[] | null>(null);
   const [openCourseId, setOpenCourseId] = useState<number | null>(null);
@@ -43,7 +43,7 @@ export function CoursePage() {
         const response = await getCourses();
         if (!ignore) {
           setCourses(response.items);
-          setOpenCourseId(findDefaultOpenCourseId(response.items) ?? null);
+          setOpenCourseId(resolveOpenCourseId(response.items, initialOpenCourseId));
         }
       } catch (loadError) {
         if (isUnauthorized(loadError)) {
@@ -66,7 +66,7 @@ export function CoursePage() {
     return () => {
       ignore = true;
     };
-  }, [reloadKey, router]);
+  }, [reloadKey, router, initialOpenCourseId]);
 
   const liveText = isLoading
     ? "코스 목록을 불러오는 중"
@@ -190,6 +190,20 @@ function CourseCard({
 /** 목록에서 '풀 수 있는(SOLVABLE) 스텝'이 있는 첫 코스 — 기본으로 펼쳐서 보여준다. */
 function findDefaultOpenCourseId(courses: CourseItem[]): number | undefined {
   return courses.find((course) => course.steps.some((step) => step.state === "SOLVABLE"))?.courseId;
+}
+
+/** 홈의 완주 카드 "복습하기"로 지정 코스가 넘어오면 그 코스를 펼친다 — 목록에 없으면(위조·삭제된 코스) 기본 규칙으로. */
+function resolveOpenCourseId(
+  courses: CourseItem[],
+  requestedCourseId: number | undefined,
+): number | null {
+  if (
+    requestedCourseId !== undefined &&
+    courses.some((course) => course.courseId === requestedCourseId)
+  ) {
+    return requestedCourseId;
+  }
+  return findDefaultOpenCourseId(courses) ?? null;
 }
 
 function isCourseCompleted(course: CourseItem): boolean {

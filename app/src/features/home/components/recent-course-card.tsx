@@ -1,5 +1,5 @@
 import type { HomeCourse } from "@/features/home/types";
-import { buildPlayHref } from "@/features/play/course-params";
+import { buildCourseListHref, buildPlayHref } from "@/features/play/course-params";
 
 type RecentCourseCardProps = {
   course: HomeCourse;
@@ -7,8 +7,8 @@ type RecentCourseCardProps = {
 
 /**
  * 최근 학습 코스 카드 — 캐러셀(#23)의 슬라이드 한 장. 목록 성격은 HomePage의 섹션 제목이
- * 알려주므로 카드 자체 칩은 없다. 오늘 완료 여부와 무관하게 시작하기 CTA를 항상 유지한다
- * (코스 탭에서 무제한 풀이가 가능한데 홈만 막으면 비일관 — 이슈 240 논의).
+ * 알려주므로 카드 자체 칩은 없다. 완주한 코스는 "다음 문제"가 없어(/quizzes/next가 항상
+ * 404) CTA가 코스 탭의 그 코스 아코디언으로 보내는 "복습하기"로 바뀐다.
  * h-full+flex-col은 캐러셀에서 이웃 슬라이드와 높이를 맞추고 CTA를 바닥에 고정한다.
  */
 export function RecentCourseCard({ course }: RecentCourseCardProps) {
@@ -49,9 +49,11 @@ export function RecentCourseCard({ course }: RecentCourseCardProps) {
       </div>
       <a
         className="mt-auto flex min-h-12 w-full items-center justify-center rounded-control bg-surface px-4 py-3 text-base font-semibold text-primary"
-        href={buildPlayHref(course.courseId)}
+        href={
+          course.completed ? buildCourseListHref(course.courseId) : buildPlayHref(course.courseId)
+        }
       >
-        {course.completed ? "다시 풀기" : "시작하기"}
+        {course.completed ? "복습하기" : "시작하기"}
       </a>
     </section>
   );

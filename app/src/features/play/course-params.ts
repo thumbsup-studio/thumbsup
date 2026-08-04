@@ -11,6 +11,11 @@ export type CourseSearchParams = {
 /** 코스 탭 화면으로 돌아가는 경로 — 코스 세션 완주·뒤로가기가 공통으로 쓴다. */
 export const COURSE_LIST_PATH = "/course";
 
+/** 완주한 코스의 "복습하기" → 코스 탭에서 그 코스 아코디언을 펼친 채로 진입. */
+export function buildCourseListHref(courseId: number): string {
+  return `${COURSE_LIST_PATH}?courseId=${courseId}`;
+}
+
 export function parseCourseId(value: string | undefined): number | undefined {
   const parsed = Number(value);
 
