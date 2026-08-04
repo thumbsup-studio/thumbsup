@@ -189,8 +189,7 @@ function CourseCard({
 
 /** 목록에서 '풀 수 있는(SOLVABLE) 스텝'이 있는 첫 코스 — 기본으로 펼쳐서 보여준다. */
 function findDefaultOpenCourseId(courses: CourseItem[]): number | undefined {
-  return courses.find((course) => course.steps.some((step) => step.state === "SOLVABLE"))
-    ?.courseId;
+  return courses.find((course) => course.steps.some((step) => step.state === "SOLVABLE"))?.courseId;
 }
 
 function isCourseCompleted(course: CourseItem): boolean {

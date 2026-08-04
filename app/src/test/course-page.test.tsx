@@ -154,8 +154,6 @@ describe("CoursePage", () => {
     await screen.findByText("자료구조");
 
     expect(screen.getByText("완주")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /운영체제/ })?.textContent,
-    ).not.toContain("완주");
+    expect(screen.queryByRole("button", { name: /운영체제/ })?.textContent).not.toContain("완주");
   });
 });
