@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CoursePage } from "@/features/course/components/course-page";
 import { type CourseItem, getCourses } from "@/lib/api/course";
@@ -24,6 +24,23 @@ const courseWithMixedSteps: CourseItem = {
     { stepOrder: 1, topic: "프로세스와 스레드", estimatedMinutes: 10, state: "COMPLETED" },
     { stepOrder: 2, topic: "동기화", estimatedMinutes: 12, state: "SOLVABLE" },
     { stepOrder: 3, topic: "교착 상태", estimatedMinutes: 15, state: "LOCKED" },
+  ],
+};
+
+const courseAllLocked: CourseItem = {
+  courseId: 2,
+  title: "네트워크",
+  category: "CS",
+  steps: [{ stepOrder: 1, topic: "OSI 7계층", estimatedMinutes: 8, state: "LOCKED" }],
+};
+
+const courseCompleted: CourseItem = {
+  courseId: 3,
+  title: "자료구조",
+  category: "CS",
+  steps: [
+    { stepOrder: 1, topic: "배열", estimatedMinutes: 5, state: "COMPLETED" },
+    { stepOrder: 2, topic: "연결 리스트", estimatedMinutes: 5, state: "COMPLETED" },
   ],
 };
 
@@ -98,5 +115,47 @@ describe("CoursePage", () => {
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith("/login");
     });
+  });
+
+  it("풀 수 있는 스텝이 있는 첫 코스만 기본으로 펼치고 나머지는 접는다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseAllLocked, courseWithMixedSteps] });
+
+    render(<CoursePage />);
+
+    await screen.findByText("네트워크");
+
+    expect(screen.queryByText("OSI 7계층")).not.toBeInTheDocument();
+    expect(screen.getByText("동기화")).toBeInTheDocument();
+  });
+
+  it("코스 헤더를 누르면 스텝 목록이 펼쳐지고 다시 누르면 접힌다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseAllLocked] });
+
+    render(<CoursePage />);
+
+    const toggle = await screen.findByRole("button", { name: /네트워크/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("OSI 7계층")).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("OSI 7계층")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("OSI 7계층")).not.toBeInTheDocument();
+  });
+
+  it("스텝을 모두 완료한 코스에는 완주 배지가 보인다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [courseWithMixedSteps, courseCompleted] });
+
+    render(<CoursePage />);
+
+    await screen.findByText("자료구조");
+
+    expect(screen.getByText("완주")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /운영체제/ })?.textContent,
+    ).not.toContain("완주");
   });
 });
