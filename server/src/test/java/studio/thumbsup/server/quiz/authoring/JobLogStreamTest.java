@@ -10,18 +10,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
 
 /**
  * 잡 로그 SSE 스트림(#174 T9) 인수 테스트 — 실제 MockMvc 요청을 태워 응답 본문의 SSE 와이어 포맷을
@@ -33,17 +27,9 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
  * RUNNING 잡 케이스는 emitter가 의도적으로 열린 채 남기 때문에 {@code asyncDispatch}를 걸면
  * (아무도 complete를 호출하지 않아) emitter 타임아웃(30분)까지 블로킹된다 — 실제로 겪은 함정이라 기록.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class JobLogStreamTest {
+class JobLogStreamTest extends AcceptanceTestSupport {
 
     private static final long USER_ID = 1L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

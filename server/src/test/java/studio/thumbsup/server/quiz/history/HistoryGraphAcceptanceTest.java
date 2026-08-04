@@ -10,18 +10,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.concept.Concept;
@@ -47,18 +41,10 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
  * {@code HistoryServiceTest}가 이미 단위로 검증하므로, 여기서는 그 결과물이 이미 있다고 가정하고
  * 조회 경로(인증·조인·응답 계약·날짜 직렬화)만 검증해 층간 중복을 피한다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class HistoryGraphAcceptanceTest {
+class HistoryGraphAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 1L;
     private static final int STEP_ORDER = 6;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

@@ -1,4 +1,4 @@
-package studio.thumbsup.server.common;
+package studio.thumbsup.server.common.support;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.Entity;

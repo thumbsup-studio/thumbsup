@@ -10,31 +10,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /** 풀이 중 요청형 힌트 API 인수 테스트 — 실제 Flyway 백필·JPA·JWT 필터체인을 함께 검증한다. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class QuizHintAcceptanceTest {
+class QuizHintAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 193_001L;
     private static final long OS_COURSE_ID = 1L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

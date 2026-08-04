@@ -14,16 +14,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /**
  * 해설 조회 API(#43) 인수 테스트 — Flyway 시드를 실제 MySQL에 올리고 필터체인까지 통과시켜
@@ -34,11 +28,7 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
  * 깨지면 FE 계약에 바로 영향을 주는 흐름이기 때문이다. 마커 파싱의 분기(미등록 마커·중첩 등)는
  * {@link ExplanationTextParserTest}가, 응답 조립 규칙은 {@code QuizServiceTest}가 담당한다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class QuizExplanationAcceptanceTest {
+class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 999L;
     private static final int FORMAL_STEP_ORDER = 1;
@@ -48,10 +38,6 @@ class QuizExplanationAcceptanceTest {
     private static final int FIXTURE_STEP_ORDER = 101;
 
     private static final long ABSENT_QUIZ_ID = 999_999L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

@@ -9,14 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
@@ -24,14 +19,7 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
 import studio.thumbsup.server.quiz.generation.QuizPreset;
 
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
-class AuthoringPublishIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class AuthoringPublishIntegrationTest extends AcceptanceTestSupport {
 
     @Autowired
     private AuthoringPublishService publishService;

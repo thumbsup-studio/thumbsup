@@ -14,18 +14,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.course.Course;
@@ -39,18 +33,10 @@ import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
  * <p>{@code FollowUpQuestionAcceptanceTest}처럼 {@code @Transactional}을 켜지 않는다 — 승인 후
  * quiz 테이블에 실제로 행이 늘었는지(materialize)를 별도 조회로 증명해야 하기 때문이다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class AuthoringAcceptanceTest {
+class AuthoringAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long USER_ID = 900L;
     private static final long OTHER_USER_ID = 901L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

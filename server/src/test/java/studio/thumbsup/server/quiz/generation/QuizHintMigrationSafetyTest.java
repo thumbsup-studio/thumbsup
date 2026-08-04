@@ -10,21 +10,15 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import studio.thumbsup.server.common.support.MigrationTestSupport;
 
 /** #193 점진 백필이 운영에서 추가·수정된 문제를 보존하는지 실제 MySQL에서 검증한다. */
-@Testcontainers
-class QuizHintMigrationSafetyTest {
+class QuizHintMigrationSafetyTest extends MigrationTestSupport {
 
     private static final int DRIFTED_STEP = 14;
     private static final int DRIFTED_SLOT = 5;
     private static final int EXTRA_STEP = 0;
     private static final int EXTRA_SLOT = 99;
-
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     @Test
     @DisplayName("추가·수정·승인 개선된 운영 문제를 보존하고 exact-match canonical 문제만 백필한다")

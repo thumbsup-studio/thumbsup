@@ -11,16 +11,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /**
  * 풀이 기록 조회 API 인수 테스트(#261) — 저장된 풀이 시도가 인증 필터체인·실제 MySQL 커서 페이지네이션·
@@ -28,19 +22,11 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
  * {@code QuizAttemptHistoryServiceTest}가, 요청 검증(size 범위)은 {@code QuizControllerTest}도 함께 다루지만
  * 여기서는 인증 필터체인과 실 DB를 통과한 최종 계약만 확인한다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class QuizAttemptHistoryAcceptanceTest {
+class QuizAttemptHistoryAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 501L;
     private static final long OTHER_USER_ID = 502L;
     private static final long USER_WITHOUT_ATTEMPTS_ID = 503L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;

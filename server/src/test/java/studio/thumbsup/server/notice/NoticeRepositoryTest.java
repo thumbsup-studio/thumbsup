@@ -6,34 +6,16 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.config.ClockConfig;
-import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.common.support.RepositoryTestSupport;
 
 /**
  * Repository 통합 테스트 — 실제 MySQL(Testcontainers)에 Flyway 마이그레이션을 적용해
  * 쿼리·스키마·감사 필드를 함께 검증한다 (피라미드 3층).
  * 슬라이스에는 @Configuration이 없으므로 Auditing/Clock을 @Import로 가져온다.
  */
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import({ClockConfig.class, JpaAuditingConfig.class})
-@ActiveProfiles("test")
 @DisplayName("공지 리포지토리")
-class NoticeRepositoryTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class NoticeRepositoryTest extends RepositoryTestSupport {
 
     private final NoticeRepository noticeRepository;
 

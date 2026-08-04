@@ -13,16 +13,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 import studio.thumbsup.server.quiz.QuizProgress;
 import studio.thumbsup.server.quiz.QuizProgressRepository;
 import studio.thumbsup.server.quiz.QuizStep;
@@ -38,17 +32,9 @@ import studio.thumbsup.server.quiz.QuizStepRepository;
  *
  * <p>스텝은 Flyway 시드 데이터(운영체제/디자인패턴, stepOrder 0~14)와 겹치지 않도록 9000번대를 쓴다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class CourseAcceptanceTest {
+class CourseAcceptanceTest extends AcceptanceTestSupport {
 
     private static final Long USER_ID = 1L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;

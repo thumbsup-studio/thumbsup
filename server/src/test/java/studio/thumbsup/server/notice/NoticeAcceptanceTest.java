@@ -11,16 +11,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /**
  * 공지 조회 API 인수 테스트 — 저장된 공지가 JPA·DTO·인증 필터체인을 거쳐 공통 envelope로 노출되는지 검증한다 (피라미드 4층).
@@ -30,20 +24,12 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
  * 분기는 {@code NoticeServiceTest}가, 요청 검증·envelope 형태는 {@code NoticeControllerTest}가 담당하므로
  * 여기서 반복하지 않는다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class NoticeAcceptanceTest {
+class NoticeAcceptanceTest extends AcceptanceTestSupport {
 
     /** 공지 API는 유저 식별을 쓰지 않지만, 인증 필터체인을 통과하려면 유효한 토큰이 필요하다. */
     private static final long TEST_USER_ID = 1L;
 
     private static final long ABSENT_NOTICE_ID = 999_999L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;

@@ -11,32 +11,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.config.ClockConfig;
-import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.common.support.RepositoryTestSupport;
 
 /**
  * Repository 통합 테스트 — 코스 목록 조회(#247)의 배치 진행 커서 조회와 홈(#240)의 최근 푼 순 조회를
  * 실제 MySQL로 검증한다 (피라미드 3층).
  */
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import({ClockConfig.class, JpaAuditingConfig.class})
-@ActiveProfiles("test")
-class QuizProgressRepositoryTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class QuizProgressRepositoryTest extends RepositoryTestSupport {
 
     private static final Long USER_ID = 1L;
     private static final Long OTHER_USER_ID = 2L;

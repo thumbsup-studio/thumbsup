@@ -7,34 +7,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.config.ClockConfig;
-import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.common.support.RepositoryTestSupport;
 
 /**
  * 풀이 기록(#261) Repository 통합 테스트 — 실제 MySQL(Testcontainers)에서 커서 페이지네이션 쿼리를
  * 검증한다 (피라미드 3층). 페이지네이션 경계(hasNext 등)는 {@code QuizAttemptHistoryServiceTest}가 담당하므로
  * 여기서는 쿼리 자체(정렬·유저 필터·커서 이후 조회·컬럼 왕복)만 확인한다.
  */
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import({ClockConfig.class, JpaAuditingConfig.class})
-@ActiveProfiles("test")
 @DisplayName("풀이 기록 리포지토리")
-class QuizAttemptRepositoryTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class QuizAttemptRepositoryTest extends RepositoryTestSupport {
 
     private final QuizRepository quizRepository;
     private final QuizAttemptRepository quizAttemptRepository;

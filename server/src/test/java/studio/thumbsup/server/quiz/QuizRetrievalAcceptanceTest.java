@@ -11,23 +11,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /** 문제 조회 API 인수 테스트 — Flyway 데이터가 JPA·DTO·필터체인을 거쳐 정확히 노출되는지 검증한다. */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class QuizRetrievalAcceptanceTest {
+class QuizRetrievalAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 157L;
     private static final long OS_COURSE_ID = 1L;
@@ -53,10 +43,6 @@ class QuizRetrievalAcceptanceTest {
                     10,
                     "페이지 프레임이 3개이고 페이지 참조열이 [1, 2, 3, 2, 4] 순서로 주어졌을 때, "
                             + "LRU 알고리즘의 설명으로 가장 알맞은 것을 고르시오. 각 숫자는 페이지 번호를 의미한다."));
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;
