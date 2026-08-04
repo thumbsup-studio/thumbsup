@@ -103,10 +103,12 @@ public class HomeService {
             return Optional.empty();
         }
         int maxStepOrder = steps.getLast().getStepOrder();
+        // 완주 판단은 클램프 전 원본 커서로 한다 — 클램프 후에는 마지막 스텝 풀 차례와 구분이 안 된다.
+        boolean completed = cursorStepOrder > maxStepOrder;
         int cursor = clamp(cursorStepOrder, maxStepOrder);
         for (int i = 0; i < steps.size(); i++) {
             if (steps.get(i).getStepOrder() == cursor) {
-                return Optional.of(CourseLearning.of(course, steps.get(i), i, steps.size()));
+                return Optional.of(CourseLearning.of(course, steps.get(i), i, steps.size(), completed));
             }
         }
         return Optional.empty();

@@ -68,8 +68,8 @@ class HomeControllerTest {
                     320,
                     true,
                     List.of(
-                            new HomeResponse.CourseLearning(2L, "네트워크", 5L, "TCP", 5, 1, 3, 3),
-                            new HomeResponse.CourseLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3)));
+                            new HomeResponse.CourseLearning(2L, "네트워크", 5L, "TCP", 5, 1, 3, 3, false),
+                            new HomeResponse.CourseLearning(1L, "CS 기초", 2L, "스택과 큐", 2, 1, 3, 3, false)));
             given(homeService.getHome(eq(7L))).willReturn(response);
 
             mockMvc.perform(get("/api/v1/home"))
