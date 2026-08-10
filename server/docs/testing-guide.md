@@ -60,10 +60,10 @@ class GetNotices {
 
 - H2를 쓰지 않는다. MySQL 8.4 Testcontainer를 사용한다.
 - **컨테이너는 테스트 클래스마다 새로 띄우지 않는다.** `TestcontainersConfiguration`이 JVM(1회 `./gradlew test` 실행)당 MySQL 컨테이너 1개만 기동해 전체 테스트가 공유한다 — 클래스마다 Docker 컨테이너를 새로 띄우는 비용을 없애 전체 스위트 속도를 크게 줄인다.
-- 새 통합 테스트는 컨테이너/어노테이션을 직접 선언하지 않고 아래 공통 베이스를 상속한다(`studio.thumbsup.server.common` 패키지).
-  - `@DataJpaTest` 슬라이스 테스트 → `RepositoryTestSupport` 상속
-  - `@SpringBootTest` 인수/보안 테스트 → `AcceptanceTestSupport` 상속
-  - Spring 컨텍스트 없이 Flyway/JDBC로 마이그레이션을 직접 재생하는 테스트 → `MigrationTestSupport` 상속(공유 컨테이너는 `protected static final MySQLContainer<?> MYSQL`로 접근)
+- 새 통합 테스트는 컨테이너/어노테이션을 직접 선언하지 않고 아래 공통 베이스를 상속한다(`studio.thumbsup.server.common` 패키지). 패턴이 애매하면 프로즈보다 아래 예시 파일을 그대로 복제한다.
+  - `@DataJpaTest` 슬라이스 테스트 → `RepositoryTestSupport` 상속 (예: `NoticeRepositoryTest`)
+  - `@SpringBootTest` 인수/보안 테스트 → `AcceptanceTestSupport` 상속 (예: `NoticeAcceptanceTest`)
+  - Spring 컨텍스트 없이 Flyway/JDBC로 마이그레이션을 직접 재생하는 테스트 → `MigrationTestSupport` 상속(공유 컨테이너는 `protected static final MySQLContainer<?> MYSQL`로 접근, 예: `QuizHintMigrationTest`)
 - 컨테이너를 공유하는 대신 **클래스 단위 격리는 스키마 리셋으로 보장한다** — `RepositoryTestSupport`/`AcceptanceTestSupport`는 `@BeforeAll`에서 `TestcontainersConfiguration.resetSchema()`(Flyway `clean()`+`migrate()`)를 호출해 매 클래스를 "컨테이너를 새로 띄운 것"과 동일하게 깨끗한 시드 상태에서 시작시킨다. 클래스 안에서 `DatabaseCleanUp`으로 특정 테이블만 비우는 기존 관례(`@BeforeEach`)는 그대로 유지한다 — 서로 다른 층위의 격리라 중복이 아니다.
 - 따라서 테스트가 스스로 `MySQLContainer`를 `@Container`로 선언하거나 `@ServiceConnection`을 붙이지 않는다 — `TestcontainersConfiguration`이 시스템 프로퍼티로 datasource를 직접 심는다.
 - Flyway 마이그레이션이 실제로 적용되는지 Repository/Context 테스트에서 확인한다.
