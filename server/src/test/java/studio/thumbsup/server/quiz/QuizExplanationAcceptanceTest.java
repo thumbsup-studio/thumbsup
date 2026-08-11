@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,9 +34,10 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
     private static final long TEST_USER_ID = 999L;
     private static final int FORMAL_STEP_ORDER = 1;
     private static final int PROCESS_STEP_ORDER = 2;
-    private static final int SAMPLE_STEP_ORDER = 0;
     /** 픽스처 전용 스텝 — 시드가 쓰는 어떤 스텝과도 겹치지 않는다(server/docs 관례: 101/102). */
     private static final int FIXTURE_STEP_ORDER = 101;
+    /** 커리큘럼 밖 3문제 스텝 — #287에서 지워진 시드 placeholder를 대체하는 픽스처 전용 스텝. */
+    private static final int PLACEHOLDER_STEP_ORDER = 102;
 
     private static final long ABSENT_QUIZ_ID = 999_999L;
 
@@ -78,11 +80,45 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
                 .orElseThrow();
     }
 
-    /** 커리큘럼 밖 샘플 문제. 꼬리질문 상세가 저작돼 있다. */
+    /**
+     * 커리큘럼 밖 3문제 스텝을 직접 만든다 — #287에서 지운 시드 placeholder(step_order=0)를 대체한다.
+     * 1번 슬롯 문제는 꼬리질문 상세와, 오답 해설에만 등장하는 키워드("비연결형")를 갖는다.
+     * 여러 테스트가 호출하므로(이 클래스는 {@code @Transactional}이 없다) 이미 만들어졌으면 재사용한다.
+     */
     private Quiz placeholderQuiz() {
-        return quizRepository.findByStepOrderOrderBySlotOrderAsc(SAMPLE_STEP_ORDER).stream()
-                .findFirst()
-                .orElseThrow();
+        Optional<Quiz> existing = quizRepository.findByStepOrderAndSlotOrder(PLACEHOLDER_STEP_ORDER, 1);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        quizStepRepository.save(QuizStep.create(PLACEHOLDER_STEP_ORDER, 1L, "픽스처 스텝", 3));
+
+        // 하이라이트는 [[마커]]로 본문에 직접 저작된 구간만 변환되므로(QuizFixture.oxQuiz()는 마커가 없다),
+        // "비연결형"을 오답 해설에만 마커로 넣어 요약에는 없는 키워드 하이라이트를 재현한다.
+        Quiz first = Quiz.create(
+                QuizType.OX,
+                QuizDifficulty.EASY,
+                "TCP는 연결 지향 프로토콜이다.",
+                null,
+                "TCP는 3-way handshake로 연결을 맺는 연결 지향 프로토콜이다.",
+                null,
+                "UDP와 헷갈리기 쉽다 — UDP는 [[비연결형]]이라 handshake가 없다.");
+        first.assignCorrectAnswer("O");
+        first.addFollowUpQuestion("UDP와 TCP의 핵심 차이는 무엇인가요?", true, 1)
+                .attachDetail(QuizDifficulty.EASY, "UDP와 TCP의 가장 큰 차이는 연결 여부다.");
+        first.addKeyword("비연결형", "연결을 수립하지 않고 곧바로 전송하는 방식");
+        first.assignPosition(PLACEHOLDER_STEP_ORDER, 1);
+        Quiz saved = quizRepository.save(first);
+
+        Quiz second = QuizFixture.multipleChoiceQuiz();
+        second.assignPosition(PLACEHOLDER_STEP_ORDER, 2);
+        quizRepository.save(second);
+
+        Quiz third = QuizFixture.keywordBlankQuiz();
+        third.assignPosition(PLACEHOLDER_STEP_ORDER, 3);
+        quizRepository.saveAndFlush(third);
+
+        return saved;
     }
 
     /**
