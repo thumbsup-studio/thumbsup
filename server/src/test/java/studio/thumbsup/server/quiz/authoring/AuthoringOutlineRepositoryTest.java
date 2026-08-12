@@ -10,29 +10,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
-import studio.thumbsup.server.common.config.ClockConfig;
-import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
+import studio.thumbsup.server.common.support.RepositoryTestSupport;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import({ClockConfig.class, JpaAuditingConfig.class, DatabaseCleanUp.class})
-@ActiveProfiles("test")
-class AuthoringOutlineRepositoryTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class AuthoringOutlineRepositoryTest extends RepositoryTestSupport {
 
     private final AuthoringOutlineRepository outlineRepository;
     private final AuthoringOutlineStepRepository stepRepository;

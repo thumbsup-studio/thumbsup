@@ -10,17 +10,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /**
  * SecurityConfig의 필터체인이 실제로 logout을 인증 필요 경로로 막는지 확인하는 인수 테스트.
@@ -30,17 +24,9 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
  * docs/testing-guide.md §3(필터체인에서 막히는 동작)·§6(인증 필요 API의 미인증 케이스) 기준에 따라
  * {@code @SpringBootTest}로 실제 필터체인을 부팅해 검증한다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class AuthSecurityTest {
+class AuthSecurityTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 999L;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

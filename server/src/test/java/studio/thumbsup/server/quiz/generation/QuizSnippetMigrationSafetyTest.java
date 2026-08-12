@@ -13,13 +13,10 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import studio.thumbsup.server.common.support.MigrationTestSupport;
 
 /** #157 보정 마이그레이션의 원문 guard와 트랜잭션 롤백을 실제 MySQL에서 검증한다. */
-@Testcontainers
-class QuizSnippetMigrationSafetyTest {
+class QuizSnippetMigrationSafetyTest extends MigrationTestSupport {
 
     private static final String ORIGINAL_STEP_2_QUESTION = "다음 설명에 가장 알맞은 상태 전이를 고르시오.";
     private static final String ORIGINAL_STEP_2_SNIPPET = """
@@ -28,9 +25,6 @@ class QuizSnippetMigrationSafetyTest {
             타이머 인터럽트가 발생했고,
             운영체제는 P의 실행 정보를 저장한 뒤
             다른 프로세스에게 CPU를 넘긴다.""";
-
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     @Nested
     @DisplayName("원문 guard")

@@ -10,18 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
-import studio.thumbsup.server.common.config.ClockConfig;
-import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
+import studio.thumbsup.server.common.support.RepositoryTestSupport;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizFixture;
 import studio.thumbsup.server.quiz.QuizRepository;
@@ -36,17 +27,8 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
  * Flyway 시드(개념 마스터 64개)와 겹치지 않도록 매 테스트 전 테이블을 비운다 — step_order가
  * quiz_step을 FK로 참조하므로 스텝이 필요한 픽스처는 코스·스텝 부모 행을 먼저 만든다.
  */
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import({ClockConfig.class, JpaAuditingConfig.class, DatabaseCleanUp.class})
-@ActiveProfiles("test")
 @DisplayName("개념 리포지토리")
-class ConceptRepositoryTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class ConceptRepositoryTest extends RepositoryTestSupport {
 
     private final ConceptRepository conceptRepository;
     private final ConceptDescriptionRepository conceptDescriptionRepository;

@@ -12,20 +12,14 @@ import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import studio.thumbsup.server.common.support.MigrationTestSupport;
 
 /** MySQL 비트랜잭션 DDL 뒤에 프로세스가 끊겨도 다음 기동에서 백필을 안전하게 이어가는지 검증한다. */
-@Testcontainers
-class QuizHintMigrationRecoveryTest {
+class QuizHintMigrationRecoveryTest extends MigrationTestSupport {
 
     private static final String BASE_VERSION = "20260728170200";
     private static final String SCHEMA_VERSION = "20260731194402";
     private static final String BACKFILL_VERSION = "20260731194403";
-
-    @Container
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     @Test
     @DisplayName("컬럼 DDL 뒤 배포가 끊겨도 다음 기동이 백필만 적용하고 재기동은 무변경이다")

@@ -16,16 +16,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studio.thumbsup.server.common.security.JwtTokenProvider;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 
 /**
  * 꼬리질문 상세 조회 API(#108) 인수 테스트 — 해설 응답에서 받은 followUpQuestionId로 곧바로
@@ -34,11 +28,7 @@ import studio.thumbsup.server.common.security.JwtTokenProvider;
  * <p>이 흐름이 깨지면 FE가 꼬리질문을 탭해도 갈 곳이 없다. 마커 파싱의 분기는
  * {@link ExplanationTextParserTest}가, 응답 조립 규칙은 {@link QuizFollowUpQuestionServiceTest}가 담당한다.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Testcontainers
-@ActiveProfiles("test")
-class FollowUpQuestionAcceptanceTest {
+class FollowUpQuestionAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 999L;
     private static final long ABSENT_FOLLOW_UP_QUESTION_ID = 999_999L;
@@ -46,10 +36,6 @@ class FollowUpQuestionAcceptanceTest {
     private static final int SAMPLE_STEP_ORDER = 0;
     /** 픽스처 전용 스텝 — 시드가 쓰는 어떤 스텝과도 겹치지 않는다(server/docs 관례: 101/102). */
     private static final int FIXTURE_STEP_ORDER = 101;
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;

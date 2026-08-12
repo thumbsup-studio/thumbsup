@@ -12,16 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.config.ClockConfig;
-import studio.thumbsup.server.common.config.JpaAuditingConfig;
+import studio.thumbsup.server.common.support.RepositoryTestSupport;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizChoice;
 import studio.thumbsup.server.quiz.QuizDifficulty;
@@ -29,12 +20,7 @@ import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizType;
 
 /** 전체 Flyway 시드의 문제 유형·정답 구조·코드 지문 품질을 운영 반영 전에 고정한다. */
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-@Import({ClockConfig.class, JpaAuditingConfig.class})
-@ActiveProfiles("test")
-class QuizSeedDataIntegrityTest {
+class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
 
     private static final int TOTAL_QUIZ_COUNT = 73;
     private static final int FORMAL_QUIZ_COUNT = 70;
@@ -52,10 +38,6 @@ class QuizSeedDataIntegrityTest {
             new Coordinate(11, 4),
             new Coordinate(12, 4),
             new Coordinate(13, 4));
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
 
     private final QuizRepository quizRepository;
 

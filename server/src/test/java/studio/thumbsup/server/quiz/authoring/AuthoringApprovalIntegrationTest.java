@@ -9,13 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import studio.thumbsup.server.common.DatabaseCleanUp;
+import studio.thumbsup.server.common.support.AcceptanceTestSupport;
+import studio.thumbsup.server.common.support.DatabaseCleanUp;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizFixture;
 import studio.thumbsup.server.quiz.QuizRepository;
@@ -39,14 +34,7 @@ import studio.thumbsup.server.quiz.generation.QuizPreset;
  * 맡는다. choices처럼 지연 로딩 연관관계가 필요한 곳은 {@link QuizRepository#findWithChoicesById}로
  * 같은 조회 안에서 즉시 로딩한다.
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
-class AuthoringApprovalIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4");
+class AuthoringApprovalIntegrationTest extends AcceptanceTestSupport {
 
     private final AuthoringApprovalService approvalService;
     private final AuthoringDraftService draftService;
