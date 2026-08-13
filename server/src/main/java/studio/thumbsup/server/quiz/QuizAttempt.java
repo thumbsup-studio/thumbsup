@@ -41,22 +41,13 @@ public class QuizAttempt extends BaseEntity {
     @Column(nullable = false)
     private boolean isCorrect;
 
-    /** 제출한 답 원본(쉼표로 이어붙인 값) — #261, 풀이 기록 열람(#191)용. 이 필드 도입 이전 시도는 null. */
-    @Column(name = "selected_answer", columnDefinition = "TEXT")
-    private String selectedAnswer;
-
-    private QuizAttempt(Quiz quiz, Long userId, boolean isCorrect, String selectedAnswer) {
+    private QuizAttempt(Quiz quiz, Long userId, boolean isCorrect) {
         this.quiz = quiz;
         this.userId = userId;
         this.isCorrect = isCorrect;
-        this.selectedAnswer = selectedAnswer;
     }
 
     public static QuizAttempt create(Quiz quiz, Long userId, boolean isCorrect) {
-        return new QuizAttempt(quiz, userId, isCorrect, null);
-    }
-
-    public static QuizAttempt create(Quiz quiz, Long userId, boolean isCorrect, String selectedAnswer) {
-        return new QuizAttempt(quiz, userId, isCorrect, selectedAnswer);
+        return new QuizAttempt(quiz, userId, isCorrect);
     }
 }
