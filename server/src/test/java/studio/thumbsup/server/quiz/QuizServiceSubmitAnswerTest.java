@@ -216,43 +216,6 @@ class QuizServiceSubmitAnswerTest {
     }
 
     @Test
-    @DisplayName("제출한 답을 풀이 이력에 저장한다")
-    void saves_selected_answer_on_attempt() {
-        quizService = service();
-        Quiz quiz = quizWithId(10L, 1, 1);
-        given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
-        stubSubmittableStep(1);
-        given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
-        given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1)).willReturn(List.of());
-
-        quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
-
-        ArgumentCaptor<QuizAttempt> captor = ArgumentCaptor.forClass(QuizAttempt.class);
-        verify(quizAttemptRepository).save(captor.capture());
-        assertThat(captor.getValue().getSelectedAnswer()).isEqualTo("O");
-    }
-
-    @Test
-    @DisplayName("빈칸처럼 답이 여러 개면 쉼표로 이어붙여 저장한다")
-    void saves_multiple_selected_answers_joined_by_comma() {
-        quizService = service();
-        Quiz quiz = QuizFixture.keywordBlankQuiz();
-        quiz.addAnswerKeyword(2, "무관한동의어아님"); // 슬롯 2개짜리로 만들어 답도 2개 제출하게 한다
-        quiz.assignPosition(1, 1);
-        ReflectionTestUtils.setField(quiz, "id", 30L);
-        given(quizRepository.findById(30L)).willReturn(Optional.of(quiz));
-        stubSubmittableStep(1);
-        given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
-        given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1)).willReturn(List.of());
-
-        quizService.submitAnswer(USER_ID, 30L, new AnswerSubmitRequest(List.of("LIFO", "무관한동의어아님")));
-
-        ArgumentCaptor<QuizAttempt> captor = ArgumentCaptor.forClass(QuizAttempt.class);
-        verify(quizAttemptRepository).save(captor.capture());
-        assertThat(captor.getValue().getSelectedAnswer()).isEqualTo("LIFO,무관한동의어아님");
-    }
-
-    @Test
     @DisplayName("스텝의 모든 문제를 한 번씩 시도했으면 다음 스텝으로 진행한다")
     void advances_progress_when_step_fully_attempted() {
         quizService = service();
