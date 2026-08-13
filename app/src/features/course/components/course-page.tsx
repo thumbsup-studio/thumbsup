@@ -176,9 +176,9 @@ function CourseCard({
       </button>
       {isOpen ? (
         <ul className="divide-y divide-border border-t border-border">
-          {course.steps.map((step) => (
+          {course.steps.map((step, index) => (
             <li key={step.stepOrder}>
-              <CourseStepRow courseId={course.courseId} step={step} />
+              <CourseStepRow courseId={course.courseId} displayOrder={index + 1} step={step} />
             </li>
           ))}
         </ul>
@@ -210,7 +210,15 @@ function isCourseCompleted(course: CourseItem): boolean {
   return course.steps.length > 0 && course.steps.every((step) => step.state === "COMPLETED");
 }
 
-function CourseStepRow({ courseId, step }: { courseId: number; step: CourseStep }) {
+function CourseStepRow({
+  courseId,
+  displayOrder,
+  step,
+}: {
+  courseId: number;
+  displayOrder: number;
+  step: CourseStep;
+}) {
   const isLocked = step.state === "LOCKED";
   const href = getStepHref(courseId, step);
 
@@ -220,14 +228,14 @@ function CourseStepRow({ courseId, step }: { courseId: number; step: CourseStep 
         isLocked ? "bg-surface-muted text-ink-muted" : "bg-primary text-primary-fg"
       }`}
     >
-      {isLocked ? <LockIcon aria-hidden="true" className="size-4" /> : step.stepOrder}
+      {isLocked ? <LockIcon aria-hidden="true" className="size-4" /> : displayOrder}
     </span>
   );
 
   const body = (
     <span className="min-w-0 flex-1">
       <span className="block text-xs font-semibold text-ink-muted">
-        STEP {step.stepOrder} · {step.estimatedMinutes}분
+        STEP {displayOrder} · {step.estimatedMinutes}분
       </span>
       <span
         className={`mt-0.5 block truncate text-base font-semibold ${

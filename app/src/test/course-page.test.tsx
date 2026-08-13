@@ -44,6 +44,17 @@ const courseCompleted: CourseItem = {
   ],
 };
 
+/** stepOrder는 코스 무관 전역 순번이라 두 번째 이후 코스는 1보다 큰 값에서 시작한다(이슈 290). */
+const secondCourseWithGlobalStepOffset: CourseItem = {
+  courseId: 2,
+  title: "디자인 패턴",
+  category: "CS",
+  steps: [
+    { stepOrder: 13, topic: "생성 패턴 개요와 싱글턴", estimatedMinutes: 10, state: "SOLVABLE" },
+    { stepOrder: 14, topic: "팩토리 메서드", estimatedMinutes: 10, state: "LOCKED" },
+  ],
+};
+
 describe("CoursePage", () => {
   beforeEach(() => {
     vi.mocked(getCourses).mockReset();
@@ -175,5 +186,18 @@ describe("CoursePage", () => {
     await screen.findByText("동기화");
 
     expect(screen.queryByText("배열")).not.toBeInTheDocument();
+  });
+
+  it("전역 stepOrder가 아니라 코스 안 순번으로 STEP 번호를 표시한다", async () => {
+    vi.mocked(getCourses).mockResolvedValue({ items: [secondCourseWithGlobalStepOffset] });
+
+    render(<CoursePage />);
+
+    await screen.findByText("생성 패턴 개요와 싱글턴");
+
+    expect(screen.getByText(/STEP 1 ·/)).toBeInTheDocument();
+    expect(screen.getByText(/STEP 2 ·/)).toBeInTheDocument();
+    expect(screen.queryByText(/STEP 13/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/STEP 14/)).not.toBeInTheDocument();
   });
 });
