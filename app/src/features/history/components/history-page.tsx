@@ -101,19 +101,6 @@ export function HistoryPage() {
           </Link>
         </header>
 
-        <Link
-          className="flex items-center gap-4 rounded-card border border-border bg-surface p-4 shadow-card"
-          href="/history/records"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold text-ink">내가 푼 문제</span>
-            <span className="mt-0.5 block text-xs font-medium text-ink-muted">
-              지금까지 풀어본 문제와 답을 확인해요
-            </span>
-          </span>
-          <ChevronRightIcon className="size-5 shrink-0 text-ink-muted" />
-        </Link>
-
         <p aria-live="polite" className="sr-only">
           {liveText}
         </p>
