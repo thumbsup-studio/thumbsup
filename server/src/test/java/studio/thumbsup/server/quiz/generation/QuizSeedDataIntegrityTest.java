@@ -22,13 +22,10 @@ import studio.thumbsup.server.quiz.QuizType;
 /** 전체 Flyway 시드의 문제 유형·정답 구조·코드 지문 품질을 운영 반영 전에 고정한다. */
 class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
 
-    private static final int TOTAL_QUIZ_COUNT = 73;
-    private static final int FORMAL_QUIZ_COUNT = 70;
+    private static final int TOTAL_QUIZ_COUNT = 70;
     private static final Pattern BLANK_PATTERN = Pattern.compile("___");
 
     private static final Set<Coordinate> REVIEWED_CODE_SNIPPETS = Set.of(
-            new Coordinate(0, 2),
-            new Coordinate(0, 3),
             new Coordinate(1, 4),
             new Coordinate(3, 4),
             new Coordinate(6, 4),
@@ -50,17 +47,13 @@ class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
     class QuizTypeAudit {
 
         @Test
-        @DisplayName("placeholder 3문제와 정식 커리큘럼 70문제(운영체제 60 + 디자인 패턴 10)가 정확한 슬롯 유형·난이도를 갖는다")
+        @DisplayName("정식 커리큘럼 70문제(운영체제 60 + 디자인 패턴 10)가 정확한 슬롯 유형·난이도를 갖는다")
         void keeps_complete_slot_contract() {
             List<Quiz> quizzes = quizRepository.findAll();
-            List<Quiz> formal =
-                    quizzes.stream().filter(quiz -> quiz.getStepOrder() > 0).toList();
 
             assertThat(quizzes).hasSize(TOTAL_QUIZ_COUNT);
-            assertThat(formal).hasSize(FORMAL_QUIZ_COUNT);
-            assertPlaceholderContract(quizzes);
 
-            IntStream.rangeClosed(1, 14).forEach(stepOrder -> assertFormalStep(formal, stepOrder));
+            IntStream.rangeClosed(1, 14).forEach(stepOrder -> assertFormalStep(quizzes, stepOrder));
         }
 
         @Test
@@ -75,7 +68,7 @@ class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
     class CodeSnippetAudit {
 
         @Test
-        @DisplayName("검수된 11개 좌표에만 코드 지문이 있고 모두 코드 구조 검증을 통과한다")
+        @DisplayName("검수된 9개 좌표에만 코드 지문이 있고 모두 코드 구조 검증을 통과한다")
         void keeps_only_reviewed_code_snippets() {
             List<Quiz> quizzesWithCode = quizRepository.findAll().stream()
                     .filter(quiz -> quiz.getCodeSnippet() != null)
@@ -117,19 +110,6 @@ class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
                             + "LRU 알고리즘의 설명으로 가장 알맞은 것을 고르시오. 각 숫자는 페이지 번호를 의미한다.",
                     "페이지 1이 교체된다. 가장 오래 전에 사용되었기 때문이다.");
         }
-    }
-
-    private void assertPlaceholderContract(List<Quiz> quizzes) {
-        List<Quiz> placeholders = quizzes.stream()
-                .filter(quiz -> quiz.getStepOrder() == 0)
-                .sorted(Comparator.comparingInt(Quiz::getSlotOrder))
-                .toList();
-
-        assertThat(placeholders).hasSize(3);
-        assertThat(placeholders).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3);
-        assertSlot(placeholders.get(0), QuizType.OX, QuizDifficulty.EASY);
-        assertSlot(placeholders.get(1), QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM);
-        assertSlot(placeholders.get(2), QuizType.KEYWORD_BLANK, QuizDifficulty.HARD);
     }
 
     private void assertFormalStep(List<Quiz> formal, int stepOrder) {

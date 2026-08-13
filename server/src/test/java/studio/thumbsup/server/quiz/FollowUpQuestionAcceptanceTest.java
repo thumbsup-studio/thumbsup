@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,10 +33,10 @@ class FollowUpQuestionAcceptanceTest extends AcceptanceTestSupport {
 
     private static final long TEST_USER_ID = 999L;
     private static final long ABSENT_FOLLOW_UP_QUESTION_ID = 999_999L;
-    /** 샘플 문제(커리큘럼 밖)가 사는 스텝. 정식 커리큘럼은 1부터다. */
-    private static final int SAMPLE_STEP_ORDER = 0;
     /** 픽스처 전용 스텝 — 시드가 쓰는 어떤 스텝과도 겹치지 않는다(server/docs 관례: 101/102). */
     private static final int FIXTURE_STEP_ORDER = 101;
+    /** 상세(블록·키워드 포함) 꼬리질문 픽스처 전용 스텝 — #287에서 지운 시드 placeholder를 대체한다. */
+    private static final int DETAILED_STEP_ORDER = 102;
 
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;
@@ -63,12 +64,33 @@ class FollowUpQuestionAcceptanceTest extends AcceptanceTestSupport {
         return "Bearer " + jwtTokenProvider.createAccessToken(TEST_USER_ID);
     }
 
+    /**
+     * 상세(블록·키워드 포함)가 저작된 꼬리질문을 가진 문제를 직접 만든다 — #287에서 지운 시드
+     * placeholder(step_order=0)를 대체한다. 이 클래스는 {@code @Transactional}이 없어 저장한 행이
+     * 남으므로, 여러 테스트가 호출해도 한 번만 만들도록 이미 있으면 재사용한다.
+     */
+    private long detailedFollowUpSourceQuizId() {
+        quizStepRepository
+                .findByStepOrder(DETAILED_STEP_ORDER)
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(DETAILED_STEP_ORDER, 1L, "픽스처 스텝", 3)));
+
+        Optional<Quiz> existing = quizRepository.findByStepOrderAndSlotOrder(DETAILED_STEP_ORDER, 1);
+        if (existing.isPresent()) {
+            return existing.get().getId();
+        }
+
+        Quiz quiz = QuizFixture.oxQuiz();
+        QuizFollowUpQuestion followUpQuestion = quiz.getFollowUpQuestions().get(0);
+        followUpQuestion.attachDetail(QuizDifficulty.EASY, "UDP와 TCP의 가장 큰 차이는 연결 여부다.");
+        followUpQuestion.addKeyword("3-way handshake", "세 단계로 패킷을 주고받아 연결을 맺는 절차");
+        followUpQuestion.addBlock("해설", FollowUpBlockType.TEXT, "TCP는 [[3-way handshake]]로 연결을 맺는다.", 1);
+        quiz.assignPosition(DETAILED_STEP_ORDER, 1);
+        return quizRepository.saveAndFlush(quiz).getId();
+    }
+
     /** 해설 응답이 실제로 내려준 ID를 그대로 쓴다 — 두 API가 이어지는지가 이 테스트의 핵심이다. */
     private long primaryFollowUpQuestionId() throws Exception {
-        long sampleQuizId = quizRepository.findByStepOrderOrderBySlotOrderAsc(SAMPLE_STEP_ORDER).stream()
-                .findFirst()
-                .orElseThrow()
-                .getId();
+        long sampleQuizId = detailedFollowUpSourceQuizId();
 
         String body = mockMvc.perform(get("/api/v1/quizzes/{quizId}/explanation", sampleQuizId)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken()))
