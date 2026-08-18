@@ -145,7 +145,7 @@ public final class QuizFixture {
     public static QuizFollowUpQuestion detailedFollowUpQuestion(Long followUpQuestionId, Long sourceQuizId) {
         Quiz quiz = oxQuiz();
         ReflectionTestUtils.setField(quiz, "id", sourceQuizId);
-        quiz.assignPosition(1, 3);
+        quiz.assignPosition(1L, 1, 3);
 
         QuizFollowUpQuestion followUpQuestion = quiz.addFollowUpQuestion("정렬되어 있지 않은 배열이라면 어떻게 찾아야 할까?", true, 2);
         ReflectionTestUtils.setField(followUpQuestion, "id", followUpQuestionId);
@@ -172,19 +172,19 @@ public final class QuizFixture {
         followUpQuestion.attachDetail(QuizDifficulty.EASY, "한 줄 답입니다.");
     }
 
-    /** 한 스텝(5문제: 하2·중2·상1)을 slot_order 1~5로 조립한다. */
-    public static List<Quiz> step(int stepOrder) {
+    /** 한 스텝(5문제: 하2·중2·상1)을 slot_order 1~5로 조립한다. quizStepId는 실제 저장된 QuizStep의 PK를 넘긴다. */
+    public static List<Quiz> step(Long quizStepId, int stepOrder) {
         Quiz first = oxQuiz();
         Quiz second = oxQuiz2();
         Quiz third = multipleChoiceQuiz();
         Quiz fourth = multipleChoiceQuiz2();
         Quiz fifth = keywordBlankQuiz();
 
-        first.assignPosition(stepOrder, 1);
-        second.assignPosition(stepOrder, 2);
-        third.assignPosition(stepOrder, 3);
-        fourth.assignPosition(stepOrder, 4);
-        fifth.assignPosition(stepOrder, 5);
+        first.assignPosition(quizStepId, stepOrder, 1);
+        second.assignPosition(quizStepId, stepOrder, 2);
+        third.assignPosition(quizStepId, stepOrder, 3);
+        fourth.assignPosition(quizStepId, stepOrder, 4);
+        fifth.assignPosition(quizStepId, stepOrder, 5);
 
         return List.of(first, second, third, fourth, fifth);
     }

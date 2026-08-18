@@ -32,16 +32,17 @@ public class UserConceptStep extends BaseEntity {
     @Column(nullable = false)
     private Long conceptId;
 
+    /** 이 기록이 가리키는 스텝의 PK(#292) — step_order는 코스마다 겹칠 수 있어 식별에 쓰지 않는다. */
     @Column(nullable = false)
-    private int stepOrder;
+    private Long quizStepId;
 
-    private UserConceptStep(Long userId, Long conceptId, int stepOrder) {
+    private UserConceptStep(Long userId, Long conceptId, Long quizStepId) {
         this.userId = userId;
         this.conceptId = conceptId;
-        this.stepOrder = stepOrder;
+        this.quizStepId = quizStepId;
     }
 
-    public static UserConceptStep create(Long userId, Long conceptId, int stepOrder) {
-        return new UserConceptStep(userId, conceptId, stepOrder);
+    public static UserConceptStep create(Long userId, Long conceptId, Long quizStepId) {
+        return new UserConceptStep(userId, conceptId, quizStepId);
     }
 }

@@ -119,7 +119,7 @@ public class AuthoringJobService {
         }
 
         QuizStep step = quizStepRepository
-                .findByStepOrder(sourceQuiz.getStepOrder())
+                .findById(sourceQuiz.getQuizStepId())
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
         QuizDraft draft = draftService.createImproveDraft(userId, sourceQuiz, step.getTopic());
 
@@ -351,7 +351,7 @@ public class AuthoringJobService {
                     .findById(draft.getSourceQuizId())
                     .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
             QuizStep step = quizStepRepository
-                    .findByStepOrder(sourceQuiz.getStepOrder())
+                    .findById(sourceQuiz.getQuizStepId())
                     .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
             return improveReviewPrompt(sourceQuiz, step.getTopic(), draft.getCurrentPayload(), feedback);
         }
@@ -368,7 +368,7 @@ public class AuthoringJobService {
     }
 
     private List<String> siblingQuestionTexts(Quiz sourceQuiz) {
-        return quizRepository.findByStepOrderOrderBySlotOrderAsc(sourceQuiz.getStepOrder()).stream()
+        return quizRepository.findByQuizStepIdOrderBySlotOrderAsc(sourceQuiz.getQuizStepId()).stream()
                 .filter(quiz -> !quiz.getId().equals(sourceQuiz.getId()))
                 .map(Quiz::getQuestionText)
                 .toList();

@@ -12,12 +12,12 @@ import lombok.NoArgsConstructor;
 import studio.thumbsup.server.common.entity.BaseEntity;
 
 /**
- * 스텝(문제 5개 세트) 단위 주제 메타데이터(#26) — {@code quiz.step_order}가 FK로 참조한다.
+ * 스텝(문제 5개 세트) 단위 주제 메타데이터(#26) — {@code quiz.quiz_step_id}가 이 행의 PK를 FK로 참조한다(#292).
  * 홈 화면 등에서 "이번 스텝: CPU 스케줄링 기초" 같은 표시에 쓰인다.
  *
- * <p>{@code stepOrder}는 코스와 무관하게 전역 유일 순번이다(코스별로 다시 세지 않는다) — {@code courseId}는
- * 그 위에 붙는 소속 태그일 뿐이다. {@code courseId}는 {@code quiz.step_order}가 {@link #stepOrder}를
- * 참조하는 것과 같은 스타일로 DB FK만 두고 JPA 연관관계는 쓰지 않는다.
+ * <p>{@code stepOrder}는 코스 내 상대 순번이다(코스마다 1부터 시작) — {@code (courseId, stepOrder)}
+ * 조합으로 유일하다. {@code courseId}는 다른 도메인 참조가 아니라 같은 quiz 슬라이스 내부 값이지만,
+ * 조회가 항상 courseId로 먼저 필터링되는 패턴이라 JPA 연관관계 없이 DB FK만 둔다.
  */
 @Getter
 @Entity
@@ -29,7 +29,8 @@ public class QuizStep extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    /** 코스 내 상대 순번(1부터) — 전역으로는 유일하지 않다. 유일성은 {@code (courseId, stepOrder)}가 보장한다. */
+    @Column(nullable = false)
     private int stepOrder;
 
     @Column(nullable = false)

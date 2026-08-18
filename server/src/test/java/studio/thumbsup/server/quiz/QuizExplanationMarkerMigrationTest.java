@@ -98,11 +98,13 @@ class QuizExplanationMarkerMigrationTest extends RepositoryTestSupport {
 
     private Quiz saveQuiz(
             int stepOrder, String summary, String example, String wrongAnswer, boolean duplicateKeywordRow) {
-        quizStepRepository.save(QuizStep.create(stepOrder, 1L, "마이그레이션 테스트", 5));
+        Long stepId = quizStepRepository
+                .save(QuizStep.create(stepOrder, 1L, "마이그레이션 테스트", 5))
+                .getId();
         Quiz quiz = Quiz.create(QuizType.OX, QuizDifficulty.EASY, "테스트 문제", null, summary, example, wrongAnswer);
         quiz.assignHint("판단에 필요한 조건을 떠올려 보세요.");
         quiz.assignCorrectAnswer("O");
-        quiz.assignPosition(stepOrder, 1);
+        quiz.assignPosition(stepId, stepOrder, 1);
         quiz.addKeyword("PCB", "프로세스 제어 블록");
         if (duplicateKeywordRow) {
             quiz.addKeyword("PCB", "중복 사전 행");

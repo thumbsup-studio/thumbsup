@@ -22,7 +22,7 @@ import studio.thumbsup.server.quiz.QuizRepository;
  * 적용되지 않는다(CLAUDE.md: "인터페이스는 구현이 2개 이상이거나 외부 경계일 때만").
  *
  * <p>이벤트는 스트릭 갱신(user 도메인)과도 공유되므로, 퀴즈 id 목록 같은 quiz 내부 구현 세부사항은
- * 싣지 않고 stepOrder만 받아 이 컴포넌트가 직접 {@link QuizRepository}로 조회한다.
+ * 싣지 않고 quizStepId만 받아 이 컴포넌트가 직접 {@link QuizRepository}로 조회한다.
  *
  * <p>{@link #onStepCompleted}는 평범한(= AFTER_COMMIT이 아닌) {@code @EventListener}라 발행 시점에
  * 동기적으로, 발행자와 같은 스레드·트랜잭션 안에서 실행된다 — 진행도 갱신과 학습 기록이 함께 커밋되거나
@@ -57,11 +57,11 @@ public class LearnedConceptRecorder {
 
     @EventListener
     public void onStepCompleted(QuizStepCompletedEvent event) {
-        List<Long> stepQuizIds = quizRepository.findIdsByStepOrder(event.stepOrder());
-        record(event.userId(), event.stepOrder(), stepQuizIds);
+        List<Long> stepQuizIds = quizRepository.findIdsByQuizStepId(event.quizStepId());
+        record(event.userId(), event.quizStepId(), stepQuizIds);
     }
 
-    public void record(Long userId, int stepOrder, List<Long> stepQuizIds) {
+    public void record(Long userId, Long quizStepId, List<Long> stepQuizIds) {
         List<Long> conceptIds = quizConceptRepository.findDistinctConceptIdsByQuizIdIn(stepQuizIds);
         if (conceptIds.isEmpty()) {
             return;
@@ -76,7 +76,7 @@ public class LearnedConceptRecorder {
             if (!alreadyLearnedConceptIds.contains(conceptId)) {
                 userConceptRepository.save(UserConcept.create(userId, conceptId));
             }
-            userConceptStepRepository.save(UserConceptStep.create(userId, conceptId, stepOrder));
+            userConceptStepRepository.save(UserConceptStep.create(userId, conceptId, quizStepId));
         }
     }
 }

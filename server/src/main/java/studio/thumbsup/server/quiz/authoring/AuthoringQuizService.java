@@ -4,7 +4,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,26 +32,28 @@ public class AuthoringQuizService {
     }
 
     public AuthoringQuizListResponse listQuizzes() {
-        Map<Integer, String> topicByStepOrder = quizStepRepository.findAll().stream()
-                .collect(Collectors.toMap(QuizStep::getStepOrder, QuizStep::getTopic));
+        // #292: 이 조회는 코스 전체를 훑으므로(스텝 단위가 아니라) step_order는 코스마다 겹칠 수 있어
+        // 그룹 키로 쓸 수 없다 — 전역 유일한 quizStepId(PK)로 묶는다.
+        Map<Long, QuizStep> stepById =
+                quizStepRepository.findAll().stream().collect(Collectors.toMap(QuizStep::getId, s -> s));
 
-        // stepOrder→slotOrder로 먼저 정렬해두면 groupingBy(LinkedHashMap)가 그 순서를 그대로 보존한다.
-        Map<Integer, List<Quiz>> quizzesByStep = quizRepository.findAll().stream()
+        Map<Long, List<Quiz>> quizzesByStepId = quizRepository.findAll().stream()
                 .filter(quiz -> quiz.getStepOrder() > 0) // 0은 "스텝 밖" placeholder 샘플의 sentinel
-                .sorted(Comparator.comparingInt(Quiz::getStepOrder).thenComparingInt(Quiz::getSlotOrder))
-                .collect(Collectors.groupingBy(Quiz::getStepOrder, LinkedHashMap::new, Collectors.toList()));
+                .sorted(Comparator.comparing((Quiz quiz) ->
+                                stepById.get(quiz.getQuizStepId()).getCourseId())
+                        .thenComparingInt(Quiz::getStepOrder)
+                        .thenComparingInt(Quiz::getSlotOrder))
+                .collect(Collectors.groupingBy(Quiz::getQuizStepId, LinkedHashMap::new, Collectors.toList()));
 
-        List<AuthoringStepResponse> steps = quizzesByStep.entrySet().stream()
-                .map(entry -> toStepResponse(entry.getKey(), entry.getValue(), topicByStepOrder))
+        List<AuthoringStepResponse> steps = quizzesByStepId.entrySet().stream()
+                .map(entry -> toStepResponse(stepById.get(entry.getKey()), entry.getValue()))
                 .toList();
         return new AuthoringQuizListResponse(steps);
     }
 
-    private AuthoringStepResponse toStepResponse(
-            int stepOrder, List<Quiz> quizzes, Map<Integer, String> topicByStepOrder) {
-        String topic = Optional.ofNullable(topicByStepOrder.get(stepOrder)).orElse(null);
+    private AuthoringStepResponse toStepResponse(QuizStep step, List<Quiz> quizzes) {
         List<AuthoringQuizSummaryResponse> summaries =
                 quizzes.stream().map(AuthoringQuizSummaryResponse::from).toList();
-        return new AuthoringStepResponse(stepOrder, topic, summaries);
+        return new AuthoringStepResponse(step.getStepOrder(), step.getTopic(), summaries);
     }
 }

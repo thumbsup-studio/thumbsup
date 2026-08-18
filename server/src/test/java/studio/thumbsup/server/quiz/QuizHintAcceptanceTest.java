@@ -25,6 +25,7 @@ class QuizHintAcceptanceTest extends AcceptanceTestSupport {
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;
     private final QuizRepository quizRepository;
+    private final QuizStepRepository quizStepRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizProgressRepository quizProgressRepository;
 
@@ -32,11 +33,13 @@ class QuizHintAcceptanceTest extends AcceptanceTestSupport {
             @Autowired MockMvc mockMvc,
             @Autowired JwtTokenProvider jwtTokenProvider,
             @Autowired QuizRepository quizRepository,
+            @Autowired QuizStepRepository quizStepRepository,
             @Autowired QuizAttemptRepository quizAttemptRepository,
             @Autowired QuizProgressRepository quizProgressRepository) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.quizRepository = quizRepository;
+        this.quizStepRepository = quizStepRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.quizProgressRepository = quizProgressRepository;
     }
@@ -54,7 +57,21 @@ class QuizHintAcceptanceTest extends AcceptanceTestSupport {
     }
 
     private Quiz seededQuiz(int stepOrder, int slotOrder) {
-        return quizRepository.findByStepOrderAndSlotOrder(stepOrder, slotOrder).orElseThrow();
+        Long stepId = quizStepRepository
+                .findByCourseIdAndStepOrder(OS_COURSE_ID, stepOrder)
+                .orElseThrow()
+                .getId();
+        return quizRepository.findByQuizStepIdAndSlotOrder(stepId, slotOrder).orElseThrow();
+    }
+
+    private long attemptCountForStep(int stepOrder) {
+        Long stepId = quizStepRepository
+                .findByCourseIdAndStepOrder(OS_COURSE_ID, stepOrder)
+                .orElseThrow()
+                .getId();
+        return quizAttemptRepository
+                .findByUserIdAndQuiz_QuizStepId(TEST_USER_ID, stepId)
+                .size();
     }
 
     @Nested
@@ -65,9 +82,7 @@ class QuizHintAcceptanceTest extends AcceptanceTestSupport {
         @DisplayName("OX·사지선다·빈칸 모두 단일 hint 문자열을 반환하고 풀이 이력을 만들지 않는다")
         void returns_one_sentence_hint_for_every_type_without_attempt_side_effect() throws Exception {
             List<Quiz> quizzes = List.of(seededQuiz(1, 1), seededQuiz(1, 3), seededQuiz(1, 5));
-            int attemptsBefore = quizAttemptRepository
-                    .findByUserIdAndQuiz_StepOrder(TEST_USER_ID, 1)
-                    .size();
+            long attemptsBefore = attemptCountForStep(1);
 
             for (Quiz quiz : quizzes) {
                 mockMvc.perform(post("/api/v1/quizzes/{quizId}/hints", quiz.getId())
@@ -80,9 +95,7 @@ class QuizHintAcceptanceTest extends AcceptanceTestSupport {
                         .andExpect(jsonPath("$.data.blankHints").doesNotExist());
             }
 
-            int attemptsAfter = quizAttemptRepository
-                    .findByUserIdAndQuiz_StepOrder(TEST_USER_ID, 1)
-                    .size();
+            long attemptsAfter = attemptCountForStep(1);
             org.assertj.core.api.Assertions.assertThat(attemptsAfter).isEqualTo(attemptsBefore);
         }
 

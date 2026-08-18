@@ -102,36 +102,44 @@ public class HistoryService {
 
     private Map<Long, List<RelatedStep>> relatedStepsByConceptId(
             Map<Long, List<UserConceptStep>> learnedStepsByConceptId) {
-        Set<Integer> stepOrders = learnedStepsByConceptId.values().stream()
+        Set<Long> quizStepIds = learnedStepsByConceptId.values().stream()
                 .flatMap(List::stream)
-                .map(UserConceptStep::getStepOrder)
+                .map(UserConceptStep::getQuizStepId)
                 .collect(Collectors.toSet());
-        Map<Integer, String> topicByStepOrder = quizStepRepository.findByStepOrderIn(stepOrders).stream()
-                .collect(Collectors.toMap(QuizStep::getStepOrder, QuizStep::getTopic));
+        Map<Long, QuizStep> stepById =
+                quizStepRepository.findAllById(quizStepIds).stream().collect(Collectors.toMap(QuizStep::getId, s -> s));
 
         return learnedStepsByConceptId.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
-                        .sorted(Comparator.comparingInt(UserConceptStep::getStepOrder))
-                        .map(s -> new RelatedStep(s.getStepOrder(), topicByStepOrder.get(s.getStepOrder())))
+                        // stepOrder는 코스 상대 순번이라(#292) 코스 없이 정렬하면 서로 다른 코스의 스텝이
+                        // 뒤섞일 수 있다 — courseId를 우선 키로 둔다.
+                        .sorted(Comparator.<UserConceptStep, Long>comparing(
+                                        s -> stepById.get(s.getQuizStepId()).getCourseId())
+                                .thenComparing(
+                                        s -> stepById.get(s.getQuizStepId()).getStepOrder()))
+                        .map(s -> {
+                            QuizStep step = stepById.get(s.getQuizStepId());
+                            return new RelatedStep(step.getCourseId(), step.getStepOrder(), step.getTopic());
+                        })
                         .toList()));
     }
 
-    /** 유저가 실제로 완료한 step_order에 해당하는 설명 문장만 골라, 아직 안 배운 스텝의 뉘앙스가 미리 노출되지 않게 한다. */
+    /** 유저가 실제로 완료한 스텝에 해당하는 설명 문장만 골라, 아직 안 배운 스텝의 뉘앙스가 미리 노출되지 않게 한다. */
     private Map<Long, List<String>> descriptionsByConceptId(
             Set<Long> conceptIds, Map<Long, List<UserConceptStep>> learnedStepsByConceptId) {
-        Map<Long, Set<Integer>> learnedStepOrdersByConceptId = learnedStepsByConceptId.entrySet().stream()
+        Map<Long, Set<Long>> learnedQuizStepIdsByConceptId = learnedStepsByConceptId.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stream()
-                        .map(UserConceptStep::getStepOrder)
+                        .map(UserConceptStep::getQuizStepId)
                         .collect(Collectors.toSet())));
 
         return conceptDescriptionRepository.findByConceptIdIn(conceptIds).stream()
-                .filter(d -> learnedStepOrdersByConceptId
+                .filter(d -> learnedQuizStepIdsByConceptId
                         .getOrDefault(d.getConceptId(), Set.of())
-                        .contains(d.getStepOrder()))
+                        .contains(d.getQuizStepId()))
                 .collect(Collectors.groupingBy(
                         ConceptDescription::getConceptId,
                         Collectors.collectingAndThen(Collectors.toList(), list -> list.stream()
-                                .sorted(Comparator.comparingInt(ConceptDescription::getStepOrder))
+                                .sorted(Comparator.comparing(ConceptDescription::getQuizStepId))
                                 .map(ConceptDescription::getContent)
                                 .toList())));
     }

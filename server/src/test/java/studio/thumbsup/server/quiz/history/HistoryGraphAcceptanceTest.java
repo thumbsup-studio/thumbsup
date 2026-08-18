@@ -89,10 +89,12 @@ class HistoryGraphAcceptanceTest extends AcceptanceTestSupport {
         return "Bearer " + jwtTokenProvider.createAccessToken(TEST_USER_ID);
     }
 
-    /** user_concept_step·concept_description의 step_order가 quiz_step(→course)을 FK로 참조하므로 부모 행을 만든다. */
-    private void saveStep(int stepOrder, String topic) {
+    /** user_concept_step·concept_description의 quiz_step_id가 quiz_step(→course)을 FK로 참조하므로(#292) 부모 행을 만들고 PK를 반환한다. */
+    private Long saveStep(int stepOrder, String topic) {
         Long courseId = courseRepository.save(Course.create("테스트 코스", "CS")).getId();
-        quizStepRepository.save(QuizStep.create(stepOrder, courseId, topic, 10));
+        return quizStepRepository
+                .save(QuizStep.create(stepOrder, courseId, topic, 10))
+                .getId();
     }
 
     @Nested
@@ -121,16 +123,16 @@ class HistoryGraphAcceptanceTest extends AcceptanceTestSupport {
         @DisplayName("학습한 개념은 상세·완료 스텝의 설명·KST 학습일과 함께, 서로 연결된 것끼리는 엣지로 응답한다")
         void returns_learned_concepts_with_stored_detail_and_edges() throws Exception {
             databaseCleanUp.execute();
-            saveStep(STEP_ORDER, "동기화 도구");
+            Long stepId = saveStep(STEP_ORDER, "동기화 도구");
             Concept mutualExclusion = conceptRepository.saveAndFlush(ConceptFixture.concept(null, "상호 배제", "동시성"));
             Concept criticalSection = conceptRepository.saveAndFlush(ConceptFixture.concept(null, "임계 구역", "동시성"));
             conceptRelationRepository.save(ConceptFixture.relation(mutualExclusion.getId(), criticalSection.getId()));
             conceptDescriptionRepository.save(ConceptFixture.conceptDescription(
-                    mutualExclusion.getId(), "한 시점에 하나의 실행 흐름만 임계구역에 들어가게 하는 성질이다.", STEP_ORDER));
+                    mutualExclusion.getId(), "한 시점에 하나의 실행 흐름만 임계구역에 들어가게 하는 성질이다.", stepId));
 
             userConceptRepository.save(UserConcept.create(TEST_USER_ID, mutualExclusion.getId()));
             userConceptRepository.save(UserConcept.create(TEST_USER_ID, criticalSection.getId()));
-            userConceptStepRepository.save(UserConceptStep.create(TEST_USER_ID, mutualExclusion.getId(), STEP_ORDER));
+            userConceptStepRepository.save(UserConceptStep.create(TEST_USER_ID, mutualExclusion.getId(), stepId));
             // learnedAt(UTC 저장 → KST 날짜) 경계 검증: UTC 7/8 15:00 = KST 7/9 00:00.
             // createdAt은 auditing이 채우는 updatable=false 성격의 컬럼이라 엔티티로는 못 바꾸므로 SQL로 고정한다.
             jdbcTemplate.update(

@@ -49,7 +49,7 @@ public class QuizPersister {
     @Transactional
     int persist(Long courseId, String courseTopic, GeneratedQuizSet generated) {
         validateHintsBeforePersisting(generated);
-        return persistAtValidated(courseId, nextStepOrder(), courseTopic, DEFAULT_ESTIMATED_MINUTES, generated);
+        return persistAtValidated(courseId, nextStepOrder(courseId), courseTopic, DEFAULT_ESTIMATED_MINUTES, generated);
     }
 
     /** 이미 정해진 스텝 순서에 생성 결과를 저장한다 — 목차 발행처럼 스테이징 순서를 보존해야 하는 경로가 쓴다. */
@@ -62,8 +62,8 @@ public class QuizPersister {
 
     private int persistAtValidated(
             Long courseId, int stepOrder, String courseTopic, int estimatedMinutes, GeneratedQuizSet generated) {
-        // quiz.step_order가 FK로 quiz_step.step_order를 참조하므로 반드시 먼저 저장한다.
-        quizStepRepository.save(QuizStep.create(stepOrder, courseId, courseTopic, estimatedMinutes));
+        // quiz.quiz_step_id가 FK로 quiz_step.id를 참조하므로(#292) 반드시 먼저 저장해 PK를 받아둔다.
+        QuizStep step = quizStepRepository.save(QuizStep.create(stepOrder, courseId, courseTopic, estimatedMinutes));
 
         int slotOrder = 1;
         for (GeneratedQuizSet.GeneratedQuiz g : generated.quizzes()) {
@@ -77,17 +77,15 @@ public class QuizPersister {
                     g.wrongAnswerExplanation());
             quiz.assignHint(g.hint());
             populate(quiz, g);
-            quiz.assignPosition(stepOrder, slotOrder++);
+            quiz.assignPosition(step.getId(), stepOrder, slotOrder++);
             quizRepository.save(quiz);
         }
         return stepOrder;
     }
 
-    /** 라이브 스텝·문제 양쪽을 기준으로 다음 전역 step_order를 계산한다. */
-    public int nextStepOrder() {
-        int maxQuizStepOrder = quizStepRepository.findMaxStepOrder().orElse(0);
-        int maxQuizOrder = quizRepository.findMaxStepOrder().orElse(0);
-        return Math.max(maxQuizStepOrder, maxQuizOrder) + 1;
+    /** 그 코스의 라이브 스텝을 기준으로 다음 코스 내 상대 step_order를 계산한다(#292). */
+    public int nextStepOrder(Long courseId) {
+        return quizStepRepository.findMaxStepOrderByCourseId(courseId).orElse(0) + 1;
     }
 
     /** 뒤쪽 슬롯의 hint가 잘못돼도 스텝이나 앞쪽 문제를 먼저 쓰지 않도록 전체 세트를 저장 전에 검증한다. */

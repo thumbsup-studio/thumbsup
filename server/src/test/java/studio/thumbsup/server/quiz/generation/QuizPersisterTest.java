@@ -3,7 +3,9 @@ package studio.thumbsup.server.quiz.generation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -11,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +47,14 @@ class QuizPersisterTest {
 
     private QuizPersister persister() {
         return new QuizPersister(quizRepository, quizStepRepository, courseRepository);
+    }
+
+    /** quiz.quiz_step_id가 저장된 QuizStep의 PK를 참조하므로(#292) save가 인자를 그대로 반환하게 해 둔다. */
+    @BeforeEach
+    void stubQuizStepSave() {
+        lenient()
+                .when(quizStepRepository.save(any(QuizStep.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private static GeneratedQuizSet.GeneratedFollowUpQuestion followUpQuestion() {
@@ -99,7 +110,7 @@ class QuizPersisterTest {
     @Test
     @DisplayName("기존 스텝이 없으면 1스텝부터 시작해 문제들을 슬롯 순서대로 저장한다")
     void assigns_step_and_slot_order_from_one_when_no_existing_step() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
+        given(quizStepRepository.findMaxStepOrderByCourseId(1L)).willReturn(Optional.empty());
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz(), oxQuiz()));
 
         int stepOrder = persister().persist(1L, "운영체제", generated);
@@ -117,7 +128,7 @@ class QuizPersisterTest {
     @Test
     @DisplayName("기존 스텝이 있으면 다음 번호로 이어서 저장한다")
     void assigns_next_step_order_when_existing_steps_present() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.of(3));
+        given(quizStepRepository.findMaxStepOrderByCourseId(1L)).willReturn(Optional.of(3));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
 
         int stepOrder = persister().persist(1L, "운영체제", generated);
@@ -141,21 +152,9 @@ class QuizPersisterTest {
     }
 
     @Test
-    @DisplayName("quiz에는 비어 있어도 quiz_step에 이미 있는 마지막 순서를 재사용하지 않는다")
-    void does_not_reuse_step_order_that_exists_only_in_quiz_step() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
-        given(quizStepRepository.findMaxStepOrder()).willReturn(Optional.of(7));
-        GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
-
-        int stepOrder = persister().persist(1L, "빈 문제 스텝", generated);
-
-        assertThat(stepOrder).isEqualTo(8);
-    }
-
-    @Test
     @DisplayName("스텝 주제(QuizStep)도 함께 저장한다")
     void saves_quiz_step_topic() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.of(3));
+        given(quizStepRepository.findMaxStepOrderByCourseId(1L)).willReturn(Optional.of(3));
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(oxQuiz()));
 
         persister().persist(1L, "CPU 스케줄링 기초", generated);
@@ -170,7 +169,7 @@ class QuizPersisterTest {
     @Test
     @DisplayName("동의어 여러 개가 등록된 빈칸도 같은 슬롯으로 저장한다")
     void saves_multiple_synonyms_for_one_blank_in_same_slot() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
+        given(quizStepRepository.findMaxStepOrderByCourseId(1L)).willReturn(Optional.empty());
         GeneratedQuizSet generated = new GeneratedQuizSet(List.of(keywordBlankQuizWithSynonyms()));
 
         persister().persist(1L, "운영체제", generated);
@@ -185,7 +184,7 @@ class QuizPersisterTest {
     @Test
     @DisplayName("꼬리질문의 상세·블록·키워드를 함께 저장하고, 블록에 표시 순서를 1부터 부여한다")
     void saves_follow_up_question_detail_with_ordered_blocks() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
+        given(quizStepRepository.findMaxStepOrderByCourseId(1L)).willReturn(Optional.empty());
         GeneratedQuizSet.GeneratedFollowUpQuestion detailed = new GeneratedQuizSet.GeneratedFollowUpQuestion(
                 "큐와 스택의 차이는?",
                 true,
@@ -219,7 +218,7 @@ class QuizPersisterTest {
     @Test
     @DisplayName("사지선다는 선택지를 정답 여부·순서와 함께 저장한다")
     void saves_multiple_choice_with_choices() {
-        given(quizRepository.findMaxStepOrder()).willReturn(Optional.empty());
+        given(quizStepRepository.findMaxStepOrderByCourseId(1L)).willReturn(Optional.empty());
         GeneratedQuizSet.GeneratedQuiz mc = new GeneratedQuizSet.GeneratedQuiz(
                 QuizType.MULTIPLE_CHOICE,
                 QuizDifficulty.MEDIUM,

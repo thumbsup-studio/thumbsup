@@ -60,7 +60,9 @@ public class QuizController {
 
     @Operation(
             summary = "스텝 내 문제 재조회(재풀이)",
-            description = "지정한 스텝의 지정한 슬롯(1~5) 문제를 시도 여부와 무관하게 반환한다. " + "히스토리에서 완료한 스텝을 다시 풀 때, 슬롯 1부터 순서대로 호출한다")
+            description = "지정한 스텝의 지정한 슬롯(1~5) 문제를 시도 여부와 무관하게 반환한다. "
+                    + "히스토리에서 완료한 스텝을 다시 풀 때, 슬롯 1부터 순서대로 호출한다. "
+                    + "stepOrder는 코스 내 상대 순번이라 courseId를 생략하면 기본 코스를 쓴다")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404",
@@ -70,8 +72,11 @@ public class QuizController {
             description = "code=QUIZ_NOT_ACCESSIBLE — 아직 진행하지 않은 미래 스텝")
     @GetMapping("/steps/{stepOrder}/{slotOrder}")
     public ApiResponse<QuizNextResponse> getStepQuiz(
-            @AuthenticationPrincipal Long userId, @PathVariable int stepOrder, @PathVariable int slotOrder) {
-        return ApiResponse.success(quizService.getStepQuiz(userId, stepOrder, slotOrder));
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) Long courseId,
+            @PathVariable int stepOrder,
+            @PathVariable int slotOrder) {
+        return ApiResponse.success(quizService.getStepQuiz(userId, courseId, stepOrder, slotOrder));
     }
 
     @Operation(

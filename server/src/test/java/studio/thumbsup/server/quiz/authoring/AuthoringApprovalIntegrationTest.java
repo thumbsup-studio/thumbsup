@@ -83,8 +83,10 @@ class AuthoringApprovalIntegrationTest extends AcceptanceTestSupport {
     void 개선_draft_승인은_원본_quiz_id를_보존하며_내용만_교체한다() throws Exception {
         int stepOrder = 1;
         Long courseId = courseRepository.findFirstByOrderByIdAsc().orElseThrow().getId();
-        quizStepRepository.save(QuizStep.create(stepOrder, courseId, "운영체제", 3));
-        List<Quiz> step = QuizFixture.step(stepOrder);
+        Long stepId = quizStepRepository
+                .save(QuizStep.create(stepOrder, courseId, "운영체제", 3))
+                .getId();
+        List<Quiz> step = QuizFixture.step(stepId, stepOrder);
         quizRepository.saveAll(step);
         Quiz targetQuiz = step.get(2); // multipleChoiceQuiz, 3번 슬롯
         Long otherQuizId = step.get(0).getId();

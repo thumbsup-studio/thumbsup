@@ -48,9 +48,11 @@ class QuizRepositoryTest extends RepositoryTestSupport {
                 .longValue();
     }
 
-    /** quiz.step_order가 quiz_step을 FK로 참조하므로, 스텝에 문제를 저장하기 전 부모 행을 먼저 만든다. */
-    private void saveStep(int stepOrder) {
-        quizStepRepository.save(QuizStep.create(stepOrder, 1L, "테스트 스텝 " + stepOrder, 3));
+    /** quiz.quiz_step_id가 quiz_step을 FK로 참조하므로(#292), 스텝에 문제를 저장하기 전 부모 행을 먼저 만든다. */
+    private Long saveStep(int stepOrder) {
+        return quizStepRepository
+                .save(QuizStep.create(stepOrder, 1L, "테스트 스텝 " + stepOrder, 3))
+                .getId();
     }
 
     @Nested
@@ -60,7 +62,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("정답과 자식 데이터(꼬리질문·파생개념·키워드)가 함께 저장된다")
         void saves_with_children() {
-            Quiz saved = quizRepository.save(QuizFixture.oxQuiz());
+            Long stepId = saveStep(101);
+            Quiz quiz = QuizFixture.oxQuiz();
+            quiz.assignPosition(stepId, 101, 1);
+            Quiz saved = quizRepository.save(quiz);
 
             Quiz found = quizRepository.findById(saved.getId()).orElseThrow();
             assertThat(found.getType()).isEqualTo(QuizType.OX);
@@ -80,7 +85,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("선택지 4개가 순서·정답 여부와 함께 저장된다")
         void saves_choices_in_order() {
-            Quiz saved = quizRepository.save(QuizFixture.multipleChoiceQuiz());
+            Long stepId = saveStep(101);
+            Quiz quiz = QuizFixture.multipleChoiceQuiz();
+            quiz.assignPosition(stepId, 101, 1);
+            Quiz saved = quizRepository.save(quiz);
 
             Quiz found = quizRepository.findById(saved.getId()).orElseThrow();
             assertThat(found.getChoices()).hasSize(4);
@@ -101,7 +109,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("정답 키워드가 슬롯 순서대로 저장된다")
         void saves_answer_keywords() {
-            Quiz saved = quizRepository.save(QuizFixture.keywordBlankQuiz());
+            Long stepId = saveStep(101);
+            Quiz quiz = QuizFixture.keywordBlankQuiz();
+            quiz.assignPosition(stepId, 101, 1);
+            Quiz saved = quizRepository.save(quiz);
 
             Quiz found = quizRepository.findById(saved.getId()).orElseThrow();
             assertThat(found.getAnswerKeywords()).hasSize(1);
@@ -116,7 +127,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("저장 시 자동으로 채워진다")
         void audit_fields_are_populated_on_save() {
-            Quiz saved = quizRepository.save(QuizFixture.oxQuiz());
+            Long stepId = saveStep(101);
+            Quiz quiz = QuizFixture.oxQuiz();
+            quiz.assignPosition(stepId, 101, 1);
+            Quiz saved = quizRepository.save(quiz);
 
             assertThat(saved.getCreatedAt()).isNotNull();
             assertThat(saved.getUpdatedAt()).isNotNull();
@@ -130,7 +144,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("자식 데이터(선택지)도 DB에서 함께 삭제된다(cascade)")
         void deleting_quiz_cascades_to_children() {
-            Quiz saved = quizRepository.save(QuizFixture.multipleChoiceQuiz());
+            Long stepId = saveStep(101);
+            Quiz quiz = QuizFixture.multipleChoiceQuiz();
+            quiz.assignPosition(stepId, 101, 1);
+            Quiz saved = quizRepository.save(quiz);
             Long id = saved.getId();
             assertThat(countChoicesByQuizId(id)).isEqualTo(4);
 
@@ -149,11 +166,11 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("한 스텝의 5문제를 slot_order 순서대로 조회한다")
         void finds_step_quizzes_in_slot_order() {
-            saveStep(101);
-            List<Quiz> step = QuizFixture.step(101);
+            Long stepId = saveStep(101);
+            List<Quiz> step = QuizFixture.step(stepId, 101);
             step.forEach(quizRepository::save);
 
-            List<Quiz> found = quizRepository.findByStepOrderOrderBySlotOrderAsc(101);
+            List<Quiz> found = quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId);
 
             assertThat(found).hasSize(5);
             assertThat(found).extracting(Quiz::getSlotOrder).containsExactly(1, 2, 3, 4, 5);
@@ -162,12 +179,12 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("스텝 완료 판정용으로 ID만 조회할 수 있다")
         void finds_step_quiz_ids() {
-            saveStep(101);
-            List<Quiz> step = QuizFixture.step(101);
+            Long stepId = saveStep(101);
+            List<Quiz> step = QuizFixture.step(stepId, 101);
             List<Long> savedIds =
                     step.stream().map(quizRepository::save).map(Quiz::getId).toList();
 
-            List<Long> foundIds = quizRepository.findIdsByStepOrder(101);
+            List<Long> foundIds = quizRepository.findIdsByQuizStepId(stepId);
 
             assertThat(foundIds).containsExactlyInAnyOrderElementsOf(savedIds);
         }
@@ -175,19 +192,19 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("스텝에 실제 저장된 문제 수를 조회한다")
         void counts_step_quizzes() {
-            saveStep(101);
-            QuizFixture.step(101).forEach(quizRepository::save);
+            Long stepId = saveStep(101);
+            QuizFixture.step(stepId, 101).forEach(quizRepository::save);
 
-            assertThat(quizRepository.countByStepOrder(101)).isEqualTo(5);
+            assertThat(quizRepository.countByQuizStepId(stepId)).isEqualTo(5);
         }
 
         @Test
         @DisplayName("스텝·슬롯을 지정해 문제 1개를 조회한다(#151 재풀이용)")
         void finds_quiz_by_step_and_slot() {
-            saveStep(101);
-            QuizFixture.step(101).forEach(quizRepository::save);
+            Long stepId = saveStep(101);
+            QuizFixture.step(stepId, 101).forEach(quizRepository::save);
 
-            Optional<Quiz> found = quizRepository.findByStepOrderAndSlotOrder(101, 3);
+            Optional<Quiz> found = quizRepository.findByQuizStepIdAndSlotOrder(stepId, 3);
 
             assertThat(found).isPresent();
             assertThat(found.get().getSlotOrder()).isEqualTo(3);
@@ -196,31 +213,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("존재하지 않는 스텝·슬롯 조합이면 빈 값을 반환한다")
         void returns_empty_when_step_slot_missing() {
-            saveStep(101);
-            QuizFixture.step(101).forEach(quizRepository::save);
+            Long stepId = saveStep(101);
+            QuizFixture.step(stepId, 101).forEach(quizRepository::save);
 
-            assertThat(quizRepository.findByStepOrderAndSlotOrder(101, 9)).isEmpty();
-        }
-
-        @Test
-        @DisplayName("정식 커리큘럼(step_order > 0)의 최댓값을 조회한다 — 0은 제외")
-        void finds_max_step_order_excluding_placeholder() {
-            quizRepository.save(QuizFixture.oxQuiz()); // step_order 기본값 0(placeholder)
-            saveStep(101);
-            saveStep(102);
-            QuizFixture.step(101).forEach(quizRepository::save);
-            QuizFixture.step(102).forEach(quizRepository::save);
-
-            assertThat(quizRepository.findMaxStepOrder()).contains(102);
-        }
-
-        @Test
-        @DisplayName("시드된 정식 커리큘럼의 최댓값(V20260711150000 기준 14)을 반환한다")
-        void finds_seeded_curriculum_max_step_order() {
-            // 마이그레이션이 항상 1~14스텝 커리큘럼(운영체제 1~12 + 디자인 패턴 13~14)을 시드하므로
-            // "커리큘럼 없음" 상태는 재현할 수 없다 — 대신 시드된 실제 최댓값을 검증해
-            // 마이그레이션 스텝 수 자체도 함께 확인한다.
-            assertThat(quizRepository.findMaxStepOrder()).contains(14);
+            assertThat(quizRepository.findByQuizStepIdAndSlotOrder(stepId, 9)).isEmpty();
         }
     }
 
@@ -231,7 +227,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("같은 유저·퀴즈 조합도 복습을 위해 여러 번 저장할 수 있다")
         void allows_multiple_attempts_for_same_user_and_quiz() {
-            Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
+            Long stepId = saveStep(101);
+            Quiz quizFixture = QuizFixture.oxQuiz();
+            quizFixture.assignPosition(stepId, 101, 1);
+            Quiz quiz = quizRepository.save(quizFixture);
             quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, false));
 
             assertThatCode(() -> quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true)))
@@ -242,7 +241,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("풀이 이력이 남은 퀴즈는 삭제할 수 없다(ON DELETE RESTRICT)")
         void rejects_deleting_quiz_with_attempt_history() {
-            Quiz quiz = quizRepository.save(QuizFixture.oxQuiz());
+            Long stepId = saveStep(101);
+            Quiz quizFixture = QuizFixture.oxQuiz();
+            quizFixture.assignPosition(stepId, 101, 1);
+            Quiz quiz = quizRepository.save(quizFixture);
             quizAttemptRepository.saveAndFlush(QuizAttempt.create(quiz, 1L, true));
 
             // 네이티브 SQL로 직접 삭제해 DB 제약(ON DELETE RESTRICT) 자체를 검증한다 —
@@ -258,12 +260,13 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("스텝 기준으로 유저의 풀이 이력을 조회한다")
         void finds_attempts_by_user_and_step() {
-            saveStep(101);
-            List<Quiz> step =
-                    QuizFixture.step(101).stream().map(quizRepository::save).toList();
+            Long stepId = saveStep(101);
+            List<Quiz> step = QuizFixture.step(stepId, 101).stream()
+                    .map(quizRepository::save)
+                    .toList();
             quizAttemptRepository.save(QuizAttempt.create(step.get(0), 1L, true));
 
-            List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(1L, 101);
+            List<QuizAttempt> attempts = quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(1L, stepId);
 
             assertThat(attempts).hasSize(1);
             assertThat(attempts.get(0).getQuiz().getId()).isEqualTo(step.get(0).getId());
@@ -298,17 +301,18 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         void saves_and_finds_by_step_order() {
             quizStepRepository.save(QuizStep.create(101, 1L, "CPU 스케줄링 기초", 5));
 
-            QuizStep found = quizStepRepository.findByStepOrder(101).orElseThrow();
+            QuizStep found =
+                    quizStepRepository.findByCourseIdAndStepOrder(1L, 101).orElseThrow();
 
             assertThat(found.getTopic()).isEqualTo("CPU 스케줄링 기초");
             assertThat(found.getEstimatedMinutes()).isEqualTo(5);
         }
 
         @Test
-        @DisplayName("존재하지 않는 step_order로 문제를 저장하면 FK 위반으로 실패한다")
-        void rejects_quiz_with_unknown_step_order() {
+        @DisplayName("존재하지 않는 quiz_step_id로 문제를 저장하면 FK 위반으로 실패한다")
+        void rejects_quiz_with_unknown_quiz_step_id() {
             Quiz quiz = QuizFixture.oxQuiz();
-            quiz.assignPosition(99, 1); // quiz_step에 없는 step_order
+            quiz.assignPosition(999_999L, 99, 1); // quiz_step에 없는 PK
 
             // Repository 프록시를 거치면 DataIntegrityViolationException으로 변환된다(PersistenceException 아님) —
             // 원본 예외를 그대로 보고 싶으면 entityManager 네이티브 쿼리를 써야 한다(다른 테스트 참고).
@@ -323,7 +327,8 @@ class QuizRepositoryTest extends RepositoryTestSupport {
             quizStepRepository.save(QuizStep.create(101, 1L, "첫째", 5));
             quizStepRepository.save(QuizStep.create(102, 1L, "둘째", 5));
 
-            List<QuizStep> found = quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(101, 102);
+            List<QuizStep> found =
+                    quizStepRepository.findByCourseIdAndStepOrderBetweenOrderByStepOrderAsc(1L, 101, 102);
 
             assertThat(found).extracting(QuizStep::getTopic).containsExactly("첫째", "둘째");
         }
@@ -333,7 +338,8 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         void returns_empty_when_start_greater_than_end() {
             quizStepRepository.save(QuizStep.create(101, 1L, "첫째", 5));
 
-            List<QuizStep> found = quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(101, 100);
+            List<QuizStep> found =
+                    quizStepRepository.findByCourseIdAndStepOrderBetweenOrderByStepOrderAsc(1L, 101, 100);
 
             assertThat(found).isEmpty();
         }
@@ -346,7 +352,10 @@ class QuizRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("findByIdForUpdate는 PESSIMISTIC_WRITE로 잠그고 동일한 quiz를 반환한다(#174 I2)")
         void locks_and_returns_the_quiz() {
-            Quiz saved = quizRepository.save(QuizFixture.oxQuiz());
+            Long stepId = saveStep(101);
+            Quiz quizFixture = QuizFixture.oxQuiz();
+            quizFixture.assignPosition(stepId, 101, 1);
+            Quiz saved = quizRepository.save(quizFixture);
 
             Quiz found = quizRepository.findByIdForUpdate(saved.getId()).orElseThrow();
 

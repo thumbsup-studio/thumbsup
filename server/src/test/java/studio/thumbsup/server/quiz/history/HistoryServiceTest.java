@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import studio.thumbsup.server.quiz.QuizStep;
 import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.concept.Concept;
@@ -30,6 +31,7 @@ import studio.thumbsup.server.quiz.history.dto.HistoryGraphResponse;
 class HistoryServiceTest {
 
     private static final Long USER_ID = 1L;
+    private static final Long COURSE_ID = 1L;
 
     @Mock
     private UserConceptRepository userConceptRepository;
@@ -61,6 +63,13 @@ class HistoryServiceTest {
                 quizStepRepository);
     }
 
+    /** relatedStepsByConceptId가 이 PK로 quizStepRepository.findAllById를 조회하므로(#292) id를 직접 채운다. */
+    private static QuizStep stepFixture(Long id, int stepOrder, String topic) {
+        QuizStep step = QuizStep.create(stepOrder, COURSE_ID, topic, 10);
+        ReflectionTestUtils.setField(step, "id", id);
+        return step;
+    }
+
     @Nested
     @DisplayName("그래프 조회")
     class GetGraph {
@@ -85,11 +94,10 @@ class HistoryServiceTest {
             given(userConceptRepository.findByUserId(USER_ID))
                     .willReturn(List.of(ConceptFixture.userConcept(USER_ID, 1L, learnedAt)));
             given(userConceptStepRepository.findByUserIdAndConceptIdIn(USER_ID, Set.of(1L)))
-                    .willReturn(List.of(ConceptFixture.userConceptStep(USER_ID, 1L, 1)));
-            given(quizStepRepository.findByStepOrderIn(Set.of(1)))
-                    .willReturn(List.of(QuizStep.create(1, 1L, "프로세스와 스레드", 10)));
+                    .willReturn(List.of(ConceptFixture.userConceptStep(USER_ID, 1L, 1L)));
+            given(quizStepRepository.findAllById(Set.of(1L))).willReturn(List.of(stepFixture(1L, 1, "프로세스와 스레드")));
             given(conceptDescriptionRepository.findByConceptIdIn(Set.of(1L)))
-                    .willReturn(List.of(ConceptFixture.conceptDescription(1L, "프로세스에 대한 설명이다.", 1)));
+                    .willReturn(List.of(ConceptFixture.conceptDescription(1L, "프로세스에 대한 설명이다.", 1L)));
             Concept concept = ConceptFixture.concept(1L, "프로세스", "프로세스");
             given(conceptRepository.findAllById(Set.of(1L))).willReturn(List.of(concept));
             given(conceptRelationRepository.findBySourceConceptIdInAndTargetConceptIdIn(Set.of(1L), Set.of(1L)))
@@ -104,7 +112,8 @@ class HistoryServiceTest {
             assertThat(node.category()).isEqualTo("프로세스");
             assertThat(node.description()).containsExactly("프로세스에 대한 설명이다.");
             assertThat(node.learnedAt()).isEqualTo(LocalDate.of(2026, 7, 9)); // UTC 저장 → KST 날짜 변환
-            assertThat(node.relatedSteps()).containsExactly(new HistoryGraphResponse.RelatedStep(1, "프로세스와 스레드"));
+            assertThat(node.relatedSteps())
+                    .containsExactly(new HistoryGraphResponse.RelatedStep(COURSE_ID, 1, "프로세스와 스레드"));
         }
 
         @Test
@@ -117,7 +126,7 @@ class HistoryServiceTest {
                             ConceptFixture.userConcept(USER_ID, 2L, Instant.parse("2026-07-08T00:00:00Z"))));
             given(userConceptStepRepository.findByUserIdAndConceptIdIn(USER_ID, Set.of(1L, 2L)))
                     .willReturn(List.of());
-            given(quizStepRepository.findByStepOrderIn(Set.of())).willReturn(List.of());
+            given(quizStepRepository.findAllById(Set.of())).willReturn(List.of());
             given(conceptDescriptionRepository.findByConceptIdIn(Set.of(1L, 2L)))
                     .willReturn(List.of());
             given(conceptRepository.findAllById(Set.of(1L, 2L)))
@@ -139,13 +148,12 @@ class HistoryServiceTest {
             given(userConceptRepository.findByUserId(USER_ID))
                     .willReturn(List.of(ConceptFixture.userConcept(USER_ID, 22L, learnedAt)));
             given(userConceptStepRepository.findByUserIdAndConceptIdIn(USER_ID, Set.of(22L)))
-                    .willReturn(List.of(ConceptFixture.userConceptStep(USER_ID, 22L, 2))); // 4번 스텝은 아직 미완료
-            given(quizStepRepository.findByStepOrderIn(Set.of(2)))
-                    .willReturn(List.of(QuizStep.create(2, 1L, "CPU 스케줄링", 10)));
+                    .willReturn(List.of(ConceptFixture.userConceptStep(USER_ID, 22L, 2L))); // 4번 스텝은 아직 미완료
+            given(quizStepRepository.findAllById(Set.of(2L))).willReturn(List.of(stepFixture(2L, 2, "CPU 스케줄링")));
             given(conceptDescriptionRepository.findByConceptIdIn(Set.of(22L)))
                     .willReturn(List.of(
-                            ConceptFixture.conceptDescription(22L, "PCB에 상태를 저장·복원하는 작업이다.", 2),
-                            ConceptFixture.conceptDescription(22L, "타임 퀀텀이 작으면 오버헤드가 된다.", 4)));
+                            ConceptFixture.conceptDescription(22L, "PCB에 상태를 저장·복원하는 작업이다.", 2L),
+                            ConceptFixture.conceptDescription(22L, "타임 퀀텀이 작으면 오버헤드가 된다.", 4L)));
             given(conceptRepository.findAllById(Set.of(22L)))
                     .willReturn(List.of(ConceptFixture.concept(22L, "문맥 전환", "프로세스")));
             given(conceptRelationRepository.findBySourceConceptIdInAndTargetConceptIdIn(Set.of(22L), Set.of(22L)))

@@ -27,7 +27,8 @@ public record HistoryGraphResponse(List<Node> nodes, List<Edge> edges) {
         }
     }
 
-    public record RelatedStep(int stepOrder, String topic) {}
+    /** stepOrder는 코스 내 상대 순번이라(#292) courseId 없이는 어느 코스의 몇 번째 스텝인지 알 수 없다. */
+    public record RelatedStep(Long courseId, int stepOrder, String topic) {}
 
     public record Edge(String source, String target) {}
 }

@@ -24,7 +24,7 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
 /**
  * Repository 통합 테스트 — 실제 MySQL(Testcontainers)에 Flyway 마이그레이션을 적용해
  * concept/concept_relation/user_concept/user_concept_step 저장·조회·제약을 검증한다(#233).
- * Flyway 시드(개념 마스터 64개)와 겹치지 않도록 매 테스트 전 테이블을 비운다 — step_order가
+ * Flyway 시드(개념 마스터 64개)와 겹치지 않도록 매 테스트 전 테이블을 비운다 — quiz_step_id(#292)가
  * quiz_step을 FK로 참조하므로 스텝이 필요한 픽스처는 코스·스텝 부모 행을 먼저 만든다.
  */
 @DisplayName("개념 리포지토리")
@@ -75,17 +75,19 @@ class ConceptRepositoryTest extends RepositoryTestSupport {
         return conceptRepository.saveAndFlush(ConceptFixture.concept(null, name, "테스트 카테고리"));
     }
 
-    /** step_order가 quiz_step(→course)을 FK로 참조하므로, 스텝이 필요한 픽스처 전에 부모 행을 만든다. */
-    private void saveStep(int stepOrder) {
+    /** quiz_step_id가 quiz_step(→course)을 FK로 참조하므로(#292), 스텝이 필요한 픽스처 전에 부모 행을 만들고 PK를 반환한다. */
+    private Long saveStep(int stepOrder) {
         Long courseId = courseRepository
                 .save(Course.create("테스트 코스 " + stepOrder, "CS"))
                 .getId();
-        quizStepRepository.save(QuizStep.create(stepOrder, courseId, "테스트 스텝 " + stepOrder, 5));
+        return quizStepRepository
+                .save(QuizStep.create(stepOrder, courseId, "테스트 스텝 " + stepOrder, 5))
+                .getId();
     }
 
-    private Quiz saveQuiz(int stepOrder, int slotOrder) {
+    private Quiz saveQuiz(Long stepId, int stepOrder, int slotOrder) {
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(stepOrder, slotOrder);
+        quiz.assignPosition(stepId, stepOrder, slotOrder);
         return quizRepository.save(quiz);
     }
 
@@ -109,13 +111,13 @@ class ConceptRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("같은 개념·스텝 조합은 유니크하다")
         void rejects_duplicate_concept_step() {
-            saveStep(2);
+            Long stepId = saveStep(2);
             Concept concept = saveConcept("문맥 전환");
             conceptDescriptionRepository.saveAndFlush(
-                    ConceptFixture.conceptDescription(concept.getId(), "PCB에 상태를 저장·복원하는 작업이다.", 2));
+                    ConceptFixture.conceptDescription(concept.getId(), "PCB에 상태를 저장·복원하는 작업이다.", stepId));
 
             assertThatThrownBy(() -> conceptDescriptionRepository.saveAndFlush(
-                            ConceptFixture.conceptDescription(concept.getId(), "다른 문장", 2)))
+                            ConceptFixture.conceptDescription(concept.getId(), "다른 문장", stepId)))
                     .isInstanceOf(DataIntegrityViolationException.class);
         }
 
@@ -125,24 +127,26 @@ class ConceptRepositoryTest extends RepositoryTestSupport {
             Concept concept = saveConcept("문맥 전환");
 
             assertThatThrownBy(() -> conceptDescriptionRepository.saveAndFlush(
-                            ConceptFixture.conceptDescription(concept.getId(), "고아 설명 문장", 99)))
+                            ConceptFixture.conceptDescription(concept.getId(), "고아 설명 문장", 999_999L)))
                     .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
         @DisplayName("한 개념이 여러 스텝에 걸친 설명을 가지면 전부 조회된다")
         void finds_all_descriptions_for_concept() {
-            saveStep(2);
-            saveStep(4);
+            Long stepTwoId = saveStep(2);
+            Long stepFourId = saveStep(4);
             Concept concept = saveConcept("문맥 전환");
             conceptDescriptionRepository.save(
-                    ConceptFixture.conceptDescription(concept.getId(), "PCB에 상태를 저장·복원하는 작업이다.", 2));
+                    ConceptFixture.conceptDescription(concept.getId(), "PCB에 상태를 저장·복원하는 작업이다.", stepTwoId));
             conceptDescriptionRepository.save(
-                    ConceptFixture.conceptDescription(concept.getId(), "타임 퀀텀이 작으면 오버헤드가 된다.", 4));
+                    ConceptFixture.conceptDescription(concept.getId(), "타임 퀀텀이 작으면 오버헤드가 된다.", stepFourId));
 
             List<ConceptDescription> found = conceptDescriptionRepository.findByConceptIdIn(Set.of(concept.getId()));
 
-            assertThat(found).extracting(ConceptDescription::getStepOrder).containsExactlyInAnyOrder(2, 4);
+            assertThat(found)
+                    .extracting(ConceptDescription::getQuizStepId)
+                    .containsExactlyInAnyOrder(stepTwoId, stepFourId);
         }
     }
 
@@ -153,8 +157,8 @@ class ConceptRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("퀴즈당 핵심 개념은 하나만 연결할 수 있다(UNIQUE(quiz_id))")
         void rejects_second_concept_for_same_quiz() {
-            saveStep(101);
-            Quiz quiz = saveQuiz(101, 1);
+            Long stepId = saveStep(101);
+            Quiz quiz = saveQuiz(stepId, 101, 1);
             Concept a = saveConcept("뮤텍스");
             Concept b = saveConcept("세마포어");
             quizConceptRepository.saveAndFlush(ConceptFixture.quizConcept(quiz.getId(), a.getId()));
@@ -167,10 +171,10 @@ class ConceptRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("여러 퀴즈에 걸친 개념 id를 중복 없이 조회한다(스텝 완료 시 학습 기록용)")
         void finds_distinct_concept_ids_across_quizzes() {
-            saveStep(101);
-            Quiz first = saveQuiz(101, 1);
-            Quiz second = saveQuiz(101, 2);
-            Quiz third = saveQuiz(101, 3);
+            Long stepId = saveStep(101);
+            Quiz first = saveQuiz(stepId, 101, 1);
+            Quiz second = saveQuiz(stepId, 101, 2);
+            Quiz third = saveQuiz(stepId, 101, 3);
             Concept concept = saveConcept("뮤텍스");
             quizConceptRepository.save(ConceptFixture.quizConcept(first.getId(), concept.getId()));
             quizConceptRepository.save(ConceptFixture.quizConcept(second.getId(), concept.getId()));
@@ -267,28 +271,30 @@ class ConceptRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("같은 유저·개념·스텝 조합은 유니크하다")
         void rejects_duplicate_triple() {
-            saveStep(3);
+            Long stepId = saveStep(3);
             Concept concept = saveConcept("뮤텍스");
-            userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), 3));
+            userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), stepId));
 
             assertThatThrownBy(() ->
-                            userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), 3)))
+                            userConceptStepRepository.saveAndFlush(UserConceptStep.create(1L, concept.getId(), stepId)))
                     .isInstanceOf(DataIntegrityViolationException.class);
         }
 
         @Test
         @DisplayName("같은 개념이 여러 스텝에 걸쳐 있으면 전부 조회된다(relatedSteps 조립용)")
         void finds_all_related_steps_for_concept() {
-            saveStep(3);
-            saveStep(6);
+            Long stepThreeId = saveStep(3);
+            Long stepSixId = saveStep(6);
             Concept concept = saveConcept("뮤텍스");
-            userConceptStepRepository.save(UserConceptStep.create(1L, concept.getId(), 3));
-            userConceptStepRepository.save(UserConceptStep.create(1L, concept.getId(), 6));
+            userConceptStepRepository.save(UserConceptStep.create(1L, concept.getId(), stepThreeId));
+            userConceptStepRepository.save(UserConceptStep.create(1L, concept.getId(), stepSixId));
 
             List<UserConceptStep> found =
                     userConceptStepRepository.findByUserIdAndConceptIdIn(1L, Set.of(concept.getId()));
 
-            assertThat(found).extracting(UserConceptStep::getStepOrder).containsExactlyInAnyOrder(3, 6);
+            assertThat(found)
+                    .extracting(UserConceptStep::getQuizStepId)
+                    .containsExactlyInAnyOrder(stepThreeId, stepSixId);
         }
     }
 }

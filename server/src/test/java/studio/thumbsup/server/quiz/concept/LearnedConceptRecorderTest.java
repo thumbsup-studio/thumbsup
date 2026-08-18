@@ -31,6 +31,7 @@ import studio.thumbsup.server.quiz.QuizRepository;
 class LearnedConceptRecorderTest {
 
     private static final Long USER_ID = 1L;
+    private static final Long QUIZ_STEP_ID = 1L;
     private static final List<Long> STEP_QUIZ_IDS = List.of(6L, 7L, 8L, 9L, 10L);
 
     @Mock
@@ -51,18 +52,19 @@ class LearnedConceptRecorderTest {
     @Test
     @DisplayName("스텝 완료 이벤트를 받으면 그 스텝의 퀴즈 id를 직접 조회해 기록한다")
     void looks_up_step_quiz_ids_on_event_and_records() {
-        given(quizRepository.findIdsByStepOrder(1)).willReturn(STEP_QUIZ_IDS);
+        given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID)).willReturn(STEP_QUIZ_IDS);
         given(quizConceptRepository.findDistinctConceptIdsByQuizIdIn(STEP_QUIZ_IDS))
                 .willReturn(List.of(100L));
         given(userConceptRepository.findByUserIdAndConceptIdIn(USER_ID, List.of(100L)))
                 .willReturn(List.of());
 
-        learnedConceptRecorder.onStepCompleted(new QuizStepCompletedEvent(USER_ID, LocalDate.of(2026, 7, 8), 1));
+        learnedConceptRecorder.onStepCompleted(
+                new QuizStepCompletedEvent(USER_ID, LocalDate.of(2026, 7, 8), QUIZ_STEP_ID));
 
         verify(userConceptRepository).save(any(UserConcept.class));
         ArgumentCaptor<UserConceptStep> stepCaptor = ArgumentCaptor.forClass(UserConceptStep.class);
         verify(userConceptStepRepository).save(stepCaptor.capture());
-        assertThat(stepCaptor.getValue().getStepOrder()).isEqualTo(1);
+        assertThat(stepCaptor.getValue().getQuizStepId()).isEqualTo(QUIZ_STEP_ID);
     }
 
     @Test
@@ -73,7 +75,7 @@ class LearnedConceptRecorderTest {
         given(userConceptRepository.findByUserIdAndConceptIdIn(USER_ID, List.of(100L, 200L)))
                 .willReturn(List.of());
 
-        learnedConceptRecorder.record(USER_ID, 1, STEP_QUIZ_IDS);
+        learnedConceptRecorder.record(USER_ID, QUIZ_STEP_ID, STEP_QUIZ_IDS);
 
         ArgumentCaptor<UserConcept> conceptCaptor = ArgumentCaptor.forClass(UserConcept.class);
         verify(userConceptRepository, times(2)).save(conceptCaptor.capture());
@@ -84,8 +86,8 @@ class LearnedConceptRecorderTest {
         ArgumentCaptor<UserConceptStep> stepCaptor = ArgumentCaptor.forClass(UserConceptStep.class);
         verify(userConceptStepRepository, times(2)).save(stepCaptor.capture());
         assertThat(stepCaptor.getAllValues())
-                .extracting(UserConceptStep::getConceptId, UserConceptStep::getStepOrder)
-                .containsExactlyInAnyOrder(tuple(100L, 1), tuple(200L, 1));
+                .extracting(UserConceptStep::getConceptId, UserConceptStep::getQuizStepId)
+                .containsExactlyInAnyOrder(tuple(100L, QUIZ_STEP_ID), tuple(200L, QUIZ_STEP_ID));
     }
 
     @Test
@@ -96,7 +98,7 @@ class LearnedConceptRecorderTest {
         given(userConceptRepository.findByUserIdAndConceptIdIn(USER_ID, List.of(100L)))
                 .willReturn(List.of(UserConcept.create(USER_ID, 100L)));
 
-        learnedConceptRecorder.record(USER_ID, 4, STEP_QUIZ_IDS);
+        learnedConceptRecorder.record(USER_ID, 4L, STEP_QUIZ_IDS);
 
         verify(userConceptRepository, never()).save(any());
         verify(userConceptStepRepository).save(any(UserConceptStep.class));
@@ -108,7 +110,7 @@ class LearnedConceptRecorderTest {
         given(quizConceptRepository.findDistinctConceptIdsByQuizIdIn(STEP_QUIZ_IDS))
                 .willReturn(List.of());
 
-        learnedConceptRecorder.record(USER_ID, 1, STEP_QUIZ_IDS);
+        learnedConceptRecorder.record(USER_ID, QUIZ_STEP_ID, STEP_QUIZ_IDS);
 
         verify(userConceptRepository, never()).findByUserIdAndConceptIdIn(any(), anyCollection());
         verify(userConceptStepRepository, never()).save(any());
