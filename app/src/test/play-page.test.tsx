@@ -235,11 +235,7 @@ describe("PlayPage", () => {
     vi.mocked(getStepQuiz).mockResolvedValue({ ...oxQuiz, quizId: 12, slotOrder: 3 });
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
 
-    render(
-      <PlayPage
-        review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환" }}
-      />,
-    );
+    render(<PlayPage review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환" }} />);
 
     fireEvent.click(await screen.findByRole("radio", { name: "O" }));
     fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
@@ -267,11 +263,7 @@ describe("PlayPage", () => {
     vi.mocked(getStepQuiz).mockResolvedValue(multipleChoiceQuiz);
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
 
-    render(
-      <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }}
-      />,
-    );
+    render(<PlayPage review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }} />);
 
     await screen.findByRole("group", { name: "사지선다 선택지" });
 
@@ -292,11 +284,7 @@ describe("PlayPage", () => {
     const random = vi.spyOn(Math, "random").mockReturnValue(0);
     vi.mocked(getStepQuiz).mockResolvedValue(multipleChoiceQuiz);
 
-    render(
-      <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }}
-      />,
-    );
+    render(<PlayPage review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }} />);
 
     await screen.findByRole("group", { name: "사지선다 선택지" });
     random.mockReturnValue(0.99);
@@ -418,18 +406,14 @@ describe("PlayPage", () => {
       vi.mocked(requestQuizHint).mockReturnValue(oldHintRequest);
 
       const { rerender } = render(
-        <PlayPage
-          review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스" }}
-        />,
+        <PlayPage review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스" }} />,
       );
 
       await screen.findByText(oxQuiz.questionText);
       fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
 
       rerender(
-        <PlayPage
-          review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스" }}
-        />,
+        <PlayPage review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스" }} />,
       );
       await screen.findByText(multipleChoiceQuiz.questionText);
 
