@@ -237,7 +237,15 @@ describe("PlayPage", () => {
 
     render(
       <PlayPage
-        review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환", single: false, resumeSlot: 3 }}
+        review={{
+          step: 2,
+          slot: 3,
+          correct: 2,
+          streak: 2,
+          topic: "문맥 전환",
+          single: false,
+          resumeSlot: 3,
+        }}
       />,
     );
 
@@ -269,7 +277,15 @@ describe("PlayPage", () => {
 
     render(
       <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화", single: false, resumeSlot: 2 }}
+        review={{
+          step: 2,
+          slot: 2,
+          correct: 0,
+          streak: 0,
+          topic: "동기화",
+          single: false,
+          resumeSlot: 2,
+        }}
       />,
     );
 
@@ -294,7 +310,15 @@ describe("PlayPage", () => {
 
     render(
       <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화", single: false, resumeSlot: 2 }}
+        review={{
+          step: 2,
+          slot: 2,
+          correct: 0,
+          streak: 0,
+          topic: "동기화",
+          single: false,
+          resumeSlot: 2,
+        }}
       />,
     );
 
@@ -419,7 +443,15 @@ describe("PlayPage", () => {
 
       const { rerender } = render(
         <PlayPage
-          review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스", single: false, resumeSlot: 1 }}
+          review={{
+            step: 1,
+            slot: 1,
+            correct: 0,
+            streak: 0,
+            topic: "프로세스",
+            single: false,
+            resumeSlot: 1,
+          }}
         />,
       );
 
@@ -428,7 +460,15 @@ describe("PlayPage", () => {
 
       rerender(
         <PlayPage
-          review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스", single: false, resumeSlot: 2 }}
+          review={{
+            step: 1,
+            slot: 2,
+            correct: 0,
+            streak: 0,
+            topic: "프로세스",
+            single: false,
+            resumeSlot: 2,
+          }}
         />,
       );
       await screen.findByText(multipleChoiceQuiz.questionText);
@@ -768,7 +808,15 @@ describe("PlayPage", () => {
 
       render(
         <PlayPage
-          review={{ step: 1, slot: 1, correct: 2, streak: 3, topic: "프로세스", single: false, resumeSlot: 1 }}
+          review={{
+            step: 1,
+            slot: 1,
+            correct: 2,
+            streak: 3,
+            topic: "프로세스",
+            single: false,
+            resumeSlot: 1,
+          }}
         />,
       );
 
@@ -789,7 +837,15 @@ describe("PlayPage", () => {
 
       render(
         <PlayPage
-          review={{ step: 1, slot: 5, correct: 3, streak: 2, topic: "프로세스", single: false, resumeSlot: 5 }}
+          review={{
+            step: 1,
+            slot: 5,
+            correct: 3,
+            streak: 2,
+            topic: "프로세스",
+            single: false,
+            resumeSlot: 5,
+          }}
         />,
       );
 
@@ -807,7 +863,15 @@ describe("PlayPage", () => {
 
       render(
         <PlayPage
-          review={{ step: 1, slot: 2, correct: 1, streak: 1, topic: "프로세스", single: false, resumeSlot: 4 }}
+          review={{
+            step: 1,
+            slot: 2,
+            correct: 1,
+            streak: 1,
+            topic: "프로세스",
+            single: false,
+            resumeSlot: 4,
+          }}
         />,
       );
 

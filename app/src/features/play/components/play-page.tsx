@@ -99,9 +99,12 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
     ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading && !isPreview
     : false;
   // 미리보기 중엔 그냥 한 칸 앞으로, 라이브에선 안 풀고 건너뛰기(이슈 303) — resumeSlot 처리가 갈린다.
-  const reviewForwardHref = review ? (isPreview ? reviewNextPlayHref(review) : reviewSkipHref(review)) : null;
-  const reviewBackHref =
-    review && review.slot > 1 ? reviewPreviousPlayHref(review) : null;
+  const reviewForwardHref = review
+    ? isPreview
+      ? reviewNextPlayHref(review)
+      : reviewSkipHref(review)
+    : null;
+  const reviewBackHref = review && review.slot > 1 ? reviewPreviousPlayHref(review) : null;
 
   const liveText = useMemo(() => {
     if (!quiz) {
