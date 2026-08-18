@@ -237,7 +237,7 @@ describe("PlayPage", () => {
 
     render(
       <PlayPage
-        review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환", single: false }}
+        review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환" }}
       />,
     );
 
@@ -269,7 +269,7 @@ describe("PlayPage", () => {
 
     render(
       <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화", single: false }}
+        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }}
       />,
     );
 
@@ -294,7 +294,7 @@ describe("PlayPage", () => {
 
     render(
       <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화", single: false }}
+        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화" }}
       />,
     );
 
@@ -419,7 +419,7 @@ describe("PlayPage", () => {
 
       const { rerender } = render(
         <PlayPage
-          review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스", single: false }}
+          review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스" }}
         />,
       );
 
@@ -428,7 +428,7 @@ describe("PlayPage", () => {
 
       rerender(
         <PlayPage
-          review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스", single: false }}
+          review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스" }}
         />,
       );
       await screen.findByText(multipleChoiceQuiz.questionText);

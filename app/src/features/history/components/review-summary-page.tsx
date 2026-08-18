@@ -1,35 +1,23 @@
 import Link from "next/link";
 import { CircleCheckIcon, RotateCcwIcon } from "@/components/icons";
-import {
-  REVIEW_STEP_TOTAL,
-  reviewSingleHref,
-  reviewStartHref,
-} from "@/features/history/review-params";
+import { REVIEW_STEP_TOTAL, reviewStartHref } from "@/features/history/review-params";
 import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
+import { COURSE_LIST_PATH } from "@/features/play/course-params";
 
 type ReviewSummaryPageProps = {
   step: number;
   /** 이번 스텝 재풀이에서 맞힌 개수 */
   correct: number;
   topic: string;
-  /** true면 문제 하나만 푼 단건 복습 — 결과 분모·다시 풀기 대상이 스텝 전체와 다르다. */
-  single: boolean;
-  /** 단건 복습일 때 다시 풀기 대상 슬롯 */
-  slot: number;
 };
 
-export function ReviewSummaryPage({ step, correct, topic, single, slot }: ReviewSummaryPageProps) {
-  const total = single ? 1 : REVIEW_STEP_TOTAL;
-  const isPerfect = correct >= total;
-  const retryHref = single ? reviewSingleHref(step, slot, topic) : reviewStartHref(step, topic);
+export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPageProps) {
+  const isPerfect = correct >= REVIEW_STEP_TOTAL;
+  const retryHref = reviewStartHref(step, topic);
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
-      {/*
-        단건 복습(이슈 190)은 분모가 1이라 한 문제만 맞혀도 isPerfect가 된다.
-        팡파레는 "한 판을 완주하고 전부 맞혔을 때"라는 사다리 꼭대기라, 여기선 터뜨리지 않는다.
-      */}
-      {!single && isPerfect ? <FanfareOverlay playKey={`review:${step}`} /> : null}
+      {isPerfect ? <FanfareOverlay playKey={`review:${step}`} /> : null}
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
           <div className="flex flex-col items-center gap-3">
@@ -50,7 +38,7 @@ export function ReviewSummaryPage({ step, correct, topic, single, slot }: Review
             <p className="text-sm font-medium text-ink-muted">이번 복습 결과</p>
             <p className="mt-2 text-3xl font-black">
               <span className="text-success">{correct}</span>
-              <span className="text-ink-muted"> / {total}</span>
+              <span className="text-ink-muted"> / {REVIEW_STEP_TOTAL}</span>
             </p>
             <p className="mt-2 text-sm font-medium text-ink-muted">
               {isPerfect
@@ -63,9 +51,9 @@ export function ReviewSummaryPage({ step, correct, topic, single, slot }: Review
         <div className="mt-auto flex flex-col gap-2.5 pt-6">
           <Link
             className="flex min-h-12 w-full items-center justify-center rounded-control bg-primary px-5 py-3 font-bold text-primary-fg shadow-hero"
-            href="/history/review"
+            href={COURSE_LIST_PATH}
           >
-            복습 목록으로
+            코스로 돌아가기
           </Link>
           <Link
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control border border-border bg-surface px-5 py-3 font-bold text-ink"
