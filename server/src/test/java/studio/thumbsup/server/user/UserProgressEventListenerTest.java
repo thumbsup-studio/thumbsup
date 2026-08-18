@@ -33,7 +33,7 @@ class UserProgressEventListenerTest {
         @Test
         @DisplayName("이벤트의 userId·completedOn으로 스트릭 갱신을 위임한다")
         void delegates_to_user_progress_service() {
-            listener().onQuizStepCompleted(new QuizStepCompletedEvent(USER_ID, TODAY, 1));
+            listener().onQuizStepCompleted(new QuizStepCompletedEvent(USER_ID, TODAY, 1L));
 
             verify(userProgressService).recordStepCompletion(USER_ID, TODAY);
         }
@@ -45,7 +45,7 @@ class UserProgressEventListenerTest {
                     .given(userProgressService)
                     .recordStepCompletion(USER_ID, TODAY);
 
-            assertThatCode(() -> listener().onQuizStepCompleted(new QuizStepCompletedEvent(USER_ID, TODAY, 1)))
+            assertThatCode(() -> listener().onQuizStepCompleted(new QuizStepCompletedEvent(USER_ID, TODAY, 1L)))
                     .doesNotThrowAnyException();
         }
     }

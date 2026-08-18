@@ -18,11 +18,11 @@ public final class ConceptFixture {
         return concept;
     }
 
-    public static ConceptDescription conceptDescription(Long conceptId, String content, int stepOrder) {
+    public static ConceptDescription conceptDescription(Long conceptId, String content, Long quizStepId) {
         ConceptDescription description = new ConceptDescription();
         ReflectionTestUtils.setField(description, "conceptId", conceptId);
         ReflectionTestUtils.setField(description, "content", content);
-        ReflectionTestUtils.setField(description, "stepOrder", stepOrder);
+        ReflectionTestUtils.setField(description, "quizStepId", quizStepId);
         return description;
     }
 
@@ -33,8 +33,8 @@ public final class ConceptFixture {
         return userConcept;
     }
 
-    public static UserConceptStep userConceptStep(Long userId, Long conceptId, int stepOrder) {
-        return UserConceptStep.create(userId, conceptId, stepOrder);
+    public static UserConceptStep userConceptStep(Long userId, Long conceptId, Long quizStepId) {
+        return UserConceptStep.create(userId, conceptId, quizStepId);
     }
 
     public static QuizConcept quizConcept(Long quizId, Long conceptId) {

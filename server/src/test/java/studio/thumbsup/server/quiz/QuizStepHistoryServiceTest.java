@@ -64,7 +64,7 @@ class QuizStepHistoryServiceTest {
             given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.empty());
-            given(quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(1, 0))
+            given(quizStepRepository.findByCourseIdAndStepOrderBetweenOrderByStepOrderAsc(COURSE_ID, 1, 0))
                     .willReturn(List.of());
 
             QuizStepHistoryResponse response = service().getCompletedSteps(USER_ID, COURSE_ID);
@@ -81,7 +81,7 @@ class QuizStepHistoryServiceTest {
             given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progress));
-            given(quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(1, 2))
+            given(quizStepRepository.findByCourseIdAndStepOrderBetweenOrderByStepOrderAsc(COURSE_ID, 1, 2))
                     .willReturn(List.of(QuizStep.create(1, 1L, "프로세스와 스레드", 5), QuizStep.create(2, 1L, "CPU 스케줄링", 5)));
 
             QuizStepHistoryResponse response = service().getCompletedSteps(USER_ID, COURSE_ID);

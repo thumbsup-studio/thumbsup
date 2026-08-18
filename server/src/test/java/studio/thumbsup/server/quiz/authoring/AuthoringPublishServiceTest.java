@@ -75,8 +75,8 @@ class AuthoringPublishServiceTest {
         given(draftRepository.findByIdIn(anyCollection())).willReturn(List.of(firstDraft, secondDraft));
         given(validator.parse("payload-1")).willReturn(firstSet);
         given(validator.parse("payload-2")).willReturn(secondSet);
-        given(quizPersister.nextStepOrder()).willReturn(8);
         given(courseRepository.save(any(Course.class))).willReturn(course);
+        given(quizPersister.nextStepOrder(31L)).willReturn(8);
 
         PublishResponse response = service.publish(7L, 1L);
 

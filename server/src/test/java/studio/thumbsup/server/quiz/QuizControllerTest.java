@@ -72,7 +72,7 @@ class QuizControllerTest {
         void returns_200_with_quiz_data_on_success() throws Exception {
             authenticateAs(7L);
             QuizNextResponse response = new QuizNextResponse(
-                    1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 1, 5);
+                    1L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1L, 1, 1, 5);
             given(quizService.getNextQuiz(eq(7L), isNull())).willReturn(response);
 
             mockMvc.perform(get("/api/v1/quizzes/next"))
@@ -138,8 +138,8 @@ class QuizControllerTest {
         void returns_200_with_slot_quiz() throws Exception {
             authenticateAs(7L);
             QuizNextResponse response = new QuizNextResponse(
-                    30L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1, 3, 4);
-            given(quizService.getStepQuiz(eq(7L), eq(1), eq(3))).willReturn(response);
+                    30L, QuizType.OX, QuizDifficulty.EASY, "TCP는 연결 지향 프로토콜이다.", null, null, null, 1L, 1, 3, 4);
+            given(quizService.getStepQuiz(eq(7L), isNull(), eq(1), eq(3))).willReturn(response);
 
             mockMvc.perform(get("/api/v1/quizzes/steps/1/3"))
                     .andExpect(status().isOk())
@@ -152,7 +152,7 @@ class QuizControllerTest {
         @DisplayName("미래 스텝이면 403 QUIZ_NOT_ACCESSIBLE을 반환한다")
         void returns_403_when_step_not_accessible() throws Exception {
             authenticateAs(7L);
-            given(quizService.getStepQuiz(eq(7L), eq(5), eq(1)))
+            given(quizService.getStepQuiz(eq(7L), isNull(), eq(5), eq(1)))
                     .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_ACCESSIBLE));
 
             mockMvc.perform(get("/api/v1/quizzes/steps/5/1"))
@@ -164,7 +164,7 @@ class QuizControllerTest {
         @DisplayName("존재하지 않는 스텝·슬롯이면 404 QUIZ_NOT_FOUND를 반환한다")
         void returns_404_when_slot_not_found() throws Exception {
             authenticateAs(7L);
-            given(quizService.getStepQuiz(eq(7L), eq(1), eq(9)))
+            given(quizService.getStepQuiz(eq(7L), isNull(), eq(1), eq(9)))
                     .willThrow(new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
 
             mockMvc.perform(get("/api/v1/quizzes/steps/1/9"))

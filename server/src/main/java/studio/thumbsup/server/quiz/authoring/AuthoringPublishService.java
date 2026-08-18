@@ -54,7 +54,7 @@ public class AuthoringPublishService {
         List<AuthoringOutlineStep> steps = stepRepository.findByOutlineIdOrderByOrderNoAsc(outlineId);
         Map<Long, QuizDraft> drafts = requireApprovedDrafts(steps);
         Course course = courseRepository.save(Course.create(outline.getTitle(), outline.getCategory()));
-        int stepOrderBase = quizPersister.nextStepOrder();
+        int stepOrderBase = quizPersister.nextStepOrder(course.getId());
 
         for (int index = 0; index < steps.size(); index++) {
             publishStep(course, steps.get(index), drafts, stepOrderBase + index);

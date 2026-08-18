@@ -68,15 +68,19 @@ class QuizServiceRetryHintTest {
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
+    private static final Long QUIZ_STEP_ID = 1L;
+
     /** 스텝의 유일한 문제로 배치하고, 아직 아무 문제도 풀지 않은 상태로 만든다. */
     private void givenOnlyQuizInStep(Quiz quiz) {
-        quiz.assignPosition(1, 1);
+        quiz.assignPosition(QUIZ_STEP_ID, 1, 1);
         ReflectionTestUtils.setField(quiz, "id", QUIZ_ID);
         given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
-        // submitAnswer가 stepOrder로부터 courseId를 역으로 찾는다.
-        given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(QuizStep.create(1, COURSE_ID, "토픽", 3)));
-        given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(quiz.getId()));
-        given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1)).willReturn(List.of());
+        // submitAnswer가 quizStepId로부터 courseId를 찾는다(#292).
+        given(quizStepRepository.findById(QUIZ_STEP_ID))
+                .willReturn(Optional.of(QuizStep.create(1, COURSE_ID, "토픽", 3)));
+        given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID)).willReturn(List.of(quiz.getId()));
+        given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
+                .willReturn(List.of());
         QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
         given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));

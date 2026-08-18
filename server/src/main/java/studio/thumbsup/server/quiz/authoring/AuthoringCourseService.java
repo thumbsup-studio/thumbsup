@@ -4,7 +4,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,29 +50,27 @@ public class AuthoringCourseService {
                 .findById(courseId)
                 .orElseThrow(() -> new BusinessException(AuthoringErrorType.AUTHORING_COURSE_NOT_FOUND));
 
-        Map<Integer, String> topicByStepOrder = quizStepRepository.findAll().stream()
-                .collect(Collectors.toMap(QuizStep::getStepOrder, QuizStep::getTopic));
+        // #292: step_order는 코스마다 겹칠 수 있어 이 코스 소속 스텝만 courseId로 먼저 조회하고,
+        // 그 스텝들의 quizStepId(PK)로 문제를 묶는다 — 다른 코스의 같은 stepOrder와 섞이지 않는다.
+        List<QuizStep> steps = quizStepRepository.findByCourseIdInOrderByCourseIdAscStepOrderAsc(List.of(courseId));
+        Map<Long, List<Quiz>> quizzesByStepId =
+                quizRepository
+                        .findByQuizStepIdIn(steps.stream().map(QuizStep::getId).toList())
+                        .stream()
+                        .sorted(Comparator.comparingInt(Quiz::getSlotOrder))
+                        .collect(Collectors.groupingBy(Quiz::getQuizStepId, LinkedHashMap::new, Collectors.toList()));
 
-        // quiz_step에 course FK가 아직 없어 지금은 모든 스텝을 반환한다(코스 1개 전제).
-        // FK 도입 시 여기서 courseId로 스텝을 필터한다(#182 forward-compat seam).
-        Map<Integer, List<Quiz>> quizzesByStep = quizRepository.findAll().stream()
-                .filter(quiz -> quiz.getStepOrder() > 0) // 0은 "스텝 밖" placeholder sentinel
-                .sorted(Comparator.comparingInt(Quiz::getStepOrder).thenComparingInt(Quiz::getSlotOrder))
-                .collect(Collectors.groupingBy(Quiz::getStepOrder, LinkedHashMap::new, Collectors.toList()));
-
-        List<AuthoringDetailedStepResponse> steps = quizzesByStep.entrySet().stream()
-                .map(entry -> toDetailedStep(entry.getKey(), entry.getValue(), topicByStepOrder))
+        List<AuthoringDetailedStepResponse> stepResponses = steps.stream()
+                .map(step -> toDetailedStep(step, quizzesByStepId.getOrDefault(step.getId(), List.of())))
                 .toList();
-        return new AuthoringCourseDetailResponse(course.getId(), course.getTitle(), steps);
+        return new AuthoringCourseDetailResponse(course.getId(), course.getTitle(), stepResponses);
     }
 
-    private AuthoringDetailedStepResponse toDetailedStep(
-            int stepOrder, List<Quiz> quizzes, Map<Integer, String> topicByStepOrder) {
-        String topic = Optional.ofNullable(topicByStepOrder.get(stepOrder)).orElse(null);
+    private AuthoringDetailedStepResponse toDetailedStep(QuizStep step, List<Quiz> quizzes) {
         List<AuthoringDetailedQuizResponse> detailed = quizzes.stream()
                 .map(quiz -> new AuthoringDetailedQuizResponse(
                         quiz.getId(), quiz.getSlotOrder(), QuizToGeneratedQuizMapper.toGenerated(quiz)))
                 .toList();
-        return new AuthoringDetailedStepResponse(stepOrder, topic, detailed);
+        return new AuthoringDetailedStepResponse(step.getStepOrder(), step.getTopic(), detailed);
     }
 }

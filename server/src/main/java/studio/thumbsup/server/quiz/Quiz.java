@@ -67,7 +67,15 @@ public class Quiz extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String wrongAnswerExplanation;
 
-    /** 커리큘럼 진행 스텝(#41) — 스텝당 5문제(하2·중2·상1). MVP는 코스 1개라 course 참조 없이 순서만 둔다. */
+    /** 이 문제가 속한 스텝의 PK(#292) — 실제 참조 무결성은 이 컬럼이 담당한다. */
+    @Column(nullable = false)
+    private Long quizStepId;
+
+    /**
+     * 코스 내 상대 순번(1부터, #292) — {@link QuizStep#getStepOrder()}를 그대로 복사해 둔 비정규화
+     * 캐시다. 조회 편의를 위해 quiz_step까지 조인하지 않고 바로 읽을 수 있게 두지만, 정합성은
+     * {@link #quizStepId}가 보장하므로 이 값을 단독으로 식별자처럼 쓰지 않는다(코스마다 값이 겹친다).
+     */
     @Column(nullable = false)
     private int stepOrder;
 
@@ -142,14 +150,16 @@ public class Quiz extends BaseEntity {
     }
 
     /** 커리큘럼 내 위치를 지정한다 — 콘텐츠 필드와 분리해 생성자 파라미터 수를 제한한다(checkstyle). */
-    public void assignPosition(int stepOrder, int slotOrder) {
+    public void assignPosition(Long quizStepId, int stepOrder, int slotOrder) {
+        this.quizStepId = quizStepId;
         this.stepOrder = stepOrder;
         this.slotOrder = slotOrder;
     }
 
     /**
-     * 저작 개선(#174) 승인 시 본문 필드를 교체한다. {@code type}/{@code difficulty}/{@code stepOrder}/
-     * {@code slotOrder}는 절대 바꾸지 않는다 — 개선은 같은 슬롯의 내용만 다듬는 것이지 문제를 재배치하지 않는다.
+     * 저작 개선(#174) 승인 시 본문 필드를 교체한다. {@code type}/{@code difficulty}/{@code quizStepId}/
+     * {@code stepOrder}/{@code slotOrder}는 절대 바꾸지 않는다 — 개선은 같은 슬롯의 내용만 다듬는 것이지
+     * 문제를 재배치하지 않는다.
      */
     public void updateContent(
             String questionText,

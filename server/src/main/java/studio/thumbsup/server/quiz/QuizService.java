@@ -80,9 +80,7 @@ public class QuizService {
                 .map(QuizProgress::getCurrentStepOrder)
                 .orElseGet(() -> initialStepOrder(resolvedCourseId));
 
-        // stepOrder는 코스 무관 전역 순번이라, 코스를 완주해 커서가 그 코스의 마지막 스텝을 넘으면
-        // 다음 코스의 stepOrder를 그대로 가리키게 된다. 여기서 막지 않으면 완주 응답 대신 다른 코스의
-        // 문제를 그대로 내려주게 된다.
+        // 코스를 완주해 커서가 그 코스의 마지막 스텝을 넘으면 완주로 응답한다.
         int maxStepOrder = quizStepRepository
                 .findMaxStepOrderByCourseId(resolvedCourseId)
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
@@ -90,12 +88,15 @@ public class QuizService {
             throw new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED);
         }
 
-        List<Quiz> stepQuizzes = quizRepository.findByStepOrderOrderBySlotOrderAsc(stepOrder);
+        QuizStep step = quizStepRepository
+                .findByCourseIdAndStepOrder(resolvedCourseId, stepOrder)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        List<Quiz> stepQuizzes = quizRepository.findByQuizStepIdOrderBySlotOrderAsc(step.getId());
         if (stepQuizzes.isEmpty()) {
             throw new BusinessException(QuizErrorType.QUIZ_NOT_FOUND);
         }
 
-        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
+        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(userId, step.getId()).stream()
                 .map(attempt -> attempt.getQuiz().getId())
                 .collect(Collectors.toSet());
 
@@ -105,7 +106,7 @@ public class QuizService {
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED));
 
         // 스텝 문제를 이미 전부 읽었으므로 총 문제 수는 추가 쿼리 없이 그 크기를 그대로 쓴다.
-        return QuizNextResponse.from(next, stepQuizzes.size());
+        return QuizNextResponse.from(next, resolvedCourseId, stepQuizzes.size());
     }
 
     /**
@@ -119,24 +120,30 @@ public class QuizService {
                 .findByUserIdAndCourseId(userId, resolvedCourseId)
                 .map(QuizProgress::getCurrentStepOrder)
                 .orElse(startStepOrder);
-        List<QuizStep> completedSteps =
-                quizStepRepository.findByStepOrderBetweenOrderByStepOrderAsc(startStepOrder, currentStepOrder - 1);
+        List<QuizStep> completedSteps = quizStepRepository.findByCourseIdAndStepOrderBetweenOrderByStepOrderAsc(
+                resolvedCourseId, startStepOrder, currentStepOrder - 1);
         return QuizStepHistoryResponse.from(completedSteps);
     }
 
     /**
      * 완료한 스텝의 문제를 슬롯 지정으로 다시 조회한다(#151, 히스토리 재풀이). 시도 이력을 보지 않고
      * 항상 그 슬롯의 문제를 그대로 반환한다 — {@link #getNextQuiz}와 달리 "미시도만"이 아니다.
-     * 접근 제어는 {@link #submitAnswer}와 동일하게 현재 진행 스텝 이하만 허용한다. courseId는 클라이언트가
-     * 보내지 않는다 — stepOrder가 속한 코스를 서버가 직접 찾아 그 코스의 진행 상태와 대조한다(위조 불가).
+     * 접근 제어는 {@link #submitAnswer}와 동일하게 현재 진행 스텝 이하만 허용한다.
+     *
+     * <p>stepOrder는 코스 내 상대 순번이라(#292) courseId 없이는 문제를 특정할 수 없다 — courseId를
+     * 생략하면 {@link #getNextQuiz}와 동일하게 기본 코스를 쓴다.
      */
-    public QuizNextResponse getStepQuiz(Long userId, int stepOrder, int slotOrder) {
-        Long courseId = courseIdForStep(stepOrder);
-        validateAccessible(userId, courseId, stepOrder);
-        Quiz quiz = quizRepository
-                .findByStepOrderAndSlotOrder(stepOrder, slotOrder)
+    public QuizNextResponse getStepQuiz(Long userId, Long courseId, int stepOrder, int slotOrder) {
+        Long resolvedCourseId = resolveCourseId(courseId);
+        validateAccessible(userId, resolvedCourseId, stepOrder);
+        QuizStep step = quizStepRepository
+                .findByCourseIdAndStepOrder(resolvedCourseId, stepOrder)
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        return QuizNextResponse.from(quiz, Math.toIntExact(quizRepository.countByStepOrder(stepOrder)));
+        Quiz quiz = quizRepository
+                .findByQuizStepIdAndSlotOrder(step.getId(), slotOrder)
+                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        return QuizNextResponse.from(
+                quiz, resolvedCourseId, Math.toIntExact(quizRepository.countByQuizStepId(step.getId())));
     }
 
     /**
@@ -146,8 +153,8 @@ public class QuizService {
     public QuizHintResponse getHint(Long userId, Long quizId) {
         Quiz quiz =
                 quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        Long courseId = courseIdForStep(quiz.getStepOrder());
-        validateAccessible(userId, courseId, quiz.getStepOrder());
+        QuizStep step = stepOf(quiz);
+        validateAccessible(userId, step.getCourseId(), quiz.getStepOrder());
         if (quiz.getHint() == null || quiz.getHint().isBlank()) {
             throw new BusinessException(QuizErrorType.QUIZ_HINT_NOT_AVAILABLE);
         }
@@ -167,14 +174,12 @@ public class QuizService {
         Quiz quiz =
                 quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
 
-        QuizStep step = quizStepRepository
-                .findByStepOrder(quiz.getStepOrder())
-                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
+        QuizStep step = stepOf(quiz);
         String courseTitle = courseRepository
                 .findById(step.getCourseId())
                 .map(Course::getTitle)
                 .orElseThrow(() -> new BusinessException(LearningErrorType.COURSE_NOT_FOUND));
-        long totalCount = quizRepository.countByStepOrder(quiz.getStepOrder());
+        long totalCount = quizRepository.countByQuizStepId(quiz.getQuizStepId());
 
         return QuizExplanationResponse.from(quiz, totalCount, courseTitle, step.getTopic());
     }
@@ -189,21 +194,20 @@ public class QuizService {
     public AnswerSubmitResponse submitAnswer(Long userId, Long quizId, AnswerSubmitRequest request) {
         Quiz quiz =
                 quizRepository.findById(quizId).orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        Long courseId = courseIdForStep(quiz.getStepOrder());
-        validateAccessible(userId, courseId, quiz.getStepOrder());
+        QuizStep step = stepOf(quiz);
+        validateAccessible(userId, step.getCourseId(), quiz.getStepOrder());
 
         boolean isCorrect = grade(quiz, request.answers());
         quizAttemptRepository.save(QuizAttempt.create(quiz, userId, isCorrect));
-        advanceProgressIfStepCompleted(userId, courseId, quiz.getStepOrder());
+        advanceProgressIfStepCompleted(userId, step.getCourseId(), quiz.getStepOrder(), quiz.getQuizStepId());
 
         return new AnswerSubmitResponse(isCorrect, RetryHintBuilder.build(quiz, request.answers(), isCorrect));
     }
 
-    /** stepOrder가 속한 코스 id — quiz.step_order로부터 역으로 찾는다. 존재하지 않는 스텝이면 QUIZ_NOT_FOUND. */
-    private Long courseIdForStep(int stepOrder) {
+    /** quiz가 속한 스텝 행 — quiz.quiz_step_id(#292)로 직접 조회한다. FK가 NOT NULL이라 항상 존재한다. */
+    private QuizStep stepOf(Quiz quiz) {
         return quizStepRepository
-                .findByStepOrder(stepOrder)
-                .map(QuizStep::getCourseId)
+                .findById(quiz.getQuizStepId())
                 .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
     }
 
@@ -324,11 +328,11 @@ public class QuizService {
      * 위임한다 — 이 트랜잭션이 커밋된 뒤 별도 트랜잭션으로 처리되어(AFTER_COMMIT), 스트릭 갱신이
      * 실패해도 방금 저장한 퀴즈 풀이·진행 상태는 롤백되지 않는다.
      */
-    private void advanceProgressIfStepCompleted(Long userId, Long courseId, int stepOrder) {
+    private void advanceProgressIfStepCompleted(Long userId, Long courseId, int stepOrder, Long quizStepId) {
         QuizProgress progress = lockOrCreateProgress(userId, courseId);
 
-        List<Long> stepQuizIds = quizRepository.findIdsByStepOrder(stepOrder);
-        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_StepOrder(userId, stepOrder).stream()
+        List<Long> stepQuizIds = quizRepository.findIdsByQuizStepId(quizStepId);
+        Set<Long> attemptedQuizIds = quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(userId, quizStepId).stream()
                 .map(attempt -> attempt.getQuiz().getId())
                 .collect(Collectors.toSet());
         boolean stepCompleted = stepQuizIds.stream().allMatch(attemptedQuizIds::contains);
@@ -343,7 +347,7 @@ public class QuizService {
             // LearnedConceptRecorder, 평범한 동기 @EventListener)이 같은 이벤트를 각자 필요한 만큼만
             // 구독한다 — 두 관심사 모두 "스텝을 처음 완료했다"는 같은 사실 하나일 뿐이다.
             eventPublisher.publishEvent(
-                    new QuizStepCompletedEvent(userId, LocalDate.now(clock.withZone(TimeZones.KST)), stepOrder));
+                    new QuizStepCompletedEvent(userId, LocalDate.now(clock.withZone(TimeZones.KST)), quizStepId));
         }
     }
 

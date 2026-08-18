@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import studio.thumbsup.server.common.support.RepositoryTestSupport;
+import studio.thumbsup.server.quiz.course.Course;
+import studio.thumbsup.server.quiz.course.CourseRepository;
 
 /**
  * Repository 통합 테스트 — 실제 MySQL(Testcontainers)에 Flyway 마이그레이션을 적용해
@@ -19,15 +21,27 @@ class QuizFollowUpQuestionRepositoryTest extends RepositoryTestSupport {
 
     private final QuizRepository quizRepository;
     private final QuizFollowUpQuestionRepository quizFollowUpQuestionRepository;
+    private final QuizStepRepository quizStepRepository;
+    private final CourseRepository courseRepository;
     private final EntityManager entityManager;
 
     QuizFollowUpQuestionRepositoryTest(
             @Autowired QuizRepository quizRepository,
             @Autowired QuizFollowUpQuestionRepository quizFollowUpQuestionRepository,
+            @Autowired QuizStepRepository quizStepRepository,
+            @Autowired CourseRepository courseRepository,
             @Autowired EntityManager entityManager) {
         this.quizRepository = quizRepository;
         this.quizFollowUpQuestionRepository = quizFollowUpQuestionRepository;
+        this.quizStepRepository = quizStepRepository;
+        this.courseRepository = courseRepository;
         this.entityManager = entityManager;
+    }
+
+    /** quiz.quiz_step_id가 quiz_step을 FK로 참조하므로(#292) 저장 전에 스텝 부모 행을 만들고 PK를 반환한다. */
+    private Long saveStep() {
+        Long courseId = courseRepository.save(Course.create("테스트 코스", "CS")).getId();
+        return quizStepRepository.save(QuizStep.create(1, courseId, "토픽", 5)).getId();
     }
 
     private long countRows(String table) {
@@ -46,6 +60,7 @@ class QuizFollowUpQuestionRepositoryTest extends RepositoryTestSupport {
     /** 블록 2개·키워드 1개를 붙인 꼬리질문 하나를 가진 문제를 저장한다. 저작 순서와 표시 순서를 일부러 어긋나게 둔다. */
     private Quiz persistQuizWithDetailedFollowUpQuestion() {
         Quiz quiz = QuizFixture.oxQuiz();
+        quiz.assignPosition(saveStep(), 1, 1);
         QuizFollowUpQuestion followUpQuestion = quiz.addFollowUpQuestion("큐와 스택의 차이는?", true, 2);
         followUpQuestion.attachDetail(QuizDifficulty.HARD, "스택은 [[LIFO]]입니다.");
         followUpQuestion.addKeyword("LIFO", "마지막에 넣은 데이터가 먼저 나오는 순서");
@@ -91,7 +106,9 @@ class QuizFollowUpQuestionRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("상세를 붙이지 않은 꼬리질문은 난이도와 한 줄 답이 비어 있다 — 백필 전의 실제 상태")
         void allows_follow_up_question_without_detail() {
-            Quiz quiz = quizRepository.saveAndFlush(QuizFixture.oxQuiz());
+            Quiz oxQuiz = QuizFixture.oxQuiz();
+            oxQuiz.assignPosition(saveStep(), 1, 1);
+            Quiz quiz = quizRepository.saveAndFlush(oxQuiz);
             entityManager.clear();
 
             QuizFollowUpQuestion found = quizRepository
@@ -108,7 +125,9 @@ class QuizFollowUpQuestionRepositoryTest extends RepositoryTestSupport {
         @Test
         @DisplayName("난이도 없이 한 줄 답만 채우면 DB 제약이 막는다 — 생성 파이프라인(#26)의 raw SQL 백필 대비")
         void rejects_detail_with_only_one_line_answer() {
-            Quiz quiz = quizRepository.saveAndFlush(QuizFixture.oxQuiz());
+            Quiz oxQuiz = QuizFixture.oxQuiz();
+            oxQuiz.assignPosition(saveStep(), 1, 1);
+            Quiz quiz = quizRepository.saveAndFlush(oxQuiz);
             Long followUpQuestionId = quiz.getFollowUpQuestions().get(0).getId();
 
             assertThatThrownBy(() -> {

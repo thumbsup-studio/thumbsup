@@ -60,11 +60,18 @@ class QuizServiceTest {
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
-    private static Quiz quizWithId(Long id, int stepOrder, int slotOrder) {
+    private static Quiz quizWithId(Long id, Long quizStepId, int stepOrder, int slotOrder) {
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(stepOrder, slotOrder);
+        quiz.assignPosition(quizStepId, stepOrder, slotOrder);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
+    }
+
+    /** getNextQuiz는 quizStepRepository로 스텝을 별도 조회하므로(#292), 그 스텝의 PK를 반환값에 실어 둔다. */
+    private static QuizStep stepWithId(Long id, int stepOrder, Long courseId) {
+        QuizStep step = QuizStep.create(stepOrder, courseId, "토픽", 10);
+        ReflectionTestUtils.setField(step, "id", id);
+        return step;
     }
 
     @Nested
@@ -75,13 +82,16 @@ class QuizServiceTest {
         @DisplayName("진행 기록이 없으면 1스텝부터 시작한다")
         void starts_from_step_one_when_no_progress() {
             quizService = service();
+            Long stepId = 100L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.empty());
             given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
-            Quiz first = quizWithId(10L, 1, 1);
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(first));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
+            Quiz first = quizWithId(10L, stepId, 1, 1);
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId)).willReturn(List.of(first));
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, stepId))
                     .willReturn(List.of());
 
             QuizNextResponse response = quizService.getNextQuiz(USER_ID, COURSE_ID);
@@ -94,16 +104,19 @@ class QuizServiceTest {
         @DisplayName("이미 푼 문제는 건너뛰고 다음 순번 문제를 반환한다")
         void skips_already_attempted_quiz() {
             quizService = service();
+            Long stepId = 100L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
 
-            Quiz attempted = quizWithId(10L, 1, 1);
-            Quiz next = quizWithId(11L, 1, 2);
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(attempted, next));
+            Quiz attempted = quizWithId(10L, stepId, 1, 1);
+            Quiz next = quizWithId(11L, stepId, 1, 2);
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId)).willReturn(List.of(attempted, next));
 
             QuizAttempt attempt = QuizAttempt.create(attempted, USER_ID, true);
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, stepId))
                     .willReturn(List.of(attempt));
 
             QuizNextResponse response = quizService.getNextQuiz(USER_ID, COURSE_ID);
@@ -115,12 +128,18 @@ class QuizServiceTest {
         @DisplayName("스텝의 문제 수가 5가 아니어도 실제 개수를 totalCount로 반환한다")
         void returns_actual_step_size_as_total_count() {
             quizService = service();
+            Long stepId = 100L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1))
-                    .willReturn(List.of(quizWithId(10L, 1, 1), quizWithId(11L, 1, 2), quizWithId(12L, 1, 3)));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId))
+                    .willReturn(List.of(
+                            quizWithId(10L, stepId, 1, 1),
+                            quizWithId(11L, stepId, 1, 2),
+                            quizWithId(12L, stepId, 1, 3)));
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, stepId))
                     .willReturn(List.of());
 
             QuizNextResponse response = quizService.getNextQuiz(USER_ID, COURSE_ID);
@@ -132,14 +151,17 @@ class QuizServiceTest {
         @DisplayName("오답으로 시도한 문제도 건너뛰고 다음 문제로 선형 진행한다")
         void skips_quiz_even_with_only_incorrect_attempt() {
             quizService = service();
+            Long stepId = 100L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.empty());
             given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
-            Quiz wrongAttempted = quizWithId(10L, 1, 1);
-            Quiz next = quizWithId(11L, 1, 2);
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(wrongAttempted, next));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
+            Quiz wrongAttempted = quizWithId(10L, stepId, 1, 1);
+            Quiz next = quizWithId(11L, stepId, 1, 2);
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId)).willReturn(List.of(wrongAttempted, next));
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, stepId))
                     .willReturn(List.of(QuizAttempt.create(wrongAttempted, USER_ID, false)));
 
             QuizNextResponse response = quizService.getNextQuiz(USER_ID, COURSE_ID);
@@ -151,11 +173,14 @@ class QuizServiceTest {
         @DisplayName("현재 스텝에 해당하는 문제가 없으면 QUIZ_NOT_FOUND")
         void throws_quiz_not_found_when_step_is_empty() {
             quizService = service();
+            Long stepId = 100L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.empty());
             given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of());
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId)).willReturn(List.of());
 
             assertThatThrownBy(() -> quizService.getNextQuiz(USER_ID, COURSE_ID))
                     .isInstanceOf(BusinessException.class)
@@ -167,13 +192,16 @@ class QuizServiceTest {
         @DisplayName("스텝의 문제를 모두 풀었으면 QUIZ_STEP_COMPLETED")
         void throws_step_completed_when_all_attempted() {
             quizService = service();
+            Long stepId = 100L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.empty());
             given(quizStepRepository.findMinStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(1));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
-            Quiz only = quizWithId(10L, 1, 1);
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(only));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
+            Quiz only = quizWithId(10L, stepId, 1, 1);
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId)).willReturn(List.of(only));
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, stepId))
                     .willReturn(List.of(QuizAttempt.create(only, USER_ID, true)));
 
             assertThatThrownBy(() -> quizService.getNextQuiz(USER_ID, COURSE_ID))
@@ -187,20 +215,27 @@ class QuizServiceTest {
         void resolves_progress_independently_per_course() {
             quizService = service();
             Long otherCourseId = 2L;
+            Long stepId = 100L;
+            Long otherStepId = 200L;
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(QuizProgress.create(USER_ID, COURSE_ID, 1)));
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, otherCourseId))
                     .willReturn(Optional.of(QuizProgress.create(USER_ID, otherCourseId, 13)));
             given(quizStepRepository.findMaxStepOrderByCourseId(COURSE_ID)).willReturn(Optional.of(12));
             given(quizStepRepository.findMaxStepOrderByCourseId(otherCourseId)).willReturn(Optional.of(14));
+            given(quizStepRepository.findByCourseIdAndStepOrder(COURSE_ID, 1))
+                    .willReturn(Optional.of(stepWithId(stepId, 1, COURSE_ID)));
+            given(quizStepRepository.findByCourseIdAndStepOrder(otherCourseId, 13))
+                    .willReturn(Optional.of(stepWithId(otherStepId, 13, otherCourseId)));
 
-            Quiz courseAQuiz = quizWithId(10L, 1, 1);
-            Quiz courseBQuiz = quizWithId(20L, 13, 1);
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(1)).willReturn(List.of(courseAQuiz));
-            given(quizRepository.findByStepOrderOrderBySlotOrderAsc(13)).willReturn(List.of(courseBQuiz));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            Quiz courseAQuiz = quizWithId(10L, stepId, 1, 1);
+            Quiz courseBQuiz = quizWithId(20L, otherStepId, 13, 1);
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(stepId)).willReturn(List.of(courseAQuiz));
+            given(quizRepository.findByQuizStepIdOrderBySlotOrderAsc(otherStepId))
+                    .willReturn(List.of(courseBQuiz));
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, stepId))
                     .willReturn(List.of());
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 13))
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, otherStepId))
                     .willReturn(List.of());
 
             QuizNextResponse courseAResponse = quizService.getNextQuiz(USER_ID, COURSE_ID);

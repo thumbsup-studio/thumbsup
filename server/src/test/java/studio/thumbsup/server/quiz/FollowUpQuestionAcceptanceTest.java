@@ -70,11 +70,12 @@ class FollowUpQuestionAcceptanceTest extends AcceptanceTestSupport {
      * 남으므로, 여러 테스트가 호출해도 한 번만 만들도록 이미 있으면 재사용한다.
      */
     private long detailedFollowUpSourceQuizId() {
-        quizStepRepository
-                .findByStepOrder(DETAILED_STEP_ORDER)
-                .orElseGet(() -> quizStepRepository.save(QuizStep.create(DETAILED_STEP_ORDER, 1L, "픽스처 스텝", 3)));
+        Long stepId = quizStepRepository
+                .findByCourseIdAndStepOrder(1L, DETAILED_STEP_ORDER)
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(DETAILED_STEP_ORDER, 1L, "픽스처 스텝", 3)))
+                .getId();
 
-        Optional<Quiz> existing = quizRepository.findByStepOrderAndSlotOrder(DETAILED_STEP_ORDER, 1);
+        Optional<Quiz> existing = quizRepository.findByQuizStepIdAndSlotOrder(stepId, 1);
         if (existing.isPresent()) {
             return existing.get().getId();
         }
@@ -84,7 +85,7 @@ class FollowUpQuestionAcceptanceTest extends AcceptanceTestSupport {
         followUpQuestion.attachDetail(QuizDifficulty.EASY, "UDP와 TCP의 가장 큰 차이는 연결 여부다.");
         followUpQuestion.addKeyword("3-way handshake", "세 단계로 패킷을 주고받아 연결을 맺는 절차");
         followUpQuestion.addBlock("해설", FollowUpBlockType.TEXT, "TCP는 [[3-way handshake]]로 연결을 맺는다.", 1);
-        quiz.assignPosition(DETAILED_STEP_ORDER, 1);
+        quiz.assignPosition(stepId, DETAILED_STEP_ORDER, 1);
         return quizRepository.saveAndFlush(quiz).getId();
     }
 
@@ -116,13 +117,14 @@ class FollowUpQuestionAcceptanceTest extends AcceptanceTestSupport {
      * 커리큘럼 밖 스텝을 따로 만든다 — 문제 수를 세는 단언이 실행 순서에 따라 흔들리지 않게.
      */
     private long followUpQuestionIdWithoutDetail() {
-        // quiz.step_order가 quiz_step.step_order를 FK로 참조하므로 스텝 행이 먼저 있어야 한다.
-        quizStepRepository
-                .findByStepOrder(FIXTURE_STEP_ORDER)
-                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, 1L, "픽스처 스텝", 3)));
+        // quiz.quiz_step_id가 quiz_step.id를 FK로 참조하므로(#292) 스텝 행이 먼저 있어야 한다.
+        Long stepId = quizStepRepository
+                .findByCourseIdAndStepOrder(1L, FIXTURE_STEP_ORDER)
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, 1L, "픽스처 스텝", 3)))
+                .getId();
 
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(FIXTURE_STEP_ORDER, 1);
+        quiz.assignPosition(stepId, FIXTURE_STEP_ORDER, 1);
         return quizRepository.saveAndFlush(quiz).getFollowUpQuestions().get(0).getId();
     }
 

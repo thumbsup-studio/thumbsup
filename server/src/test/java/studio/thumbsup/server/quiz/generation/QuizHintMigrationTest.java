@@ -36,10 +36,11 @@ class QuizHintMigrationTest extends RepositoryTestSupport {
                             "step %d slot %d".formatted(quiz.getStepOrder(), quiz.getSlotOrder()), quiz))
                     .doesNotThrowAnyException();
         });
-        assertThat(quizRepository
-                        .findByStepOrderAndSlotOrder(11, 2)
-                        .orElseThrow()
-                        .getQuestionText())
-                .isEqualTo("유닉스 계열의 계층형 이름 공간에서는 하나의 파일이 반드시 하나의 경로로만 접근 가능하므로, 같은 파일을 여러 디렉터리에서 공유할 수 없다.");
+        // 마이그레이션 전 stepOrder=11·slotOrder=2였던 특정 문제(전역 순번)는 #292로 코스 상대 순번이 되며
+        // 값이 바뀔 수 있으므로, 본문 텍스트로 직접 찾아 내용이 보존됐는지만 검증한다.
+        assertThat(quizzes)
+                .filteredOn(quiz -> quiz.getQuestionText()
+                        .equals("유닉스 계열의 계층형 이름 공간에서는 하나의 파일이 반드시 하나의 경로로만 접근 가능하므로, " + "같은 파일을 여러 디렉터리에서 공유할 수 없다."))
+                .hasSize(1);
     }
 }

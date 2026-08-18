@@ -28,6 +28,9 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
 @ExtendWith(MockitoExtension.class)
 class AuthoringCourseServiceTest {
 
+    private static final Long STEP_ONE_ID = 11L;
+    private static final Long STEP_TWO_ID = 12L;
+
     @Mock
     private CourseRepository courseRepository;
 
@@ -49,38 +52,40 @@ class AuthoringCourseServiceTest {
             // 스텝 2: slotOrder 역순으로 저장돼도 응답에서는 slotOrder 오름차순이어야 한다.
             Quiz stepTwoSlotTwo = QuizFixture.oxQuiz();
             ReflectionTestUtils.setField(stepTwoSlotTwo, "id", 201L);
-            stepTwoSlotTwo.assignPosition(2, 2);
+            stepTwoSlotTwo.assignPosition(STEP_TWO_ID, 2, 2);
 
             Quiz stepTwoSlotOne = QuizFixture.oxQuiz2();
             ReflectionTestUtils.setField(stepTwoSlotOne, "id", 202L);
-            stepTwoSlotOne.assignPosition(2, 1);
+            stepTwoSlotOne.assignPosition(STEP_TWO_ID, 2, 1);
 
-            // 스텝 1: 리포지토리 반환 순서상 스텝 2보다 뒤에 오지만 응답에서는 stepOrder 오름차순으로 앞에 와야 한다.
             Quiz stepOneSlotOne = QuizFixture.multipleChoiceQuiz();
             ReflectionTestUtils.setField(stepOneSlotOne, "id", 101L);
-            stepOneSlotOne.assignPosition(1, 1);
+            stepOneSlotOne.assignPosition(STEP_ONE_ID, 1, 1);
 
-            // stepOrder=0은 "스텝 밖" placeholder sentinel — 응답에서 완전히 제외돼야 한다.
-            Quiz sentinel = QuizFixture.keywordBlankQuiz();
-            ReflectionTestUtils.setField(sentinel, "id", 999L);
-            sentinel.assignPosition(0, 1);
-
-            return List.of(stepTwoSlotTwo, sentinel, stepOneSlotOne, stepTwoSlotOne);
+            return List.of(stepTwoSlotTwo, stepOneSlotOne, stepTwoSlotOne);
         }
 
         private List<QuizStep> steps() {
-            return List.of(QuizStep.create(1, 1L, "자료구조 기초", 10), QuizStep.create(2, 1L, "네트워크 기초", 10));
+            QuizStep stepOne = QuizStep.create(1, 1L, "자료구조 기초", 10);
+            ReflectionTestUtils.setField(stepOne, "id", STEP_ONE_ID);
+            QuizStep stepTwo = QuizStep.create(2, 1L, "네트워크 기초", 10);
+            ReflectionTestUtils.setField(stepTwo, "id", STEP_TWO_ID);
+            // findByCourseIdInOrderByCourseIdAscStepOrderAsc는 이미 courseId로 필터링하고
+            // stepOrder=0 sentinel도 쿼리 단계에서 제외하므로(#292), 여기 목록에 아예 포함되지 않는다.
+            return List.of(stepOne, stepTwo);
         }
 
         private void stubCourseAndQuizzes() {
             Course course = QuizFixture.course(1L);
             given(courseRepository.findById(1L)).willReturn(Optional.of(course));
-            given(quizRepository.findAll()).willReturn(scrambledQuizzes());
-            given(quizStepRepository.findAll()).willReturn(steps());
+            given(quizStepRepository.findByCourseIdInOrderByCourseIdAscStepOrderAsc(List.of(1L)))
+                    .willReturn(steps());
+            given(quizRepository.findByQuizStepIdIn(List.of(STEP_ONE_ID, STEP_TWO_ID)))
+                    .willReturn(scrambledQuizzes());
         }
 
         @Test
-        @DisplayName("stepOrder=0 sentinel을 제외하고 (stepOrder, slotOrder) 순으로 스텝별로 묶어 반환한다")
+        @DisplayName("(stepOrder, slotOrder) 순으로 스텝별로 묶어 반환한다")
         void groups_and_orders_quizzes_by_step_and_slot() {
             stubCourseAndQuizzes();
 
@@ -99,11 +104,6 @@ class AuthoringCourseServiceTest {
             assertThat(stepTwo.quizzes())
                     .extracting(AuthoringDetailedQuizResponse::slotOrder)
                     .containsExactly(1, 2);
-
-            assertThat(response.steps())
-                    .flatExtracting(AuthoringDetailedStepResponse::quizzes)
-                    .extracting(AuthoringDetailedQuizResponse::quizId)
-                    .doesNotContain(999L);
         }
 
         @Test

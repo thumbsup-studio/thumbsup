@@ -24,17 +24,18 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 
 /**
- * 스텝 완료 시 발행하는 {@link QuizStepCompletedEvent}의 {@code stepOrder}가 정확한지 검증한다(#233).
+ * 스텝 완료 시 발행하는 {@link QuizStepCompletedEvent}의 {@code quizStepId}가 정확한지 검증한다(#233, #292).
  * 이 이벤트를 구독해 지식 그래프 학습 기록을 남기는 쪽은 {@code concept.LearnedConceptRecorder}의
- * 소관이고, 스트릭 갱신 쪽은 이미 {@code QuizServiceStreakTest}가 검증하므로 여기서는 stepOrder 필드
+ * 소관이고, 스트릭 갱신 쪽은 이미 {@code QuizServiceStreakTest}가 검증하므로 여기서는 quizStepId 필드
  * 하나만 본다.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("스텝 완료 이벤트의 stepOrder(#233)")
+@DisplayName("스텝 완료 이벤트의 quizStepId(#233, #292)")
 class QuizServiceLearnedConceptTest {
 
     private static final Long USER_ID = 1L;
     private static final Long COURSE_ID = 1L;
+    private static final Long QUIZ_STEP_ID = 1L;
     private static final Instant NOW = Instant.parse("2026-07-11T00:00:00Z");
 
     @Mock
@@ -70,7 +71,7 @@ class QuizServiceLearnedConceptTest {
 
     private static Quiz quizWithId(Long id, int stepOrder, int slotOrder) {
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(stepOrder, slotOrder);
+        quiz.assignPosition(QUIZ_STEP_ID, stepOrder, slotOrder);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
     }
@@ -85,22 +86,23 @@ class QuizServiceLearnedConceptTest {
         List<Quiz> stepQuizzes =
                 List.of(quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
         given(quizRepository.findById(10L)).willReturn(Optional.of(last));
-        given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1, COURSE_ID)));
+        given(quizStepRepository.findById(QUIZ_STEP_ID)).willReturn(Optional.of(stepFixture(1, COURSE_ID)));
         QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
         given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));
         given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));
-        given(quizRepository.findIdsByStepOrder(1))
+        given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID))
                 .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
         List<QuizAttempt> allAttempted = stepQuizzes.stream()
                 .map(q -> QuizAttempt.create(q, USER_ID, true))
                 .toList();
-        given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1)).willReturn(allAttempted);
+        given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
+                .willReturn(allAttempted);
     }
 
     @Test
-    @DisplayName("스텝을 처음 완료하면 그 스텝 번호를 담아 이벤트를 발행한다")
+    @DisplayName("스텝을 처음 완료하면 그 스텝의 PK를 담아 이벤트를 발행한다")
     void publishes_event_with_step_order_on_first_step_completion() {
         quizService = service();
         stubStepAboutToComplete();
@@ -110,7 +112,7 @@ class QuizServiceLearnedConceptTest {
         ArgumentCaptor<QuizStepCompletedEvent> captor = ArgumentCaptor.forClass(QuizStepCompletedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().userId()).isEqualTo(USER_ID);
-        assertThat(captor.getValue().stepOrder()).isEqualTo(1);
+        assertThat(captor.getValue().quizStepId()).isEqualTo(QUIZ_STEP_ID);
     }
 
     @Test
@@ -119,14 +121,15 @@ class QuizServiceLearnedConceptTest {
         quizService = service();
         Quiz quiz = quizWithId(10L, 1, 1);
         given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
-        given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1, COURSE_ID)));
+        given(quizStepRepository.findById(QUIZ_STEP_ID)).willReturn(Optional.of(stepFixture(1, COURSE_ID)));
         QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
         given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));
         given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));
-        given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(10L, 11L)); // 11L 미시도
-        given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1)).willReturn(List.of());
+        given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID)).willReturn(List.of(10L, 11L)); // 11L 미시도
+        given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
+                .willReturn(List.of());
 
         quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
@@ -141,13 +144,13 @@ class QuizServiceLearnedConceptTest {
         progress.advanceToNextStep(); // currentStepOrder=2, 스텝 1은 이미 완료됨
         Quiz pastQuiz = quizWithId(10L, 1, 1);
         given(quizRepository.findById(10L)).willReturn(Optional.of(pastQuiz));
-        given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1, COURSE_ID)));
+        given(quizStepRepository.findById(QUIZ_STEP_ID)).willReturn(Optional.of(stepFixture(1, COURSE_ID)));
         given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));
         given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
                 .willReturn(Optional.of(progress));
-        given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(pastQuiz.getId()));
-        given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+        given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID)).willReturn(List.of(pastQuiz.getId()));
+        given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
                 .willReturn(List.of(QuizAttempt.create(pastQuiz, USER_ID, true)));
 
         quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));

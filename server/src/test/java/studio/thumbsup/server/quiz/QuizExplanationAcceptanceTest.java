@@ -64,9 +64,17 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
         return "Bearer " + jwtTokenProvider.createAccessToken(TEST_USER_ID);
     }
 
+    /** 운영체제 코스(courseId=1)의 스텝 PK를 찾는다 — step_order는 코스 내 상대 순번이라(#292) courseId와 함께 조회한다. */
+    private Long formalCourseStepId(int stepOrder) {
+        return quizStepRepository
+                .findByCourseIdAndStepOrder(1L, stepOrder)
+                .orElseThrow()
+                .getId();
+    }
+
     /** placeholder(id=1)가 아니라 정식 커리큘럼 1스텝의 첫 OX 문제를 조회한다. */
     private Quiz seededOxQuiz() {
-        return quizRepository.findByStepOrderOrderBySlotOrderAsc(FORMAL_STEP_ORDER).stream()
+        return quizRepository.findByQuizStepIdOrderBySlotOrderAsc(formalCourseStepId(FORMAL_STEP_ORDER)).stream()
                 .filter(quiz -> quiz.getSlotOrder() == 1 && quiz.getType() == QuizType.OX)
                 .findFirst()
                 .orElseThrow();
@@ -74,7 +82,7 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
 
     /** QA에서 동일 키워드가 세 영역에 중복 강조된 프로세스·문맥 전환 문제. */
     private Quiz seededContextSwitchQuiz() {
-        return quizRepository.findByStepOrderOrderBySlotOrderAsc(PROCESS_STEP_ORDER).stream()
+        return quizRepository.findByQuizStepIdOrderBySlotOrderAsc(formalCourseStepId(PROCESS_STEP_ORDER)).stream()
                 .filter(quiz -> quiz.getSlotOrder() == 5 && quiz.getType() == QuizType.KEYWORD_BLANK)
                 .findFirst()
                 .orElseThrow();
@@ -86,12 +94,16 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
      * 여러 테스트가 호출하므로(이 클래스는 {@code @Transactional}이 없다) 이미 만들어졌으면 재사용한다.
      */
     private Quiz placeholderQuiz() {
-        Optional<Quiz> existing = quizRepository.findByStepOrderAndSlotOrder(PLACEHOLDER_STEP_ORDER, 1);
-        if (existing.isPresent()) {
-            return existing.get();
+        Optional<QuizStep> existingStep = quizStepRepository.findByCourseIdAndStepOrder(1L, PLACEHOLDER_STEP_ORDER);
+        if (existingStep.isPresent()) {
+            return quizRepository
+                    .findByQuizStepIdAndSlotOrder(existingStep.get().getId(), 1)
+                    .orElseThrow();
         }
 
-        quizStepRepository.save(QuizStep.create(PLACEHOLDER_STEP_ORDER, 1L, "픽스처 스텝", 3));
+        Long stepId = quizStepRepository
+                .save(QuizStep.create(PLACEHOLDER_STEP_ORDER, 1L, "픽스처 스텝", 3))
+                .getId();
 
         // 하이라이트는 [[마커]]로 본문에 직접 저작된 구간만 변환되므로(QuizFixture.oxQuiz()는 마커가 없다),
         // "비연결형"을 오답 해설에만 마커로 넣어 요약에는 없는 키워드 하이라이트를 재현한다.
@@ -107,15 +119,15 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
         first.addFollowUpQuestion("UDP와 TCP의 핵심 차이는 무엇인가요?", true, 1)
                 .attachDetail(QuizDifficulty.EASY, "UDP와 TCP의 가장 큰 차이는 연결 여부다.");
         first.addKeyword("비연결형", "연결을 수립하지 않고 곧바로 전송하는 방식");
-        first.assignPosition(PLACEHOLDER_STEP_ORDER, 1);
+        first.assignPosition(stepId, PLACEHOLDER_STEP_ORDER, 1);
         Quiz saved = quizRepository.save(first);
 
         Quiz second = QuizFixture.multipleChoiceQuiz();
-        second.assignPosition(PLACEHOLDER_STEP_ORDER, 2);
+        second.assignPosition(stepId, PLACEHOLDER_STEP_ORDER, 2);
         quizRepository.save(second);
 
         Quiz third = QuizFixture.keywordBlankQuiz();
-        third.assignPosition(PLACEHOLDER_STEP_ORDER, 3);
+        third.assignPosition(stepId, PLACEHOLDER_STEP_ORDER, 3);
         quizRepository.saveAndFlush(third);
 
         return saved;
@@ -129,13 +141,14 @@ class QuizExplanationAcceptanceTest extends AcceptanceTestSupport {
      * 그래서 커리큘럼 밖 스텝을 따로 만든다.
      */
     private Quiz quizWithUndetailedFollowUpQuestion() {
-        // quiz.step_order가 quiz_step.step_order를 FK로 참조하므로 스텝 행이 먼저 있어야 한다.
-        quizStepRepository
-                .findByStepOrder(FIXTURE_STEP_ORDER)
-                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, 1L, "픽스처 스텝", 3)));
+        // quiz.quiz_step_id가 quiz_step.id를 FK로 참조하므로(#292) 스텝 행이 먼저 있어야 한다.
+        Long stepId = quizStepRepository
+                .findByCourseIdAndStepOrder(1L, FIXTURE_STEP_ORDER)
+                .orElseGet(() -> quizStepRepository.save(QuizStep.create(FIXTURE_STEP_ORDER, 1L, "픽스처 스텝", 3)))
+                .getId();
 
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(FIXTURE_STEP_ORDER, 1);
+        quiz.assignPosition(stepId, FIXTURE_STEP_ORDER, 1);
         return quizRepository.saveAndFlush(quiz);
     }
 

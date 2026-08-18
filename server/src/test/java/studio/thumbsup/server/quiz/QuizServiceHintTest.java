@@ -60,11 +60,12 @@ class QuizServiceHintTest {
     }
 
     private Quiz quizAtStep(int stepOrder) {
+        Long quizStepId = (long) stepOrder;
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(stepOrder, 1);
+        quiz.assignPosition(quizStepId, stepOrder, 1);
         ReflectionTestUtils.setField(quiz, "id", QUIZ_ID);
         given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
-        given(quizStepRepository.findByStepOrder(stepOrder))
+        given(quizStepRepository.findById(quizStepId))
                 .willReturn(Optional.of(QuizStep.create(stepOrder, COURSE_ID, "토픽", 3)));
         return quiz;
     }

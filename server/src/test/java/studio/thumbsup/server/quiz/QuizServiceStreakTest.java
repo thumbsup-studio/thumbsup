@@ -52,6 +52,7 @@ class QuizServiceStreakTest {
 
     private static final Long USER_ID = 1L;
     private static final Long COURSE_ID = 1L;
+    private static final Long QUIZ_STEP_ID = 1L;
     private static final Instant NOW = Instant.parse("2026-07-11T00:00:00Z");
     private static final LocalDate TODAY_KST = LocalDate.of(2026, 7, 11);
 
@@ -66,9 +67,9 @@ class QuizServiceStreakTest {
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
-    private static Quiz quizWithId(Long id, int stepOrder, int slotOrder) {
+    private static Quiz quizWithId(Long id, Long quizStepId, int stepOrder, int slotOrder) {
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(stepOrder, slotOrder);
+        quiz.assignPosition(quizStepId, stepOrder, slotOrder);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
     }
@@ -85,17 +86,21 @@ class QuizServiceStreakTest {
         @DisplayName("스텝을 처음 완료하면 오늘(KST) 날짜로 스트릭 기록을 요청한다")
         void records_streak_when_step_first_completed() {
             quizService = service();
-            Quiz last = quizWithId(10L, 1, 5);
+            Quiz last = quizWithId(10L, QUIZ_STEP_ID, 1, 5);
             List<Quiz> stepQuizzes = List.of(
-                    quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
+                    quizWithId(6L, QUIZ_STEP_ID, 1, 1),
+                    quizWithId(7L, QUIZ_STEP_ID, 1, 2),
+                    quizWithId(8L, QUIZ_STEP_ID, 1, 3),
+                    quizWithId(9L, QUIZ_STEP_ID, 1, 4),
+                    last);
             given(quizRepository.findById(10L)).willReturn(Optional.of(last));
-            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
-            given(quizRepository.findIdsByStepOrder(1))
+            given(quizStepRepository.findById(QUIZ_STEP_ID)).willReturn(Optional.of(stepFixture(1)));
+            given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID))
                     .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
             List<QuizAttempt> allAttempted = stepQuizzes.stream()
                     .map(q -> QuizAttempt.create(q, USER_ID, true))
                     .toList();
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
                     .willReturn(allAttempted);
             QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
@@ -105,23 +110,23 @@ class QuizServiceStreakTest {
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
 
-            verify(eventPublisher).publishEvent(new QuizStepCompletedEvent(USER_ID, TODAY_KST, 1));
+            verify(eventPublisher).publishEvent(new QuizStepCompletedEvent(USER_ID, TODAY_KST, QUIZ_STEP_ID));
         }
 
         @Test
         @DisplayName("아직 시도하지 않은 문제가 남아있으면 스트릭 기록을 요청하지 않는다")
         void does_not_record_streak_when_step_incomplete() {
             quizService = service();
-            Quiz quiz = quizWithId(10L, 1, 1);
+            Quiz quiz = quizWithId(10L, QUIZ_STEP_ID, 1, 1);
             given(quizRepository.findById(10L)).willReturn(Optional.of(quiz));
-            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
+            given(quizStepRepository.findById(QUIZ_STEP_ID)).willReturn(Optional.of(stepFixture(1)));
             QuizProgress progress = QuizProgress.create(USER_ID, COURSE_ID, 1);
             given(quizProgressRepository.findByUserIdAndCourseId(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progress));
             given(quizProgressRepository.findByUserIdAndCourseIdForUpdate(USER_ID, COURSE_ID))
                     .willReturn(Optional.of(progress));
-            given(quizRepository.findIdsByStepOrder(1)).willReturn(List.of(10L, 11L));
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID)).willReturn(List.of(10L, 11L));
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
                     .willReturn(List.of());
 
             quizService.submitAnswer(USER_ID, 10L, new AnswerSubmitRequest(List.of("O")));
@@ -133,17 +138,21 @@ class QuizServiceStreakTest {
         @DisplayName("이미 지난 스텝을 복습으로 완료해도 진행·스트릭 갱신을 요청하지 않는다")
         void does_not_record_progress_or_streak_for_past_step_review_completion() {
             quizService = service();
-            Quiz last = quizWithId(10L, 1, 5);
+            Quiz last = quizWithId(10L, QUIZ_STEP_ID, 1, 5);
             List<Quiz> stepQuizzes = List.of(
-                    quizWithId(6L, 1, 1), quizWithId(7L, 1, 2), quizWithId(8L, 1, 3), quizWithId(9L, 1, 4), last);
+                    quizWithId(6L, QUIZ_STEP_ID, 1, 1),
+                    quizWithId(7L, QUIZ_STEP_ID, 1, 2),
+                    quizWithId(8L, QUIZ_STEP_ID, 1, 3),
+                    quizWithId(9L, QUIZ_STEP_ID, 1, 4),
+                    last);
             given(quizRepository.findById(10L)).willReturn(Optional.of(last));
-            given(quizStepRepository.findByStepOrder(1)).willReturn(Optional.of(stepFixture(1)));
-            given(quizRepository.findIdsByStepOrder(1))
+            given(quizStepRepository.findById(QUIZ_STEP_ID)).willReturn(Optional.of(stepFixture(1)));
+            given(quizRepository.findIdsByQuizStepId(QUIZ_STEP_ID))
                     .willReturn(stepQuizzes.stream().map(Quiz::getId).toList());
             List<QuizAttempt> allAttempted = stepQuizzes.stream()
                     .map(q -> QuizAttempt.create(q, USER_ID, true))
                     .toList();
-            given(quizAttemptRepository.findByUserIdAndQuiz_StepOrder(USER_ID, 1))
+            given(quizAttemptRepository.findByUserIdAndQuiz_QuizStepId(USER_ID, QUIZ_STEP_ID))
                     .willReturn(allAttempted);
             QuizProgress aheadProgress = QuizProgress.create(USER_ID, COURSE_ID, 1);
             aheadProgress.advanceToNextStep(); // currentStepOrder=2, 이미 스텝1을 지나감

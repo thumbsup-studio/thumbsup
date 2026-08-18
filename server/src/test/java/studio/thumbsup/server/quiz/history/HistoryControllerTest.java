@@ -78,7 +78,7 @@ class HistoryControllerTest {
                     List.of("실행 중인 프로그램의 인스턴스입니다."),
                     LocalDate.of(2026, 7, 8),
                     "프로세스",
-                    List.of(new RelatedStep(1, "프로세스와 스레드")));
+                    List.of(new RelatedStep(1L, 1, "프로세스와 스레드")));
             given(historyService.getGraph(eq(7L)))
                     .willReturn(new HistoryGraphResponse(List.of(node), List.of(new Edge("1", "2"))));
 

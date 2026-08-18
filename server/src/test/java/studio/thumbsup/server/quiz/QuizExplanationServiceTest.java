@@ -34,6 +34,7 @@ class QuizExplanationServiceTest {
 
     private static final Long QUIZ_ID = 10L;
     private static final Long ABSENT_QUIZ_ID = 999L;
+    private static final Long QUIZ_STEP_ID = 77L;
     private static final int STEP_ORDER = 7;
     private static final int SLOT_ORDER = 3;
     private static final long TOTAL_COUNT = 5L;
@@ -71,14 +72,14 @@ class QuizExplanationServiceTest {
 
     private static Quiz annotatedQuizWithId(Long id) {
         Quiz quiz = QuizFixture.annotatedExplanationQuiz();
-        quiz.assignPosition(STEP_ORDER, SLOT_ORDER);
+        quiz.assignPosition(QUIZ_STEP_ID, STEP_ORDER, SLOT_ORDER);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
     }
 
     private static Quiz plainQuizWithId(Long id) {
         Quiz quiz = QuizFixture.oxQuiz();
-        quiz.assignPosition(STEP_ORDER, SLOT_ORDER);
+        quiz.assignPosition(QUIZ_STEP_ID, STEP_ORDER, SLOT_ORDER);
         ReflectionTestUtils.setField(quiz, "id", id);
         return quiz;
     }
@@ -87,10 +88,10 @@ class QuizExplanationServiceTest {
 
     private void givenExplanationContext(Quiz quiz) {
         given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
-        given(quizStepRepository.findByStepOrder(STEP_ORDER))
+        given(quizStepRepository.findById(QUIZ_STEP_ID))
                 .willReturn(Optional.of(QuizStep.create(STEP_ORDER, COURSE_ID, UNIT_TITLE, 5)));
         given(courseRepository.findById(COURSE_ID)).willReturn(Optional.of(Course.create(COURSE_TITLE, "CS")));
-        given(quizRepository.countByStepOrder(STEP_ORDER)).willReturn(TOTAL_COUNT);
+        given(quizRepository.countByQuizStepId(QUIZ_STEP_ID)).willReturn(TOTAL_COUNT);
     }
 
     @Nested
@@ -167,10 +168,10 @@ class QuizExplanationServiceTest {
             Long otherCourseId = 2L;
             Quiz quiz = plainQuizWithId(QUIZ_ID);
             given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(quiz));
-            given(quizStepRepository.findByStepOrder(STEP_ORDER))
+            given(quizStepRepository.findById(QUIZ_STEP_ID))
                     .willReturn(Optional.of(QuizStep.create(STEP_ORDER, otherCourseId, UNIT_TITLE, 5)));
             given(courseRepository.findById(otherCourseId)).willReturn(Optional.of(Course.create("디자인 패턴", "CS")));
-            given(quizRepository.countByStepOrder(STEP_ORDER)).willReturn(TOTAL_COUNT);
+            given(quizRepository.countByQuizStepId(QUIZ_STEP_ID)).willReturn(TOTAL_COUNT);
 
             QuizExplanationResponse response = service().getExplanation(QUIZ_ID);
 
@@ -198,7 +199,7 @@ class QuizExplanationServiceTest {
         @DisplayName("문제가 속한 코스가 없으면 COURSE_NOT_FOUND")
         void throws_course_not_found_when_course_is_absent() {
             given(quizRepository.findById(QUIZ_ID)).willReturn(Optional.of(annotatedQuizWithId(QUIZ_ID)));
-            given(quizStepRepository.findByStepOrder(STEP_ORDER))
+            given(quizStepRepository.findById(QUIZ_STEP_ID))
                     .willReturn(Optional.of(QuizStep.create(STEP_ORDER, COURSE_ID, UNIT_TITLE, 5)));
             given(courseRepository.findById(COURSE_ID)).willReturn(Optional.empty());
 
