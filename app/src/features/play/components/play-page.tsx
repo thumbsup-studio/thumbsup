@@ -8,7 +8,14 @@ import { Card } from "@/components/ui/card";
 import { Feedback } from "@/components/ui/feedback";
 import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { type ReviewContext, reviewInsightHref } from "@/features/history/review-params";
+import {
+  isReviewPreview,
+  type ReviewContext,
+  reviewInsightHref,
+  reviewNextPlayHref,
+  reviewPreviousPlayHref,
+  reviewSkipHref,
+} from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
 import { COURSE_LIST_PATH } from "@/features/play/course-params";
@@ -68,6 +75,8 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
   const reviewSlot = review?.slot ?? null;
   const reviewStreak = review?.streak ?? null;
   const isReview = reviewStep !== null && reviewSlot !== null;
+  // 미리보기(이슈 304): 이미 지나온 슬롯을 다시 보는 중 — 재제출을 막고 화살표로만 움직인다.
+  const isPreview = review ? isReviewPreview(review) : false;
 
   // 문제 화면에 띄울 현재 연속 정답 수. 일반 학습은 로컬 세션에, 복습은 URL에 실려 온다.
   // localStorage는 서버에서 읽을 수 없으므로 첫 렌더 뒤(effect)에 채운다 — hydration 불일치 방지.
@@ -87,8 +96,12 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
   const currentNumber = quiz?.slotOrder ?? 1;
   const isComboVisible = combo >= comboVisibleFrom;
   const submitEnabled = quiz
-    ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading
+    ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading && !isPreview
     : false;
+  // 미리보기 중엔 그냥 한 칸 앞으로, 라이브에선 안 풀고 건너뛰기(이슈 303) — resumeSlot 처리가 갈린다.
+  const reviewForwardHref = review ? (isPreview ? reviewNextPlayHref(review) : reviewSkipHref(review)) : null;
+  const reviewBackHref =
+    review && review.slot > 1 ? reviewPreviousPlayHref(review) : null;
 
   const liveText = useMemo(() => {
     if (!quiz) {
@@ -278,6 +291,29 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
                 {review ? review.topic || "문제 다시 풀기" : "문제 풀기"}
               </h1>
             </div>
+            {review ? (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <a
+                  aria-disabled={!reviewBackHref}
+                  aria-label="이전 문제 다시 보기"
+                  className={`grid h-10 w-10 place-items-center rounded-chip border border-border text-lg ${
+                    reviewBackHref
+                      ? "bg-surface-muted"
+                      : "pointer-events-none bg-surface-muted/50 text-ink-muted/40"
+                  }`}
+                  href={reviewBackHref ?? "#"}
+                >
+                  ‹
+                </a>
+                <a
+                  aria-label={isPreview ? "다음 문제 보기" : "정답 없이 다음 문제로 건너뛰기"}
+                  className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
+                  href={reviewForwardHref ?? "#"}
+                >
+                  ›
+                </a>
+              </div>
+            ) : null}
           </div>
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-ink-muted">
@@ -331,7 +367,7 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
               <QuestionRenderer
                 choices={displayedChoices}
                 draft={draft}
-                isLocked={isSubmitting}
+                isLocked={isSubmitting || isPreview}
                 onDraftChange={setDraft}
                 quiz={quiz}
                 requestedHint={requestedHint}
@@ -351,28 +387,34 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                <Button
-                  aria-label={isHintLoading ? "힌트 불러오는 중" : undefined}
-                  className="w-full text-sm"
-                  disabled={requestedHint !== null || isSubmitting || hasUsedRetry}
-                  loading={isHintLoading}
-                  loadingText="불러오는 중"
-                  onClick={showHint}
-                  variant="secondary"
-                >
-                  {requestedHint ? "힌트 확인함" : "힌트 보기"}
-                </Button>
-                <Button
-                  className="w-full shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
-                  disabled={!submitEnabled}
-                  loading={isSubmitting}
-                  loadingText="채점 중"
-                  onClick={submitAnswer}
-                >
-                  정답 확인
-                </Button>
-              </div>
+              {isPreview ? (
+                <p className="pt-4 text-center text-sm font-semibold text-ink-muted">
+                  이미 지나온 문제예요. 다시 채점하지 않아요 — 위 화살표로 이동해요.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 pt-4">
+                  <Button
+                    aria-label={isHintLoading ? "힌트 불러오는 중" : undefined}
+                    className="w-full text-sm"
+                    disabled={requestedHint !== null || isSubmitting || hasUsedRetry}
+                    loading={isHintLoading}
+                    loadingText="불러오는 중"
+                    onClick={showHint}
+                    variant="secondary"
+                  >
+                    {requestedHint ? "힌트 확인함" : "힌트 보기"}
+                  </Button>
+                  <Button
+                    className="w-full shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
+                    disabled={!submitEnabled}
+                    loading={isSubmitting}
+                    loadingText="채점 중"
+                    onClick={submitAnswer}
+                  >
+                    정답 확인
+                  </Button>
+                </div>
+              )}
             </>
           ) : null}
         </section>

@@ -51,13 +51,13 @@ describe("HistoryPage", () => {
 
     expect(screen.getByRole("link", { name: "전체 복습 (5문제)" })).toHaveAttribute(
       "href",
-      "/play?step=2&slot=1&rc=0&rs=0&topic=%EB%B0%98%EB%B3%B5%EB%AC%B8+%EA%B8%B0%EC%B4%88",
+      "/play?step=2&slot=1&rc=0&rs=0&topic=%EB%B0%98%EB%B3%B5%EB%AC%B8+%EA%B8%B0%EC%B4%88&rsm=1",
     );
 
     for (let slot = 1; slot <= 5; slot += 1) {
       expect(screen.getByRole("link", { name: `${slot}번 문제 다시 풀기` })).toHaveAttribute(
         "href",
-        `/play?step=2&slot=${slot}&rc=0&rs=0&topic=%EB%B0%98%EB%B3%B5%EB%AC%B8+%EA%B8%B0%EC%B4%88&single=1`,
+        `/play?step=2&slot=${slot}&rc=0&rs=0&topic=%EB%B0%98%EB%B3%B5%EB%AC%B8+%EA%B8%B0%EC%B4%88&rsm=${slot}&single=1`,
       );
     }
   });
