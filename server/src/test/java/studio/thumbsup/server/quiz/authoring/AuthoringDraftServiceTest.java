@@ -202,20 +202,26 @@ class AuthoringDraftServiceTest {
 
             QuizDraft updated = service().applyReview(job, result);
 
-            assertThat(objectMapper
-                            .readTree(updated.getCurrentPayload())
-                            .path("briefing")
-                            .path("summary")
-                            .asText())
-                    .isEqualTo("요약");
+            assertStepBriefingPayload(objectMapper.readTree(updated.getCurrentPayload()));
             ArgumentCaptor<QuizDraftRevision> revisionCaptor = ArgumentCaptor.forClass(QuizDraftRevision.class);
             verify(quizDraftRevisionRepository).save(revisionCaptor.capture());
-            assertThat(objectMapper
-                            .readTree(revisionCaptor.getValue().getPayload())
-                            .path("briefing")
-                            .path("blocks"))
-                    .hasSize(2);
+            assertStepBriefingPayload(
+                    objectMapper.readTree(revisionCaptor.getValue().getPayload()));
         }
+    }
+
+    private static void assertStepBriefingPayload(com.fasterxml.jackson.databind.JsonNode payload) {
+        assertThat(payload.path("schemaVersion").asInt()).isEqualTo(GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION);
+        assertThat(payload.path("briefing").path("summary").asText()).isEqualTo("요약");
+        com.fasterxml.jackson.databind.JsonNode blocks =
+                payload.path("briefing").path("blocks");
+        assertThat(blocks).hasSize(2);
+        assertThat(blocks.get(0).path("type").asText()).isEqualTo("CONCEPT");
+        assertThat(blocks.get(0).path("heading").asText()).isEqualTo("개념");
+        assertThat(blocks.get(0).path("content").asText()).isEqualTo("개념 설명");
+        assertThat(blocks.get(1).path("type").asText()).isEqualTo("CAUTION");
+        assertThat(blocks.get(1).path("heading").asText()).isEqualTo("주의");
+        assertThat(blocks.get(1).path("content").asText()).isEqualTo("주의 설명");
     }
 
     @Nested

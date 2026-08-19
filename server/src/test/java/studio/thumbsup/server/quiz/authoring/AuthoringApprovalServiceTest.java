@@ -181,6 +181,7 @@ class AuthoringApprovalServiceTest {
                     .isEqualTo(AuthoringErrorType.AUTHORING_DRAFT_REVIEW_REQUIRED);
             assertThat(draft.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
             verify(quizPersister, never()).persist("운영체제", set);
+            verify(quizPersister, never()).persistStep("운영체제", set);
         }
 
         @Test
@@ -197,6 +198,7 @@ class AuthoringApprovalServiceTest {
                     .isEqualTo(AuthoringErrorType.AUTHORING_LEGACY_DRAFT_REGENERATION_REQUIRED);
 
             verify(quizPersister, never()).persist("운영체제", set);
+            verify(quizPersister, never()).persistStep("운영체제", set);
             assertThat(draft.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
         }
 

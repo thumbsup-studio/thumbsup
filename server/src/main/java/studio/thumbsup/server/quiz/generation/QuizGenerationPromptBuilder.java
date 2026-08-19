@@ -55,7 +55,8 @@ public final class QuizGenerationPromptBuilder {
 
     private static final String STEP_CONTENT_SCHEMA = """
             {"schemaVersion":2,"briefing":{"summary":"한두 문장 개념 요약","blocks":[
-              {"type":"CONCEPT | EXAMPLE | CAUTION","heading":"블록 제목","content":"개념 설명"}
+              {"type":"CONCEPT","heading":"핵심 원리","content":"개념 설명"},
+              {"type":"CAUTION","heading":"주의할 점","content":"흔한 오해 설명"}
             ]},"quizzes":
             """ + QUIZZES_SCHEMA + "}";
 

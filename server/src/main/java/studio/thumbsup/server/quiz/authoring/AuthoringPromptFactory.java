@@ -51,7 +51,7 @@ public final class AuthoringPromptFactory {
 
     private static final String REVIEW_WITH_BRIEFING_OUTPUT = """
             다음 형태의 JSON 객체 하나만 출력한다. 코드펜스·설명·인사말을 붙이지 않는다.
-            {"reviewSummary": "무엇을 왜 바꿨는지 3문장 이내", "schemaVersion": 2, "briefing": {"summary": "...", "blocks": [{"type": "CONCEPT", "heading": "...", "content": "..."}]}, "quizzes": [현재 문제 JSON과 동일한 스키마의 수정본 배열]}
+            {"reviewSummary": "무엇을 왜 바꿨는지 3문장 이내", "schemaVersion": 2, "briefing": {"summary": "...", "blocks": [{"type": "CONCEPT", "heading": "핵심 원리", "content": "..."}, {"type": "CAUTION", "heading": "주의할 점", "content": "..."}]}, "quizzes": [현재 문제 JSON과 동일한 스키마의 수정본 배열]}
             """;
 
     private static final String REVIEW_IMPROVE_OUTPUT = """
