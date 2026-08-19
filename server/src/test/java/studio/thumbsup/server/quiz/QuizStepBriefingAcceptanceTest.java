@@ -23,19 +23,16 @@ class QuizStepBriefingAcceptanceTest extends AcceptanceTestSupport {
     private final MockMvc mockMvc;
     private final JwtTokenProvider jwtTokenProvider;
     private final QuizStepRepository quizStepRepository;
-    private final QuizStepBriefingRepository briefingRepository;
 
     private Long firstStepId;
 
     QuizStepBriefingAcceptanceTest(
             @Autowired MockMvc mockMvc,
             @Autowired JwtTokenProvider jwtTokenProvider,
-            @Autowired QuizStepRepository quizStepRepository,
-            @Autowired QuizStepBriefingRepository briefingRepository) {
+            @Autowired QuizStepRepository quizStepRepository) {
         this.mockMvc = mockMvc;
         this.jwtTokenProvider = jwtTokenProvider;
         this.quizStepRepository = quizStepRepository;
-        this.briefingRepository = briefingRepository;
     }
 
     @BeforeEach
@@ -45,12 +42,6 @@ class QuizStepBriefingAcceptanceTest extends AcceptanceTestSupport {
         firstStepId = firstStep.getId();
     }
 
-    private void createBriefingForFirstStep() {
-        QuizStepBriefing briefing = QuizStepBriefing.create(firstStepId, "운영체제가 프로그램을 실행하는 방식을 살펴봅니다.");
-        briefing.addBlock(QuizStepBriefingBlockType.CONCEPT, "핵심", "프로세스는 실행 중인 프로그램입니다.", 1);
-        briefingRepository.saveAndFlush(briefing);
-    }
-
     @Nested
     @DisplayName("브리핑을 읽고 문제를 시작한다")
     class StartQuizAfterBriefing {
@@ -58,13 +49,11 @@ class QuizStepBriefingAcceptanceTest extends AcceptanceTestSupport {
         @Test
         @DisplayName("현재 코스 브리핑의 quizStepId로 같은 스텝 첫 문제를 조회한다")
         void returns_briefing_then_first_unattempted_quiz() throws Exception {
-            createBriefingForFirstStep();
-
             mockMvc.perform(get("/api/v1/courses/{courseId}/next-step/briefing", OS_COURSE_ID)
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.quizStepId").value(firstStepId))
-                    .andExpect(jsonPath("$.data.blocks[0].heading").value("핵심"));
+                    .andExpect(jsonPath("$.data.blocks[0].heading").value("두 개의 실행 영역"));
 
             mockMvc.perform(get("/api/v1/quiz-steps/{quizStepId}/quizzes/next", firstStepId)
                             .header(HttpHeaders.AUTHORIZATION, bearerToken()))
