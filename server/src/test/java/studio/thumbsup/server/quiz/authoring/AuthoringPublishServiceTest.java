@@ -15,10 +15,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.QuizStepBriefing;
+import studio.thumbsup.server.quiz.QuizStepBriefingBlockType;
+import studio.thumbsup.server.quiz.QuizStepBriefingRepository;
 import studio.thumbsup.server.quiz.authoring.dto.PublishResponse;
 import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
@@ -48,12 +53,21 @@ class AuthoringPublishServiceTest {
     @Mock
     private QuizPersister quizPersister;
 
+    @Mock
+    private QuizStepBriefingRepository briefingRepository;
+
     private AuthoringPublishService service;
 
     @BeforeEach
     void setUp() {
         service = new AuthoringPublishService(
-                outlineRepository, stepRepository, draftRepository, courseRepository, validator, quizPersister);
+                outlineRepository,
+                stepRepository,
+                draftRepository,
+                courseRepository,
+                validator,
+                quizPersister,
+                briefingRepository);
     }
 
     @Test
@@ -75,14 +89,28 @@ class AuthoringPublishServiceTest {
         given(draftRepository.findByIdIn(anyCollection())).willReturn(List.of(firstDraft, secondDraft));
         given(validator.parse("payload-1")).willReturn(firstSet);
         given(validator.parse("payload-2")).willReturn(secondSet);
+        given(validator.hasCurrentStepBriefing(firstSet)).willReturn(true);
+        given(validator.hasCurrentStepBriefing(secondSet)).willReturn(true);
+        given(firstSet.briefing()).willReturn(briefing());
+        given(secondSet.briefing()).willReturn(briefing());
         given(courseRepository.save(any(Course.class))).willReturn(course);
         given(quizPersister.nextStepOrder(31L)).willReturn(8);
+        given(quizPersister.persistStepAt(31L, 8, "첫째", 3, firstSet)).willReturn(quizStep(101L, 8, "첫째"));
+        given(quizPersister.persistStepAt(31L, 9, "둘째", 2, secondSet)).willReturn(quizStep(102L, 9, "둘째"));
 
         PublishResponse response = service.publish(7L, 1L);
 
         assertThat(response).isEqualTo(new PublishResponse(31L, 2));
-        verify(quizPersister).persistAt(31L, 8, "첫째", 3, firstSet);
-        verify(quizPersister).persistAt(31L, 9, "둘째", 2, secondSet);
+        verify(quizPersister).persistStepAt(31L, 8, "첫째", 3, firstSet);
+        verify(quizPersister).persistStepAt(31L, 9, "둘째", 2, secondSet);
+        ArgumentCaptor<QuizStepBriefing> briefingCaptor = ArgumentCaptor.forClass(QuizStepBriefing.class);
+        verify(briefingRepository, org.mockito.Mockito.times(2)).save(briefingCaptor.capture());
+        assertThat(briefingCaptor.getAllValues())
+                .extracting(QuizStepBriefing::getQuizStepId)
+                .containsExactly(101L, 102L);
+        assertThat(briefingCaptor.getAllValues().getFirst().getBlocks())
+                .extracting(block -> block.getDisplayOrder())
+                .containsExactly(1, 2);
         assertThat(outline.isPublished()).isTrue();
         assertThat(outline.getPublishedCourseId()).isEqualTo(31L);
     }
@@ -119,6 +147,29 @@ class AuthoringPublishServiceTest {
                 .isEqualTo(AuthoringErrorType.AUTHORING_OUTLINE_NOT_READY);
     }
 
+    @Test
+    @DisplayName("브리핑이 없는 구형 승인 스텝은 새로 생성하라고 발행을 차단한다")
+    void rejects_legacy_approved_step_without_briefing() {
+        AuthoringOutline outline = outline(1L);
+        AuthoringOutlineStep step = step(11L, 1, "첫째");
+        QuizDraft draft = approvedDraft(21L, "첫째", QuizPreset.BASIC_5, "legacy-payload");
+        step.attachDraft(21L);
+        GeneratedQuizSet legacySet = new GeneratedQuizSet(List.of());
+        given(outlineRepository.findByIdForUpdate(1L)).willReturn(Optional.of(outline));
+        given(stepRepository.findByOutlineIdOrderByOrderNoAsc(1L)).willReturn(List.of(step));
+        given(draftRepository.findByIdIn(anyCollection())).willReturn(List.of(draft));
+        given(validator.parse("legacy-payload")).willReturn(legacySet);
+        given(validator.hasCurrentStepBriefing(legacySet)).willReturn(false);
+        given(courseRepository.save(any(Course.class))).willReturn(course(31L));
+
+        assertThatThrownBy(() -> service.publish(7L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorType())
+                .isEqualTo(AuthoringErrorType.AUTHORING_LEGACY_DRAFT_REGENERATION_REQUIRED);
+        verify(quizPersister, never()).persistStepAt(any(), any(Integer.class), any(), any(Integer.class), any());
+        verify(briefingRepository, never()).save(any());
+    }
+
     private static AuthoringOutline outline(Long id) {
         AuthoringOutline outline = AuthoringOutline.create("테스트 코스", "CS", "목차", 7L);
         ReflectionTestUtils.setField(outline, "id", id);
@@ -129,6 +180,20 @@ class AuthoringPublishServiceTest {
         AuthoringOutlineStep step = AuthoringOutlineStep.create(1L, orderNo, topic, "학습 목표");
         ReflectionTestUtils.setField(step, "id", id);
         return step;
+    }
+
+    private static QuizStep quizStep(Long id, int orderNo, String topic) {
+        QuizStep step = QuizStep.create(orderNo, 31L, topic, 3);
+        ReflectionTestUtils.setField(step, "id", id);
+        return step;
+    }
+
+    private static GeneratedQuizSet.GeneratedBriefing briefing() {
+        return new GeneratedQuizSet.GeneratedBriefing(
+                "요약",
+                List.of(
+                        new GeneratedQuizSet.GeneratedBriefingBlock(QuizStepBriefingBlockType.CONCEPT, "개념", "개념 설명"),
+                        new GeneratedQuizSet.GeneratedBriefingBlock(QuizStepBriefingBlockType.CAUTION, "주의", "주의 설명")));
     }
 
     private static QuizDraft approvedDraft(Long id, String topic, QuizPreset preset, String payload) {

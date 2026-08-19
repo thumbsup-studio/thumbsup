@@ -64,6 +64,24 @@ public class GeneratedQuizValidator {
         }
     }
 
+    /** 새 스텝 콘텐츠의 불변식 — 구형/IMPROVE 단건 payload에는 적용하지 않는다. */
+    public void validateStepContent(GeneratedQuizSet generated, QuizPreset preset) {
+        validateSet(generated, preset);
+        if (generated.schemaVersion() != GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION) {
+            throw new QuizGenerationException("스텝 콘텐츠 schemaVersion이 최신 버전이 아닙니다.");
+        }
+        validateBriefing(generated.briefing());
+    }
+
+    public boolean hasCurrentStepBriefing(GeneratedQuizSet generated) {
+        return generated.schemaVersion() == GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION
+                && generated.briefing() != null;
+    }
+
+    public void validateBriefing(GeneratedQuizSet.GeneratedBriefing briefing) {
+        GeneratedStepBriefingValidator.validate(briefing);
+    }
+
     /** 기존 draft 승인 시 새 필드인 hint만 최신 정책으로 재검증한다. 나머지 필드는 생성·REVIEW 제출 때 검증한다. */
     public void validateHintSet(GeneratedQuizSet generated) {
         validateHintSet(generated, QuizPreset.BASIC_5);

@@ -2,6 +2,7 @@ package studio.thumbsup.server.quiz.authoring;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
@@ -25,6 +26,8 @@ import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizDifficulty;
 import studio.thumbsup.server.quiz.QuizFixture;
 import studio.thumbsup.server.quiz.QuizRepository;
+import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.QuizStepBriefingRepository;
 import studio.thumbsup.server.quiz.QuizType;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
@@ -52,12 +55,21 @@ class AuthoringApprovalServiceTest {
     @Mock
     private QuizPersister quizPersister;
 
+    @Mock
+    private QuizStepBriefingRepository briefingRepository;
+
     private AuthoringApprovalService approvalService;
 
     @BeforeEach
     void setUp() {
         approvalService = new AuthoringApprovalService(
-                draftService, jobService, validator, quizRepository, quizPersister, Clock.fixed(NOW, ZoneOffset.UTC));
+                draftService,
+                jobService,
+                validator,
+                quizRepository,
+                quizPersister,
+                briefingRepository,
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Nested
@@ -111,18 +123,23 @@ class AuthoringApprovalServiceTest {
     class Approve {
 
         @Test
-        @DisplayName("NEW draft는 quizPersister.persist를 거치고 draft를 승인 상태로 만든다")
+        @DisplayName("NEW draft는 브리핑과 문제를 함께 발행하고 draft를 승인 상태로 만든다")
         void materializes_new_draft_via_persist() {
             QuizDraft draft = QuizDraft.createNew("운영체제", "{\"quizzes\":[]}", 1L);
             ReflectionTestUtils.setField(draft, "id", 1L);
             given(draftService.getForUpdate(1L)).willReturn(draft);
-            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            GeneratedQuizSet set = currentStepSet();
             given(validator.parse("{\"quizzes\":[]}")).willReturn(set);
+            given(validator.hasCurrentStepBriefing(set)).willReturn(true);
+            QuizStep step = QuizStep.create(1, 1L, "운영체제", 3);
+            ReflectionTestUtils.setField(step, "id", 2L);
+            given(quizPersister.persistStep("운영체제", set)).willReturn(step);
 
             QuizDraft result = approvalService.approve(9L, 1L);
 
-            verify(validator).validateHintSet(set);
-            verify(quizPersister).persist("운영체제", set);
+            verify(validator).validateStepContent(set, QuizPreset.BASIC_5);
+            verify(quizPersister).persistStep("운영체제", set);
+            verify(briefingRepository).save(any());
             assertThat(result.getStatus()).isEqualTo(QuizDraftStatus.APPROVED);
             assertThat(result.getApprovedBy()).isEqualTo(9L);
         }
@@ -133,12 +150,13 @@ class AuthoringApprovalServiceTest {
             QuizDraft draft = QuizDraft.createForOutlineStep("운영체제", "{}", QuizPreset.LIGHT_3, 1L);
             ReflectionTestUtils.setField(draft, "id", 3L);
             given(draftService.getForUpdate(3L)).willReturn(draft);
-            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            GeneratedQuizSet set = currentStepSet();
             given(validator.parse("{}")).willReturn(set);
+            given(validator.hasCurrentStepBriefing(set)).willReturn(true);
 
             QuizDraft result = approvalService.approve(9L, 3L);
 
-            verify(validator).validateHintSet(set, QuizPreset.LIGHT_3);
+            verify(validator).validateStepContent(set, QuizPreset.LIGHT_3);
             verify(quizPersister, never()).persist("운영체제", set);
             assertThat(result.getStatus()).isEqualTo(QuizDraftStatus.APPROVED);
             assertThat(result.getApprovedBy()).isEqualTo(9L);
@@ -150,11 +168,12 @@ class AuthoringApprovalServiceTest {
             QuizDraft draft = QuizDraft.createForOutlineStep("운영체제", "{}", QuizPreset.BASIC_5, 1L);
             ReflectionTestUtils.setField(draft, "id", 4L);
             given(draftService.getForUpdate(4L)).willReturn(draft);
-            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            GeneratedQuizSet set = currentStepSet();
             given(validator.parse("{}")).willReturn(set);
+            given(validator.hasCurrentStepBriefing(set)).willReturn(true);
             willThrow(new QuizGenerationException("힌트가 정답을 노출합니다"))
                     .given(validator)
-                    .validateHintSet(set, QuizPreset.BASIC_5);
+                    .validateStepContent(set, QuizPreset.BASIC_5);
 
             assertThatThrownBy(() -> approvalService.approve(9L, 4L))
                     .isInstanceOf(BusinessException.class)
@@ -165,23 +184,36 @@ class AuthoringApprovalServiceTest {
         }
 
         @Test
-        @DisplayName("hint가 없는 legacy draft는 materialize 전에 검증 실패한다")
-        void rejects_legacy_draft_without_hint_before_persisting() {
+        @DisplayName("브리핑이 없는 구형 NEW draft는 새로 생성하라고 차단한다")
+        void rejects_legacy_draft_without_briefing_before_persisting() {
             QuizDraft draft = QuizDraft.createNew("운영체제", "{\"quizzes\":[]}", 1L);
             ReflectionTestUtils.setField(draft, "id", 1L);
             given(draftService.getForUpdate(1L)).willReturn(draft);
             GeneratedQuizSet set = new GeneratedQuizSet(List.of());
             given(validator.parse("{\"quizzes\":[]}")).willReturn(set);
-            willThrow(new QuizGenerationException("슬롯 1의 hint가 비어 있습니다."))
-                    .given(validator)
-                    .validateHintSet(set);
+            assertThatThrownBy(() -> approvalService.approve(9L, 1L))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(exception -> ((BusinessException) exception).getErrorType())
+                    .isEqualTo(AuthoringErrorType.AUTHORING_LEGACY_DRAFT_REGENERATION_REQUIRED);
+
+            verify(quizPersister, never()).persist("운영체제", set);
+            assertThat(draft.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
+        }
+
+        @Test
+        @DisplayName("브리핑이 없는 구형 OUTLINE_STEP draft는 새로 생성하라고 차단한다")
+        void rejects_legacy_outline_step_draft_without_briefing() {
+            QuizDraft draft = QuizDraft.createForOutlineStep("운영체제", "{}", QuizPreset.BASIC_5, 1L);
+            ReflectionTestUtils.setField(draft, "id", 1L);
+            given(draftService.getForUpdate(1L)).willReturn(draft);
+            GeneratedQuizSet set = new GeneratedQuizSet(List.of());
+            given(validator.parse("{}")).willReturn(set);
 
             assertThatThrownBy(() -> approvalService.approve(9L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(exception -> ((BusinessException) exception).getErrorType())
-                    .isEqualTo(AuthoringErrorType.AUTHORING_DRAFT_REVIEW_REQUIRED);
-
-            verify(quizPersister, never()).persist("운영체제", set);
+                    .isEqualTo(AuthoringErrorType.AUTHORING_LEGACY_DRAFT_REGENERATION_REQUIRED);
+            verify(quizPersister, never()).persistStep(any(), any());
             assertThat(draft.getStatus()).isEqualTo(QuizDraftStatus.DRAFT);
         }
 
@@ -221,5 +253,18 @@ class AuthoringApprovalServiceTest {
             verify(validator).validateSingleHint(generatedQuiz, QuizType.MULTIPLE_CHOICE, QuizDifficulty.MEDIUM);
             verify(quizPersister).populate(sourceQuiz, generatedQuiz);
         }
+    }
+
+    private static GeneratedQuizSet currentStepSet() {
+        return new GeneratedQuizSet(
+                GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION,
+                new GeneratedQuizSet.GeneratedBriefing(
+                        "요약",
+                        List.of(
+                                new GeneratedQuizSet.GeneratedBriefingBlock(
+                                        studio.thumbsup.server.quiz.QuizStepBriefingBlockType.CONCEPT, "핵심", "내용"),
+                                new GeneratedQuizSet.GeneratedBriefingBlock(
+                                        studio.thumbsup.server.quiz.QuizStepBriefingBlockType.CAUTION, "주의", "내용"))),
+                List.of());
     }
 }

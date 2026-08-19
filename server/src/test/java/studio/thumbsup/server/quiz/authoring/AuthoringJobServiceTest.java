@@ -217,7 +217,7 @@ class AuthoringJobServiceTest {
         }
 
         @Test
-        @DisplayName("GENERATE 성공 경로 — validateSet·createFromGenerate·succeed를 거친다")
+        @DisplayName("GENERATE 성공 경로 — 브리핑과 문제를 검증하고 draft를 만든다")
         void succeeds_for_generate_job() {
             GenerationJob job = GenerationJob.createGenerate(1L, "운영체제", "p");
             ReflectionTestUtils.setField(job, "id", 11L);
@@ -227,8 +227,8 @@ class AuthoringJobServiceTest {
             given(draftService.createFromGenerate(eq(job), any(GeneratedQuizSet.class)))
                     .willReturn(createdDraft);
 
-            GenerationJob result =
-                    service.submitResult(1L, 11L, BridgeCli.CLAUDE, GeneratedQuizJsonFixture.validSetJson());
+            GenerationJob result = service.submitResult(
+                    1L, 11L, BridgeCli.CLAUDE, stepContentJson(GeneratedQuizJsonFixture.validSetJson()));
 
             assertThat(result.getStatus()).isEqualTo(GenerationJobStatus.SUCCEEDED);
             assertThat(result.getCli()).isEqualTo(BridgeCli.CLAUDE);
@@ -247,8 +247,8 @@ class AuthoringJobServiceTest {
             given(draftService.getOrThrow(51L)).willReturn(outlineDraft);
             given(draftService.applyReview(eq(job), any(ReviewResult.class))).willReturn(outlineDraft);
 
-            String light3ReviewJson = GeneratedQuizJsonFixture.light3SetJson()
-                    .replace("{\"quizzes\":", "{\"reviewSummary\":\"수정함\",\"quizzes\":");
+            String light3ReviewJson = stepContentJson(GeneratedQuizJsonFixture.light3SetJson())
+                    .replace("{\"schemaVersion\":2,", "{\"reviewSummary\":\"수정함\",\"schemaVersion\":2,");
 
             GenerationJob result = service.submitResult(1L, 14L, BridgeCli.CODEX, light3ReviewJson);
 
@@ -371,5 +371,11 @@ class AuthoringJobServiceTest {
             assertThat(result.getStatus()).isEqualTo(GenerationJobStatus.FAILED);
             assertThat(result.getError()).isEqualTo("시간 초과로 만료되었습니다");
         }
+    }
+
+    private static String stepContentJson(String quizJson) {
+        return quizJson.replace(
+                "{\"quizzes\":",
+                "{\"schemaVersion\":2,\"briefing\":{\"summary\":\"요약\",\"blocks\":[{\"type\":\"CONCEPT\",\"heading\":\"핵심\",\"content\":\"개념\"},{\"type\":\"EXAMPLE\",\"heading\":\"예시\",\"content\":\"예시\"}]},\"quizzes\":");
     }
 }

@@ -22,6 +22,7 @@ import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizDifficulty;
 import studio.thumbsup.server.quiz.QuizFixture;
+import studio.thumbsup.server.quiz.QuizStepBriefingBlockType;
 import studio.thumbsup.server.quiz.QuizType;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 
@@ -175,6 +176,45 @@ class AuthoringDraftServiceTest {
             ArgumentCaptor<QuizDraftRevision> revisionCaptor = ArgumentCaptor.forClass(QuizDraftRevision.class);
             verify(quizDraftRevisionRepository).save(revisionCaptor.capture());
             assertThat(revisionCaptor.getValue().getRevisionNo()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("스텝 검수 결과의 브리핑도 revision과 currentPayload에 그대로 보존한다")
+        void preserves_briefing_in_review_revision() throws Exception {
+            GenerationJob job = GenerationJob.createReview(2L, 202L, "피드백", "prompt");
+            ReflectionTestUtils.setField(job, "id", 22L);
+            QuizDraft draft = QuizDraft.createNew("운영체제", "{}", 1L);
+            ReflectionTestUtils.setField(draft, "id", 202L);
+            given(quizDraftRepository.findById(202L)).willReturn(Optional.of(draft));
+            given(quizDraftRevisionRepository.findTopByDraftIdOrderByRevisionNoDesc(202L))
+                    .willReturn(Optional.empty());
+            ReviewResult result = new ReviewResult(
+                    "브리핑을 다듬음",
+                    GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION,
+                    new GeneratedQuizSet.GeneratedBriefing(
+                            "요약",
+                            List.of(
+                                    new GeneratedQuizSet.GeneratedBriefingBlock(
+                                            QuizStepBriefingBlockType.CONCEPT, "개념", "개념 설명"),
+                                    new GeneratedQuizSet.GeneratedBriefingBlock(
+                                            QuizStepBriefingBlockType.CAUTION, "주의", "주의 설명"))),
+                    List.of(sampleGeneratedQuiz()));
+
+            QuizDraft updated = service().applyReview(job, result);
+
+            assertThat(objectMapper
+                            .readTree(updated.getCurrentPayload())
+                            .path("briefing")
+                            .path("summary")
+                            .asText())
+                    .isEqualTo("요약");
+            ArgumentCaptor<QuizDraftRevision> revisionCaptor = ArgumentCaptor.forClass(QuizDraftRevision.class);
+            verify(quizDraftRevisionRepository).save(revisionCaptor.capture());
+            assertThat(objectMapper
+                            .readTree(revisionCaptor.getValue().getPayload())
+                            .path("briefing")
+                            .path("blocks"))
+                    .hasSize(2);
         }
     }
 

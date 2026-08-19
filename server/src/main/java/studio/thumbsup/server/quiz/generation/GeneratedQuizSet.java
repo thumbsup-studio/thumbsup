@@ -2,13 +2,26 @@ package studio.thumbsup.server.quiz.generation;
 
 import java.util.List;
 import studio.thumbsup.server.quiz.QuizDifficulty;
+import studio.thumbsup.server.quiz.QuizStepBriefingBlockType;
 import studio.thumbsup.server.quiz.QuizType;
 
 /**
  * 생성 응답 JSON을 그대로 역직렬화하는 구조 — {@link QuizGenerationPromptBuilder}가 요구하는 스키마와 1:1로 맞춘다.
  * type/difficulty는 {@link QuizType}/{@link QuizDifficulty} enum 이름과 정확히 일치해야 한다(Jackson 기본 매핑).
  */
-public record GeneratedQuizSet(List<GeneratedQuiz> quizzes) {
+public record GeneratedQuizSet(int schemaVersion, GeneratedBriefing briefing, List<GeneratedQuiz> quizzes) {
+
+    public static final int STEP_BRIEFING_SCHEMA_VERSION = 2;
+
+    /** 구형 draft/IMPROVE payload를 읽기 위한 호환 생성자. */
+    public GeneratedQuizSet(List<GeneratedQuiz> quizzes) {
+        this(1, null, quizzes);
+    }
+
+    public record GeneratedBriefing(String summary, List<GeneratedBriefingBlock> blocks) {}
+
+    /** 배열 순서가 학습 화면의 displayOrder가 된다. */
+    public record GeneratedBriefingBlock(QuizStepBriefingBlockType type, String heading, String content) {}
 
     public record GeneratedQuiz(
             QuizType type,

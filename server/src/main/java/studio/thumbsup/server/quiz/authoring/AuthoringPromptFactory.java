@@ -12,6 +12,17 @@ import studio.thumbsup.server.quiz.generation.QuizPreset;
  */
 public final class AuthoringPromptFactory {
 
+    private static final String STEP_BRIEFING_REQUIREMENTS = """
+
+            [스텝 브리핑 규칙]
+            - 문제보다 먼저 읽는 짧은 개념 소개를 briefing에 작성하라. 문제 번호, 선택지, 정답, OX 판단을 직접 언급하지 마라.
+            - summary는 스텝에서 배울 원리를 한두 문장으로 설명한다.
+            - blocks는 순서 있는 2~4개이며 각 항목은 type(CONCEPT, EXAMPLE, CAUTION), heading, content를 가진다.
+            - CONCEPT는 핵심 원리, EXAMPLE은 개념 이해용 예시, CAUTION은 흔한 오해 또는 주의점을 설명한다.
+            - heading은 서로 중복하지 않게 하고, content는 문제 풀이에 필요한 원리를 독립적으로 이해할 수 있게 쓴다.
+            - 최종 JSON의 최상위에는 schemaVersion: 2, briefing, quizzes를 모두 넣어라. 기존 quizzes 배열 스키마는 유지한다.
+            """;
+
     private static final String REVIEW_TEMPLATE = """
             %s
 
@@ -28,8 +39,23 @@ public final class AuthoringPromptFactory {
             - hint도 반드시 검수한다. 200자 이내의 개행 없는 한 문장이어야 하며, 정답·선택지 라벨·OX 판단 결론·
               빈칸 정답 키워드나 동의어를 직접 말하지 않고 판단 단서만 제공해야 한다.
             - 원문이 이미 충분히 좋으면 최소 수정만 한다.
-            %s%s
+            %s%s%s
             [출력 형식]
+            %s
+            """;
+
+    private static final String REVIEW_WITH_BRIEFING_RULES = """
+
+            - briefing도 문제와 같은 주제에 맞는지 검수하고, 문제의 정답·선택지·OX 판단을 드러내지 않도록 고친다.
+            """;
+
+    private static final String REVIEW_WITH_BRIEFING_OUTPUT = """
+            다음 형태의 JSON 객체 하나만 출력한다. 코드펜스·설명·인사말을 붙이지 않는다.
+            {"reviewSummary": "무엇을 왜 바꿨는지 3문장 이내", "schemaVersion": 2, "briefing": {"summary": "...", "blocks": [{"type": "CONCEPT", "heading": "...", "content": "..."}]}, "quizzes": [현재 문제 JSON과 동일한 스키마의 수정본 배열]}
+            """;
+
+    private static final String REVIEW_IMPROVE_OUTPUT = """
+            briefing이나 schemaVersion은 출력하거나 변경하지 마라. 현재 문제 한 개만 검수·수정한다.
             다음 형태의 JSON 객체 하나만 출력한다. 코드펜스·설명·인사말을 붙이지 않는다.
             {"reviewSummary": "무엇을 왜 바꿨는지 3문장 이내", "quizzes": [현재 문제 JSON과 동일한 스키마의 수정본 배열]}
             """;
@@ -70,7 +96,10 @@ public final class AuthoringPromptFactory {
     private AuthoringPromptFactory() {}
 
     public static String generatePrompt(String topic) {
-        return QuizGenerationPromptBuilder.SYSTEM_PROMPT + "\n\n" + QuizGenerationPromptBuilder.build(topic);
+        return QuizGenerationPromptBuilder.SYSTEM_PROMPT
+                + "\n\n"
+                + QuizGenerationPromptBuilder.buildStepContent(topic, QuizPreset.BASIC_5)
+                + STEP_BRIEFING_REQUIREMENTS;
     }
 
     public static String generatePrompt(OutlineStepContext context, QuizPreset preset) {
@@ -78,7 +107,8 @@ public final class AuthoringPromptFactory {
                 + "\n\n"
                 + outlineStepContextSection(context)
                 + "\n"
-                + QuizGenerationPromptBuilder.build(context.topic(), preset);
+                + QuizGenerationPromptBuilder.buildStepContent(context.topic(), preset)
+                + STEP_BRIEFING_REQUIREMENTS;
     }
 
     public static String outlinePrompt(String courseTitle, String category, String toc) {
@@ -87,12 +117,23 @@ public final class AuthoringPromptFactory {
 
     public static String reviewPrompt(
             String topic, String currentPayloadJson, String feedback, List<String> siblingQuestions) {
+        return reviewPrompt(topic, currentPayloadJson, feedback, siblingQuestions, true);
+    }
+
+    public static String reviewPrompt(
+            String topic,
+            String currentPayloadJson,
+            String feedback,
+            List<String> siblingQuestions,
+            boolean includesBriefing) {
         return REVIEW_TEMPLATE.formatted(
                 QuizGenerationPromptBuilder.SYSTEM_PROMPT,
                 topic,
                 currentPayloadJson,
                 feedbackSection(feedback),
-                siblingQuestionsSection(siblingQuestions));
+                siblingQuestionsSection(siblingQuestions),
+                includesBriefing ? STEP_BRIEFING_REQUIREMENTS + REVIEW_WITH_BRIEFING_RULES : "",
+                includesBriefing ? REVIEW_WITH_BRIEFING_OUTPUT : REVIEW_IMPROVE_OUTPUT);
     }
 
     private static String feedbackSection(String feedback) {

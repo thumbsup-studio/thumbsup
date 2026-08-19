@@ -113,6 +113,15 @@ class AuthoringPromptFactoryTest {
 
             assertThat(prompt).doesNotContain("다른 문제들");
         }
+
+        @Test
+        @DisplayName("IMPROVE 검수 프롬프트는 브리핑을 출력하거나 수정하지 않는다")
+        void improve_review_prompt_excludes_briefing() {
+            String prompt = AuthoringPromptFactory.reviewPrompt("운영체제", "{\"quizzes\":[]}", null, List.of(), false);
+
+            assertThat(prompt).contains("briefing이나 schemaVersion은 출력하거나 변경하지 마라");
+            assertThat(prompt).doesNotContain("[스텝 브리핑 규칙]");
+        }
     }
 
     @Nested
@@ -128,6 +137,26 @@ class AuthoringPromptFactoryTest {
                     .doesNotThrowAnyException();
             assertThatCode(() -> objectMapper.readTree(AuthoringOutputSchemas.REVIEW))
                     .doesNotThrowAnyException();
+            assertThatCode(() -> objectMapper.readTree(AuthoringOutputSchemas.REVIEW_WITH_BRIEFING))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("브리핑 포함 검수 스키마는 schemaVersion 2와 2~4개 블록을 요구한다")
+        void review_with_briefing_schema_requires_current_contract() throws Exception {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            assertThat(objectMapper
+                            .readTree(AuthoringOutputSchemas.REVIEW_WITH_BRIEFING)
+                            .toString())
+                    .contains("schemaVersion")
+                    .contains("\"const\":2")
+                    .contains("\"minItems\":2")
+                    .contains("\"maxItems\":4")
+                    .contains("CONCEPT");
+            assertThat(objectMapper.readTree(AuthoringOutputSchemas.GENERATE).toString())
+                    .contains("CONCEPT")
+                    .contains("CAUTION");
         }
 
         @Test

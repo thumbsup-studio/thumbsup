@@ -19,9 +19,8 @@ public final class QuizGenerationPromptBuilder {
               (```)는 절대 포함하지 않는다.
             """;
 
-    private static final String SCHEMA = """
-            {
-              "quizzes": [
+    private static final String QUIZZES_SCHEMA = """
+            [
                 {
                   "type": "OX | MULTIPLE_CHOICE | KEYWORD_BLANK",
                   "difficulty": "EASY | MEDIUM | HARD",
@@ -49,9 +48,16 @@ public final class QuizGenerationPromptBuilder {
                   "derivedConcepts": ["관련 파생 개념 이름"],
                   "keywords": [{"keyword": "지문 속 어려운 용어", "description": "그 용어의 설명"}]
                 }
-              ]
-            }
+            ]
             """;
+
+    private static final String SCHEMA = "{\"quizzes\": " + QUIZZES_SCHEMA + "}";
+
+    private static final String STEP_CONTENT_SCHEMA = """
+            {"schemaVersion":2,"briefing":{"summary":"한두 문장 개념 요약","blocks":[
+              {"type":"CONCEPT | EXAMPLE | CAUTION","heading":"블록 제목","content":"개념 설명"}
+            ]},"quizzes":
+            """ + QUIZZES_SCHEMA + "}";
 
     private static final String COMMON_REQUIREMENTS = """
             모든 문제 공통 요구사항:
@@ -142,6 +148,11 @@ public final class QuizGenerationPromptBuilder {
         return build(courseTopic, preset, GenerationLevel.STANDARD);
     }
 
+    /** 스텝 브리핑과 문제 세트를 함께 생성하는 저작 파이프라인 전용 프롬프트다. */
+    public static String buildStepContent(String courseTopic, QuizPreset preset) {
+        return build(courseTopic, preset, GenerationLevel.STANDARD, STEP_CONTENT_SCHEMA);
+    }
+
     /**
      * {@code level}은 슬롯 구성(하2·중2·상1)이 정하는 문제 "형식" 난이도와 별개로, 그 안에서 다루는
      * 콘텐츠 깊이를 조절한다. STANDARD는 별도 힌트를 넣지 않는다(기존 동작과 동일 — 모델 판단에 맡긴다).
@@ -151,6 +162,10 @@ public final class QuizGenerationPromptBuilder {
     }
 
     private static String build(String courseTopic, QuizPreset preset, GenerationLevel level) {
+        return build(courseTopic, preset, level, SCHEMA);
+    }
+
+    private static String build(String courseTopic, QuizPreset preset, GenerationLevel level, String schema) {
         return """
                 "%s" 주제로 학습 퀴즈 %d문제를 한 세트로 생성해줘. 오직 아래 JSON 스키마와 정확히 일치하는
                 JSON 객체 하나만 출력하고, 그 외 설명·마크다운 코드펜스는 절대 포함하지 마.
@@ -167,7 +182,7 @@ public final class QuizGenerationPromptBuilder {
                         contentLevelHint(level),
                         COMMON_REQUIREMENTS,
                         MARKER_RULES,
-                        SCHEMA);
+                        schema);
     }
 
     private static String slotComposition(QuizPreset preset) {

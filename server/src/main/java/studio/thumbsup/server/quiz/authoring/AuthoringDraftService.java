@@ -78,7 +78,10 @@ public class AuthoringDraftService {
     @Transactional
     public QuizDraft applyReview(GenerationJob job, ReviewResult result) {
         QuizDraft draft = getOrThrow(job.getDraftId());
-        String payloadJson = writeValueAsString(new GeneratedQuizSet(result.quizzes()));
+        GeneratedQuizSet reviewed = draft.getOrigin() == QuizDraftOrigin.IMPROVE
+                ? new GeneratedQuizSet(result.quizzes())
+                : new GeneratedQuizSet(result.schemaVersion(), result.briefing(), result.quizzes());
+        String payloadJson = writeValueAsString(reviewed);
         draft.applyRevision(payloadJson);
 
         int nextRevisionNo = quizDraftRevisionRepository

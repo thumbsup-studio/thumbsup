@@ -7,6 +7,9 @@ import studio.thumbsup.server.common.exception.BusinessException;
 import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizErrorType;
 import studio.thumbsup.server.quiz.QuizRepository;
+import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.QuizStepBriefing;
+import studio.thumbsup.server.quiz.QuizStepBriefingRepository;
 import studio.thumbsup.server.quiz.authoring.dto.ApproveResponse;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizValidator;
@@ -26,6 +29,7 @@ public class AuthoringApprovalService {
     private final GeneratedQuizValidator validator;
     private final QuizRepository quizRepository;
     private final QuizPersister quizPersister;
+    private final QuizStepBriefingRepository briefingRepository;
     private final Clock clock;
 
     public AuthoringApprovalService(
@@ -34,12 +38,14 @@ public class AuthoringApprovalService {
             GeneratedQuizValidator validator,
             QuizRepository quizRepository,
             QuizPersister quizPersister,
+            QuizStepBriefingRepository briefingRepository,
             Clock clock) {
         this.draftService = draftService;
         this.jobService = jobService;
         this.validator = validator;
         this.quizRepository = quizRepository;
         this.quizPersister = quizPersister;
+        this.briefingRepository = briefingRepository;
         this.clock = clock;
     }
 
@@ -54,12 +60,14 @@ public class AuthoringApprovalService {
         try {
             GeneratedQuizSet set = validator.parse(draft.getCurrentPayload());
             if (draft.getOrigin() == QuizDraftOrigin.NEW) {
-                // 배포 전에 저장된 legacy draft를 포함해, 승인 시점의 최종 payload도 다시 검증한다.
-                validator.validateHintSet(set);
-                quizPersister.persist(draft.getTopic(), set);
+                requireCurrentStepBriefing(set);
+                validator.validateStepContent(set, draft.getPreset());
+                QuizStep step = quizPersister.persistStep(draft.getTopic(), set);
+                saveBriefing(step, set.briefing());
             } else if (draft.getOrigin() == QuizDraftOrigin.OUTLINE_STEP) {
                 // 뼈대 스텝은 발행 때 한꺼번에 라이브로 간다 — 여기서 쓰면 발행 게이트가 뚫린다.
-                validator.validateHintSet(set, draft.getPreset());
+                requireCurrentStepBriefing(set);
+                validator.validateStepContent(set, draft.getPreset());
             } else {
                 materializeImprove(draft, set);
             }
@@ -96,5 +104,20 @@ public class AuthoringApprovalService {
                 generated.wrongAnswerExplanation());
         quiz.resetForRepopulation();
         quizPersister.populate(quiz, generated);
+    }
+
+    private void requireCurrentStepBriefing(GeneratedQuizSet set) {
+        if (!validator.hasCurrentStepBriefing(set)) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_LEGACY_DRAFT_REGENERATION_REQUIRED);
+        }
+    }
+
+    private void saveBriefing(QuizStep step, GeneratedQuizSet.GeneratedBriefing generated) {
+        QuizStepBriefing briefing = QuizStepBriefing.create(step.getId(), generated.summary());
+        int displayOrder = 1;
+        for (GeneratedQuizSet.GeneratedBriefingBlock block : generated.blocks()) {
+            briefing.addBlock(block.type(), block.heading(), block.content(), displayOrder++);
+        }
+        briefingRepository.save(briefing);
     }
 }

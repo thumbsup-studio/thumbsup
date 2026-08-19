@@ -43,11 +43,22 @@ public class QuizPersister {
      */
     @Transactional
     public int persist(String courseTopic, GeneratedQuizSet generated) {
-        return persist(resolveDefaultCourseId(), courseTopic, generated);
+        return persistStep(courseTopic, generated).getStepOrder();
+    }
+
+    /** 새 스텝 행의 PK가 후속 콘텐츠(브리핑 등)에 필요할 때 쓴다. */
+    @Transactional
+    public QuizStep persistStep(String courseTopic, GeneratedQuizSet generated) {
+        return persistStep(resolveDefaultCourseId(), courseTopic, generated);
     }
 
     @Transactional
     int persist(Long courseId, String courseTopic, GeneratedQuizSet generated) {
+        return persistStep(courseId, courseTopic, generated).getStepOrder();
+    }
+
+    @Transactional
+    QuizStep persistStep(Long courseId, String courseTopic, GeneratedQuizSet generated) {
         validateHintsBeforePersisting(generated);
         return persistAtValidated(courseId, nextStepOrder(courseId), courseTopic, DEFAULT_ESTIMATED_MINUTES, generated);
     }
@@ -56,11 +67,18 @@ public class QuizPersister {
     @Transactional
     public int persistAt(
             Long courseId, int stepOrder, String courseTopic, int estimatedMinutes, GeneratedQuizSet generated) {
+        return persistStepAt(courseId, stepOrder, courseTopic, estimatedMinutes, generated)
+                .getStepOrder();
+    }
+
+    @Transactional
+    public QuizStep persistStepAt(
+            Long courseId, int stepOrder, String courseTopic, int estimatedMinutes, GeneratedQuizSet generated) {
         validateHintsBeforePersisting(generated);
         return persistAtValidated(courseId, stepOrder, courseTopic, estimatedMinutes, generated);
     }
 
-    private int persistAtValidated(
+    private QuizStep persistAtValidated(
             Long courseId, int stepOrder, String courseTopic, int estimatedMinutes, GeneratedQuizSet generated) {
         // quiz.quiz_step_id가 FK로 quiz_step.id를 참조하므로(#292) 반드시 먼저 저장해 PK를 받아둔다.
         QuizStep step = quizStepRepository.save(QuizStep.create(stepOrder, courseId, courseTopic, estimatedMinutes));
@@ -80,7 +98,7 @@ public class QuizPersister {
             quiz.assignPosition(step.getId(), stepOrder, slotOrder++);
             quizRepository.save(quiz);
         }
-        return stepOrder;
+        return step;
     }
 
     /** 그 코스의 라이브 스텝을 기준으로 다음 코스 내 상대 step_order를 계산한다(#292). */

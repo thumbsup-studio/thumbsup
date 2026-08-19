@@ -8,6 +8,9 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studio.thumbsup.server.common.exception.BusinessException;
+import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.QuizStepBriefing;
+import studio.thumbsup.server.quiz.QuizStepBriefingRepository;
 import studio.thumbsup.server.quiz.authoring.dto.PublishResponse;
 import studio.thumbsup.server.quiz.course.Course;
 import studio.thumbsup.server.quiz.course.CourseRepository;
@@ -26,6 +29,7 @@ public class AuthoringPublishService {
     private final CourseRepository courseRepository;
     private final GeneratedQuizValidator validator;
     private final QuizPersister quizPersister;
+    private final QuizStepBriefingRepository briefingRepository;
 
     public AuthoringPublishService(
             AuthoringOutlineRepository outlineRepository,
@@ -33,13 +37,15 @@ public class AuthoringPublishService {
             QuizDraftRepository draftRepository,
             CourseRepository courseRepository,
             GeneratedQuizValidator validator,
-            QuizPersister quizPersister) {
+            QuizPersister quizPersister,
+            QuizStepBriefingRepository briefingRepository) {
         this.outlineRepository = outlineRepository;
         this.stepRepository = stepRepository;
         this.draftRepository = draftRepository;
         this.courseRepository = courseRepository;
         this.validator = validator;
         this.quizPersister = quizPersister;
+        this.briefingRepository = briefingRepository;
     }
 
     @Transactional
@@ -89,15 +95,32 @@ public class AuthoringPublishService {
         QuizDraft draft = drafts.get(step.getDraftId());
         try {
             GeneratedQuizSet set = validator.parse(draft.getCurrentPayload());
-            validator.validateHintSet(set, draft.getPreset());
-            quizPersister.persistAt(
+            requireCurrentStepBriefing(set);
+            validator.validateStepContent(set, draft.getPreset());
+            QuizStep quizStep = quizPersister.persistStepAt(
                     course.getId(),
                     stepOrder,
                     step.getTopic(),
                     draft.getPreset().estimatedMinutes(),
                     set);
+            saveBriefing(quizStep, set.briefing());
         } catch (QuizGenerationException exception) {
             throw new BusinessException(AuthoringErrorType.AUTHORING_OUTLINE_NOT_READY, exception);
         }
+    }
+
+    private void requireCurrentStepBriefing(GeneratedQuizSet set) {
+        if (!validator.hasCurrentStepBriefing(set)) {
+            throw new BusinessException(AuthoringErrorType.AUTHORING_LEGACY_DRAFT_REGENERATION_REQUIRED);
+        }
+    }
+
+    private void saveBriefing(QuizStep step, GeneratedQuizSet.GeneratedBriefing generated) {
+        QuizStepBriefing briefing = QuizStepBriefing.create(step.getId(), generated.summary());
+        int displayOrder = 1;
+        for (GeneratedQuizSet.GeneratedBriefingBlock block : generated.blocks()) {
+            briefing.addBlock(block.type(), block.heading(), block.content(), displayOrder++);
+        }
+        briefingRepository.save(briefing);
     }
 }
