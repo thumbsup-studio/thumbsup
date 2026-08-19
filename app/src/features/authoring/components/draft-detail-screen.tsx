@@ -12,6 +12,7 @@ import { ApproveSheet } from "@/features/authoring/components/approve-sheet";
 import { QuizDetailCard } from "@/features/authoring/components/quiz-detail-card";
 import { ReviewSheet } from "@/features/authoring/components/review-sheet";
 import type { DraftDetail, DraftOrigin, DraftStatus } from "@/features/authoring/types";
+import { BriefingContent } from "@/features/briefing/components/briefing-content";
 import { ApiError } from "@/lib/api";
 
 type LoadState =
@@ -19,7 +20,11 @@ type LoadState =
   | { status: "error" }
   | { status: "success"; draft: DraftDetail };
 
-const ORIGIN_LABEL: Record<DraftOrigin, string> = { NEW: "신규", IMPROVE: "개선" };
+const ORIGIN_LABEL: Record<DraftOrigin, string> = {
+  NEW: "신규",
+  IMPROVE: "개선",
+  OUTLINE_STEP: "뼈대 스텝",
+};
 const STATUS_LABEL: Record<DraftStatus, string> = { DRAFT: "검토중", APPROVED: "승인됨" };
 
 function formatDateTime(iso: string): string {
@@ -89,6 +94,28 @@ export function DraftDetailScreen({ draftId }: { draftId: number }) {
           {STATUS_LABEL[draft.status]}
         </Chip>
       </header>
+
+      <section aria-labelledby="draft-briefing-heading" className="flex flex-col gap-3">
+        <h3 className="text-base font-bold text-ink" id="draft-briefing-heading">
+          문제 전 브리핑
+        </h3>
+        {draft.payload.briefing ? (
+          <BriefingContent
+            blocks={draft.payload.briefing.blocks.map((block, index) => ({
+              ...block,
+              displayOrder: index + 1,
+            }))}
+            headingLevel="h4"
+            summary={draft.payload.briefing.summary}
+          />
+        ) : draft.origin === "IMPROVE" ? (
+          <Feedback tone="info">개별 문제 개선 초안은 브리핑 검수 대상이 아니에요.</Feedback>
+        ) : (
+          <Feedback tone="error">
+            브리핑이 없는 구형 초안이에요. 발행하려면 문제와 브리핑을 새로 생성해 주세요.
+          </Feedback>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3">
         {draft.payload.quizzes.map((quiz, index) => (

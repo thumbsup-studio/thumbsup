@@ -3,7 +3,7 @@
  * 필드명은 서버 REST 계약(docs/plans/2026-07-14-quiz-authoring-{app,server}.md)과 1:1.
  */
 
-export type DraftOrigin = "NEW" | "IMPROVE";
+export type DraftOrigin = "NEW" | "IMPROVE" | "OUTLINE_STEP";
 export type DraftStatus = "DRAFT" | "APPROVED";
 export type JobKind = "GENERATE" | "REVIEW";
 export type JobRunStatus = "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED";
@@ -27,11 +27,24 @@ export type Revision = {
 };
 
 export type DraftDetail = DraftSummary & {
-  payload: { quizzes: GeneratedQuiz[] };
+  payload: {
+    schemaVersion?: number;
+    briefing?: GeneratedBriefing | null;
+    quizzes: GeneratedQuiz[];
+  };
   revisions: Revision[];
   createdBy: number;
   approvedBy: number | null;
   approvedAt: string | null;
+};
+
+export type GeneratedBriefing = {
+  summary: string;
+  blocks: {
+    type: "CONCEPT" | "EXAMPLE" | "CAUTION";
+    heading: string;
+    content: string;
+  }[];
 };
 
 export type JobStatus = {

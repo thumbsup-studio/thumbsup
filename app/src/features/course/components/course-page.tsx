@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Feedback } from "@/components/ui/feedback";
 import { Skeleton } from "@/components/ui/skeleton";
 import { reviewStartHref } from "@/features/history/review-params";
-import { buildPlayHref } from "@/features/play/course-params";
+import { buildBriefingHref } from "@/features/play/course-params";
 import { isUnauthorized } from "@/features/play/quiz-shared";
 import { type CourseItem, type CourseStep, getCourses } from "@/lib/api/course";
 
@@ -270,7 +270,7 @@ function CourseStepRow({
 /** 스텝 클릭 시 이동 경로 — 풀 수 있으면 그 코스의 다음 문제로, 완료했으면 복습으로, 잠겼으면 없음(비활성). */
 function getStepHref(courseId: number, step: CourseStep): string | undefined {
   if (step.state === "SOLVABLE") {
-    return buildPlayHref(courseId);
+    return buildBriefingHref(courseId);
   }
 
   if (step.state === "COMPLETED") {

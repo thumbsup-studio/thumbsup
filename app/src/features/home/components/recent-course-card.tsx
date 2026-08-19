@@ -1,5 +1,5 @@
 import type { HomeCourse } from "@/features/home/types";
-import { buildCourseListHref, buildPlayHref } from "@/features/play/course-params";
+import { buildBriefingHref, buildCourseListHref } from "@/features/play/course-params";
 
 type RecentCourseCardProps = {
   course: HomeCourse;
@@ -50,7 +50,9 @@ export function RecentCourseCard({ course }: RecentCourseCardProps) {
       <a
         className="mt-auto flex min-h-12 w-full items-center justify-center rounded-control bg-surface px-4 py-3 text-base font-semibold text-primary"
         href={
-          course.completed ? buildCourseListHref(course.courseId) : buildPlayHref(course.courseId)
+          course.completed
+            ? buildCourseListHref(course.courseId)
+            : buildBriefingHref(course.courseId)
         }
       >
         {course.completed ? "복습하기" : "시작하기"}

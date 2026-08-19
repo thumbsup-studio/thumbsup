@@ -99,11 +99,39 @@ export type CompletedStepsResponse = {
   steps: CompletedStep[];
 };
 
+export type QuizStepBriefingBlockType = "CONCEPT" | "EXAMPLE" | "CAUTION";
+
+export type QuizStepBriefingBlock = {
+  type: QuizStepBriefingBlockType;
+  heading: string;
+  content: string;
+  displayOrder: number;
+};
+
+export type QuizStepBriefingResponse = {
+  quizStepId: number;
+  courseId: number;
+  stepOrder: number;
+  topic: string;
+  summary: string;
+  blocks: QuizStepBriefingBlock[];
+};
+
 /** courseId 생략 시 서버가 기본 코스를 쓴다(코스 탭에서 코스를 지정해 진입할 때만 넘긴다). */
 export function getNextQuiz(courseId?: number): Promise<QuizNextResponse> {
   return apiRequest<QuizNextResponse>(
     courseId ? `/quizzes/next?courseId=${courseId}` : "/quizzes/next",
   );
+}
+
+/** 해당 코스에서 지금 풀 차례인 스텝의 문제 전 개념 브리핑. */
+export function getNextStepBriefing(courseId: number): Promise<QuizStepBriefingResponse> {
+  return apiRequest<QuizStepBriefingResponse>(`/courses/${courseId}/next-step/briefing`);
+}
+
+/** 브리핑에서 확정한 스텝 안에서 아직 시도하지 않은 다음 문제. */
+export function getNextQuizForStep(quizStepId: number): Promise<QuizNextResponse> {
+  return apiRequest<QuizNextResponse>(`/quiz-steps/${quizStepId}/quizzes/next`);
 }
 
 /** 유저가 완료한(현재 진행 스텝보다 이전) 스텝 목록 — 히스토리 복습 화면용. */

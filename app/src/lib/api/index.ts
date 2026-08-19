@@ -29,6 +29,8 @@ export {
   type CompletedStepsResponse,
   getCompletedSteps,
   getNextQuiz,
+  getNextQuizForStep,
+  getNextStepBriefing,
   getQuizExplanation,
   getStepQuiz,
   type Highlight,
@@ -38,6 +40,9 @@ export {
   type QuizFollowUpQuestion,
   type QuizKeyword,
   type QuizNextResponse,
+  type QuizStepBriefingBlock,
+  type QuizStepBriefingBlockType,
+  type QuizStepBriefingResponse,
   type QuizType,
   submitQuizAnswer,
 } from "./quiz";

@@ -6,6 +6,7 @@
 
 export type CourseSearchParams = {
   courseId?: string;
+  stepId?: string;
 };
 
 /** 코스 탭 화면으로 돌아가는 경로 — 코스 세션 완주·뒤로가기가 공통으로 쓴다. */
@@ -22,9 +23,20 @@ export function parseCourseId(value: string | undefined): number | undefined {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+export const parseStepId = parseCourseId;
+
 /** 다음 문제 진입 경로 — courseId가 있으면 그 코스로, 없으면 기본 코스로(서버가 처리). */
-export function buildPlayHref(courseId: number | undefined): string {
-  return courseId ? `/play?courseId=${courseId}` : "/play";
+export function buildPlayHref(courseId: number | undefined, stepId?: number): string {
+  const params = new URLSearchParams();
+  if (courseId) params.set("courseId", String(courseId));
+  if (stepId) params.set("stepId", String(stepId));
+  const query = params.toString();
+  return query ? `/play?${query}` : "/play";
+}
+
+/** 홈·코스에서 현재 스텝 브리핑으로 진입하는 경로. */
+export function buildBriefingHref(courseId: number): string {
+  return `/briefing?courseId=${courseId}`;
 }
 
 /**

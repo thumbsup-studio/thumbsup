@@ -143,6 +143,30 @@ const LEGACY_DRAFT_WITHOUT_HINT: DraftDetail = {
   payload: { quizzes: [legacyQuizWithoutHint] },
 };
 
+const STEP_BRIEFING_DRAFT: DraftDetail = {
+  ...BASE_DRAFT,
+  origin: "OUTLINE_STEP",
+  payload: {
+    schemaVersion: 2,
+    briefing: {
+      summary: "프로세스와 스레드의 실행 단위 차이를 정리합니다.",
+      blocks: [
+        {
+          type: "CONCEPT",
+          heading: "자원 소유 단위",
+          content: "프로세스는 실행에 필요한 자원을 독립적으로 관리합니다.",
+        },
+        {
+          type: "CAUTION",
+          heading: "실행 흐름과 혼동하지 않기",
+          content: "스레드는 프로세스 내부에서 자원을 공유하는 실행 흐름입니다.",
+        },
+      ],
+    },
+    quizzes: BASE_DRAFT.payload.quizzes,
+  },
+};
+
 beforeEach(() => {
   getDraftMock.mockReset();
   reviewDraftMock.mockReset();
@@ -152,6 +176,32 @@ beforeEach(() => {
 });
 
 describe("DraftDetailScreen", () => {
+  it("스텝 브리핑을 문제 목록보다 먼저 순서대로 보여준다", async () => {
+    getDraftMock.mockResolvedValue(STEP_BRIEFING_DRAFT);
+
+    renderScreen();
+
+    const summary = await screen.findByText("프로세스와 스레드의 실행 단위 차이를 정리합니다.");
+    const firstQuestion = screen.getByText("프로세스는 독립된 자원을 갖는다.");
+    expect(summary.compareDocumentPosition(firstQuestion) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getByText("자원 소유 단위")).toBeInTheDocument();
+    expect(screen.getByText("실행 흐름과 혼동하지 않기")).toBeInTheDocument();
+  });
+
+  it("브리핑이 없는 구형 스텝 초안은 재생성 안내를 명시한다", async () => {
+    getDraftMock.mockResolvedValue({ ...BASE_DRAFT, origin: "OUTLINE_STEP" });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        "브리핑이 없는 구형 초안이에요. 발행하려면 문제와 브리핑을 새로 생성해 주세요.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("payload.quizzes를 슬롯 순서대로 렌더한다(칩·질문·MC 정답 표시·해설 요약)", async () => {
     getDraftMock.mockResolvedValue(BASE_DRAFT);
 
