@@ -254,7 +254,7 @@ class AuthoringAcceptanceTest extends AcceptanceTestSupport {
         long jobId = generateData.path("jobId").asLong();
         JsonNode job = claimNextJob(jobId);
         assertThat(job.path("kind").asText()).isEqualTo("GENERATE");
-        submitBridgeResult(jobId, GeneratedQuizJsonFixture.light3SetJson());
+        submitBridgeResult(jobId, GeneratedQuizJsonFixture.light3StepContentJson());
 
         JsonNode jobStatus = data(mockMvc.perform(get("/api/v1/authoring/jobs/{jobId}", jobId)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID)))
@@ -288,7 +288,7 @@ class AuthoringAcceptanceTest extends AcceptanceTestSupport {
                 .andExpect(status().isOk());
 
         String resultRequest = objectMapper.writeValueAsString(
-                new BridgeResultRequestFixture("CLAUDE", GeneratedQuizJsonFixture.validSetJson()));
+                new BridgeResultRequestFixture("CLAUDE", GeneratedQuizJsonFixture.validStepContentJson()));
         JsonNode resultData = data(mockMvc.perform(post("/api/v1/authoring/bridge/jobs/{jobId}/result", jobId)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(USER_ID))
                         .contentType(MediaType.APPLICATION_JSON)

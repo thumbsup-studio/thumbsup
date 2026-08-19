@@ -100,6 +100,18 @@ public final class GeneratedQuizJsonFixture {
         return "{\"quizzes\": [%s, %s, %s]}".formatted(oxQuizJson(), multipleChoiceQuizJson(), keywordBlankQuizJson());
     }
 
+    public static String validStepContentJson() {
+        return stepContentJson(validSetJson());
+    }
+
+    public static String light3StepContentJson() {
+        return stepContentJson(light3SetJson());
+    }
+
+    public static String invalidStepContentJson() {
+        return stepContentJson("{\"quizzes\":[]}");
+    }
+
     static String deep7SetWithWrongSlot5Json() {
         return "{\"quizzes\": [%s, %s, %s, %s, %s, %s, %s]}"
                 .formatted(
@@ -121,5 +133,14 @@ public final class GeneratedQuizJsonFixture {
                         multipleChoiceQuizJson(),
                         multipleChoiceQuizJson(),
                         keywordBlankQuizJson());
+    }
+
+    private static String stepContentJson(String quizSetJson) {
+        return """
+                {"schemaVersion":2,"briefing":{"summary":"자료구조의 핵심 원리를 학습합니다.","blocks":[
+                {"type":"CONCEPT","heading":"핵심 원리","content":"자료구조는 데이터를 목적에 맞게 저장하고 처리하는 방법입니다."},
+                {"type":"CAUTION","heading":"주의할 점","content":"비슷한 자료구조라도 연산 비용과 쓰임새가 다릅니다."}
+                ]},"quizzes":%s
+                """.formatted(quizSetJson.substring("{\"quizzes\":".length()));
     }
 }

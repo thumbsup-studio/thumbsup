@@ -21,7 +21,6 @@ public class GeneratedQuizValidator {
 
     private static final int EXPECTED_CHOICE_COUNT = 4;
     private static final int EXPECTED_SUMMARY_LINES = 3;
-    /** 첫 블록만 고정한다 — 그 뒤 블록의 개수·라벨은 문제 성격에 맞게 모델이 정한다(#133 팀 결정). */
     private static final String FIRST_BLOCK_LABEL = "해설";
 
     private final ObjectMapper objectMapper;
@@ -64,7 +63,24 @@ public class GeneratedQuizValidator {
         }
     }
 
-    /** 기존 draft 승인 시 새 필드인 hint만 최신 정책으로 재검증한다. 나머지 필드는 생성·REVIEW 제출 때 검증한다. */
+    /** 새 스텝 콘텐츠의 불변식 — 구형/IMPROVE 단건 payload에는 적용하지 않는다. */
+    public void validateStepContent(GeneratedQuizSet generated, QuizPreset preset) {
+        validateSet(generated, preset);
+        if (generated.schemaVersion() != GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION) {
+            throw new QuizGenerationException("스텝 콘텐츠 schemaVersion이 최신 버전이 아닙니다.");
+        }
+        validateBriefing(generated.briefing());
+    }
+
+    public boolean hasCurrentStepBriefing(GeneratedQuizSet generated) {
+        return generated.schemaVersion() == GeneratedQuizSet.STEP_BRIEFING_SCHEMA_VERSION
+                && generated.briefing() != null;
+    }
+
+    public void validateBriefing(GeneratedQuizSet.GeneratedBriefing briefing) {
+        GeneratedStepBriefingValidator.validate(briefing);
+    }
+
     public void validateHintSet(GeneratedQuizSet generated) {
         validateHintSet(generated, QuizPreset.BASIC_5);
     }
@@ -86,7 +102,6 @@ public class GeneratedQuizValidator {
         return quizzes;
     }
 
-    /** 기존 IMPROVE draft 승인 시 원본 유형·난이도를 유지하는지와 hint만 재검증한다. */
     public void validateSingleHint(
             GeneratedQuizSet.GeneratedQuiz quiz, QuizType expectedType, QuizDifficulty expectedDifficulty) {
         validateHintSlot("문제", quiz, expectedType, expectedDifficulty);
@@ -143,7 +158,6 @@ public class GeneratedQuizValidator {
         validateFollowUpQuestions(location, quiz.followUpQuestions());
     }
 
-    /** explanationSummary는 #43(해설 조회 API)의 "핵심 3줄, 줄 끝 공백 없음" 계약이라 이를 엄격히 검증한다. */
     private void validateExplanationSummaryLineCount(String location, String explanationSummary) {
         String[] lines = explanationSummary.split("\n", -1);
         boolean hasBlankLine = Arrays.stream(lines).anyMatch(String::isBlank);
@@ -154,11 +168,6 @@ public class GeneratedQuizValidator {
         }
     }
 
-    /**
-     * #43(해설 조회 API)이 해설 본문에서 키워드 위치를 찾을 수 있도록, 생성 시점에 [[키워드]] 마커를 심는다.
-     * keywords에 등록된 모든 용어가 explanationSummary·explanationExample·wrongAnswerExplanation 전체에서
-     * 정확히 한 번 마킹돼 있어야 하고, 마커 문자열은 오타 없이 keywords와 정확히 일치해야 한다.
-     */
     private void validateKeywordMarkers(String location, GeneratedQuizSet.GeneratedQuiz quiz) {
         Set<String> registeredKeywords = quiz.keywords().stream()
                 .map(GeneratedQuizSet.GeneratedKeyword::keyword)

@@ -14,6 +14,7 @@ import studio.thumbsup.server.common.support.AcceptanceTestSupport;
 import studio.thumbsup.server.common.support.DatabaseCleanUp;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizStep;
+import studio.thumbsup.server.quiz.QuizStepBriefingRepository;
 import studio.thumbsup.server.quiz.QuizStepRepository;
 import studio.thumbsup.server.quiz.course.CourseRepository;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizJsonFixture;
@@ -43,6 +44,9 @@ class AuthoringPublishIntegrationTest extends AcceptanceTestSupport {
     private QuizRepository quizRepository;
 
     @Autowired
+    private QuizStepBriefingRepository briefingRepository;
+
+    @Autowired
     private DatabaseCleanUp databaseCleanUp;
 
     @BeforeEach
@@ -65,6 +69,12 @@ class AuthoringPublishIntegrationTest extends AcceptanceTestSupport {
         assertThat(quizStepRepository.findAll())
                 .allSatisfy(step -> assertThat(step.getEstimatedMinutes()).isEqualTo(3));
         assertThat(quizRepository.count()).isEqualTo(15);
+        assertThat(briefingRepository.count()).isEqualTo(3);
+        quizStepRepository.findAll().forEach(step -> assertThat(briefingRepository
+                        .findWithBlocksByQuizStepId(step.getId())
+                        .orElseThrow()
+                        .getBlocks())
+                .hasSize(2));
         AuthoringOutline published = outlineRepository.findById(outline.getId()).orElseThrow();
         assertThat(published.getStatus()).isEqualTo(AuthoringOutlineStatus.PUBLISHED);
         assertThat(published.getPublishedCourseId()).isEqualTo(response.courseId());
@@ -127,6 +137,7 @@ class AuthoringPublishIntegrationTest extends AcceptanceTestSupport {
         assertThat(courseRepository.count()).isZero();
         assertThat(quizStepRepository.count()).isZero();
         assertThat(quizRepository.count()).isZero();
+        assertThat(briefingRepository.count()).isZero();
         assertThat(outlineRepository.findById(outline.getId()).orElseThrow().isPublished())
                 .isFalse();
     }
@@ -149,7 +160,8 @@ class AuthoringPublishIntegrationTest extends AcceptanceTestSupport {
         for (int index = 1; index <= stepCount; index++) {
             AuthoringOutlineStep step = stepRepository.saveAndFlush(
                     AuthoringOutlineStep.create(outline.getId(), index, "스텝 " + index, "학습 목표"));
-            String payload = index == invalidStepIndex ? "{\"quizzes\":[]}" : payloadFor(preset);
+            String payload =
+                    index == invalidStepIndex ? GeneratedQuizJsonFixture.invalidStepContentJson() : payloadFor(preset);
             QuizDraft draft =
                     draftRepository.saveAndFlush(QuizDraft.createForOutlineStep("스텝 " + index, payload, preset, 7L));
             if (!unapprovedSteps.contains(index)) {
@@ -164,7 +176,7 @@ class AuthoringPublishIntegrationTest extends AcceptanceTestSupport {
 
     private String payloadFor(QuizPreset preset) {
         return preset == QuizPreset.LIGHT_3
-                ? GeneratedQuizJsonFixture.light3SetJson()
-                : GeneratedQuizJsonFixture.validSetJson();
+                ? GeneratedQuizJsonFixture.light3StepContentJson()
+                : GeneratedQuizJsonFixture.validStepContentJson();
     }
 }
