@@ -222,7 +222,7 @@ public class AuthoringJobService {
 
     private void handleGenerateResult(GenerationJob job, String resultJson) {
         GeneratedQuizSet generated = validator.parse(resultJson);
-        validator.validateSet(generated, job.getPreset());
+        validator.validateStepContent(generated, job.getPreset());
         if (job.getOutlineStepId() == null) {
             draftService.createFromGenerate(job, generated);
         } else {
@@ -292,7 +292,9 @@ public class AuthoringJobService {
     private void validateReviewResult(GenerationJob job, ReviewResult result) {
         QuizDraft draft = draftService.getOrThrow(job.getDraftId());
         if (draft.getOrigin() != QuizDraftOrigin.IMPROVE) {
-            validator.validateSet(new GeneratedQuizSet(result.quizzes()), draft.getPreset());
+            validator.validateStepContent(
+                    new GeneratedQuizSet(result.schemaVersion(), result.briefing(), result.quizzes()),
+                    draft.getPreset());
             return;
         }
         List<GeneratedQuizSet.GeneratedQuiz> quizzes = result.quizzes();
@@ -313,13 +315,19 @@ public class AuthoringJobService {
         } else if (job.getKind() == GenerationJobKind.OUTLINE) {
             schema = AuthoringOutputSchemas.OUTLINE;
         } else {
-            schema = AuthoringOutputSchemas.REVIEW;
+            schema = job.getDraftId() == null || draftRequiresBriefing(job.getDraftId())
+                    ? AuthoringOutputSchemas.REVIEW_WITH_BRIEFING
+                    : AuthoringOutputSchemas.REVIEW;
         }
         try {
             return objectMapper.readTree(schema);
         } catch (JsonProcessingException e) {
             throw new QuizGenerationException("output schema를 JSON으로 파싱하지 못했습니다.", e);
         }
+    }
+
+    private boolean draftRequiresBriefing(Long draftId) {
+        return draftService.getOrThrow(draftId).getOrigin() != QuizDraftOrigin.IMPROVE;
     }
 
     private GenerationJob findJobOrThrow(Long jobId) {
@@ -364,7 +372,7 @@ public class AuthoringJobService {
 
     private String improveReviewPrompt(Quiz sourceQuiz, String stepTopic, String currentPayloadJson, String feedback) {
         List<String> siblingQuestions = siblingQuestionTexts(sourceQuiz);
-        return AuthoringPromptFactory.reviewPrompt(stepTopic, currentPayloadJson, feedback, siblingQuestions);
+        return AuthoringPromptFactory.reviewPrompt(stepTopic, currentPayloadJson, feedback, siblingQuestions, false);
     }
 
     private List<String> siblingQuestionTexts(Quiz sourceQuiz) {
