@@ -74,11 +74,16 @@ class QuizStepBriefingAcceptanceTest extends AcceptanceTestSupport {
         }
     }
 
-    @Test
-    @DisplayName("인증 없이 브리핑을 조회하면 401을 반환한다")
-    void rejects_unauthenticated_briefing_request() throws Exception {
-        mockMvc.perform(get("/api/v1/courses/{courseId}/next-step/briefing", OS_COURSE_ID))
-                .andExpect(status().isUnauthorized());
+    @Nested
+    @DisplayName("인증")
+    class Authentication {
+
+        @Test
+        @DisplayName("인증 없이 브리핑을 조회하면 401을 반환한다")
+        void rejects_unauthenticated_briefing_request() throws Exception {
+            mockMvc.perform(get("/api/v1/courses/{courseId}/next-step/briefing", OS_COURSE_ID))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     private String bearerToken() {
