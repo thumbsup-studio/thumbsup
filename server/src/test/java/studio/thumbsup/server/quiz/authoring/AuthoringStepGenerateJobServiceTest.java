@@ -146,7 +146,7 @@ class AuthoringStepGenerateJobServiceTest {
                     .willReturn(draft);
 
             GenerationJob result =
-                    service.submitResult(7L, 201L, BridgeCli.CLAUDE, GeneratedQuizJsonFixture.light3SetJson());
+                    service.submitResult(7L, 201L, BridgeCli.CLAUDE, GeneratedQuizJsonFixture.light3StepContentJson());
 
             assertThat(result.getStatus()).isEqualTo(GenerationJobStatus.SUCCEEDED);
             verify(draftService).createFromGenerate(eq(job), any(GeneratedQuizSet.class), eq(QuizPreset.LIGHT_3));
@@ -161,7 +161,7 @@ class AuthoringStepGenerateJobServiceTest {
             given(generationJobRepository.findById(202L)).willReturn(Optional.of(job));
 
             GenerationJob result =
-                    service.submitResult(7L, 202L, BridgeCli.CLAUDE, GeneratedQuizJsonFixture.validSetJson());
+                    service.submitResult(7L, 202L, BridgeCli.CLAUDE, GeneratedQuizJsonFixture.validStepContentJson());
 
             assertThat(result.getStatus()).isEqualTo(GenerationJobStatus.FAILED);
             assertThat(result.getError()).contains("3개가 아닙니다");

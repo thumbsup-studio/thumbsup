@@ -118,7 +118,8 @@ class AuthoringApprovalIntegrationTest extends AcceptanceTestSupport {
         long quizCountBefore = quizRepository.count();
 
         GenerationJob job = generationJobRepository.save(GenerationJob.createGenerate(1L, "네트워크", "prompt"));
-        GeneratedQuizSet set = objectMapper.readValue(GeneratedQuizJsonFixture.validSetJson(), GeneratedQuizSet.class);
+        GeneratedQuizSet set =
+                objectMapper.readValue(GeneratedQuizJsonFixture.validStepContentJson(), GeneratedQuizSet.class);
         QuizDraft draft = draftService.createFromGenerate(job, set); // job.attachDraft(...) — 아직 detached라 DB엔 미반영
         // 잡을 QUEUED로 남겨두면 승인 가드(활성 잡 검사)가 막는다 — 실제 흐름처럼 종결 상태로 만든다.
         job.succeed(BridgeCli.CLAUDE, Instant.now());
@@ -139,7 +140,8 @@ class AuthoringApprovalIntegrationTest extends AcceptanceTestSupport {
     void 뼈대_스텝_draft_승인은_라이브에_쓰지_않는다() throws Exception {
         long stepCountBefore = quizStepRepository.count();
         long quizCountBefore = quizRepository.count();
-        GeneratedQuizSet set = objectMapper.readValue(GeneratedQuizJsonFixture.light3SetJson(), GeneratedQuizSet.class);
+        GeneratedQuizSet set =
+                objectMapper.readValue(GeneratedQuizJsonFixture.light3StepContentJson(), GeneratedQuizSet.class);
         QuizDraft draft = quizDraftRepository.saveAndFlush(
                 QuizDraft.createForOutlineStep("네트워크", objectMapper.writeValueAsString(set), QuizPreset.LIGHT_3, 1L));
 
