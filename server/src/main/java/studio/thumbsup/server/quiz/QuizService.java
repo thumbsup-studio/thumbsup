@@ -74,19 +74,10 @@ public class QuizService {
      * 코스 선택 UI가 아직 없는 앱이 courseId 없이 호출해도 기존과 동일하게 동작한다.
      */
     public QuizNextResponse getNextQuiz(Long userId, Long courseId) {
-        Long resolvedCourseId = resolveCourseId(courseId);
-        int stepOrder = quizProgressRepository
-                .findByUserIdAndCourseId(userId, resolvedCourseId)
-                .map(QuizProgress::getCurrentStepOrder)
-                .orElseGet(() -> initialStepOrder(resolvedCourseId));
-
-        // 코스를 완주해 커서가 그 코스의 마지막 스텝을 넘으면 완주로 응답한다.
-        int maxStepOrder = quizStepRepository
-                .findMaxStepOrderByCourseId(resolvedCourseId)
-                .orElseThrow(() -> new BusinessException(QuizErrorType.QUIZ_NOT_FOUND));
-        if (stepOrder > maxStepOrder) {
-            throw new BusinessException(QuizErrorType.QUIZ_STEP_COMPLETED);
-        }
+        CurrentQuizStepResolver.CurrentQuizStep currentStep = CurrentQuizStepResolver.resolve(
+                userId, courseId, courseRepository, quizProgressRepository, quizStepRepository);
+        Long resolvedCourseId = currentStep.courseId();
+        int stepOrder = currentStep.stepOrder();
 
         QuizStep step = quizStepRepository
                 .findByCourseIdAndStepOrder(resolvedCourseId, stepOrder)
