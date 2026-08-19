@@ -158,6 +158,7 @@ class AuthoringApprovalServiceTest {
 
             verify(validator).validateStepContent(set, QuizPreset.LIGHT_3);
             verify(quizPersister, never()).persist("운영체제", set);
+            verify(quizPersister, never()).persistStep("운영체제", set);
             assertThat(result.getStatus()).isEqualTo(QuizDraftStatus.APPROVED);
             assertThat(result.getApprovedBy()).isEqualTo(9L);
         }

@@ -43,7 +43,7 @@ final class GeneratedStepBriefingValidator {
         if (value == null || value.isBlank()) {
             throw new QuizGenerationException("%s의 %s이 비어 있습니다.".formatted(location, field));
         }
-        if (value.trim().length() > maxLength) {
+        if (value.length() > maxLength) {
             throw new QuizGenerationException("%s의 %s은 %d자 이하여야 합니다.".formatted(location, field, maxLength));
         }
     }

@@ -91,6 +91,23 @@ class GeneratedStepBriefingValidationTest {
         }
 
         @Test
+        @DisplayName("저장되는 선행·후행 공백도 길이에 포함해 거부한다")
+        void rejects_whitespace_that_exceeds_persisted_length() {
+            assertThatThrownBy(() -> validator.validateBriefing(
+                            new GeneratedQuizSet.GeneratedBriefing(" " + "가".repeat(500), validBlocks())))
+                    .isInstanceOf(QuizGenerationException.class)
+                    .hasMessageContaining("summary은 500자 이하");
+            assertThatThrownBy(() -> validator.validateBriefing(new GeneratedQuizSet.GeneratedBriefing(
+                            "요약",
+                            List.of(
+                                    new GeneratedQuizSet.GeneratedBriefingBlock(
+                                            QuizStepBriefingBlockType.CONCEPT, "핵심 ", "가".repeat(2000) + " "),
+                                    validBlocks().get(1)))))
+                    .isInstanceOf(QuizGenerationException.class)
+                    .hasMessageContaining("content은 2000자 이하");
+        }
+
+        @Test
         @DisplayName("구형 schemaVersion은 문제 세트가 정상이어도 스텝 콘텐츠로 거부한다")
         void rejects_legacy_schema_version() {
             GeneratedQuizSet legacySet = validator.parse(stepContentJson(1));
