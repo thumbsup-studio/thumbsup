@@ -19,36 +19,47 @@ class QuizStepBriefingBackfillMigrationSafetyTest extends MigrationTestSupport {
 
     private static final int LIVE_STEP_COUNT = 14;
 
-    @Test
-    @DisplayName("모든 라이브 스텝에 브리핑 하나와 1부터 연속된 블록을 백필한다")
-    void backfills_one_briefing_with_continuous_blocks_for_every_live_step() throws SQLException {
-        flyway().target(MigrationVersion.fromVersion("20260818232213")).load().migrate();
+    @Nested
+    @DisplayName("승인된 브리핑 백필")
+    class BackfillApprovedBriefings {
 
-        flyway().load().migrate();
+        @Test
+        @DisplayName("모든 라이브 스텝에 브리핑 하나와 1부터 연속된 블록을 백필한다")
+        void backfills_one_briefing_with_continuous_blocks_for_every_live_step() throws SQLException {
+            flyway().target(MigrationVersion.fromVersion("20260818232213"))
+                    .load()
+                    .migrate();
 
-        assertThat(queryCount("SELECT COUNT(*) FROM quiz_step WHERE step_order > 0"))
-                .isEqualTo(LIVE_STEP_COUNT);
-        assertThat(queryCount("""
-                SELECT COUNT(*)
-                FROM quiz_step qs
-                LEFT JOIN quiz_step_briefing qsb ON qsb.quiz_step_id = qs.id
-                WHERE qs.step_order > 0
-                  AND qsb.id IS NULL
-                """)).isZero();
-        assertThat(queryCount("""
-                SELECT COUNT(*)
-                FROM (
-                    SELECT qsb.id
-                    FROM quiz_step qs
-                    JOIN quiz_step_briefing qsb ON qsb.quiz_step_id = qs.id
-                    LEFT JOIN quiz_step_briefing_block qsbb ON qsbb.briefing_id = qsb.id
-                    WHERE qs.step_order > 0
-                    GROUP BY qsb.id
-                    HAVING COUNT(qsbb.id) NOT BETWEEN 2 AND 4
-                        OR MIN(qsbb.display_order) <> 1
-                        OR MAX(qsbb.display_order) <> COUNT(qsbb.id)
-                ) invalid_briefings
-                """)).isZero();
+            flyway().load().migrate();
+
+            assertThat(queryCount("SELECT COUNT(*) FROM quiz_step WHERE step_order > 0"))
+                    .isEqualTo(LIVE_STEP_COUNT);
+            assertThat(queryCount("""
+                    SELECT COUNT(*)
+                    FROM (
+                        SELECT qs.id
+                        FROM quiz_step qs
+                        LEFT JOIN quiz_step_briefing qsb ON qsb.quiz_step_id = qs.id
+                        WHERE qs.step_order > 0
+                        GROUP BY qs.id
+                        HAVING COUNT(DISTINCT qsb.id) <> 1
+                    ) invalid_steps
+                    """)).isZero();
+            assertThat(queryCount("""
+                    SELECT COUNT(*)
+                    FROM (
+                        SELECT qsb.id
+                        FROM quiz_step qs
+                        JOIN quiz_step_briefing qsb ON qsb.quiz_step_id = qs.id
+                        LEFT JOIN quiz_step_briefing_block qsbb ON qsbb.briefing_id = qsb.id
+                        WHERE qs.step_order > 0
+                        GROUP BY qsb.id
+                        HAVING COUNT(qsbb.id) NOT BETWEEN 2 AND 4
+                            OR MIN(qsbb.display_order) <> 1
+                            OR MAX(qsbb.display_order) <> COUNT(qsbb.id)
+                    ) invalid_briefings
+                    """)).isZero();
+        }
     }
 
     @Nested
