@@ -13,18 +13,12 @@ export default async function ReviewDone({ searchParams }: ReviewDoneRouteProps)
   const context = parseReviewContext(await searchParams);
 
   if (!context) {
-    redirect("/history/review");
+    redirect("/course");
   }
 
   return (
     <RequireAuth>
-      <ReviewSummaryPage
-        correct={context.correct}
-        single={context.single}
-        slot={context.slot}
-        step={context.step}
-        topic={context.topic}
-      />
+      <ReviewSummaryPage correct={context.correct} step={context.step} topic={context.topic} />
     </RequireAuth>
   );
 }

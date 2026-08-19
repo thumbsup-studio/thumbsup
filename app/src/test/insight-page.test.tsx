@@ -380,15 +380,7 @@ describe("InsightPage", () => {
       <InsightPage
         correct
         quizId={7}
-        review={{
-          step: 2,
-          slot: 5,
-          correct: 3,
-          streak: 3,
-          topic: "문맥 전환",
-          single: false,
-          resumeSlot: 5,
-        }}
+        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환", resumeSlot: 5 }}
       />,
     );
 

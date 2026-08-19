@@ -134,22 +134,14 @@ export function HistoryGraphPage() {
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5">
-        <header className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold tracking-wide text-ink-muted">히스토리</p>
-            <h1 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
-              지식 그래프
-            </h1>
-            <p className="mt-2 text-sm font-medium leading-6 text-ink-muted">
-              배운 개념이 어떻게 이어지는지 한눈에 확인해요.
-            </p>
-          </div>
-          <Link
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-control bg-primary px-4 text-sm font-bold text-primary-fg shadow-card"
-            href="/history/review"
-          >
-            복습하기
-          </Link>
+        <header>
+          <p className="text-xs font-semibold tracking-wide text-ink-muted">히스토리</p>
+          <h1 className="mt-1 break-keep text-2xl font-semibold tracking-tight text-balance text-ink">
+            지식 그래프
+          </h1>
+          <p className="mt-2 text-sm font-medium leading-6 text-ink-muted">
+            배운 개념이 어떻게 이어지는지 한눈에 확인해요.
+          </p>
         </header>
 
         <p aria-live="polite" className="sr-only">

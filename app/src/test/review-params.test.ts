@@ -15,7 +15,6 @@ function baseContext(overrides: Partial<ReviewContext> = {}): ReviewContext {
     correct: 1,
     streak: 1,
     topic: "동기화",
-    single: false,
     resumeSlot: 2,
     ...overrides,
   };

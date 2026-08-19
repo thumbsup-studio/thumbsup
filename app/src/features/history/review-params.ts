@@ -2,9 +2,8 @@
  * 복습(완료 스텝 재풀이) 흐름의 URL 파라미터 규약을 한 곳에 모은다.
  *
  * 재풀이는 기존 문제풀이(`/play`)·해설(`/insight`) 화면을 그대로 재사용하되,
- * 진행 상태를 서버가 아니라 URL로 들고 다닌다. 두 가지 모드가 있다:
- *   - 전체 복습: "슬롯 1→5를 순서대로" — 목록 → /play(slot 1) → /insight → /play(slot 2) → … → /insight(slot 5) → /history/done
- *   - 단건 복습(single=1): 고른 슬롯 하나만 풀고 곧장 /history/done으로 (다른 슬롯으로 이어지지 않음)
+ * 진행 상태를 서버가 아니라 URL로 들고 다닌다 — "슬롯 1→5를 순서대로":
+ * 코스 탭(완료 스텝 클릭) → /play(slot 1) → /insight → /play(slot 2) → … → /insight(slot 5) → /history/done
  * 정답 누계(rc), 연속 정답 수(rs), 스텝 주제명(topic)도 URL로 이어받아 완료 요약까지 전달한다(무상태).
  *
  * 이전/건너뛰기(이슈 303·304): `resumeSlot`은 실제로 도달한 가장 앞선 슬롯("라이브 에지")이다.
@@ -30,8 +29,6 @@ export type ReviewContext = {
   streak: number;
   /** 완료 요약에 표시할 스텝 주제명 */
   topic: string;
-  /** true면 스텝 전체가 아니라 고른 문제 하나만 푸는 단건 복습 — 풀자마자 완료로 간다. */
-  single: boolean;
   /** 실제로 도달한 가장 앞선 슬롯 — slot이 이보다 작으면 미리보기(재제출 불가) 상태다. */
   resumeSlot: number;
 };
@@ -42,7 +39,6 @@ export type ReviewSearchParams = {
   rc?: string;
   rs?: string;
   topic?: string;
-  single?: string;
   rsm?: string;
 };
 
@@ -65,7 +61,6 @@ export function parseReviewContext(params: ReviewSearchParams | undefined): Revi
     correct: toInt(params?.rc, 0) ?? 0,
     streak: toInt(params?.rs, 0) ?? 0,
     topic: params?.topic ?? "",
-    single: params?.single === "1",
     // 옛 링크(이 필드가 생기기 전)는 rsm이 없다 — 그때는 slot 자체가 라이브 에지였다고 본다.
     resumeSlot: toInt(params?.rsm, slot) ?? slot,
   };
@@ -79,13 +74,12 @@ function buildHref(path: string, ctx: ReviewContext, extra?: Record<string, stri
     rs: String(ctx.streak),
     topic: ctx.topic,
     rsm: String(ctx.resumeSlot),
-    ...(ctx.single ? { single: "1" } : {}),
     ...extra,
   });
   return `${path}?${query.toString()}`;
 }
 
-/** 복습 목록 카드 → 해당 스텝의 슬롯 1부터 재풀이 시작(정답 누계 0). */
+/** 코스 탭에서 완료 스텝을 누르면 → 그 스텝의 슬롯 1부터 재풀이 시작(정답 누계 0). */
 export function reviewStartHref(step: number, topic: string): string {
   return buildHref(REVIEW_PLAY_PATH, {
     step,
@@ -93,21 +87,7 @@ export function reviewStartHref(step: number, topic: string): string {
     correct: 0,
     streak: 0,
     topic,
-    single: false,
     resumeSlot: 1,
-  });
-}
-
-/** 문제 번호 선택 → 그 문제 하나만 재풀이. 풀면 곧장 완료 화면으로 간다(다른 슬롯으로 이어지지 않음). */
-export function reviewSingleHref(step: number, slot: number, topic: string): string {
-  return buildHref(REVIEW_PLAY_PATH, {
-    step,
-    slot,
-    correct: 0,
-    streak: 0,
-    topic,
-    single: true,
-    resumeSlot: slot,
   });
 }
 
@@ -164,9 +144,9 @@ export function reviewDoneHref(ctx: ReviewContext): string {
   return buildHref(REVIEW_DONE_PATH, ctx);
 }
 
-/** 현재 슬롯이 이번 재풀이의 마지막인지 — 단건 복습은 항상 마지막, 전체 복습은 5번째 슬롯일 때. */
+/** 현재 슬롯이 이번 재풀이의 마지막(5번째)인지. */
 export function isLastReviewSlot(ctx: ReviewContext): boolean {
-  return ctx.single || ctx.slot >= REVIEW_STEP_TOTAL;
+  return ctx.slot >= REVIEW_STEP_TOTAL;
 }
 
 /** 이미 지나온 문제를 다시 보는 중인지(이슈 304) — 미리보기 중엔 재제출을 막는다. */
