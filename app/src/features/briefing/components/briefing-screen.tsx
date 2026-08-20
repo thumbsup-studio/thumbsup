@@ -97,21 +97,13 @@ export function BriefingScreen({ courseId }: { courseId?: number }) {
 
   return (
     <BriefingShell>
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-ink-muted">
-            STEP {briefing.stepOrder} · 문제 전 워밍업
-          </p>
-          <h1 className="mt-1 break-keep text-2xl font-bold tracking-tight text-ink">
-            {briefing.topic}
-          </h1>
-        </div>
-        <Link
-          className="flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold text-ink-muted"
-          href={playHref}
-        >
-          건너뛰기
-        </Link>
+      <header>
+        <p className="text-xs font-semibold tracking-wide text-ink-muted">
+          STEP {briefing.stepOrder} · 문제 전 워밍업
+        </p>
+        <h1 className="mt-1 break-keep text-2xl font-bold tracking-tight text-ink">
+          {briefing.topic}
+        </h1>
       </header>
 
       <BriefingContent

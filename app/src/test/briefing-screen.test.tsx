@@ -39,7 +39,7 @@ describe("BriefingScreen", () => {
     vi.restoreAllMocks();
   });
 
-  it("브리핑을 요약과 제목만 먼저 보여주고 두 CTA가 같은 stepId 문제 경로를 가리킨다", async () => {
+  it("브리핑을 요약과 제목만 먼저 보여주고 문제 풀이로 이어진다", async () => {
     vi.mocked(getNextStepBriefing).mockResolvedValue(briefing);
 
     render(<BriefingScreen courseId={2} />);
@@ -58,10 +58,7 @@ describe("BriefingScreen", () => {
       "aria-expanded",
       "false",
     );
-    expect(screen.getByRole("link", { name: "건너뛰기" })).toHaveAttribute(
-      "href",
-      "/play?courseId=2&stepId=42",
-    );
+    expect(screen.queryByRole("link", { name: "건너뛰기" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "문제 풀기" })).toHaveAttribute(
       "href",
       "/play?courseId=2&stepId=42",
