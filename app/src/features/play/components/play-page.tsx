@@ -18,7 +18,7 @@ import {
 } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
-import { COURSE_LIST_PATH } from "@/features/play/course-params";
+import { buildPlayHref, COURSE_LIST_PATH } from "@/features/play/course-params";
 import {
   comboVisibleFrom,
   difficultyLabels,
@@ -32,8 +32,10 @@ import {
   recordAnswer,
   resetSession,
 } from "@/features/play/session-progress";
+import { ApiError } from "@/lib/api";
 import {
   getNextQuiz,
+  getNextQuizForStep,
   getStepQuiz,
   type QuizChoice,
   type QuizNextResponse,
@@ -50,11 +52,13 @@ const optionLabels = ["A", "B", "C", "D"];
 type PlayPageProps = {
   /** 코스 탭에서 특정 코스로 진입했을 때만 실린다. 생략 시 서버 기본 코스. 복습 모드에선 쓰이지 않는다. */
   courseId?: number;
+  /** 브리핑에서 확정한 현재 스텝 ID. 없으면 기존 courseId 기반 직접 진입 계약을 유지한다. */
+  quizStepId?: number;
   /** 값이 있으면 완료 스텝 재풀이(복습) 모드 — 문제를 슬롯 순서로 받아 진행한다. */
   review?: ReviewContext | null;
 };
 
-export function PlayPage({ courseId, review }: PlayPageProps) {
+export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
   const router = useRouter();
   const [quiz, setQuiz] = useState<QuizNextResponse | null>(null);
   const [draft, setDraft] = useState<AnswerDraft>(null);
@@ -149,7 +153,9 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
         const nextQuiz =
           reviewStep !== null && reviewSlot !== null
             ? await getStepQuiz(reviewStep, reviewSlot)
-            : await getNextQuiz(courseId);
+            : quizStepId
+              ? await getNextQuizForStep(quizStepId)
+              : await getNextQuiz(courseId);
         if (!ignore) {
           // 스트릭(연속 정답)은 일반 학습 세션에서만 추적 — 복습은 세션 진행으로 치지 않는다.
           if (reviewStep === null && nextQuiz.slotOrder === 1) {
@@ -160,6 +166,16 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
       } catch (loadError) {
         if (isUnauthorized(loadError)) {
           router.replace("/login");
+          return;
+        }
+        if (
+          quizStepId &&
+          loadError instanceof ApiError &&
+          (loadError.status === 403 ||
+            loadError.code === "QUIZ_STEP_NOT_CURRENT" ||
+            loadError.code === "QUIZ_STEP_COMPLETED")
+        ) {
+          router.replace(buildPlayHref(courseId));
           return;
         }
 
@@ -179,7 +195,7 @@ export function PlayPage({ courseId, review }: PlayPageProps) {
       ignore = true;
       hintRequestGeneration.current += 1;
     };
-  }, [reloadKey, router, reviewStep, reviewSlot, courseId]);
+  }, [reloadKey, router, reviewStep, reviewSlot, courseId, quizStepId]);
 
   async function showHint() {
     if (!quiz || requestedHint || isHintLoading || isSubmitting || hasUsedRetry) {

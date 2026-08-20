@@ -88,7 +88,7 @@ describe("CoursePage", () => {
     );
 
     const solvableLink = screen.getByRole("link", { name: /동기화/ });
-    expect(solvableLink).toHaveAttribute("href", "/play?courseId=1");
+    expect(solvableLink).toHaveAttribute("href", "/briefing?courseId=1");
   });
 
   it("잠긴 스텝은 링크가 없고 클릭할 수 없다", async () => {

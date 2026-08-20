@@ -1,7 +1,7 @@
 import { RequireAuth } from "@/features/auth/require-auth";
 import { parseReviewContext, type ReviewSearchParams } from "@/features/history/review-params";
 import { PlayPage } from "@/features/play/components/play-page";
-import { type CourseSearchParams, parseCourseId } from "@/features/play/course-params";
+import { type CourseSearchParams, parseCourseId, parseStepId } from "@/features/play/course-params";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +13,11 @@ export default async function Play({ searchParams }: PlayRouteProps) {
   const params = await searchParams;
   const review = parseReviewContext(params);
   const courseId = parseCourseId(params?.courseId);
+  const stepId = parseStepId(params?.stepId);
 
   return (
     <RequireAuth>
-      <PlayPage courseId={courseId} review={review} />
+      <PlayPage courseId={courseId} quizStepId={stepId} review={review} />
     </RequireAuth>
   );
 }

@@ -85,7 +85,7 @@ describe("HomePage", () => {
     expect(screen.getByText("3분이면 끝나요")).toBeInTheDocument();
   });
 
-  it("links each course card to the play page with its courseId", () => {
+  it("links each incomplete course card to its briefing", () => {
     render(
       <AppToastProvider>
         <HomePage data={baseData} now={new Date("2026-07-08T08:00:00+09:00")} />
@@ -94,7 +94,7 @@ describe("HomePage", () => {
 
     expect(screen.getByRole("link", { name: "시작하기" })).toHaveAttribute(
       "href",
-      "/play?courseId=1",
+      "/briefing?courseId=1",
     );
   });
 
@@ -124,8 +124,8 @@ describe("HomePage", () => {
 
     // 서버가 준 최근 푼 순서를 그대로 렌더한다 — 디자인 패턴(최근)이 먼저.
     const links = screen.getAllByRole("link", { name: "시작하기" });
-    expect(links[0]).toHaveAttribute("href", "/play?courseId=2");
-    expect(links[1]).toHaveAttribute("href", "/play?courseId=1");
+    expect(links[0]).toHaveAttribute("href", "/briefing?courseId=2");
+    expect(links[1]).toHaveAttribute("href", "/briefing?courseId=1");
     expect(screen.getByText("디자인 패턴")).toBeInTheDocument();
     expect(screen.getByText("운영체제")).toBeInTheDocument();
     // 위치 문구는 aria-live로 감싸 스와이프 전환도 스크린리더에 안내한다(TC-23-27).
@@ -196,23 +196,15 @@ describe("HomePage", () => {
     expect(screen.queryByText("스텝 진행중")).not.toBeInTheDocument();
   });
 
-  it("shows the list rule tooltip on hover and hides it on leave", () => {
+  it("shows the recent-course list rule without requiring hover", () => {
     render(
       <AppToastProvider>
         <HomePage data={baseData} now={new Date("2026-07-08T08:00:00+09:00")} />
       </AppToastProvider>,
     );
 
-    const infoButton = screen.getByRole("button", { name: "최근 학습 코스 안내" });
-    fireEvent.mouseEnter(infoButton);
     expect(screen.getByText(/최대 10개까지 보여드려요/)).toBeInTheDocument();
     expect(screen.getByText(/하단의 코스 탭에서 볼 수 있어요/)).toBeInTheDocument();
-    fireEvent.mouseLeave(infoButton);
-    expect(screen.queryByText(/최대 10개까지 보여드려요/)).not.toBeInTheDocument();
-
-    // 터치 환경은 호버가 없으므로 탭(클릭) 토글로도 열린다.
-    fireEvent.click(infoButton);
-    expect(screen.getByText(/최대 10개까지 보여드려요/)).toBeInTheDocument();
   });
 
   it("renders a single course without the position indicator", () => {

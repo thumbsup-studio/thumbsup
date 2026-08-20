@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getNextQuiz, getQuizExplanation, requestQuizHint, submitQuizAnswer } from "@/lib/api/quiz";
+import {
+  getNextQuiz,
+  getNextQuizForStep,
+  getNextStepBriefing,
+  getQuizExplanation,
+  requestQuizHint,
+  submitQuizAnswer,
+} from "@/lib/api/quiz";
 import { tokenStore } from "@/lib/api/token-store";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -77,6 +84,41 @@ describe("quiz api", () => {
     await getNextQuiz(2);
 
     expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/quizzes/next?courseId=2");
+  });
+
+  it("현재 코스 스텝의 브리핑을 요청한다", async () => {
+    tokenStore.set({ accessToken: "acc", refreshToken: "ref" });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        200,
+        envelope("SUCCESS", {
+          quizStepId: 42,
+          courseId: 2,
+          stepOrder: 3,
+          topic: "CPU 스케줄링",
+          summary: "CPU 실행 순서를 학습합니다.",
+          blocks: [],
+        }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const briefing = await getNextStepBriefing(2);
+
+    expect(briefing.quizStepId).toBe(42);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/courses/2/next-step/briefing");
+  });
+
+  it("quizStepId로 해당 스텝의 다음 문제를 요청한다", async () => {
+    tokenStore.set({ accessToken: "acc", refreshToken: "ref" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, envelope("SUCCESS", { quizId: 20 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getNextQuizForStep(42);
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/api/v1/quiz-steps/42/quizzes/next");
   });
 
   it("submits answers as ordered string values", async () => {

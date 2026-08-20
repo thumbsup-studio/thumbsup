@@ -1,7 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
-import { getNextQuiz, getStepQuiz, requestQuizHint, submitQuizAnswer } from "@/lib/api/quiz";
+import { ApiError } from "@/lib/api";
+import {
+  getNextQuiz,
+  getNextQuizForStep,
+  getStepQuiz,
+  requestQuizHint,
+  submitQuizAnswer,
+} from "@/lib/api/quiz";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
@@ -14,6 +21,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/api/quiz", () => ({
   getNextQuiz: vi.fn(),
+  getNextQuizForStep: vi.fn(),
   getStepQuiz: vi.fn(),
   requestQuizHint: vi.fn(),
   submitQuizAnswer: vi.fn(),
@@ -72,6 +80,7 @@ describe("PlayPage", () => {
     mockRouter.push.mockClear();
     mockRouter.replace.mockClear();
     vi.mocked(getNextQuiz).mockReset();
+    vi.mocked(getNextQuizForStep).mockReset();
     vi.mocked(getStepQuiz).mockReset();
     vi.mocked(requestQuizHint).mockReset();
     vi.mocked(submitQuizAnswer).mockReset();
@@ -96,6 +105,32 @@ describe("PlayPage", () => {
       expect(submitQuizAnswer).toHaveBeenCalledWith(7, ["O"]);
     });
     expect(mockRouter.push).toHaveBeenCalledWith("/insight?quizId=7&correct=true&streak=1");
+  });
+
+  it("브리핑에서 받은 quizStepId로 해당 스텝의 다음 문제를 불러온다", async () => {
+    vi.mocked(getNextQuizForStep).mockResolvedValue(oxQuiz);
+
+    render(<PlayPage courseId={2} quizStepId={42} />);
+
+    expect(await screen.findByText("프로세스는 자원을 독립적으로 가진다.")).toBeInTheDocument();
+    expect(getNextQuizForStep).toHaveBeenCalledWith(42);
+    expect(getNextQuiz).not.toHaveBeenCalled();
+  });
+
+  it("브리핑 스텝이 더는 현재 스텝이 아니면 courseId 기반 직접 진입으로 복구한다", async () => {
+    vi.mocked(getNextQuizForStep).mockRejectedValue(
+      new ApiError({
+        code: "QUIZ_STEP_NOT_CURRENT",
+        status: 409,
+        message: "현재 풀이할 스텝이 아닙니다.",
+      }),
+    );
+
+    render(<PlayPage courseId={2} quizStepId={42} />);
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith("/play?courseId=2");
+    });
   });
 
   it("스텝의 문제 수가 5가 아니어도 서버가 준 totalCount로 표시한다", async () => {
