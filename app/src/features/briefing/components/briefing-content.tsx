@@ -52,20 +52,16 @@ export function BriefingContent({
         <ol className="divide-y divide-border">
           {orderedBlocks.map((block) => (
             <li className="px-5 py-4" key={`${block.displayOrder}-${block.heading}`}>
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 shrink-0 text-xs font-semibold text-ink-muted">
-                  {BLOCK_LABEL[block.type]}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <Heading className="break-keep text-base font-bold text-ink">
-                    {block.heading}
-                  </Heading>
-                  {expanded ? (
-                    <p className="mt-2 whitespace-pre-wrap break-keep text-sm leading-relaxed text-ink-muted">
-                      {block.content}
-                    </p>
-                  ) : null}
-                </div>
+              <div className="flex flex-col items-start gap-2">
+                <Chip tone={BLOCK_TONE[block.type]}>{BLOCK_LABEL[block.type]}</Chip>
+                <Heading className="break-keep text-base font-bold text-ink">
+                  {block.heading}
+                </Heading>
+                {expanded ? (
+                  <p className="whitespace-pre-wrap break-keep text-sm leading-relaxed text-ink-muted">
+                    {block.content}
+                  </p>
+                ) : null}
               </div>
             </li>
           ))}
