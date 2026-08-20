@@ -24,6 +24,7 @@ type LoadState =
 export function BriefingScreen({ courseId }: { courseId?: number }) {
   const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [isDetailExpanded, setIsDetailExpanded] = useState(false);
 
   const load = useCallback(async () => {
     if (!courseId) return;
@@ -113,7 +114,23 @@ export function BriefingScreen({ courseId }: { courseId?: number }) {
         </Link>
       </header>
 
-      <BriefingContent blocks={briefing.blocks} summary={briefing.summary} />
+      <BriefingContent
+        blocks={briefing.blocks}
+        expanded={isDetailExpanded}
+        headingLevel="h3"
+        summary={briefing.summary}
+        variant="overview"
+      />
+
+      <Button
+        aria-controls="briefing-content"
+        aria-expanded={isDetailExpanded}
+        className="self-center"
+        onClick={() => setIsDetailExpanded((expanded) => !expanded)}
+        variant="secondary"
+      >
+        {isDetailExpanded ? "간단히 보기" : "자세히 읽기"}
+      </Button>
 
       <div className="sticky bottom-4 mt-auto rounded-card border border-border bg-surface p-3 shadow-card">
         <Link
@@ -142,10 +159,8 @@ function BriefingSkeleton() {
         <Skeleton className="h-4 w-36" />
         <Skeleton className="h-8 w-52" />
       </div>
-      <Skeleton className="h-28 w-full rounded-card" />
-      {[0, 1, 2].map((row) => (
-        <Skeleton className="h-40 w-full rounded-card" key={row} />
-      ))}
+      <Skeleton className="h-64 w-full rounded-card" />
+      <Skeleton className="h-12 w-32 self-center rounded-control" />
     </BriefingShell>
   );
 }

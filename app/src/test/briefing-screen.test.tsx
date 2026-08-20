@@ -39,18 +39,25 @@ describe("BriefingScreen", () => {
     vi.restoreAllMocks();
   });
 
-  it("브리핑을 순서대로 보여주고 두 CTA가 같은 stepId 문제 경로를 가리킨다", async () => {
+  it("브리핑을 요약과 제목만 먼저 보여주고 두 CTA가 같은 stepId 문제 경로를 가리킨다", async () => {
     vi.mocked(getNextStepBriefing).mockResolvedValue(briefing);
 
     render(<BriefingScreen courseId={2} />);
 
     expect(await screen.findByRole("heading", { name: "CPU 스케줄링" })).toBeInTheDocument();
     expect(screen.getByText("CPU 실행 순서와 응답성을 학습합니다.")).toBeInTheDocument();
-    const headings = screen.getAllByRole("heading", { level: 2 });
+    const headings = screen.getAllByRole("heading", { level: 3 });
     expect(headings.map((heading) => heading.textContent)).toEqual([
       "실행 기준이 달라요",
       "전환 비용을 확인해요",
     ]);
+    expect(
+      screen.queryByText("도착 순서와 우선순위 같은 기준을 먼저 확인해요."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "자세히 읽기" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
     expect(screen.getByRole("link", { name: "건너뛰기" })).toHaveAttribute(
       "href",
       "/play?courseId=2&stepId=42",
@@ -59,6 +66,29 @@ describe("BriefingScreen", () => {
       "href",
       "/play?courseId=2&stepId=42",
     );
+  });
+
+  it("자세히 읽기를 누르면 모든 설명 본문을 펼치고 다시 접을 수 있다", async () => {
+    vi.mocked(getNextStepBriefing).mockResolvedValue(briefing);
+
+    render(<BriefingScreen courseId={2} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "자세히 읽기" }));
+
+    expect(screen.getByText("도착 순서와 우선순위 같은 기준을 먼저 확인해요.")).toBeInTheDocument();
+    expect(
+      screen.getByText("너무 잦은 전환은 실제 작업 시간을 줄일 수 있어요."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "간단히 보기" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "간단히 보기" }));
+
+    expect(
+      screen.queryByText("도착 순서와 우선순위 같은 기준을 먼저 확인해요."),
+    ).not.toBeInTheDocument();
   });
 
   it("브리핑이 누락되면 기록을 남기고 기존 문제 경로로 즉시 우회한다", async () => {
