@@ -265,23 +265,19 @@ describe("PlayPage", () => {
     });
   });
 
-  it("passes review correct count and review streak to insight without touching daily streak", async () => {
+  it("passes review position to insight without touching daily streak", async () => {
     window.localStorage.setItem("thumbsup:insight-correct-streak:api-quiz:1", "4");
     vi.mocked(getStepQuiz).mockResolvedValue({ ...oxQuiz, quizId: 12, slotOrder: 3 });
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
 
-    render(
-      <PlayPage
-        review={{ step: 2, slot: 3, correct: 2, streak: 2, topic: "문맥 전환", resumeSlot: 3 }}
-      />,
-    );
+    render(<PlayPage review={{ step: 2, slot: 3, topic: "문맥 전환" }} />);
 
     fireEvent.click(await screen.findByRole("radio", { name: "O" }));
     fireEvent.click(screen.getByRole("button", { name: "정답 확인" }));
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith(
-        "/insight?step=2&slot=3&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98&rsm=3&quizId=12&correct=true",
+        "/insight?step=2&slot=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98&quizId=12&correct=true",
       );
     });
     expect(window.localStorage.getItem("thumbsup:insight-correct-streak:api-quiz:1")).toBe("4");
@@ -302,11 +298,7 @@ describe("PlayPage", () => {
     vi.mocked(getStepQuiz).mockResolvedValue(multipleChoiceQuiz);
     vi.mocked(submitQuizAnswer).mockResolvedValue({ isCorrect: true, retryHint: null });
 
-    render(
-      <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화", resumeSlot: 2 }}
-      />,
-    );
+    render(<PlayPage review={{ step: 2, slot: 2, topic: "동기화" }} />);
 
     await screen.findByRole("group", { name: "사지선다 선택지" });
 
@@ -327,11 +319,7 @@ describe("PlayPage", () => {
     const random = vi.spyOn(Math, "random").mockReturnValue(0);
     vi.mocked(getStepQuiz).mockResolvedValue(multipleChoiceQuiz);
 
-    render(
-      <PlayPage
-        review={{ step: 2, slot: 2, correct: 0, streak: 0, topic: "동기화", resumeSlot: 2 }}
-      />,
-    );
+    render(<PlayPage review={{ step: 2, slot: 2, topic: "동기화" }} />);
 
     await screen.findByRole("group", { name: "사지선다 선택지" });
     random.mockReturnValue(0.99);
@@ -452,20 +440,12 @@ describe("PlayPage", () => {
         .mockResolvedValueOnce(multipleChoiceQuiz);
       vi.mocked(requestQuizHint).mockReturnValue(oldHintRequest);
 
-      const { rerender } = render(
-        <PlayPage
-          review={{ step: 1, slot: 1, correct: 0, streak: 0, topic: "프로세스", resumeSlot: 1 }}
-        />,
-      );
+      const { rerender } = render(<PlayPage review={{ step: 1, slot: 1, topic: "프로세스" }} />);
 
       await screen.findByText(oxQuiz.questionText);
       fireEvent.click(screen.getByRole("button", { name: "힌트 보기" }));
 
-      rerender(
-        <PlayPage
-          review={{ step: 1, slot: 2, correct: 0, streak: 0, topic: "프로세스", resumeSlot: 2 }}
-        />,
-      );
+      rerender(<PlayPage review={{ step: 1, slot: 2, topic: "프로세스" }} />);
       await screen.findByText(multipleChoiceQuiz.questionText);
 
       await act(async () => {
@@ -785,7 +765,7 @@ describe("PlayPage", () => {
     });
   });
 
-  describe("복습 화살표 내비게이션(이슈 303·304)", () => {
+  describe("복습 화살표 내비게이션(이슈 313)", () => {
     it("복습이 아니면 화살표를 보여주지 않는다", async () => {
       vi.mocked(getNextQuiz).mockResolvedValue(oxQuiz);
 
@@ -793,99 +773,61 @@ describe("PlayPage", () => {
 
       await screen.findByText(oxQuiz.questionText);
       expect(screen.queryByRole("link", { name: "이전 문제 다시 보기" })).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("link", { name: "정답 없이 다음 문제로 건너뛰기" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "다음 문제 보기" })).not.toBeInTheDocument();
     });
 
-    it("1번 슬롯(라이브 에지)에서는 이전 화살표가 비활성이고, 다음 화살표는 건너뛰기 링크다", async () => {
+    it("1번 슬롯에서는 이전 화살표가 비활성이고, 다음 화살표는 다음 슬롯으로 이동한다", async () => {
       vi.mocked(getStepQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 1 });
 
-      render(
-        <PlayPage
-          review={{
-            step: 1,
-            slot: 1,
-            correct: 2,
-            streak: 3,
-            topic: "프로세스",
-            resumeSlot: 1,
-          }}
-        />,
-      );
+      render(<PlayPage review={{ step: 1, slot: 1, topic: "프로세스" }} />);
 
       await screen.findByText(oxQuiz.questionText);
 
       const back = screen.getByRole("link", { name: "이전 문제 다시 보기" });
       expect(back).toHaveAttribute("aria-disabled", "true");
 
-      const forward = screen.getByRole("link", { name: "정답 없이 다음 문제로 건너뛰기" });
+      const forward = screen.getByRole("link", { name: "다음 문제 보기" });
       expect(forward).toHaveAttribute(
         "href",
-        "/play?step=1&slot=2&rc=2&rs=0&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4&rsm=2",
+        "/play?step=1&slot=2&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4",
       );
     });
 
-    it("마지막 슬롯에서 건너뛰면 완료 요약으로 바로 간다", async () => {
+    it("마지막 슬롯의 다음 화살표는 완료 요약으로 간다", async () => {
       vi.mocked(getStepQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 5, totalCount: 5 });
 
-      render(
-        <PlayPage
-          review={{
-            step: 1,
-            slot: 5,
-            correct: 3,
-            streak: 2,
-            topic: "프로세스",
-            resumeSlot: 5,
-          }}
-        />,
-      );
+      render(<PlayPage review={{ step: 1, slot: 5, topic: "프로세스" }} />);
 
       await screen.findByText(oxQuiz.questionText);
 
-      const forward = screen.getByRole("link", { name: "정답 없이 다음 문제로 건너뛰기" });
+      const forward = screen.getByRole("link", { name: "복습 완료하기" });
       expect(forward).toHaveAttribute(
         "href",
-        "/history/done?step=1&slot=5&rc=3&rs=0&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4&rsm=5",
+        "/history/done?step=1&slot=5&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4",
       );
     });
 
-    it("미리보기 중(이전 슬롯)에는 재제출을 막고 다음 화살표는 그냥 한 칸 이동한다", async () => {
+    it("이전 슬롯으로 돌아가도 재제출이 막히지 않는다", async () => {
       vi.mocked(getStepQuiz).mockResolvedValue({ ...oxQuiz, slotOrder: 2 });
 
-      render(
-        <PlayPage
-          review={{
-            step: 1,
-            slot: 2,
-            correct: 1,
-            streak: 1,
-            topic: "프로세스",
-            resumeSlot: 4,
-          }}
-        />,
-      );
+      render(<PlayPage review={{ step: 1, slot: 2, topic: "프로세스" }} />);
 
       await screen.findByText(oxQuiz.questionText);
 
-      expect(
-        screen.getByText("이미 지나온 문제예요. 다시 채점하지 않아요 — 위 화살표로 이동해요."),
-      ).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "정답 확인" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "힌트 보기" })).not.toBeInTheDocument();
-      expect(screen.getByRole("radio", { name: "O" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "정답 확인" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "힌트 보기" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "O" })).toBeEnabled();
 
       const back = screen.getByRole("link", { name: "이전 문제 다시 보기" });
       expect(back).toHaveAttribute(
         "href",
-        "/play?step=1&slot=1&rc=1&rs=1&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4&rsm=4",
+        "/play?step=1&slot=1&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4",
       );
 
       const forward = screen.getByRole("link", { name: "다음 문제 보기" });
       expect(forward).toHaveAttribute(
         "href",
-        "/play?step=1&slot=3&rc=1&rs=1&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4&rsm=4",
+        "/play?step=1&slot=3&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4",
       );
     });
   });

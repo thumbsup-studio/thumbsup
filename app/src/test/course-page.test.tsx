@@ -84,7 +84,7 @@ describe("CoursePage", () => {
     const completedLink = await screen.findByRole("link", { name: /프로세스와 스레드/ });
     expect(completedLink).toHaveAttribute(
       "href",
-      "/play?step=1&slot=1&rc=0&rs=0&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4%EC%99%80+%EC%8A%A4%EB%A0%88%EB%93%9C&rsm=1",
+      "/play?step=1&slot=1&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4%EC%99%80+%EC%8A%A4%EB%A0%88%EB%93%9C",
     );
 
     const solvableLink = screen.getByRole("link", { name: /동기화/ });
