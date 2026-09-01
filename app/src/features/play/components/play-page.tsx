@@ -9,12 +9,12 @@ import { Feedback } from "@/components/ui/feedback";
 import { SegmentedProgress } from "@/components/ui/segmented-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  isReviewPreview,
+  isLastReviewSlot,
   type ReviewContext,
+  reviewDoneHref,
   reviewInsightHref,
   reviewNextPlayHref,
   reviewPreviousPlayHref,
-  reviewSkipHref,
 } from "@/features/history/review-params";
 import { feedMascot } from "@/features/home/api";
 import { CodeBlock } from "@/features/play/components/code-block";
@@ -77,12 +77,9 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
 
   const reviewStep = review?.step ?? null;
   const reviewSlot = review?.slot ?? null;
-  const reviewStreak = review?.streak ?? null;
   const isReview = reviewStep !== null && reviewSlot !== null;
-  // 미리보기(이슈 304): 이미 지나온 슬롯을 다시 보는 중 — 재제출을 막고 화살표로만 움직인다.
-  const isPreview = review ? isReviewPreview(review) : false;
 
-  // 문제 화면에 띄울 현재 연속 정답 수. 일반 학습은 로컬 세션에, 복습은 URL에 실려 온다.
+  // 문제 화면에 띄울 현재 연속 정답 수. 일반 학습에서만 추적한다(복습엔 점수·콤보 개념이 없다, 이슈 313).
   // localStorage는 서버에서 읽을 수 없으므로 첫 렌더 뒤(effect)에 채운다 — hydration 불일치 방지.
   const [combo, setCombo] = useState(0);
 
@@ -100,13 +97,12 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
   const currentNumber = quiz?.slotOrder ?? 1;
   const isComboVisible = combo >= comboVisibleFrom;
   const submitEnabled = quiz
-    ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading && !isPreview
+    ? canSubmitAnswer(quiz, draft) && !isSubmitting && !isHintLoading
     : false;
-  // 미리보기 중엔 그냥 한 칸 앞으로, 라이브에선 안 풀고 건너뛰기(이슈 303) — resumeSlot 처리가 갈린다.
   const reviewForwardHref = review
-    ? isPreview
-      ? reviewNextPlayHref(review)
-      : reviewSkipHref(review)
+    ? isLastReviewSlot(review)
+      ? reviewDoneHref(review)
+      : reviewNextPlayHref(review)
     : null;
   const reviewBackHref = review && review.slot > 1 ? reviewPreviousPlayHref(review) : null;
 
@@ -121,13 +117,13 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
   }, [combo, currentNumber, quiz, totalCount]);
 
   useEffect(() => {
-    if (!quiz) {
+    if (!quiz || review) {
       setCombo(0);
       return;
     }
 
-    setCombo(reviewStreak ?? readSession(quiz.stepOrder).combo);
-  }, [quiz, reviewStreak]);
+    setCombo(readSession(quiz.stepOrder).combo);
+  }, [quiz, review]);
 
   useEffect(() => {
     let ignore = false;
@@ -250,11 +246,9 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
       }
 
       if (review) {
-        // 복습: 오늘의 학습 스트릭·보리 포만감은 건드리지 않고, 복습 상태만 URL로 이어받는다.
-        const correctAfter = review.correct + (result.isCorrect ? 1 : 0);
-        const streakAfter = result.isCorrect ? review.streak + 1 : 0;
+        // 복습: 오늘의 학습 스트릭·보리 포만감은 건드리지 않고, 복습 위치만 URL로 이어받는다.
         router.push(
-          reviewInsightHref(review, quiz.quizId, result.isCorrect, correctAfter, streakAfter, {
+          reviewInsightHref(review, quiz.quizId, result.isCorrect, {
             retry: hasUsedRetry && result.isCorrect ? "1" : undefined,
           }),
         );
@@ -325,7 +319,7 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
                   ‹
                 </a>
                 <a
-                  aria-label={isPreview ? "다음 문제 보기" : "정답 없이 다음 문제로 건너뛰기"}
+                  aria-label={isLastReviewSlot(review) ? "복습 완료하기" : "다음 문제 보기"}
                   className="grid h-10 w-10 place-items-center rounded-chip border border-border bg-surface-muted text-lg"
                   href={reviewForwardHref ?? "#"}
                 >
@@ -386,7 +380,7 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
               <QuestionRenderer
                 choices={displayedChoices}
                 draft={draft}
-                isLocked={isSubmitting || isPreview}
+                isLocked={isSubmitting}
                 onDraftChange={setDraft}
                 quiz={quiz}
                 requestedHint={requestedHint}
@@ -406,34 +400,28 @@ export function PlayPage({ courseId, quizStepId, review }: PlayPageProps) {
                 </div>
               ) : null}
 
-              {isPreview ? (
-                <p className="pt-4 text-center text-sm font-semibold text-ink-muted">
-                  이미 지나온 문제예요. 다시 채점하지 않아요 — 위 화살표로 이동해요.
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 pt-4">
-                  <Button
-                    aria-label={isHintLoading ? "힌트 불러오는 중" : undefined}
-                    className="w-full text-sm"
-                    disabled={requestedHint !== null || isSubmitting || hasUsedRetry}
-                    loading={isHintLoading}
-                    loadingText="불러오는 중"
-                    onClick={showHint}
-                    variant="secondary"
-                  >
-                    {requestedHint ? "힌트 확인함" : "힌트 보기"}
-                  </Button>
-                  <Button
-                    className="w-full shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
-                    disabled={!submitEnabled}
-                    loading={isSubmitting}
-                    loadingText="채점 중"
-                    onClick={submitAnswer}
-                  >
-                    정답 확인
-                  </Button>
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <Button
+                  aria-label={isHintLoading ? "힌트 불러오는 중" : undefined}
+                  className="w-full text-sm"
+                  disabled={requestedHint !== null || isSubmitting || hasUsedRetry}
+                  loading={isHintLoading}
+                  loadingText="불러오는 중"
+                  onClick={showHint}
+                  variant="secondary"
+                >
+                  {requestedHint ? "힌트 확인함" : "힌트 보기"}
+                </Button>
+                <Button
+                  className="w-full shadow-hero disabled:bg-surface-muted disabled:text-ink-muted disabled:shadow-none"
+                  disabled={!submitEnabled}
+                  loading={isSubmitting}
+                  loadingText="채점 중"
+                  onClick={submitAnswer}
+                >
+                  정답 확인
+                </Button>
+              </div>
             </>
           ) : null}
         </section>

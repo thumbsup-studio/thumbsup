@@ -18,7 +18,7 @@ export default async function ReviewDone({ searchParams }: ReviewDoneRouteProps)
 
   return (
     <RequireAuth>
-      <ReviewSummaryPage correct={context.correct} step={context.step} topic={context.topic} />
+      <ReviewSummaryPage step={context.step} topic={context.topic} />
     </RequireAuth>
   );
 }

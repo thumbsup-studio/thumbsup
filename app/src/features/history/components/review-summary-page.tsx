@@ -1,23 +1,18 @@
 import Link from "next/link";
 import { CircleCheckIcon, RotateCcwIcon } from "@/components/icons";
-import { REVIEW_STEP_TOTAL, reviewStartHref } from "@/features/history/review-params";
-import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
+import { reviewStartHref } from "@/features/history/review-params";
 import { COURSE_LIST_PATH } from "@/features/play/course-params";
 
 type ReviewSummaryPageProps = {
   step: number;
-  /** 이번 스텝 재풀이에서 맞힌 개수 */
-  correct: number;
   topic: string;
 };
 
-export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPageProps) {
-  const isPerfect = correct >= REVIEW_STEP_TOTAL;
+export function ReviewSummaryPage({ step, topic }: ReviewSummaryPageProps) {
   const retryHref = reviewStartHref(step, topic);
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-4 py-6 text-ink sm:px-6">
-      {isPerfect ? <FanfareOverlay playKey={`review:${step}`} /> : null}
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
           <div className="flex flex-col items-center gap-3">
@@ -32,19 +27,6 @@ export function ReviewSummaryPage({ step, correct, topic }: ReviewSummaryPagePro
                 {topic}
               </h1>
             </div>
-          </div>
-
-          <div className="w-full rounded-card border border-border bg-surface p-6 shadow-card">
-            <p className="text-sm font-medium text-ink-muted">이번 복습 결과</p>
-            <p className="mt-2 text-3xl font-black">
-              <span className="text-success">{correct}</span>
-              <span className="text-ink-muted"> / {REVIEW_STEP_TOTAL}</span>
-            </p>
-            <p className="mt-2 text-sm font-medium text-ink-muted">
-              {isPerfect
-                ? "완벽해요! 개념을 확실히 잡았어요."
-                : "다시 풀면서 헷갈린 부분을 정리했어요."}
-            </p>
           </div>
         </div>
 

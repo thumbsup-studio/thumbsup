@@ -83,15 +83,15 @@ export function InsightPage({
       : reviewNextPlayHref(review)
     : null;
   const isLastQuestion = explanation ? explanation.currentNumber >= explanation.totalCount : false;
-  // 풀이 화면에서 오렌지로 달아오른 진행바가 해설로 넘어오며 파랑으로 식으면 흐름이 끊긴다.
-  const comboForDisplay = review?.streak ?? correctStreak;
+  // 복습엔 콤보 개념이 없다(이슈 313) — 진행바는 항상 식은 상태로 둔다.
+  const comboForDisplay = review ? 0 : correctStreak;
   // 코스 탭에서 들어온 세션이면 다음 문제로 같은 코스로 이어지고, 완주 뒤에는 코스 목록으로 돌아간다.
   const playHref = buildPlayHref(courseId);
   const completionDestination = getCompletionDestination(courseId);
   // 보상 연출은 전부 이 화면에서 터진다 — 풀이 화면(S3)은 조작감만 맡는다.
   // 난이도는 해설 응답에서 오므로, 로딩이 끝나기 전엔 기본값으로 계산해도 화면에 쓰이지 않는다.
   const celebration = getCelebration({
-    combo: review?.streak ?? correctStreak,
+    combo: comboForDisplay,
     correct,
     difficulty: explanation?.difficulty ?? "EASY",
     prefersReducedMotion,

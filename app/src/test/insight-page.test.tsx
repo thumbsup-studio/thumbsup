@@ -380,13 +380,13 @@ describe("InsightPage", () => {
       <InsightPage
         correct
         quizId={7}
-        review={{ step: 2, slot: 5, correct: 3, streak: 3, topic: "문맥 전환", resumeSlot: 5 }}
+        review={{ step: 2, slot: 5, topic: "문맥 전환" }}
       />,
     );
 
     expect(await screen.findByRole("link", { name: "복습 완료" })).toHaveAttribute(
       "href",
-      "/history/done?step=2&slot=5&rc=3&rs=3&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98&rsm=5",
+      "/history/done?step=2&slot=5&topic=%EB%AC%B8%EB%A7%A5+%EC%A0%84%ED%99%98",
     );
     expect(screen.queryByTestId("lottie-fanfare")).not.toBeInTheDocument();
   });
