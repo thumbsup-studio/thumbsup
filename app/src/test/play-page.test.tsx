@@ -819,10 +819,16 @@ describe("PlayPage", () => {
       expect(screen.getByRole("radio", { name: "O" })).toBeEnabled();
 
       const back = screen.getByRole("link", { name: "이전 문제 다시 보기" });
-      expect(back).toHaveAttribute("href", "/play?step=1&slot=1&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4");
+      expect(back).toHaveAttribute(
+        "href",
+        "/play?step=1&slot=1&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4",
+      );
 
       const forward = screen.getByRole("link", { name: "다음 문제 보기" });
-      expect(forward).toHaveAttribute("href", "/play?step=1&slot=3&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4");
+      expect(forward).toHaveAttribute(
+        "href",
+        "/play?step=1&slot=3&topic=%ED%94%84%EB%A1%9C%EC%84%B8%EC%8A%A4",
+      );
     });
   });
 });

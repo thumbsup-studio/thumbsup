@@ -376,13 +376,7 @@ describe("InsightPage", () => {
       totalCount: 5,
     });
 
-    render(
-      <InsightPage
-        correct
-        quizId={7}
-        review={{ step: 2, slot: 5, topic: "문맥 전환" }}
-      />,
-    );
+    render(<InsightPage correct quizId={7} review={{ step: 2, slot: 5, topic: "문맥 전환" }} />);
 
     expect(await screen.findByRole("link", { name: "복습 완료" })).toHaveAttribute(
       "href",
