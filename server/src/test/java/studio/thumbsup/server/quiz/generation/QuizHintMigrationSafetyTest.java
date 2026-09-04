@@ -74,8 +74,8 @@ class QuizHintMigrationSafetyTest extends MigrationTestSupport {
                 .isNotBlank();
         assertThat(queryString(OS_COURSE_ID, 11, 2, "question_text"))
                 .isEqualTo("유닉스 계열의 계층형 이름 공간에서는 하나의 파일이 반드시 하나의 경로로만 접근 가능하므로, 같은 파일을 여러 디렉터리에서 공유할 수 없다.");
-        // 73(70 커리큘럼 + placeholder 3) + 이 테스트가 수동 삽입한 1 - #287 정리 마이그레이션이 지우는 placeholder 3 = 71
-        assertThat(queryCount("SELECT COUNT(*) FROM quiz")).isEqualTo(71);
+        // 153(기존 70 + 네트워크 80 + placeholder 3) + 수동 삽입 1 - #287이 지우는 placeholder 3 = 151
+        assertThat(queryCount("SELECT COUNT(*) FROM quiz")).isEqualTo(151);
     }
 
     private org.flywaydb.core.api.configuration.FluentConfiguration flyway() {

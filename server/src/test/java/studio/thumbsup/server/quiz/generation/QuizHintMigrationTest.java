@@ -12,7 +12,7 @@ import studio.thumbsup.server.quiz.Quiz;
 import studio.thumbsup.server.quiz.QuizRepository;
 import studio.thumbsup.server.quiz.QuizType;
 
-/** 새 Flyway가 기존 문제 70개를 빠짐없이 안전한 한 문장 힌트로 백필하는지 검증한다. */
+/** Flyway로 저장된 모든 문제가 안전한 한 문장 힌트를 갖는지 검증한다. */
 class QuizHintMigrationTest extends RepositoryTestSupport {
 
     private final QuizRepository quizRepository;
@@ -22,11 +22,11 @@ class QuizHintMigrationTest extends RepositoryTestSupport {
     }
 
     @Test
-    @DisplayName("기존 70문제 모두 유형과 관계없이 검증된 한 문장 힌트를 가진다")
+    @DisplayName("라이브 150문제 모두 유형과 관계없이 검증된 한 문장 힌트를 가진다")
     void backfills_safe_hint_for_every_seeded_quiz() {
         List<Quiz> quizzes = quizRepository.findAll();
 
-        assertThat(quizzes).hasSize(70);
+        assertThat(quizzes).hasSize(150);
         assertThat(quizzes)
                 .extracting(Quiz::getType)
                 .contains(QuizType.OX, QuizType.MULTIPLE_CHOICE, QuizType.KEYWORD_BLANK);
