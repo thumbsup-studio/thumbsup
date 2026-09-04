@@ -33,7 +33,7 @@ import studio.thumbsup.server.quiz.course.CourseRepository;
  */
 class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
 
-    private static final int TOTAL_QUIZ_COUNT = 300;
+    private static final int TOTAL_QUIZ_COUNT = 380;
     private static final Pattern BLANK_PATTERN = Pattern.compile("___");
 
     private final QuizRepository quizRepository;
@@ -73,7 +73,7 @@ class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
     class QuizTypeAudit {
 
         @Test
-        @DisplayName("정식 커리큘럼 300문제가 정확한 슬롯 유형·난이도를 갖는다")
+        @DisplayName("정식 커리큘럼 380문제가 정확한 슬롯 유형·난이도를 갖는다")
         void keeps_complete_slot_contract() {
             List<Quiz> quizzes = quizRepository.findAll();
             assertThat(quizzes).hasSize(TOTAL_QUIZ_COUNT);
@@ -82,6 +82,7 @@ class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
             Long designPatternCourseId = courseIdByTitle("디자인 패턴");
             Long networkCourseId = courseIdByTitle("컴퓨터 네트워크");
             Long computerArchitectureCourseId = courseIdByTitle("컴퓨터 구조");
+            Long dataStructuresCourseId = courseIdByTitle("자료구조");
             Map<Long, Long> courseIdByQuizId = courseIdByQuizId(quizzes);
             List<Quiz> osQuizzes = quizzes.stream()
                     .filter(q -> courseIdByQuizId.get(q.getId()).equals(osCourseId))
@@ -95,15 +96,20 @@ class QuizSeedDataIntegrityTest extends RepositoryTestSupport {
             List<Quiz> computerArchitectureQuizzes = quizzes.stream()
                     .filter(q -> courseIdByQuizId.get(q.getId()).equals(computerArchitectureCourseId))
                     .toList();
+            List<Quiz> dataStructuresQuizzes = quizzes.stream()
+                    .filter(q -> courseIdByQuizId.get(q.getId()).equals(dataStructuresCourseId))
+                    .toList();
 
             assertThat(osQuizzes).hasSize(60);
             assertThat(designPatternQuizzes).hasSize(80);
             assertThat(networkQuizzes).hasSize(80);
             assertThat(computerArchitectureQuizzes).hasSize(80);
+            assertThat(dataStructuresQuizzes).hasSize(80);
             IntStream.rangeClosed(1, 12).forEach(stepOrder -> assertFormalStep(osQuizzes, stepOrder));
             IntStream.rangeClosed(1, 16).forEach(stepOrder -> assertFormalStep(designPatternQuizzes, stepOrder));
             IntStream.rangeClosed(1, 16).forEach(stepOrder -> assertFormalStep(networkQuizzes, stepOrder));
             IntStream.rangeClosed(1, 16).forEach(stepOrder -> assertFormalStep(computerArchitectureQuizzes, stepOrder));
+            IntStream.rangeClosed(1, 16).forEach(stepOrder -> assertFormalStep(dataStructuresQuizzes, stepOrder));
         }
 
         @Test
