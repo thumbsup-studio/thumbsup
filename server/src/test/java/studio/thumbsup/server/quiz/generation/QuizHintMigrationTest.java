@@ -22,11 +22,11 @@ class QuizHintMigrationTest extends RepositoryTestSupport {
     }
 
     @Test
-    @DisplayName("라이브 300문제 모두 유형과 관계없이 검증된 한 문장 힌트를 가진다")
+    @DisplayName("라이브 380문제 모두 유형과 관계없이 검증된 한 문장 힌트를 가진다")
     void backfills_safe_hint_for_every_seeded_quiz() {
         List<Quiz> quizzes = quizRepository.findAll();
 
-        assertThat(quizzes).hasSize(300);
+        assertThat(quizzes).hasSize(380);
         assertThat(quizzes)
                 .extracting(Quiz::getType)
                 .contains(QuizType.OX, QuizType.MULTIPLE_CHOICE, QuizType.KEYWORD_BLANK);
