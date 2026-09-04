@@ -17,7 +17,7 @@ import studio.thumbsup.server.common.support.MigrationTestSupport;
 /** #299 라이브 스텝 브리핑 백필의 대상·수량·블록 순서를 실제 MySQL에서 검증한다. */
 class QuizStepBriefingBackfillMigrationSafetyTest extends MigrationTestSupport {
 
-    private static final int LIVE_STEP_COUNT = 44;
+    private static final int LIVE_STEP_COUNT = 60;
 
     @Nested
     @DisplayName("승인된 브리핑 백필")
