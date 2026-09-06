@@ -30,7 +30,7 @@ public final class QuizFixture {
         quiz.assignHint("연결을 시작하기 전에 통신 상대와 준비 절차를 거치는지 떠올려 보세요.");
         quiz.assignCorrectAnswer("O");
         quiz.addFollowUpQuestion("UDP와 TCP의 핵심 차이는 무엇인가요?", true, 1);
-        quiz.addDerivedConcept("3-way handshake", 1);
+        quiz.addDerivedTag("3-way handshake", 1);
         quiz.addKeyword("연결 지향", "통신 전에 연결을 먼저 수립하는 방식");
         return quiz;
     }
@@ -47,7 +47,7 @@ public final class QuizFixture {
         quiz.assignHint("전송 전에 연결을 맺고 손실된 데이터를 다시 보내는 절차가 있는지 살펴보세요.");
         quiz.assignCorrectAnswer("X");
         quiz.addFollowUpQuestion("UDP는 어떤 상황에 적합한가요?", true, 1);
-        quiz.addDerivedConcept("비연결형 프로토콜", 1);
+        quiz.addDerivedTag("비연결형 프로토콜", 1);
         quiz.addKeyword("신뢰성", "데이터 전달을 보장하는 성질");
         return quiz;
     }
@@ -67,7 +67,7 @@ public final class QuizFixture {
         quiz.addChoice("O(n^2)", true, 3);
         quiz.addChoice("O(2^n)", false, 4);
         quiz.addFollowUpQuestion("이중 반복문을 O(n log n)으로 개선하려면?", true, 1);
-        quiz.addDerivedConcept("빅오 표기법", 1);
+        quiz.addDerivedTag("빅오 표기법", 1);
         quiz.addKeyword("시간복잡도", "입력 크기에 따라 연산 횟수가 증가하는 정도");
         return quiz;
     }
@@ -87,7 +87,7 @@ public final class QuizFixture {
         quiz.addChoice("둘 다 완전히 독립된 메모리를 가진다", false, 3);
         quiz.addChoice("차이가 없다", false, 4);
         quiz.addFollowUpQuestion("스레드 간 메모리 공유가 왜 위험할 수 있나요?", true, 1);
-        quiz.addDerivedConcept("컨텍스트 스위칭", 1);
+        quiz.addDerivedTag("컨텍스트 스위칭", 1);
         quiz.addKeyword("스레드", "프로세스 내에서 실행되는 작업 단위");
         return quiz;
     }
@@ -104,7 +104,7 @@ public final class QuizFixture {
         quiz.assignHint("가장 최근에 들어온 데이터가 언제 꺼내지는지 순서를 따라가 보세요.");
         quiz.addAnswerKeyword(1, "LIFO");
         quiz.addFollowUpQuestion("큐(Queue)와 스택의 차이는 무엇인가요?", true, 1);
-        quiz.addDerivedConcept("LIFO", 1);
+        quiz.addDerivedTag("LIFO", 1);
         quiz.addKeyword("스택", "한쪽 끝에서만 데이터를 넣고 뺄 수 있는 자료구조");
         return quiz;
     }

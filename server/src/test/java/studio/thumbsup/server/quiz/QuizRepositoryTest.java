@@ -71,7 +71,7 @@ class QuizRepositoryTest extends RepositoryTestSupport {
             assertThat(found.getType()).isEqualTo(QuizType.OX);
             assertThat(found.getCorrectAnswer()).isEqualTo("O");
             assertThat(found.getFollowUpQuestions()).hasSize(1);
-            assertThat(found.getDerivedConcepts()).hasSize(1);
+            assertThat(found.getDerivedTags()).hasSize(1);
             assertThat(found.getKeywords()).hasSize(1);
             assertThat(found.getChoices()).isEmpty();
             assertThat(found.getAnswerKeywords()).isEmpty();

@@ -25,13 +25,13 @@ import studio.thumbsup.server.quiz.dto.AnswerSubmitRequest;
 
 /**
  * 스텝 완료 시 발행하는 {@link QuizStepCompletedEvent}의 {@code quizStepId}가 정확한지 검증한다(#233, #292).
- * 이 이벤트를 구독해 지식 그래프 학습 기록을 남기는 쪽은 {@code concept.LearnedConceptRecorder}의
+ * 이 이벤트를 구독해 지식 그래프 학습 기록을 남기는 쪽은 {@code tag.LearnedTagRecorder}(#233, #324)의
  * 소관이고, 스트릭 갱신 쪽은 이미 {@code QuizServiceStreakTest}가 검증하므로 여기서는 quizStepId 필드
  * 하나만 본다.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("스텝 완료 이벤트의 quizStepId(#233, #292)")
-class QuizServiceLearnedConceptTest {
+class QuizServiceLearnedTagTest {
 
     private static final Long USER_ID = 1L;
     private static final Long COURSE_ID = 1L;
