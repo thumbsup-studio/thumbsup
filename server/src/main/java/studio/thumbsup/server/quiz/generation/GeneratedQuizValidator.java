@@ -151,7 +151,7 @@ public class GeneratedQuizValidator {
         CodeSnippetValidator.validate(location, quiz.codeSnippet());
         requireNonBlank(location, "explanationSummary", quiz.explanationSummary());
         requireNonBlank(location, "wrongAnswerExplanation", quiz.wrongAnswerExplanation());
-        requireNonEmpty(location, "derivedConcepts", quiz.derivedConcepts());
+        requireNonEmpty(location, "derivedTags", quiz.derivedTags());
         validateKeywords(location, quiz.keywords());
         validateExplanationSummaryLineCount(location, quiz.explanationSummary());
         validateKeywordMarkers(location, quiz);

@@ -142,9 +142,7 @@ class NetworkCourseSeedIntegrityTest extends RepositoryTestSupport {
                 quiz.getFollowUpQuestions().stream()
                         .map(this::toGeneratedFollowUp)
                         .toList(),
-                quiz.getDerivedConcepts().stream()
-                        .map(concept -> concept.getName())
-                        .toList(),
+                quiz.getDerivedTags().stream().map(tag -> tag.getName()).toList(),
                 quiz.getKeywords().stream()
                         .map(keyword ->
                                 new GeneratedQuizSet.GeneratedKeyword(keyword.getKeyword(), keyword.getDescription()))
@@ -189,7 +187,7 @@ class NetworkCourseSeedIntegrityTest extends RepositoryTestSupport {
                         JOIN quiz_follow_up_question qfq ON qfq.id = qfk.follow_up_question_id
                         JOIN quiz q ON q.id = qfq.quiz_id
                         JOIN quiz_step qs ON qs.id = q.quiz_step_id WHERE qs.course_id = ?),
-                    (SELECT COUNT(*) FROM quiz_derived_concept qdc JOIN quiz q ON q.id = qdc.quiz_id
+                    (SELECT COUNT(*) FROM quiz_derived_tag qdc JOIN quiz q ON q.id = qdc.quiz_id
                         JOIN quiz_step qs ON qs.id = q.quiz_step_id WHERE qs.course_id = ?),
                     (SELECT COUNT(*) FROM quiz_keyword qk JOIN quiz q ON q.id = qk.quiz_id
                         JOIN quiz_step qs ON qs.id = q.quiz_step_id WHERE qs.course_id = ?)
@@ -230,6 +228,6 @@ class NetworkCourseSeedIntegrityTest extends RepositoryTestSupport {
             int followUps,
             int followUpBlocks,
             int followUpKeywords,
-            int derivedConcepts,
+            int derivedTags,
             int quizKeywords) {}
 }

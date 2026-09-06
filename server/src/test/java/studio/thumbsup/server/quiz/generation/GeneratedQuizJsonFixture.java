@@ -52,7 +52,7 @@ public final class GeneratedQuizJsonFixture {
                   "wrongAnswerExplanation": "오답 해설",
                   %s,
                   "followUpQuestions": [%s],
-                  "derivedConcepts": ["개념1"],
+                  "derivedTags": ["태그1"],
                   "keywords": [{"keyword": "PCB", "description": "설명"}]
                 }
                 """.formatted(type, difficulty, questionText, extraFields, followUpQuestions);

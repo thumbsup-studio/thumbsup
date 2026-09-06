@@ -13,12 +13,12 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 파생개념 — 지식그래프 연결(#21)은 향후 확장, 지금은 개념 이름만 저장한다. */
+/** 파생태그 — 지식그래프 연결(#21, #324)은 향후 확장, 지금은 태그 이름만 저장한다. */
 @Getter
 @Entity
-@Table(name = "quiz_derived_concept")
+@Table(name = "quiz_derived_tag")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class QuizDerivedConcept {
+public class QuizDerivedTag {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,13 +34,13 @@ public class QuizDerivedConcept {
     @Column(nullable = false)
     private int displayOrder;
 
-    QuizDerivedConcept(Quiz quiz, String name, int displayOrder) {
+    QuizDerivedTag(Quiz quiz, String name, int displayOrder) {
         this.quiz = quiz;
         this.name = name;
         this.displayOrder = displayOrder;
     }
 
-    static QuizDerivedConcept create(Quiz quiz, String name, int displayOrder) {
-        return new QuizDerivedConcept(quiz, name, displayOrder);
+    static QuizDerivedTag create(Quiz quiz, String name, int displayOrder) {
+        return new QuizDerivedTag(quiz, name, displayOrder);
     }
 }

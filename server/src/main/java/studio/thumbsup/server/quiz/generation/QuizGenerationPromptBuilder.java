@@ -45,7 +45,7 @@ public final class QuizGenerationPromptBuilder {
                       "keywords": [{"keyword": "이 꼬리질문의 어려운 용어", "description": "그 용어의 설명"}]
                     }
                   ],
-                  "derivedConcepts": ["관련 파생 개념 이름"],
+                  "derivedTags": ["관련 파생 태그 이름"],
                   "keywords": [{"keyword": "지문 속 어려운 용어", "description": "그 용어의 설명"}]
                 }
             ]
@@ -76,7 +76,7 @@ public final class QuizGenerationPromptBuilder {
             - wrongAnswerExplanation: 이 문제를 틀렸을 때 보여줄, 왜 틀렸는지 설명하는 해설
             - followUpQuestions: 1개 이상, 그중 정확히 1개는 isPrimary=true. 각 꼬리질문은 아래 "꼬리질문 상세"를
               빠짐없이 갖춰야 한다
-            - derivedConcepts: 1개 이상
+            - derivedTags: 1개 이상
             - keywords: 지문 속에서 학습자가 어려워할 만한 용어 1개 이상과 그 설명
 
             꼬리질문 상세 (followUpQuestions의 각 원소):
