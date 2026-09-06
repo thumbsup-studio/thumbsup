@@ -126,7 +126,7 @@ public class QuizPersister {
             addAnswerKeywords(quiz, g.answerKeywords());
         }
         addFollowUpQuestions(quiz, g.followUpQuestions());
-        addDerivedConcepts(quiz, g.derivedConcepts());
+        addDerivedTags(quiz, g.derivedTags());
         g.keywords().forEach(keyword -> quiz.addKeyword(keyword.keyword(), keyword.description()));
     }
 
@@ -166,10 +166,10 @@ public class QuizPersister {
         }
     }
 
-    private void addDerivedConcepts(Quiz quiz, List<String> derivedConcepts) {
+    private void addDerivedTags(Quiz quiz, List<String> derivedTags) {
         int order = 1;
-        for (String concept : derivedConcepts) {
-            quiz.addDerivedConcept(concept, order++);
+        for (String tag : derivedTags) {
+            quiz.addDerivedTag(tag, order++);
         }
     }
 

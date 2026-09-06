@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import studio.thumbsup.server.quiz.Quiz;
-import studio.thumbsup.server.quiz.QuizDerivedConcept;
+import studio.thumbsup.server.quiz.QuizDerivedTag;
 import studio.thumbsup.server.quiz.generation.GeneratedQuizSet;
 
 /**
@@ -55,9 +55,7 @@ public final class QuizToGeneratedQuizMapper {
                 choices,
                 answerKeywords,
                 followUps,
-                quiz.getDerivedConcepts().stream()
-                        .map(QuizDerivedConcept::getName)
-                        .toList(),
+                quiz.getDerivedTags().stream().map(QuizDerivedTag::getName).toList(),
                 quiz.getKeywords().stream()
                         .map(k -> new GeneratedQuizSet.GeneratedKeyword(k.getKeyword(), k.getDescription()))
                         .toList());

@@ -36,7 +36,7 @@ public record GeneratedQuizSet(int schemaVersion, GeneratedBriefing briefing, Li
             List<GeneratedChoice> choices,
             List<List<String>> answerKeywords, // 바깥=빈칸 순서, 안쪽=그 빈칸의 동의어(하나만 맞아도 정답)
             List<GeneratedFollowUpQuestion> followUpQuestions,
-            List<String> derivedConcepts,
+            List<String> derivedTags,
             List<GeneratedKeyword> keywords) {}
 
     public record GeneratedChoice(String content, boolean isCorrect) {}

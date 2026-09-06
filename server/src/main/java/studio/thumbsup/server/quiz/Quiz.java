@@ -97,7 +97,7 @@ public class Quiz extends BaseEntity {
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
-    private List<QuizDerivedConcept> derivedConcepts = new ArrayList<>();
+    private List<QuizDerivedTag> derivedTags = new ArrayList<>();
 
     /** 저작 순서를 응답 순서로 삼는다 — 해설 API의 키워드 사전이 결정적으로 내려가야 한다(#43). */
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -185,7 +185,7 @@ public class Quiz extends BaseEntity {
         choices.clear();
         answerKeywords.clear();
         followUpQuestions.clear();
-        derivedConcepts.clear();
+        derivedTags.clear();
         keywords.clear();
     }
 
@@ -204,8 +204,8 @@ public class Quiz extends BaseEntity {
         return followUpQuestion;
     }
 
-    public void addDerivedConcept(String name, int displayOrder) {
-        derivedConcepts.add(QuizDerivedConcept.create(this, name, displayOrder));
+    public void addDerivedTag(String name, int displayOrder) {
+        derivedTags.add(QuizDerivedTag.create(this, name, displayOrder));
     }
 
     public void addKeyword(String keyword, String description) {
