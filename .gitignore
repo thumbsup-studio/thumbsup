@@ -8,6 +8,7 @@ out/
 node_modules/
 .next/
 dist/
+cdk.out/
 coverage/
 *.tsbuildinfo
 npm-debug.log*
