@@ -1,0 +1,47 @@
+name: Updates Server CI
+
+on:
+  pull_request:
+    paths:
+      - 'tools/updates-server/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/updates-server-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/updates-server/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/updates-server-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: updates-server-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter updates-server typecheck
+      - run: pnpm --filter updates-server test
+      - run: pnpm --filter updates-server build
+      - run: pnpm --filter updates-server synth

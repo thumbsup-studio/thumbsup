@@ -1,0 +1,66 @@
+import { App } from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { describe, expect, it } from 'vitest';
+import { UpdatesServerStack } from '../lib/updates-server-stack.js';
+
+function template(): Template {
+  const app = new App();
+  const stack = new UpdatesServerStack(app, 'TestStack', {
+    env: { account: '111122223333', region: 'ap-northeast-2' },
+  });
+  return Template.fromStack(stack);
+}
+
+describe('UpdatesServerStack', () => {
+  it('keeps the artifact bucket private, encrypted, versioned, and retained', () => {
+    template().hasResource('AWS::S3::Bucket', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+      Properties: {
+        BucketName: 'thumbsup-mobile-artifacts',
+        VersioningConfiguration: { Status: 'Enabled' },
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        },
+      },
+    });
+  });
+
+  it('uses a Node.js 22 Lambda and IAM-authenticated function URL', () => {
+    const synthesized = template();
+    synthesized.hasResourceProperties('AWS::Lambda::Function', {
+      Runtime: 'nodejs22.x',
+      Environment: { Variables: { ARTIFACTS_BUCKET: Match.anyValue() } },
+    });
+    synthesized.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'AWS_IAM' });
+  });
+
+  it('routes only manifest requests to Lambda and makes update assets immutable', () => {
+    const distributions = template().findResources('AWS::CloudFront::Distribution');
+    const distribution = Object.values(distributions)[0];
+    const behaviors = distribution.Properties.DistributionConfig.CacheBehaviors as Array<{
+      PathPattern: string;
+      CachePolicyId: string;
+      ResponseHeadersPolicyId?: unknown;
+    }>;
+
+    expect(behaviors.find((item) => item.PathPattern === '/api/manifest*')).toMatchObject({
+      CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+    });
+    expect(behaviors.find((item) => item.PathPattern === '/updates/*')?.ResponseHeadersPolicyId).toBeTruthy();
+    template().hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
+      ResponseHeadersPolicyConfig: {
+        CustomHeadersConfig: {
+          Items: [{
+            Header: 'Cache-Control',
+            Override: true,
+            Value: 'public, max-age=31536000, immutable',
+          }],
+        },
+      },
+    });
+  });
+});
