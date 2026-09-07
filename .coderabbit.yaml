@@ -12,7 +12,7 @@ reviews:
     drafts: false
 
   path_instructions:
-    - path: 'app/**'
+    - path: 'apps/web/**'
       instructions: |
         이 경로는 React/Next.js/TypeScript 프론트엔드입니다.
         다음을 우선적으로 리뷰하세요:
@@ -51,10 +51,10 @@ reviews:
         - 이미 일관된 스타일의 사소한 리팩터링
 
   path_filters:
-    - '!app/.next/**'
-    - '!app/dist/**'
-    - '!app/build/**'
-    - '!app/coverage/**'
+    - '!apps/web/.next/**'
+    - '!apps/web/dist/**'
+    - '!apps/web/build/**'
+    - '!apps/web/coverage/**'
     - '!server/dist/**'
     - '!server/build/**'
     - '!server/coverage/**'

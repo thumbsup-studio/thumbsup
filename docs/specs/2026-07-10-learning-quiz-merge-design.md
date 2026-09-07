@@ -19,7 +19,7 @@
 
 `docs/dto-and-query-patterns.md` §2("크로스 도메인 조회 패턴")가 예시로 든 "Repository로 따로 조회해 조립"은, 실제로는 이 ArchUnit 규칙과 충돌하는 **검증 안 된 예시**였다 — #45 구현 당시(`2026-07-09-home-query-api-design.md` "결정 기록" 표) 이미 이 벽에 부딪혔었고, 그때는 회피책으로 `learning`이 `quiz`를 아예 참조하지 않도록 도메인을 완전히 분리하는 쪽을 택했었다.
 
-**2차 시도 — ArchUnit 예외 추가**: `.ignoreDependency(resideInAPackage("learning.."), resideInAPackage("quiz.."))`처럼 `learning → quiz` 한 방향만 예외로 뚫는 안. 근데 확인해보니 반대 방향(퀴즈 풀이 화면이 `Course.title`을 표시해야 하는 경우, `app/src/features/play/types.ts`의 `PlaySession.courseTitle`)도 필요해서 **양방향** 예외가 불가피했다. 양방향으로 뚫으면 두 feature가 실질적으로 하나처럼 동작하면서 코드만 두 패키지에 나뉘어 있는, 격리의 장점 없이 결합의 단점만 남는 상태가 된다.
+**2차 시도 — ArchUnit 예외 추가**: `.ignoreDependency(resideInAPackage("learning.."), resideInAPackage("quiz.."))`처럼 `learning → quiz` 한 방향만 예외로 뚫는 안. 근데 확인해보니 반대 방향(퀴즈 풀이 화면이 `Course.title`을 표시해야 하는 경우, `apps/web/src/features/play/types.ts`의 `PlaySession.courseTitle`)도 필요해서 **양방향** 예외가 불가피했다. 양방향으로 뚫으면 두 feature가 실질적으로 하나처럼 동작하면서 코드만 두 패키지에 나뉘어 있는, 격리의 장점 없이 결합의 단점만 남는 상태가 된다.
 
 **최종 결정 — `learning`을 `quiz`로 물리적으로 합친다.** 두 도메인이 이 정도로 상호 의존적이면 애초에 하나의 feature가 맞고, 코드 구조가 그 사실을 정직하게 반영해야 한다고 판단했다.
 

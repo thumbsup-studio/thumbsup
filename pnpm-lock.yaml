@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  app:
+  apps/web:
     dependencies:
       '@lottiefiles/dotlottie-react':
         specifier: 0.19.7

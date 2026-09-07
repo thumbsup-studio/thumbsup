@@ -1,6 +1,6 @@
 ---
 name: server-pipeline
-description: "GitHub 이슈 기반 server 작업 파이프라인 (thumbsup 전용, 팀 공유 스킬). 이슈 확보→맥락 수집→계획(1회 확인)→ATDD/TDD 구현→게이트→동적 검증→리뷰→PR→최종 보고까지 무정지 자동 진행. 트리거: 'server 작업 시작', '파이프라인', '/server-pipeline 43', 이슈 번호/URL(https://github.com/thumbsup-studio/thumbsup/issues/NN)을 주며 server 작업을 시작할 때, '43번 이슈 작업해' 같은 표현. app/ 전용 작업에는 사용하지 않는다."
+description: "GitHub 이슈 기반 server 작업 파이프라인 (thumbsup 전용, 팀 공유 스킬). 이슈 확보→맥락 수집→계획(1회 확인)→ATDD/TDD 구현→게이트→동적 검증→리뷰→PR→최종 보고까지 무정지 자동 진행. 트리거: 'server 작업 시작', '파이프라인', '/server-pipeline 43', 이슈 번호/URL(https://github.com/thumbsup-studio/thumbsup/issues/NN)을 주며 server 작업을 시작할 때, '43번 이슈 작업해' 같은 표현. apps/web/ 전용 작업에는 사용하지 않는다."
 ---
 
 # Server 작업 파이프라인 (Thumbs Up)

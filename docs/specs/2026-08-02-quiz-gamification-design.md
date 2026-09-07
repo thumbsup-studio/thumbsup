@@ -12,7 +12,7 @@
 
 2026-07-18 팀 회고에서 **게이미피케이션 부족**이 4명에게서 지적됐다(`R-08`). 핵심 가치가 "도파민·중독성"인데 장치가 얕다는 것.
 
-**코드에서 확인한 실제 공백**: 기존 팡파레(`app/public/lottie/fanfare.lottie`, 116KB)는 **해설 화면(S4)** 에서 연속 3정답 이상일 때만 뜬다(`insight-page.tsx:53-67`). 반면 **퀴즈 화면(S3)은 이펙트가 0개**다 — `play-page.tsx:207`이 채점 결과를 받자마자 `/insight`로 라우팅해서 **"맞았다!" 하는 판정 순간 자체가 화면에 존재하지 않는다.**
+**코드에서 확인한 실제 공백**: 기존 팡파레(`apps/web/public/lottie/fanfare.lottie`, 116KB)는 **해설 화면(S4)** 에서 연속 3정답 이상일 때만 뜬다(`insight-page.tsx:53-67`). 반면 **퀴즈 화면(S3)은 이펙트가 0개**다 — `play-page.tsx:207`이 채점 결과를 받자마자 `/insight`로 라우팅해서 **"맞았다!" 하는 판정 순간 자체가 화면에 존재하지 않는다.**
 
 ## 2. 브랜드 톤 충돌 해소
 
@@ -95,7 +95,7 @@
 
 현재 `play-page.tsx`는 630줄이고 localStorage 키 규약·콤보 로직이 컴포넌트 안에 있다(`play-page.tsx:610-630`). 연출까지 얹으면 손대기 어려워지므로 셋으로 가른다.
 
-### (a) `app/src/features/play/session-progress.ts` — 세션 상태 (신규)
+### (a) `apps/web/src/features/play/session-progress.ts` — 세션 상태 (신규)
 
 ```ts
 type PlaySession = {
@@ -115,7 +115,7 @@ applyAnswer(session: PlaySession, correct: boolean): PlaySession  // 순수 함�
 
 **구키 마이그레이션** — 배포 시점에 세션 진행 중이던 사용자를 위해, 새 키가 없고 구키 `thumbsup:insight-correct-streak:api-quiz:{stepOrder}`가 있으면 1회 읽어 `{answered: 0, correct: 0, combo: <구값>, bestCombo: <구값>}`로 seed하고 구키를 지운다. `answered`·`correct`는 복원 불가이므로, **완주 카드는 `answered === totalCount`일 때만 "정답 n/N" 줄을 렌더**한다(마이그레이션된 세션은 최고 콤보만 표시). 사용자에게 틀린 숫자를 보여주지 않는다.
 
-### (b) `app/src/features/play/celebration-logic.ts` — 연출 결정 (신규, 순수 함수)
+### (b) `apps/web/src/features/play/celebration-logic.ts` — 연출 결정 (신규, 순수 함수)
 
 ```ts
 type CelebrationTier = "none" | "subtle" | "combo" | "confetti";
@@ -162,7 +162,7 @@ getCelebration(input: {
 
 **레이아웃** — 질문은 카드 상단에 붙이고, 답안 블록은 `my-auto`로 질문과 하단 액션 버튼 사이 중앙에 띄운다. `mt-auto`로 답안을 바닥에 붙이면 질문이 짧을 때 사이가 400px 가까이 벌어져 화면 한가운데가 구멍처럼 빈다.
 
-### (c) `app/src/features/play/components/verdict-banner.tsx` — 표현 (신규)
+### (c) `apps/web/src/features/play/components/verdict-banner.tsx` — 표현 (신규)
 
 `Celebration`을 받아 해설 화면 맨 위의 정답/오답 배너를 그린다. 보상의 순간이 여기 한 곳에 모인다.
 
@@ -170,14 +170,14 @@ getCelebration(input: {
 - 색만으로 정오답을 구분하지 않는다 — 아이콘과 문구를 항상 함께 낸다
 - `tier === "confetti"`면 `fireConfetti()`를 호출하되 `useRef` 가드로 StrictMode 이중 실행에도 한 번만 터뜨린다
 
-### (c-2) `app/src/features/play/confetti.ts` — 컨페티 (신규)
+### (c-2) `apps/web/src/features/play/confetti.ts` — 컨페티 (신규)
 
 - **색은 `getComputedStyle(document.documentElement)`로 CSS 변수에서 읽는다** — 소스에 raw hex를 넣지 않아 `check:design` 통과. **변수가 비어 있으면 컨페티를 생략한다**(하드코딩 fallback 금지)
 - `disableForReducedMotion: true`
 - **이펙트 안에서** `await import("canvas-confetti")` — 모듈 top-level이나 render 중에 호출하지 않는다. SSR `document` 접근을 피하고 초기 번들에서 빠진다
 - 절대 throw하지 않는다
 
-### (c-3) `app/src/features/play/components/fanfare-overlay.tsx` — 팡파레 (신규)
+### (c-3) `apps/web/src/features/play/components/fanfare-overlay.tsx` — 팡파레 (신규)
 
 일일 완주 퍼펙트와 복습 퍼펙트가 공유한다.
 
@@ -214,7 +214,7 @@ getCelebration(input: {
 | 후보 | 판정 |
 |---|---|
 | **CSS 토큰 + 기존 Lottie + canvas-confetti** | **채택.** 사다리 1~2단계는 `globals.css @theme` keyframes(디자인 게이트와 일치, `prefers-reduced-motion`을 CSS로 처리). **신규 애니메이션 런타임은 0개** — 추가 의존성은 `canvas-confetti`(6kB gz, **ISC**) 1개 + `@types/canvas-confetti`뿐 |
-| Rive (`@rive-app/react-canvas`) | 미채택. WASM ~78KB CDN 요청 추가, 팀에 Rive 편집자 없음, Community 에셋 CC BY 출처 표기 의무. 제값을 하는 건 캐릭터 연출(#57)인데 그건 M4 |
+| Rive (`@rive-apps/web/react-canvas`) | 미채택. WASM ~78KB CDN 요청 추가, 팀에 Rive 편집자 없음, Community 에셋 CC BY 출처 표기 의무. 제값을 하는 건 캐릭터 연출(#57)인데 그건 M4 |
 | dotLottie state machine | 미채택. 설치된 `@lottiefiles/dotlottie-web@0.76.0`이 `stateMachineLoad` 등을 지원하지만(experimental 표기), 사다리 1~2단계는 UI 요소(칩·선택지) 애니메이션이라 Lottie 캔버스로 다룰 수 없다. 새 `.lottie` 에셋 제작 부담만 남는다 |
 
 - **사운드 제외** — `PRODUCT.md` anti-reference가 "요란한 사운드/이펙트 UI"를 명시 금지하고, 사용 맥락(출퇴근길·공공장소)과 불일치.

@@ -63,7 +63,7 @@ export type FollowUpQuestion = {
 
 ### 라우팅
 
-- `app/follow-up/page.tsx` (신규) — `/insight` 페이지와 동일 패턴: `searchParams` → `clampQuestionIndex` → `FollowUpPage` 렌더. `export const dynamic = "force-dynamic"`.
+- `apps/web/follow-up/page.tsx` (신규) — `/insight` 페이지와 동일 패턴: `searchParams` → `clampQuestionIndex` → `FollowUpPage` 렌더. `export const dynamic = "force-dynamic"`.
 - 진입: 해설 하단 "꼬리 질문 풀기" → `/follow-up?question=N&correct=…&streak=…` (복귀용 파라미터 전달).
 - "해설로 돌아가기" → `/insight?question=N&correct=…&streak=…` (원래 해설 상태 그대로 복원).
 - "다음 문제로" / "이 질문 건너뛰기" → `isLast ? "/" : /play?question=N+1`.
@@ -120,7 +120,7 @@ export function AppTabBar({ activeTab }: { activeTab: "home" | "history" | "prof
 
 | 구분 | 경로 | 변경 |
 | --- | --- | --- |
-| 신규 | `app/follow-up/page.tsx` | 꼬리질문 라우트 |
+| 신규 | `apps/web/follow-up/page.tsx` | 꼬리질문 라우트 |
 | 신규 | `features/play/components/follow-up-page.tsx` | 꼬리질문 화면(2단계) |
 | 신규 | `components/ui/app-tab-bar.tsx` | 공용 앱 탭바(라우팅 내부화) |
 | 수정 | `features/play/types.ts` | `FollowUpQuestion` 타입 + `followUp?` 필드 |

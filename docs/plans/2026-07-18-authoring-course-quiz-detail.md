@@ -39,25 +39,25 @@
 - `server/src/test/java/studio/thumbsup/server/quiz/authoring/AuthoringCourseControllerTest.java`
 
 **app (신규)**
-- `app/src/features/authoring/components/quiz-detail-card.tsx` — `draft-detail-screen`에서 추출한 상세 렌더러
-- `app/src/features/authoring/components/courses-index-screen.tsx`
-- `app/src/features/authoring/components/course-quizzes-screen.tsx`
-- `app/src/app/authoring/quizzes/[course]/page.tsx`
+- `apps/web/src/features/authoring/components/quiz-detail-card.tsx` — `draft-detail-screen`에서 추출한 상세 렌더러
+- `apps/web/src/features/authoring/components/courses-index-screen.tsx`
+- `apps/web/src/features/authoring/components/course-quizzes-screen.tsx`
+- `apps/web/src/app/authoring/quizzes/[course]/page.tsx`
 
 **app (수정)**
-- `app/src/features/authoring/types.ts` — 코스 타입 추가
-- `app/src/features/authoring/api.ts` — `getAuthoringCourses`, `getAuthoringCourseQuizzes`
-- `app/src/features/authoring/components/draft-detail-screen.tsx` — 추출한 `QuizDetailCard` import로 교체
-- `app/src/app/authoring/quizzes/page.tsx` — `CoursesIndexScreen` 렌더로 교체
+- `apps/web/src/features/authoring/types.ts` — 코스 타입 추가
+- `apps/web/src/features/authoring/api.ts` — `getAuthoringCourses`, `getAuthoringCourseQuizzes`
+- `apps/web/src/features/authoring/components/draft-detail-screen.tsx` — 추출한 `QuizDetailCard` import로 교체
+- `apps/web/src/app/authoring/quizzes/page.tsx` — `CoursesIndexScreen` 렌더로 교체
 
 **app (삭제 — 코스 인덱스+상세로 대체)**
-- `app/src/features/authoring/components/quizzes-screen.tsx`
-- `app/src/test/authoring-quizzes-screen.test.tsx`
+- `apps/web/src/features/authoring/components/quizzes-screen.tsx`
+- `apps/web/src/test/authoring-quizzes-screen.test.tsx`
 
 **app (테스트 신규)**
-- `app/src/test/authoring-courses-index-screen.test.tsx`
-- `app/src/test/authoring-course-quizzes-screen.test.tsx`
-- `app/src/test/authoring-api.test.ts` — 코스 API 케이스 추가(기존 파일에 append)
+- `apps/web/src/test/authoring-courses-index-screen.test.tsx`
+- `apps/web/src/test/authoring-course-quizzes-screen.test.tsx`
+- `apps/web/src/test/authoring-api.test.ts` — 코스 API 케이스 추가(기존 파일에 append)
 
 ---
 
@@ -495,8 +495,8 @@ EOF
 ## Task 3 (A1): `QuizDetailCard` 추출 (리팩토링, 동작 불변)
 
 **Files:**
-- Create: `app/src/features/authoring/components/quiz-detail-card.tsx`
-- Modify: `app/src/features/authoring/components/draft-detail-screen.tsx`
+- Create: `apps/web/src/features/authoring/components/quiz-detail-card.tsx`
+- Modify: `apps/web/src/features/authoring/components/draft-detail-screen.tsx`
 
 **Interfaces:**
 - Produces: `QuizDetailCard({ quiz: GeneratedQuiz, slotOrder: number }): JSX` (export).
@@ -545,19 +545,19 @@ function KeywordDictionary({ keywords }: { keywords: GeneratedQuizKeyword[] }) {
 
 - [ ] **Step 3: 기존 draft-detail 테스트로 회귀 확인**
 
-Run: `cd app && pnpm vitest run src/test/authoring-draft-detail.test.tsx`
+Run: `cd apps/web && pnpm vitest run src/test/authoring-draft-detail.test.tsx`
 Expected: PASS (동작 불변 — 렌더 결과 동일)
 
 - [ ] **Step 4: lint/typecheck로 orphan import 확인**
 
-Run: `cd app && pnpm typecheck && pnpm lint`
+Run: `cd apps/web && pnpm typecheck && pnpm lint`
 Expected: PASS (미사용 import 없음)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/src/features/authoring/components/quiz-detail-card.tsx \
-        app/src/features/authoring/components/draft-detail-screen.tsx
+git add apps/web/src/features/authoring/components/quiz-detail-card.tsx \
+        apps/web/src/features/authoring/components/draft-detail-screen.tsx
 git commit -m "$(cat <<'EOF'
 refactor(app): 문제 상세 렌더러 QuizDetailCard 추출 (#182)
 
@@ -571,9 +571,9 @@ EOF
 ## Task 4 (A2): 코스 타입 + API 클라이언트
 
 **Files:**
-- Modify: `app/src/features/authoring/types.ts`
-- Modify: `app/src/features/authoring/api.ts`
-- Test: `app/src/test/authoring-api.test.ts` (케이스 추가)
+- Modify: `apps/web/src/features/authoring/types.ts`
+- Modify: `apps/web/src/features/authoring/api.ts`
+- Test: `apps/web/src/test/authoring-api.test.ts` (케이스 추가)
 
 **Interfaces:**
 - Produces: `AuthoringCourse`, `AuthoringDetailedQuiz`, `AuthoringDetailedStep`, `AuthoringCourseDetail`; `getAuthoringCourses(): Promise<AuthoringCourse[]>`; `getAuthoringCourseQuizzes(courseId: number): Promise<AuthoringCourseDetail>`.
@@ -663,13 +663,13 @@ export function getAuthoringCourseQuizzes(courseId: number): Promise<AuthoringCo
 
 - [ ] **Step 4: 테스트 실행 → 통과**
 
-Run: `cd app && pnpm vitest run src/test/authoring-api.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/authoring-api.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/src/features/authoring/types.ts app/src/features/authoring/api.ts app/src/test/authoring-api.test.ts
+git add apps/web/src/features/authoring/types.ts apps/web/src/features/authoring/api.ts apps/web/src/test/authoring-api.test.ts
 git commit -m "$(cat <<'EOF'
 feat(app): 코스 조회 타입·API 클라이언트 (#182)
 
@@ -683,11 +683,11 @@ EOF
 ## Task 5 (A3): 코스 인덱스 화면 (기존 요약 탭 대체)
 
 **Files:**
-- Create: `app/src/features/authoring/components/courses-index-screen.tsx`
-- Modify: `app/src/app/authoring/quizzes/page.tsx`
-- Delete: `app/src/features/authoring/components/quizzes-screen.tsx`
-- Delete: `app/src/test/authoring-quizzes-screen.test.tsx`
-- Test: `app/src/test/authoring-courses-index-screen.test.tsx`
+- Create: `apps/web/src/features/authoring/components/courses-index-screen.tsx`
+- Modify: `apps/web/src/app/authoring/quizzes/page.tsx`
+- Delete: `apps/web/src/features/authoring/components/quizzes-screen.tsx`
+- Delete: `apps/web/src/test/authoring-quizzes-screen.test.tsx`
+- Test: `apps/web/src/test/authoring-courses-index-screen.test.tsx`
 
 **Interfaces:**
 - Produces: `CoursesIndexScreen(): JSX`.
@@ -695,7 +695,7 @@ EOF
 
 - [ ] **Step 1: 대체 대상 참조 확인(삭제 안전성)**
 
-Run: `cd app && grep -rn "quizzes-screen\|QuizzesScreen" src`
+Run: `cd apps/web && grep -rn "quizzes-screen\|QuizzesScreen" src`
 Expected: `quizzes/page.tsx`·`quizzes-screen.tsx`·`authoring-quizzes-screen.test.tsx`만 나옴(그 외 소비처 없음 확인).
 
 - [ ] **Step 2: CoursesIndexScreen 작성**
@@ -796,7 +796,7 @@ function CoursesSkeleton() {
 
 - [ ] **Step 3: page.tsx 교체**
 
-`app/src/app/authoring/quizzes/page.tsx`:
+`apps/web/src/app/authoring/quizzes/page.tsx`:
 ```tsx
 import { RequireAuth } from "@/features/auth/require-auth";
 import { CoursesIndexScreen } from "@/features/authoring/components/courses-index-screen";
@@ -815,8 +815,8 @@ export default function AuthoringQuizzesPage() {
 - [ ] **Step 4: 대체된 요약 화면·테스트 삭제**
 
 ```bash
-git rm app/src/features/authoring/components/quizzes-screen.tsx \
-       app/src/test/authoring-quizzes-screen.test.tsx
+git rm apps/web/src/features/authoring/components/quizzes-screen.tsx \
+       apps/web/src/test/authoring-quizzes-screen.test.tsx
 ```
 
 - [ ] **Step 5: 인덱스 화면 테스트 작성**
@@ -886,15 +886,15 @@ describe("CoursesIndexScreen", () => {
 
 - [ ] **Step 6: 테스트 실행 → 통과**
 
-Run: `cd app && pnpm vitest run src/test/authoring-courses-index-screen.test.tsx`
+Run: `cd apps/web && pnpm vitest run src/test/authoring-courses-index-screen.test.tsx`
 Expected: PASS (4 tests)
 
 - [ ] **Step 7: 커밋**
 
 ```bash
-git add app/src/features/authoring/components/courses-index-screen.tsx \
-        app/src/app/authoring/quizzes/page.tsx \
-        app/src/test/authoring-courses-index-screen.test.tsx
+git add apps/web/src/features/authoring/components/courses-index-screen.tsx \
+        apps/web/src/app/authoring/quizzes/page.tsx \
+        apps/web/src/test/authoring-courses-index-screen.test.tsx
 git commit -m "$(cat <<'EOF'
 feat(app): 라이브 문제 탭을 코스 인덱스로 전환 (#182)
 
@@ -908,9 +908,9 @@ EOF
 ## Task 6 (A4): 코스 상세 화면 (3단 아코디언) + 라우트
 
 **Files:**
-- Create: `app/src/features/authoring/components/course-quizzes-screen.tsx`
-- Create: `app/src/app/authoring/quizzes/[course]/page.tsx`
-- Test: `app/src/test/authoring-course-quizzes-screen.test.tsx`
+- Create: `apps/web/src/features/authoring/components/course-quizzes-screen.tsx`
+- Create: `apps/web/src/app/authoring/quizzes/[course]/page.tsx`
+- Test: `apps/web/src/test/authoring-course-quizzes-screen.test.tsx`
 
 **Interfaces:**
 - Produces: `CourseQuizzesScreen({ courseId: number }): JSX`; route `/authoring/quizzes/[course]`.
@@ -1099,7 +1099,7 @@ function CourseSkeleton() {
 
 - [ ] **Step 2: 라우트 page.tsx 작성**
 
-`app/src/app/authoring/quizzes/[course]/page.tsx`:
+`apps/web/src/app/authoring/quizzes/[course]/page.tsx`:
 ```tsx
 import { redirect } from "next/navigation";
 import { RequireAuth } from "@/features/auth/require-auth";
@@ -1245,15 +1245,15 @@ describe("CourseQuizzesScreen", () => {
 
 - [ ] **Step 4: 테스트 실행 → 통과**
 
-Run: `cd app && pnpm vitest run src/test/authoring-course-quizzes-screen.test.tsx`
+Run: `cd apps/web && pnpm vitest run src/test/authoring-course-quizzes-screen.test.tsx`
 Expected: PASS (3 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/src/features/authoring/components/course-quizzes-screen.tsx \
-        app/src/app/authoring/quizzes/\[course\]/page.tsx \
-        app/src/test/authoring-course-quizzes-screen.test.tsx
+git add apps/web/src/features/authoring/components/course-quizzes-screen.tsx \
+        apps/web/src/app/authoring/quizzes/\[course\]/page.tsx \
+        apps/web/src/test/authoring-course-quizzes-screen.test.tsx
 git commit -m "$(cat <<'EOF'
 feat(app): 코스 상세 3단 아코디언 문제 열람 화면 (#182)
 
@@ -1270,7 +1270,7 @@ EOF
 
 - [ ] **Step 1: app 검증 게이트 (verify-app)**
 
-Run: `cd app && pnpm typecheck && pnpm lint && pnpm build && pnpm check:design`
+Run: `cd apps/web && pnpm typecheck && pnpm lint && pnpm build && pnpm check:design`
 Expected: 전부 통과. (실패 시 해당 Task로 돌아가 수정.)
 
 - [ ] **Step 2: 서버 빌드**

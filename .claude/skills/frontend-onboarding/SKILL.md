@@ -1,18 +1,18 @@
 ---
 name: frontend-onboarding
-description: 백엔드 개발자가 app/(Next.js) 프론트 작업을 맡을 때의 온보딩 지도. 환경 준비물·개발 서버, 프론트 코드 3층 구조(Spring 대응), 작업 순서, 단계별 필수 스킬 라우팅을 안내한다. 규칙 정본은 각 스킬·문서 링크로 참조. 사용자가 "프론트 처음인데", "app 작업 뭐부터 해", "화면 어떻게 만들어", "프론트 환경 세팅", "서버만 하다가 프론트 맡았어"라고 할 때 트리거.
+description: 백엔드 개발자가 apps/web/(Next.js) 프론트 작업을 맡을 때의 온보딩 지도. 환경 준비물·개발 서버, 프론트 코드 3층 구조(Spring 대응), 작업 순서, 단계별 필수 스킬 라우팅을 안내한다. 규칙 정본은 각 스킬·문서 링크로 참조. 사용자가 "프론트 처음인데", "app 작업 뭐부터 해", "화면 어떻게 만들어", "프론트 환경 세팅", "서버만 하다가 프론트 맡았어"라고 할 때 트리거.
 ---
 
 # frontend-onboarding — 백엔드 개발자를 위한 프론트 개발 지도
 
-서버만 하던 사람이 `app/` 이슈를 맡았을 때 "무엇을 준비하고, 어디에 코드를 쓰고, 어떤 스킬로 작업하는가". [`docs/frontend-server-dev-guide.md`](../../../docs/frontend-server-dev-guide.md)(FE→서버)의 반대 방향 지도다. 규칙의 **정본은 `app/CLAUDE.md`와 각 스킬** — 여기서 규칙을 다시 쓰지 않는다.
+서버만 하던 사람이 `apps/web/` 이슈를 맡았을 때 "무엇을 준비하고, 어디에 코드를 쓰고, 어떤 스킬로 작업하는가". [`docs/frontend-server-dev-guide.md`](../../../docs/frontend-server-dev-guide.md)(FE→서버)의 반대 방향 지도다. 규칙의 **정본은 `apps/web/CLAUDE.md`와 각 스킬** — 여기서 규칙을 다시 쓰지 않는다.
 
 ## 30초 빠른 시작
 
 준비물은 Node ≥22, pnpm 10(`package.json`의 `packageManager` — corepack이면 자동). Java·Docker·AWS 전부 불필요.
 
 ```bash
-cd app && pnpm install
+cd apps/web && pnpm install
 pnpm dev         # http://localhost:3000
 
 # 별도 터미널에서 (dev가 포그라운드를 점유):

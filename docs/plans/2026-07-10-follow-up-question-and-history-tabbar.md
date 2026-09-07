@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- app/CLAUDE.md 필수: `next-best-practices` + `design-system` 스킬 로드 후 작업. Server Component 기본, `'use client'`는 상호작용 최소 단위.
+- apps/web/CLAUDE.md 필수: `next-best-practices` + `design-system` 스킬 로드 후 작업. Server Component 기본, `'use client'`는 상호작용 최소 단위.
 - 스타일은 globals.css @theme 토큰 · `src/components/ui` 컴포넌트만 (arbitrary value·raw hex 금지 — `check:design` 게이트 강제).
 - 완료 기준: `verify-app` 게이트(typecheck → lint → build → check:design) 통과. main 직접 커밋 금지, 커밋은 `commit` 스킬 형식.
 - 커밋 scope: `app`. 이슈 참조 `#122`.
@@ -70,7 +70,7 @@
 - Produces: `FollowUpPage({ session, questionIndex, correct, correctStreak })` with `revealed` state.
 
 - [ ] **Step 1** `follow-up-page.tsx`: `"use client"`, `revealed` state. 헤더(뒤로·category·"꼬리 질문"·난이도 배지·진행률 `{N}번 문제에서 이어짐`·`{N+1}/{total}`·Progress). 본문(질문 카드 / 한 줄 답 / 상세 정리). `revealed=false`엔 마스킹(스켈레톤 + eye-off + "먼저 스스로 답을 떠올려 보세요"), `true`엔 `KeywordTooltipText`로 공개. CTA 분기: false→"답 확인하기"(setRevealed)/"이 질문 건너뛰기"(nextHref), true→"해설로 돌아가기"(insightHref)/"다음 문제로"(nextHref). `nextHref = isLast ? "/" : /play?question=N+1`, `insightHref = /insight?question=N&correct=..&streak=..`. 스타일은 @theme 토큰·기존 rounded-card/control 패턴.
-- [ ] **Step 2** `app/follow-up/page.tsx`: `/insight` 패턴 복제 — `dynamic="force-dynamic"`, searchParams(question,correct,streak) → clamp → `FollowUpPage` 렌더. `followUp` 없으면 `/play`로 redirect(방어).
+- [ ] **Step 2** `apps/web/follow-up/page.tsx`: `/insight` 패턴 복제 — `dynamic="force-dynamic"`, searchParams(question,correct,streak) → clamp → `FollowUpPage` 렌더. `followUp` 없으면 `/play`로 redirect(방어).
 - [ ] **Step 3** `insight-page.tsx`: 하단 CTA 컨테이너에 "꼬리 질문 풀기" 버튼 추가 (`question.followUp` 있을 때만) → `/follow-up?question=N&correct=..&streak=..`. 기존 "다음 문제 풀기"/"홈으로" 유지.
 - [ ] **Step 4** `follow-up-page.test.tsx`: (a) 초기 답 가림("먼저 스스로…" 노출, 한 줄 답 텍스트 미노출), (b) "답 확인하기" 클릭 → 한 줄 답 노출, (c) CTA href 정확성(해설로 돌아가기=insightHref, 다음 문제로=nextHref). `next/navigation` mock.
 - [ ] **Step 5** 검증: `pnpm test -- follow-up` PASS → `pnpm typecheck && pnpm lint`.

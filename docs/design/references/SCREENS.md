@@ -6,9 +6,9 @@ Claude 디자인 결과물이 오면 이 표의 슬롯에 채우고 아래 레�
 ## 레퍼런스 연결 레시피 (시안 확정 시 각 화면마다)
 
 1. 시안 이미지를 `docs/design/references/<screen>.png` 로 커밋 (모바일 390px 기준 스크린샷 1장).
-2. app 밖이라 e2e로 복사: `cp docs/design/references/<screen>.png app/e2e/designs/<screen>.png`
-3. `app/e2e/qa-routes.ts` 에 라우트 추가: `{ path: "<route>", design: "e2e/designs/<screen>.png" }`
-4. 해당 화면 페이지(`app/src/app/<route>/page.tsx`)가 구현돼 있어야 visual-qa가 스크린샷을 찍는다. (페이지 없으면 캡처 실패 → soft skip)
+2. app 밖이라 e2e로 복사: `cp docs/design/references/<screen>.png apps/web/e2e/designs/<screen>.png`
+3. `apps/web/e2e/qa-routes.ts` 에 라우트 추가: `{ path: "<route>", design: "e2e/designs/<screen>.png" }`
+4. 해당 화면 페이지(`apps/web/src/app/<route>/page.tsx`)가 구현돼 있어야 visual-qa가 스크린샷을 찍는다. (페이지 없으면 캡처 실패 → soft skip)
 
 > ⚠️ 이미지·페이지가 없는 상태로 3번을 활성화하면 visual-qa가 깨진다. 세 조건(이미지·페이지·라우트)이 모두 준비된 화면만 qa-routes 에 넣는다.
 
@@ -39,7 +39,7 @@ Claude 디자인 산출물 — **자립형 HTML 목업**(폰트 임베드, 브�
 - `login.html`(로그인, 라이트) · `signup.html`(회원가입, 라이트) · `knowledge-graph.html`(지식 그래프/히스토리 탭, **다크**)
 - HTML은 대부분 우리 토큰 값(`#2f63ff`·`#020617`·`#eef2f8`)을 이미 쓰지만, 구현 시엔 **raw hex 복붙 금지 — `globals.css` 토큰·`components/ui` 로 매핑**한다.
 - **지식 그래프 테마**: 화면 자체는 라이트, **그래프 캔버스 카드만 다크**. 다크 팔레트(HTML 추출): 배경 `#3C4A6E` 계열, 마스터 노드 그린 `#34C88A`, 학습중 primary `#2F63FF`, 미학습 회색 dashed, 텍스트 흰색 → 확정 시 `globals.css` 에 `--color-graph-*` 로 편입. 숙련도는 색+아이콘(✓/반원/dashed) 병행.
-- **visual-qa 시안(PNG) 준비 완료**: `login.png`·`signup.png`·`knowledge-graph.png`(단일 **기본 상태**, 390×844@2x) + `<screen>-board.png`(전체 상태 보드). Playwright(visual-qa와 같은 Chromium)로 HTML 렌더 추출 — 앱과 같은 엔진이라 대조 정확. **페이지 구현 시** `cp docs/design/references/<screen>.png app/e2e/designs/` + qa-routes 연결하면 시안 대조 활성화(지금은 페이지가 없어 미연결). (향후: CI에서 HTML 직접 렌더 + 픽셀 diff 1차 게이트 + Gemini 2차.)
+- **visual-qa 시안(PNG) 준비 완료**: `login.png`·`signup.png`·`knowledge-graph.png`(단일 **기본 상태**, 390×844@2x) + `<screen>-board.png`(전체 상태 보드). Playwright(visual-qa와 같은 Chromium)로 HTML 렌더 추출 — 앱과 같은 엔진이라 대조 정확. **페이지 구현 시** `cp docs/design/references/<screen>.png apps/web/e2e/designs/` + qa-routes 연결하면 시안 대조 활성화(지금은 페이지가 없어 미연결). (향후: CI에서 HTML 직접 렌더 + 픽셀 diff 1차 게이트 + Gemini 2차.)
 
 ### 화면당 상태 시안 (도착 시 보관, visual-qa 는 대표 1장만 연결)
 - 로그인: `login-default.png` / `login-loading.png` / `login-error.png`
@@ -51,5 +51,5 @@ Claude 디자인 산출물 — **자립형 HTML 목업**(폰트 임베드, 브�
 
 ## 다음 단계
 - **Claude 디자인 결과물 도착 시**: 위 표의 파일명으로 커밋 → e2e/designs 복사 → 페이지 구현 후 qa-routes 연결.
-- **아틀라스 다크 팔레트**가 시안으로 확정되면 `app/src/app/globals.css` 에 `--color-graph-*` 토큰으로 정의(현재는 이름만 예약).
+- **아틀라스 다크 팔레트**가 시안으로 확정되면 `apps/web/src/app/globals.css` 에 `--color-graph-*` 토큰으로 정의(현재는 이름만 예약).
 - 디자인 생성 프롬프트: 로그인·지식그래프용 프롬프트는 별도 공유됨(디자인 시스템 토큰·컴포넌트·규칙 내장).

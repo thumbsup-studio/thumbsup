@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'app/**'
+      - 'apps/web/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/app-deploy.yml'
   pull_request:
     paths:
-      - 'app/**'
+      - 'apps/web/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -35,7 +35,7 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     defaults:
       run:
-        working-directory: app
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - name: 시크릿 가드 (fork PR·미등록 시 스킵)
@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: 워크스페이스 의존성 설치
         if: steps.guard.outputs.skip != 'true'
-        run: pnpm --dir .. install --frozen-lockfile
+        run: pnpm --dir ../.. install --frozen-lockfile
       - name: Vercel 배포
         id: deploy
         if: steps.guard.outputs.skip != 'true'
@@ -67,8 +67,8 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then FLAG="--prod"; ENV_NAME="production"; else FLAG=""; ENV_NAME="preview"; fi
           npx vercel@54 pull --yes --environment=$ENV_NAME --token="$VERCEL_TOKEN"
           npx vercel@54 build $FLAG --token="$VERCEL_TOKEN"
-          mv .vercel ../.vercel
-          URL=$(npx vercel@54 --cwd .. deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
+          mv .vercel ../../.vercel
+          URL=$(npx vercel@54 --cwd ../.. deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "배포 완료: $URL"
 
@@ -86,4 +86,4 @@ jobs:
           message: |
             🔍 **프리뷰 배포**: ${{ needs.deploy.outputs.url }}
 
-            `app/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.
+            `apps/web/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.

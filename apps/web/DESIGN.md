@@ -95,5 +95,5 @@ Task 2가 `globals.css`의 `@theme`에 그대로 옮길 토큰 이름이다 — 
 - **혼동 주의:** `answer-insight.png`의 "대표 꼬리질문" 카드는 검은 배경에 흰 텍스트로 렌더링되지만,
   이건 앱 전역 다크모드가 아니라 라이트 UI 안에 놓인 **국소적으로 어두운 카드 한 장**(강조용 서피스)이다.
   그래프 화면의 다크 토큰과는 별개 개념이므로 이 카드를 다크모드 지원 근거로 삼지 않는다. 현재
-  `app/src/app/globals.css`에 남아 있는 `@media (prefers-color-scheme: dark)` 분기는 이 정책에 따라
+  `apps/web/src/app/globals.css`에 남아 있는 `@media (prefers-color-scheme: dark)` 분기는 이 정책에 따라
   Task 2에서 제거한다.

@@ -5,7 +5,7 @@ description: app UI(화면·컴포넌트·스타일)를 만들거나 고칠 때 
 
 # design-system — 떰즈업 디자인 규약
 
-UI 작업 전 이 규칙을 따른다. 상세는 `app/DESIGN.md`, 토큰은 `app/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
+UI 작업 전 이 규칙을 따른다. 상세는 `apps/web/DESIGN.md`, 토큰은 `apps/web/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
 
 ## 화면 구현 시 레퍼런스 (먼저 확인)
 화면(로그인·회원가입·지식그래프 등)을 만들 땐 **레퍼런스 HTML을 먼저 연다.**

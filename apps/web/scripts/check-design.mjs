@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url)); // app/
+const ROOT = fileURLToPath(new URL("..", import.meta.url)); // apps/web/
 const SRC = join(ROOT, "src");
 
 // 색상 길이(3/4/6/8)의 raw hex

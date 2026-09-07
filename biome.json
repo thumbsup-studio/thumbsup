@@ -3,12 +3,12 @@
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
     "includes": [
-      "app/src/**",
-      "app/e2e/**",
-      "app/*.ts",
-      "app/*.tsx",
-      "app/*.json",
-      "app/*.mjs"
+      "apps/web/src/**",
+      "apps/web/e2e/**",
+      "apps/web/*.ts",
+      "apps/web/*.tsx",
+      "apps/web/*.json",
+      "apps/web/*.mjs"
     ]
   },
   "css": { "parser": { "tailwindDirectives": true } },

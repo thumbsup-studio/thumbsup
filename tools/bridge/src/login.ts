@@ -2,7 +2,7 @@ import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 import { CONFIG_PATH, saveConfig, type BridgeCli, type BridgeConfig } from "./config.js";
 
-/** app/src/lib/api/client.ts의 DEFAULT_API_URL과 동일한 배포 API 기본값. */
+/** apps/web/src/lib/api/client.ts의 DEFAULT_API_URL과 동일한 배포 API 기본값. */
 const DEFAULT_SERVER_URL = "https://thumbsup-api.duckdns.org";
 
 const CLI_CHOICES: Record<string, BridgeCli> = { "1": "CLAUDE", "2": "CODEX", "3": "GEMINI" };

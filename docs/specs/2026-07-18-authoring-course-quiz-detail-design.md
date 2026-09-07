@@ -74,11 +74,11 @@ GET /api/v1/authoring/courses/{courseId}/quizzes
 ### 5.1 파일
 
 ```
-app/src/app/authoring/quizzes/page.tsx                  (재작성) → CoursesIndexScreen
-app/src/app/authoring/quizzes/[course]/page.tsx         (신규)   → CourseQuizzesScreen({courseId})
-app/src/features/authoring/components/courses-index-screen.tsx  (신규)
-app/src/features/authoring/components/course-quizzes-screen.tsx (신규)
-app/src/features/authoring/components/quiz-detail-card.tsx      (신규, 추출)
+apps/web/src/app/authoring/quizzes/page.tsx                  (재작성) → CoursesIndexScreen
+apps/web/src/app/authoring/quizzes/[course]/page.tsx         (신규)   → CourseQuizzesScreen({courseId})
+apps/web/src/features/authoring/components/courses-index-screen.tsx  (신규)
+apps/web/src/features/authoring/components/course-quizzes-screen.tsx (신규)
+apps/web/src/features/authoring/components/quiz-detail-card.tsx      (신규, 추출)
 ```
 
 ### 5.2 QuizDetailCard 추출 (surgical)

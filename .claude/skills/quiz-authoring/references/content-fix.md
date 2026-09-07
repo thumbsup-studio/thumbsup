@@ -60,4 +60,4 @@ LLM 비용이 **공용 API 키**로 나가는 구조였고, 그걸 팀원 개인
 남은 것과 이름의 유래:
 - `server/.../quiz/generation/` 패키지와 `QuizGenerationPromptBuilder`·`GeneratedQuizValidator`·`QuizPersister`는 그대로 살아 있고 **저작 파이프라인이 쓴다**. 이름만 이 시절 것이다.
 - `SYSTEM_PROMPT`는 `EliceClient`에서 `QuizGenerationPromptBuilder`로 옮겼다.
-- 엘리스 자체는 죽지 않았다 — `app/e2e/visual-qa.ts`의 **시각 QA**가 `ELICE_API_KEY`·`ELICE_QA_BASE_URL`로 계속 쓴다(`elice-models` 스킬). 없어진 건 서버의 *문제 생성* 용도뿐이다.
+- 엘리스 자체는 죽지 않았다 — `apps/web/e2e/visual-qa.ts`의 **시각 QA**가 `ELICE_API_KEY`·`ELICE_QA_BASE_URL`로 계속 쓴다(`elice-models` 스킬). 없어진 건 서버의 *문제 생성* 용도뿐이다.

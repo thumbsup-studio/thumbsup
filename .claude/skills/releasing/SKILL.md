@@ -11,7 +11,7 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 ## 흐름 (2단계)
 
-1. **main에 `feat`/`fix` 등이 머지되면** → release-please가 **"chore(main): release X.Y.Z" Release PR**을 자동 생성/갱신한다. 이 PR 안에서 CHANGELOG·`version.txt`·`app/package.json` version이 함께 갱신된다.
+1. **main에 `feat`/`fix` 등이 머지되면** → release-please가 **"chore(main): release X.Y.Z" Release PR**을 자동 생성/갱신한다. 이 PR 안에서 CHANGELOG·`version.txt`·`apps/web/package.json` version이 함께 갱신된다.
 2. **그 Release PR을 사람이 머지하면** → git 태그 `vX.Y.Z` + GitHub Release(노트 게시)가 생성된다.
 
 즉 릴리즈하려면: **Release PR을 확인하고 머지**하면 끝. 태그·노트는 자동.
@@ -29,8 +29,8 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 ## 버전의 단일 소스
 
-`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `app/package.json`의 version은 릴리즈 시 여기에 맞춰 갱신된다(수동 편집 금지 — Release PR이 관리).
+`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `apps/web/package.json`의 version은 릴리즈 시 여기에 맞춰 갱신된다(수동 편집 금지 — Release PR이 관리).
 
 ## 배포와의 관계
 
-릴리즈와 배포는 **독립**이다. 배포는 main push마다(`app/**` 변경 시) 즉시 일어나고(→ `deploying` 스킬), 릴리즈는 태그·노트만 관리한다. 태그가 배포를 트리거하지 않는다.
+릴리즈와 배포는 **독립**이다. 배포는 main push마다(`apps/web/**` 변경 시) 즉시 일어나고(→ `deploying` 스킬), 릴리즈는 태그·노트만 관리한다. 태그가 배포를 트리거하지 않는다.

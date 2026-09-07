@@ -38,7 +38,7 @@ GitHub의 `mergeable`만 믿지 않는다. 머지 안전성의 **대부분**(PR 
 
 변경 경로별 게이트는 형제 스킬에 위임한다.
 
-- `app/**`: `verify-app`의 로컬 게이트 + App CI `gate` + 프리뷰/시각 QA(`deploying`).
+- `apps/web/**`: `verify-app`의 로컬 게이트 + App CI `gate` + 프리뷰/시각 QA(`deploying`).
 - `server/**`: `server`에서 `./gradlew --no-daemon spotlessCheck build` + Server CI `build-and-test`·`gitleaks`.
 - `.github/workflows/**`·`.coderabbit.yaml`·배포/검증 스크립트: YAML/스크립트를 직접 리뷰한다(trigger·permissions·path filter·secret guard). **변경된 workflow가 자기 자신을 검사했을 것이라고 가정하지 않는다.**
 

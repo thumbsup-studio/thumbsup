@@ -3,7 +3,7 @@ name: App CI
 on:
   pull_request:
     paths:
-      - 'app/**'
+      - 'apps/web/**'
       - 'biome.json'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -13,7 +13,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'app/**'
+      - 'apps/web/**'
       - 'biome.json'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -30,7 +30,7 @@ concurrency:
 
 defaults:
   run:
-    working-directory: app
+    working-directory: apps/web
 
 jobs:
   gate:
@@ -46,7 +46,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm --dir .. install --frozen-lockfile
+      - run: pnpm --dir ../.. install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint:ci
       - run: pnpm build

@@ -9,9 +9,9 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`). G
 
 ## 트리거
 
-- **main push (`app/**` 변경)** → 프로덕션 배포 (`vercel deploy --prod`)
-- **PR (`app/**` 변경)** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
-- **`server/**` 변경** → 이 워크플로우(app-deploy)는 반응하지 않는다(paths 필터가 `app/**`만 감시). 서버는 별도 `server-deploy.yml`이 main push(`server/**`)를 AWS ECR로 배포한다 — app(Vercel)과 완전히 분리된 파이프라인이다.
+- **main push (`apps/web/**` 변경)** → 프로덕션 배포 (`vercel deploy --prod`)
+- **PR (`apps/web/**` 변경)** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
+- **`server/**` 변경** → 이 워크플로우(app-deploy)는 반응하지 않는다(paths 필터가 `apps/web/**`만 감시). 서버는 별도 `server-deploy.yml`이 main push(`server/**`)를 AWS ECR로 배포한다 — app(Vercel)과 완전히 분리된 파이프라인이다.
 
 ## 도메인
 
@@ -20,7 +20,7 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`). G
 
 ## 시각 QA (soft gate)
 
-PR 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR sticky 코멘트. 머지를 막지 않는다. `ELICE_API_KEY` 미등록 시 스크린샷만 찍고 리뷰는 스킵. 검사 라우트는 `app/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고.
+PR 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR sticky 코멘트. 머지를 막지 않는다. `ELICE_API_KEY` 미등록 시 스크린샷만 찍고 리뷰는 스킵. 검사 라우트는 `apps/web/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고.
 
 ## 시크릿·변수
 

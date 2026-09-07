@@ -32,7 +32,7 @@ async function parseEnvelope<T>(res: Response): Promise<Envelope<T>> {
 /**
  * bridge용 서버 API 클라이언트. 엔벨로프 {code,message,data} 언랩, 401+TOKEN_EXPIRED는
  * refresh 후 1회 재시도(회전 토큰쌍을 persist 콜백으로 저장)한다.
- * 리프레시 요청/응답 형태는 app/src/lib/api/client.ts의 doRefresh()를 미러링한다.
+ * 리프레시 요청/응답 형태는 apps/web/src/lib/api/client.ts의 doRefresh()를 미러링한다.
  */
 export class BridgeApi {
   private config: BridgeConfig;
