@@ -24,6 +24,12 @@ export class UpdatesServerStack extends Stack {
           expiration: Duration.days(30),
           noncurrentVersionExpiration: Duration.days(30),
         },
+        {
+          id: 'ExpireTelemetry',
+          prefix: 'telemetry/',
+          expiration: Duration.days(30),
+          noncurrentVersionExpiration: Duration.days(30),
+        },
       ],
       removalPolicy: RemovalPolicy.RETAIN,
       autoDeleteObjects: false,
@@ -85,6 +91,29 @@ export class UpdatesServerStack extends Stack {
       invokeMode: lambda.InvokeMode.BUFFERED,
     });
 
+    const telemetry = new nodejs.NodejsFunction(this, 'TelemetryHandler', {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: new URL('../src/telemetry.ts', import.meta.url).pathname,
+      handler: 'handler',
+      timeout: Duration.seconds(10),
+      memorySize: 256,
+      reservedConcurrentExecutions: 5,
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
+      },
+      environment: { ARTIFACTS_BUCKET: artifacts.bucketName },
+    });
+    telemetry.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['s3:PutObject'],
+      resources: [artifacts.arnForObjects('telemetry/*')],
+    }));
+    const telemetryFunctionUrl = telemetry.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      invokeMode: lambda.InvokeMode.BUFFERED,
+    });
+
     const preserveViewerHost = new cloudfront.Function(this, 'PreserveViewerHost', {
       code: cloudfront.FunctionCode.fromInline(`function handler(event) {
   var request = event.request;
@@ -102,6 +131,13 @@ export class UpdatesServerStack extends Stack {
         cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
       },
       additionalBehaviors: {
+        '/api/telemetry/*': {
+          origin: origins.FunctionUrlOrigin.withOriginAccessControl(telemetryFunctionUrl),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+        },
         '/api/manifest*': {
           origin: origins.FunctionUrlOrigin.withOriginAccessControl(functionUrl),
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,

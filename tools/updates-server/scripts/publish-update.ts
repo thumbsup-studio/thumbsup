@@ -198,8 +198,11 @@ export async function publishUpdate(options: PublishOptions): Promise<{ channel:
   const exportMetadataPath = join(exportDir, 'metadata.json');
   const exportMetadata = JSON.parse(await readFile(exportMetadataPath, 'utf8')) as UpdateMetadata;
   validateExportMetadata(exportMetadata, artifact.runtimeVersion);
+  const channel = options.channel ?? `pr-${options.prNumber}`;
+  assertChannel(channel);
   exportMetadata.extra = {
     ...exportMetadata.extra,
+    updateChannel: channel,
     pullRequest: {
       number: artifact.prNumber,
       branch: artifact.branch,
@@ -208,8 +211,6 @@ export async function publishUpdate(options: PublishOptions): Promise<{ channel:
     },
   };
 
-  const channel = options.channel ?? `pr-${options.prNumber}`;
-  assertChannel(channel);
   const updateId = options.commit;
   const prefix = `updates/${channel}/${updateId}`;
   const allFiles = await filesBelow(exportDir);

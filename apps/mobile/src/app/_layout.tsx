@@ -5,6 +5,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  ObservabilityErrorBoundary,
+  ObservabilityProvider,
+} from "../features/observability/observability";
 import { ApiProvider, useApi } from "../lib/api/api-provider";
 import { isStagingBuild } from "../lib/app-environment";
 import { ConnectivityProvider } from "../lib/connectivity/connectivity-provider";
@@ -69,14 +73,18 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <ConnectivityProvider>
-        <ApiProvider>
-          <StagingBoundary>
-            <RootNavigator />
-          </StagingBoundary>
-        </ApiProvider>
-      </ConnectivityProvider>
-    </SafeAreaProvider>
+    <ObservabilityErrorBoundary>
+      <ObservabilityProvider>
+        <SafeAreaProvider>
+          <ConnectivityProvider>
+            <ApiProvider>
+              <StagingBoundary>
+                <RootNavigator />
+              </StagingBoundary>
+            </ApiProvider>
+          </ConnectivityProvider>
+        </SafeAreaProvider>
+      </ObservabilityProvider>
+    </ObservabilityErrorBoundary>
   );
 }
