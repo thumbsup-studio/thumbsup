@@ -28,6 +28,13 @@ describe('UpdatesServerStack', () => {
               NoncurrentVersionExpiration: { NoncurrentDays: 30 },
               Status: 'Enabled',
             },
+            {
+              Id: 'ExpireTelemetry',
+              Prefix: 'telemetry/',
+              ExpirationInDays: 30,
+              NoncurrentVersionExpiration: { NoncurrentDays: 30 },
+              Status: 'Enabled',
+            },
           ],
         },
         PublicAccessBlockConfiguration: {
@@ -47,6 +54,10 @@ describe('UpdatesServerStack', () => {
       Environment: { Variables: { ARTIFACTS_BUCKET: Match.anyValue() } },
     });
     synthesized.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'AWS_IAM' });
+    synthesized.hasResourceProperties('AWS::Lambda::Function', {
+      ReservedConcurrentExecutions: 5,
+      Environment: { Variables: { ARTIFACTS_BUCKET: Match.anyValue() } },
+    });
   });
 
   it('routes only manifest requests to Lambda and makes update assets immutable', () => {
@@ -61,6 +72,10 @@ describe('UpdatesServerStack', () => {
     expect(behaviors.find((item) => item.PathPattern === '/api/manifest*')).toMatchObject({
       CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
     });
+    expect(behaviors.find((item) => item.PathPattern === '/api/telemetry/*')).toMatchObject({
+      CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+      AllowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    });
     expect(behaviors.find((item) => item.PathPattern === '/updates/*')?.ResponseHeadersPolicyId).toBeTruthy();
     template().hasResourceProperties('AWS::CloudFront::ResponseHeadersPolicy', {
       ResponseHeadersPolicyConfig: {
@@ -73,5 +88,15 @@ describe('UpdatesServerStack', () => {
         },
       },
     });
+  });
+
+  it('allows the telemetry Lambda to write only under telemetry', () => {
+    const policies = template().findResources('AWS::IAM::Policy');
+    const statements = Object.values(policies).flatMap(
+      (policy) => policy.Properties.PolicyDocument.Statement as Array<Record<string, unknown>>,
+    );
+    const write = statements.find((statement) => statement.Action === 's3:PutObject');
+    expect(write).toMatchObject({ Action: 's3:PutObject', Effect: 'Allow' });
+    expect(JSON.stringify(write?.Resource)).toContain('telemetry/*');
   });
 });

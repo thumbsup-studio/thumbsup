@@ -59,6 +59,11 @@ describe('publishUpdate', () => {
     expect(result).toEqual({ channel: 'staging', updateId: sha });
     const index = JSON.parse(await readFile(join(root, 'channels', 'index.json'), 'utf8'));
     expect(index.channels.staging[0]).toMatchObject({ updateId: sha, runtimeVersion: '0.1.0' });
+    const metadata = JSON.parse(await readFile(
+      join(root, 'updates', 'staging', sha, 'metadata.json'),
+      'utf8',
+    ));
+    expect(metadata.extra.updateChannel).toBe('staging');
     expect(await readFile(
       join(root, 'updates', 'staging', sha, '_expo', 'static', 'js', 'android', 'app.hbc'),
       'utf8',
