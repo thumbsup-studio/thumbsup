@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: 워크스페이스 의존성 설치
         if: steps.guard.outputs.skip != 'true'
-        run: pnpm --dir .. install --frozen-lockfile
+        run: pnpm --dir .. install --frozen-lockfile --virtual-store-dir "$GITHUB_WORKSPACE/app/node_modules/.pnpm"
       - name: Vercel 배포
         id: deploy
         if: steps.guard.outputs.skip != 'true'
