@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "authoring",
   "version": "0.4.0",
   "private": true,
   "engines": {
@@ -16,40 +16,29 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "lint:ci": "biome ci .",
-    "qa:visual": "tsx e2e/visual-qa.ts",
-    "check:design": "node scripts/check-design.mjs",
-    "test:design": "node --test scripts/check-design.test.mjs",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "check:design": "node scripts/check-design.mjs"
   },
   "dependencies": {
     "@thumbsup/api": "workspace:*",
     "@thumbsup/core": "workspace:*",
     "@thumbsup/tokens": "workspace:*",
     "@thumbsup/ui-web": "workspace:*",
-    "@lottiefiles/dotlottie-react": "0.19.7",
-    "canvas-confetti": "1.9.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "next": "16.2.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-force-graph-2d": "^1.29.1"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.2",
-    "@storybook/addon-docs": "^10.4.6",
-    "@storybook/nextjs-vite": "^10.4.6",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
-    "@types/canvas-confetti": "1.9.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "jsdom": "^27.0.1",
-    "playwright": "^1.61.1",
-    "storybook": "^10.4.6",
     "tailwindcss": "^4",
-    "tsx": "^4.23.0",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

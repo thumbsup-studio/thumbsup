@@ -8,7 +8,7 @@ description: Thumbs Up 문제 저작 파이프라인. 웹 대시보드(/authorin
 웹 대시보드에서 문제를 만들고, **팀원 각자의 개인 AI CLI 구독**으로 실행한다. 공용 API 키로 토큰당 과금하지 않는 것이 이 구조의 존재 이유다.
 
 ```text
-대시보드 /authoring ──POST /drafts/generate──▶ 서버: generation_job (QUEUED)
+저작 앱 / ──POST /drafts/generate──▶ 서버: generation_job (QUEUED)
 브리지(팀원 노트북) ──3초 폴링──▶ RUNNING, {prompt, outputSchema} 수령
      ├─ 개인 AI CLI 구독으로 헤드리스 실행
      ├─ POST .../logs   ──▶ job_log → SSE → 대시보드 터미널
@@ -19,7 +19,7 @@ description: Thumbs Up 문제 저작 파이프라인. 웹 대시보드(/authorin
 
 **프롬프트는 서버가 만든다.** 브리지는 프롬프트를 조립하지 않는 "멍청한 실행기"다.
 
-코드: 서버 `server/.../quiz/authoring/` · web `apps/web/src/features/authoring/` · 브리지 `tools/bridge/src/`
+코드: 서버 `server/.../quiz/authoring/` · 저작 앱 `apps/authoring/src/features/authoring/` · 브리지 `tools/bridge/src/`
 문제 생성·검증의 공유 코어는 `server/.../quiz/generation/`에 있다(패키지 이름은 레거시 CLI 시절 것).
 
 ## 어디를 읽을지
@@ -96,7 +96,7 @@ role 없이 발급된 과거 토큰은 `JwtTokenProvider.DEFAULT_ROLE = "USER"`�
 
 저작 대시보드는 두 가지가 더 필요하다:
 
-- `apps/web/.env.local`에 **`NEXT_PUBLIC_API_URL=http://localhost:8080`** — 없으면 기본값이 **운영 API**라 로컬 화면으로 운영 문제를 승인하게 된다
+- `apps/authoring/.env.local`에 **`NEXT_PUBLIC_API_URL=http://localhost:8080`** — 없으면 기본값이 **운영 API**라 로컬 화면으로 운영 문제를 승인하게 된다
 - 브리지 `pnpm start` (대시보드 로그인 계정과 **같은 계정**으로 `pnpm start login`)
 
 로컬 admin은 `admin@thumbsup.local`로 가입 후 로그인하면 승격된다.

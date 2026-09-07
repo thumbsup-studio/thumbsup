@@ -1,4 +1,4 @@
-# 저작 대시보드 (`apps/web/src/features/authoring/`)
+# 저작 대시보드 (`apps/authoring/src/features/authoring/`)
 
 ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([bridge.md](./bridge.md)), 결과 초안을 검수·승인하면 라이브에 반영된다.
 
@@ -6,28 +6,28 @@ ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([b
 
 | 라우트 | 화면 | 하는 일 |
 |---|---|---|
-| `/authoring` | `drafts-screen` | 초안 목록. `DRAFT`/`APPROVED` 필터, "문제 생성" 버튼 |
-| `/authoring/drafts/[draftId]` | `draft-detail-screen` | 초안 전문 + 검수 이력. `status=DRAFT`일 때만 검수·승인 버튼 노출 |
-| `/authoring/jobs/[jobId]` | `job-screen` | 잡 실행 터미널(xterm + SSE) |
-| `/authoring/quizzes` | `courses-index-screen` | 라이브 코스 목록 |
-| `/authoring/quizzes/[course]` | `course-quizzes-screen` | 스텝·문제 아코디언 + "개선" 진입 |
+| `/` | `drafts-screen` | 초안 목록. `DRAFT`/`APPROVED` 필터, "문제 생성" 버튼 |
+| `/drafts/[draftId]` | `draft-detail-screen` | 초안 전문 + 검수 이력. `status=DRAFT`일 때만 검수·승인 버튼 노출 |
+| `/jobs/[jobId]` | `job-screen` | 잡 실행 터미널(xterm + SSE) |
+| `/quizzes` | `courses-index-screen` | 라이브 코스 목록 |
+| `/quizzes/[course]` | `course-quizzes-screen` | 스텝·문제 아코디언 + "개선" 진입 |
 
-레이아웃(`apps/web/src/app/authoring/layout.tsx`)이 전체를 `<RequireAdmin>`으로 감싸고, 각 페이지는 다시 `<RequireAuth>`로 감싼다(이중 가드). 5개 페이지 모두 `force-dynamic`.
+대시보드 레이아웃(`apps/authoring/src/app/(dashboard)/layout.tsx`)이 5개 라우트를 `<RequireAdmin>`으로 감싼다. 로그인은 별도 `/login` 라우트에서 처리하며, 5개 대시보드 페이지는 모두 `force-dynamic`이다. 이전 `/authoring/*` 주소는 `next.config.ts`가 새 경로로 영구 리다이렉트한다.
 
-**앱 어디에도 `/authoring`으로 가는 링크가 없다.** ADMIN이 홈에 있다가 저작으로 가려면 URL을 직접 치거나 재로그인해야 한다. 반대로 저작 화면에서 나가는 로그아웃 진입점도 없다(#216).
+사용자 웹 앱은 `NEXT_PUBLIC_AUTHORING_URL`이 설정된 환경에서 ADMIN 로그인 뒤 독립 저작 앱으로 이동한다. 저작 화면에서 나가는 로그아웃 진입점은 아직 없다(#216).
 
 ## 워크플로우
 
 세 가지 잡 생성 액션은 **예외 없이 잡 터미널 화면으로 강제 이동**한다. 목록으로 돌아오는 길은 상단 nav나 브라우저 뒤로가기뿐이다.
 
 ```text
-생성   /authoring → "문제 생성" → 주제 입력 → POST /drafts/generate → /jobs/{id}
+생성   / → "문제 생성" → 주제 입력 → POST /drafts/generate → /jobs/{id}
                                                     → 완료 시 "Draft 보러가기" → /drafts/{id}
 
 검수   /drafts/{id} → "검수 시작" → 피드백(선택) → POST /drafts/{id}/reviews → /jobs/{id}
                                                     → 완료 후 돌아오면 revisions 1건 증가
 
-개선   /authoring/quizzes → 코스 → 스텝 펼침 → 문제 펼침 → "개선" → 지시(필수)
+개선   /quizzes → 코스 → 스텝 펼침 → 문제 펼침 → "개선" → 지시(필수)
                         → POST /quizzes/{quizId}/improve → /jobs/{id} → origin=IMPROVE 초안
 
 승인   /drafts/{id} → "승인" → 경고 확인 → POST /drafts/{id}/approve
@@ -40,7 +40,7 @@ ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([b
 
 전부 `apiRequest`(`lib/api/client.ts`) 경유 — envelope 언랩 · Bearer 자동 부착 · 401 `TOKEN_EXPIRED` 1회 refresh 재시도. 규약은 `frontend-api` 스킬 참조.
 
-`apps/web/src/features/authoring/api.ts`에 전량 모여 있으니 목록은 그 파일을 읽어라. 계약을 바꾸면 `apps/web/src/test/authoring-api.test.ts`가 먼저 깨진다(URL·메서드·body·언랩까지 검증).
+`apps/authoring/src/features/authoring/api.ts`에 전량 모여 있으니 목록은 그 파일을 읽어라. 계약을 바꾸면 `apps/authoring/src/test/authoring-api.test.ts`가 먼저 깨진다(URL·메서드·body·언랩까지 검증).
 
 주의할 두 가지:
 - `getAuthoringQuizzes`(`GET /authoring/quizzes`)는 **어느 화면도 쓰지 않는 죽은 코드**다. 라이브 화면은 `/authoring/courses` 계열을 쓴다.

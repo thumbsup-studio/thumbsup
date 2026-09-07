@@ -17,6 +17,11 @@
       "apps/mobile/*.js",
       "apps/mobile/*.mjs",
       "apps/mobile/scripts/**",
+      "apps/authoring/src/**",
+      "apps/authoring/*.ts",
+      "apps/authoring/*.json",
+      "apps/authoring/*.mjs",
+      "apps/authoring/scripts/**",
       "packages/**/*.ts",
       "packages/**/*.tsx",
       "packages/**/*.json"

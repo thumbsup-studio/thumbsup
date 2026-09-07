@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@import "@thumbsup/tokens/web.css";
+@source "../../../../packages/ui-web/src";
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* 가로 스크롤 캐러셀에서 스크롤바를 숨긴다 — 위치는 점 인디케이터·화살표가 대신 알려준다. */
+@utility scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * 모션 줄이기를 켠 사용자에겐 애니메이션을 사실상 끈다.
+ * 연출 등급·유지 시간은 celebration-logic이 이미 눌러 두지만,
+ * CSS 애니메이션은 JS를 거치지 않으므로 여기서 한 번 더 막는다.
+ * 바텀시트 등 기존 애니메이션에도 함께 적용된다 — 의도한 개선이다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: 모션 줄이기 설정은 기존 애니메이션보다 우선해야 한다. */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 모션 줄이기 설정은 기존 애니메이션보다 우선해야 한다. */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 모션 줄이기 설정은 기존 애니메이션보다 우선해야 한다. */
+    transition-duration: 0.01ms !important;
+  }
+}
