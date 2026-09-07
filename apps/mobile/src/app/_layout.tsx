@@ -41,7 +41,6 @@ function RootNavigator() {
         <Stack.Screen name="play" />
         <Stack.Screen name="insight" />
         <Stack.Screen name="follow-up" />
-        <Stack.Screen name="history" />
       </Stack.Protected>
     </Stack>
   );
