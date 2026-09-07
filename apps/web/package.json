@@ -23,6 +23,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@thumbsup/api": "workspace:*",
     "@thumbsup/core": "workspace:*",
     "@thumbsup/tokens": "workspace:*",
     "@thumbsup/ui-web": "workspace:*",

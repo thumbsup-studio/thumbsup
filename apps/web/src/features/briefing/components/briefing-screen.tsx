@@ -13,8 +13,7 @@ import {
   buildPlayHref,
   COURSE_LIST_PATH,
 } from "@/features/play/course-params";
-import { ApiError } from "@/lib/api";
-import { getNextStepBriefing, type QuizStepBriefingResponse } from "@/lib/api/quiz";
+import { ApiError, getNextStepBriefing, type QuizStepBriefingResponse } from "@/lib/api";
 
 type LoadState =
   | { status: "loading" }

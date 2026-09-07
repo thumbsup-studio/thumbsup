@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InsightPage } from "@/features/play/components/insight-page";
-import { getQuizExplanation } from "@/lib/api/quiz";
+import { getQuizExplanation } from "@/lib/api";
 import { setPrefersReducedMotion } from "@/test/setup";
 
 const mockRouter = vi.hoisted(() => ({
@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
 }));
 
-vi.mock("@/lib/api/quiz", () => ({
+vi.mock("@/lib/api", () => ({
   getQuizExplanation: vi.fn(),
 }));
 

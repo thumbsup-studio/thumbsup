@@ -3,4 +3,4 @@ export type {
   HistoryGraphNode,
   HistoryGraphRelatedStep,
   HistoryGraphResponse,
-} from "@/lib/api/history";
+} from "@/lib/api";

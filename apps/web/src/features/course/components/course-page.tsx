@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { reviewStartHref } from "@/features/history/review-params";
 import { buildBriefingHref } from "@/features/play/course-params";
 import { isUnauthorized } from "@/features/play/quiz-shared";
-import { type CourseItem, type CourseStep, getCourses } from "@/lib/api/course";
+import { type CourseItem, type CourseStep, getCourses } from "@/lib/api";
 
 /**
  * 코스 탭 화면(이슈 220) — 코스 목록 API가 계산한 스텝 상태(완료/풀기/잠김)를 그대로

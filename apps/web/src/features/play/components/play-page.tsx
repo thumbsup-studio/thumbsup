@@ -32,8 +32,8 @@ import {
   recordAnswer,
   resetSession,
 } from "@/features/play/session-progress";
-import { ApiError } from "@/lib/api";
 import {
+  ApiError,
   getNextQuiz,
   getNextQuizForStep,
   getStepQuiz,
@@ -43,7 +43,7 @@ import {
   type RetryHintBlank,
   requestQuizHint,
   submitQuizAnswer,
-} from "@/lib/api/quiz";
+} from "@/lib/api";
 
 type AnswerDraft = boolean | string | string[] | null;
 

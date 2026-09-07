@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
-import type { QuizStepBriefingBlock, QuizStepBriefingBlockType } from "@/lib/api/quiz";
+import type { QuizStepBriefingBlock, QuizStepBriefingBlockType } from "@/lib/api";
 
 const BLOCK_LABEL: Record<QuizStepBriefingBlockType, string> = {
   CONCEPT: "핵심 개념",

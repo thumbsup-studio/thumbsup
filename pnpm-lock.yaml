@@ -13,6 +13,9 @@ importers:
       '@lottiefiles/dotlottie-react':
         specifier: 0.19.7
         version: 0.19.7(react@19.2.4)
+      '@thumbsup/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@thumbsup/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -95,6 +98,19 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@20.19.43)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  packages/api:
+    dependencies:
+      '@thumbsup/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0)(tsx@4.23.13)
 
   packages/core:
     devDependencies:

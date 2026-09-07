@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import type { ApiRequest } from "./client";
 
 export type CourseStepState = "COMPLETED" | "SOLVABLE" | "LOCKED";
 
@@ -21,6 +21,11 @@ export type CourseListResponse = {
 };
 
 /** 로그인 유저 기준 전체 코스 + 코스별 스텝 상태(완료/풀기/잠김) 목록. */
-export function getCourses(): Promise<CourseListResponse> {
-  return apiRequest<CourseListResponse>("/courses");
+export function createCourseApi(apiRequest: ApiRequest) {
+  return {
+    /** 로그인 유저 기준 전체 코스 + 코스별 스텝 상태(완료/풀기/잠김) 목록. */
+    getCourses(): Promise<CourseListResponse> {
+      return apiRequest<CourseListResponse>("/courses");
+    },
+  };
 }

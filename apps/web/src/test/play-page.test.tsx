@@ -1,14 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayPage } from "@/features/play/components/play-page";
-import { ApiError } from "@/lib/api";
 import {
+  ApiError,
   getNextQuiz,
   getNextQuizForStep,
   getStepQuiz,
   requestQuizHint,
   submitQuizAnswer,
-} from "@/lib/api/quiz";
+} from "@/lib/api";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
@@ -19,7 +19,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
 }));
 
-vi.mock("@/lib/api/quiz", () => ({
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
   getNextQuiz: vi.fn(),
   getNextQuizForStep: vi.fn(),
   getStepQuiz: vi.fn(),

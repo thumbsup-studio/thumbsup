@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { streamJobLogs } from "@/features/authoring/sse";
-import { tokenStore } from "@/lib/api/token-store";
+import { createJobLogStreamer, streamJobLogs } from "@/features/authoring/sse";
+import { tokenStore } from "@/lib/api";
 
 /** SSE 텍스트를 청크 단위로 순차 enqueue하는 스트림 응답. 청크 경계가 이벤트 중간을 잘라도 안전한지 검증용. */
 function sseResponse(chunks: string[], status = 200): Response {
@@ -29,6 +29,26 @@ beforeEach(() => {
 });
 
 describe("streamJobLogs", () => {
+  it("주입한 API 인스턴스의 URL과 토큰을 사용한다", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([]));
+    vi.stubGlobal("fetch", fetchMock);
+    const injectedStream = createJobLogStreamer({
+      apiUrl: (path) => `https://injected.example.com/api/v1${path}`,
+      getAccessToken: async () => "injected-token",
+    });
+
+    await injectedStream(
+      7,
+      { onLog: vi.fn(), onStatus: vi.fn(), onError: vi.fn() },
+      new AbortController().signal,
+    );
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://injected.example.com/api/v1/authoring/jobs/7/stream",
+    );
+    expect(callInit(fetchMock, 0).headers.Authorization).toBe("Bearer injected-token");
+  });
+
   it("log 이벤트를 파싱해 onLog를 호출한다 — 청크 경계가 이벤트 중간을 잘라도 안전하다", async () => {
     vi.stubGlobal(
       "fetch",

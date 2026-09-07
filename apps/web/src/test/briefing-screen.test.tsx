@@ -1,13 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BriefingScreen } from "@/features/briefing/components/briefing-screen";
-import { ApiError, NetworkError } from "@/lib/api";
-import { getNextStepBriefing } from "@/lib/api/quiz";
+import { ApiError, getNextStepBriefing, NetworkError } from "@/lib/api";
 
 const mockRouter = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => mockRouter }));
-vi.mock("@/lib/api/quiz", () => ({ getNextStepBriefing: vi.fn() }));
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  getNextStepBriefing: vi.fn(),
+}));
 
 const briefing = {
   quizStepId: 42,
