@@ -9,5 +9,5 @@
     "types": ["node", "aws-lambda"],
     "resolveJsonModule": true
   },
-  "include": ["bin/**/*.ts", "lib/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+  "include": ["bin/**/*.ts", "lib/**/*.ts", "scripts/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
 }

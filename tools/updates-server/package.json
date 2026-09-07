@@ -9,6 +9,7 @@
   "packageManager": "pnpm@10.11.0",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "publish:pr": "tsx scripts/publish-update.ts",
     "synth": "cdk synth --app 'tsx bin/updates-server.ts'",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

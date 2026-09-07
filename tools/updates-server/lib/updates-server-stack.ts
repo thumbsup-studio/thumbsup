@@ -17,6 +17,14 @@ export class UpdatesServerStack extends Stack {
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: true,
+      lifecycleRules: [
+        {
+          id: 'ExpirePullRequestUpdates',
+          prefix: 'updates/pr-',
+          expiration: Duration.days(30),
+          noncurrentVersionExpiration: Duration.days(30),
+        },
+      ],
       removalPolicy: RemovalPolicy.RETAIN,
       autoDeleteObjects: false,
     });
