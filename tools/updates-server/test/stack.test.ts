@@ -19,6 +19,17 @@ describe('UpdatesServerStack', () => {
       Properties: {
         BucketName: 'thumbsup-mobile-artifacts',
         VersioningConfiguration: { Status: 'Enabled' },
+        LifecycleConfiguration: {
+          Rules: [
+            {
+              Id: 'ExpirePullRequestUpdates',
+              Prefix: 'updates/pr-',
+              ExpirationInDays: 30,
+              NoncurrentVersionExpiration: { NoncurrentDays: 30 },
+              Status: 'Enabled',
+            },
+          ],
+        },
         PublicAccessBlockConfiguration: {
           BlockPublicAcls: true,
           BlockPublicPolicy: true,

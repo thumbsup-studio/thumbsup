@@ -1,0 +1,64 @@
+name: Mobile PR Bundle Build
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-bundle-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_ENV: staging
+      EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
+      EXPO_PUBLIC_UPDATES_CHANNEL: staging
+      EXPO_PUBLIC_UPDATES_URL: https://updates.thumbsup.invalid
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: iOS·Android 번들 내보내기
+        run: pnpm --filter mobile export
+      - name: 신뢰 검증용 메타데이터 생성
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          config="$(pnpm --filter mobile exec expo config --type public --json)"
+          runtime_version="$(jq -er 'if (.runtimeVersion | type) == "string" then .runtimeVersion elif .runtimeVersion.policy == "appVersion" then .version else error("unsupported runtimeVersion policy") end' <<<"$config")"
+          mkdir -p "$RUNNER_TEMP/pr-bundle"
+          mv apps/mobile/dist "$RUNNER_TEMP/pr-bundle/dist"
+          jq -n \
+            --arg runtimeVersion "$runtime_version" \
+            --arg commit "$HEAD_SHA" \
+            --argjson prNumber "$PR_NUMBER" \
+            --arg branch "$PR_BRANCH" \
+            --arg title "$PR_TITLE" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, prNumber: $prNumber, branch: $branch, title: $title, createdAt: $createdAt}' \
+            > "$RUNNER_TEMP/pr-bundle/metadata.json"
+      - name: PR 번들 artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-bundle-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/pr-bundle
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,47 @@
+name: Mobile PR Bundle Cleanup
+
+on:
+  # PR merge ref의 workflow 정의에 AWS 권한을 주지 않도록 기본 브랜치의 정의만 실행한다.
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: pr-publish-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: mobile-staging-cleanup
+    env:
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: 신뢰된 도구 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: AWS 정리 전용 역할 위임
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_STAGING_CLEANUP_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: 닫힌 PR 채널과 번들 정리
+        run: >-
+          pnpm --filter updates-server publish:pr -- cleanup
+          --bucket "$ARTIFACTS_BUCKET"
+          --pr "$PR_NUMBER"

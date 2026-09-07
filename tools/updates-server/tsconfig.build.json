@@ -6,5 +6,5 @@
     "declaration": true,
     "sourceMap": true
   },
-  "exclude": ["test/**/*.ts"]
+  "exclude": ["scripts/**/*.ts", "test/**/*.ts"]
 }
