@@ -4,7 +4,7 @@
 
 **Goal:** `/authoring` 보호 라우트에서 문제 생성/검수/개선/승인을 트리거하고 잡 실행 로그를 xterm.js 터미널로 실시간 표시하는 대시보드.
 
-**Architecture:** 기존 Next.js 앱(`app/`)에 `/authoring` 세그먼트 추가. 기존 관례 그대로: `apiRequest` 래퍼 경유 API 호출, `RequireAuth` 클라이언트 가드 + `dynamic = "force-dynamic"`, LoadState 판별 유니언 패턴, BottomSheet/Chip/Button 등 기존 디자인 시스템. SSE는 **fetch 기반 리더**(EventSource는 Authorization 헤더 불가)로 파싱해 xterm에 흘린다.
+**Architecture:** 기존 Next.js 앱(`apps/web/`)에 `/authoring` 세그먼트 추가. 기존 관례 그대로: `apiRequest` 래퍼 경유 API 호출, `RequireAuth` 클라이언트 가드 + `dynamic = "force-dynamic"`, LoadState 판별 유니언 패턴, BottomSheet/Chip/Button 등 기존 디자인 시스템. SSE는 **fetch 기반 리더**(EventSource는 Authorization 헤더 불가)로 파싱해 xterm에 흘린다.
 
 **Tech Stack:** Next 16.2.10, React 19.2.4, Tailwind v4(토큰), @xterm/xterm + @xterm/addon-fit (react-xtermjs 미사용 — 직접 마운트가 의존성 적음), vitest + RTL, biome.
 
@@ -18,7 +18,7 @@
 - biome이 import를 자동 정렬(lineWidth 100) — 파일 생성 후 `pnpm lint:fix` 실행.
 - 페이지는 기존 패턴 복제: 서버 컴포넌트 page.tsx는 `RequireAuth`+스크린 래핑과 `export const dynamic = "force-dynamic"`만, 데이터 로딩은 "use client" 스크린 컴포넌트의 LoadState 유니언(`loading|error|success`) + `useCallback`/`useEffect`.
 - 테스트는 `src/test/`에 평면 배치(기존 관례), jsdom + RTL, fetch는 `vi.stubGlobal` 패턴(`src/test/api-client.test.ts` 참고).
-- 게이트: `cd app && pnpm typecheck && pnpm lint && pnpm test && pnpm check:design && pnpm build`.
+- 게이트: `cd apps/web && pnpm typecheck && pnpm lint && pnpm test && pnpm check:design && pnpm build`.
 - 소비자 화면(홈·플레이 등)과 공용 내비게이션은 **수정하지 않는다** — 저작 도구는 URL 직접 진입(MVP).
 
 ## 서버 HTTP 계약 (정본은 서버 플랜 `2026-07-14-quiz-authoring-server.md` — 불일치 시 그쪽 우선)
@@ -53,7 +53,7 @@ SSE 이벤트:  event:log  id:<seq>  data:{"seq":n,"line":"..."}   /   event:sta
 ## 파일 맵
 
 ```
-app/src/features/authoring/
+apps/web/src/features/authoring/
   types.ts, api.ts                        [T1]
   sse.ts                                  [T2]  fetch 기반 SSE 리더 (프레임워크 무관 함수)
   use-job-log-stream.ts                   [T2]  React 훅
@@ -65,14 +65,14 @@ app/src/features/authoring/
   components/draft-detail-screen.tsx      [T6]
   components/review-sheet.tsx, approve-sheet.tsx  [T6]
   components/quizzes-screen.tsx, improve-sheet.tsx [T7]
-app/src/app/authoring/
+apps/web/src/app/authoring/
   layout.tsx                              [T4]  상단 내비(Draft 목록 | 라이브 문제)
   page.tsx                                [T4]  → DraftsScreen
   jobs/[jobId]/page.tsx                   [T5]  → JobScreen
   drafts/[draftId]/page.tsx               [T6]  → DraftDetailScreen
   quizzes/page.tsx                        [T7]  → QuizzesScreen
-app/src/lib/api/client.ts                 [T2 수정]  apiUrl() export 추가
-app/src/test/authoring-*.test.ts(x)       [각 태스크]
+apps/web/src/lib/api/client.ts                 [T2 수정]  apiUrl() export 추가
+apps/web/src/test/authoring-*.test.ts(x)       [각 태스크]
 ```
 
 ---
@@ -80,8 +80,8 @@ app/src/test/authoring-*.test.ts(x)       [각 태스크]
 ### Task 1: 타입 + API 레이어
 
 **Files:**
-- Create: `app/src/features/authoring/types.ts`, `app/src/features/authoring/api.ts`
-- Test: `app/src/test/authoring-api.test.ts`
+- Create: `apps/web/src/features/authoring/types.ts`, `apps/web/src/features/authoring/api.ts`
+- Test: `apps/web/src/test/authoring-api.test.ts`
 
 **Interfaces (Produces):**
 ```ts
@@ -98,7 +98,7 @@ export function getJob(jobId: number): Promise<JobStatus>;
 ```
 
 - [ ] **Step 1: 실패하는 테스트 작성** — `src/test/api-client.test.ts`의 `vi.stubGlobal("fetch", ...)` + 엔벨로프 헬퍼 패턴 복제. 케이스: ① `generateDraft`가 올바른 경로·메서드·body로 호출하고 jobId 반환, ② `getDrafts("DRAFT")`가 쿼리스트링 포함 + drafts 배열 언랩, ③ `reviewDraft` feedback 생략 시 body에서 필드 제외.
-- [ ] **Step 2: 실행 — FAIL** — `cd app && pnpm test -- authoring-api`.
+- [ ] **Step 2: 실행 — FAIL** — `cd apps/web && pnpm test -- authoring-api`.
 - [ ] **Step 3: 구현** — 전부 `apiRequest` 위임 (기존 `src/lib/api/quiz.ts` 스타일):
 
 ```ts
@@ -121,9 +121,9 @@ export async function getDrafts(status?: "DRAFT" | "APPROVED"): Promise<DraftSum
 ### Task 2: fetch 기반 SSE 리더 + 훅
 
 **Files:**
-- Modify: `app/src/lib/api/client.ts` — `export function apiUrl(path: string): string` 추가 (`BASE_URL + PREFIX + path` — 기존 상수 재사용, 다른 코드 변경 금지)
-- Create: `app/src/features/authoring/sse.ts`, `app/src/features/authoring/use-job-log-stream.ts`
-- Test: `app/src/test/authoring-sse.test.ts`
+- Modify: `apps/web/src/lib/api/client.ts` — `export function apiUrl(path: string): string` 추가 (`BASE_URL + PREFIX + path` — 기존 상수 재사용, 다른 코드 변경 금지)
+- Create: `apps/web/src/features/authoring/sse.ts`, `apps/web/src/features/authoring/use-job-log-stream.ts`
+- Test: `apps/web/src/test/authoring-sse.test.ts`
 
 **Interfaces (Produces):**
 ```ts
@@ -197,9 +197,9 @@ export async function streamJobLogs(jobId: number, handlers: SseHandlers, signal
 ### Task 3: TerminalViewer + JobStatusChip
 
 **Files:**
-- Create: `app/src/features/authoring/components/terminal-viewer.tsx`, `job-status-chip.tsx`
-- Modify: `app/package.json` — `pnpm add @xterm/xterm @xterm/addon-fit`
-- Test: `app/src/test/authoring-terminal.test.tsx`
+- Create: `apps/web/src/features/authoring/components/terminal-viewer.tsx`, `job-status-chip.tsx`
+- Modify: `apps/web/package.json` — `pnpm add @xterm/xterm @xterm/addon-fit`
+- Test: `apps/web/src/test/authoring-terminal.test.tsx`
 
 **Interfaces (Produces):**
 ```tsx
@@ -250,9 +250,9 @@ export function TerminalViewer({ onReady }: { onReady: (handle: TerminalHandle) 
 ### Task 4: /authoring 레이아웃 + Draft 목록 + 생성 플로우
 
 **Files:**
-- Create: `app/src/app/authoring/layout.tsx`, `app/src/app/authoring/page.tsx`
-- Create: `app/src/features/authoring/components/drafts-screen.tsx`, `generate-sheet.tsx`
-- Test: `app/src/test/authoring-drafts-screen.test.tsx`
+- Create: `apps/web/src/app/authoring/layout.tsx`, `apps/web/src/app/authoring/page.tsx`
+- Create: `apps/web/src/features/authoring/components/drafts-screen.tsx`, `generate-sheet.tsx`
+- Test: `apps/web/src/test/authoring-drafts-screen.test.tsx`
 
 **Interfaces:**
 - Consumes: T1 `getDrafts`/`generateDraft`, 기존 `RequireAuth`·`Button`·`Card`·`Chip`·`BottomSheet`·`Input`·`useAppToast`
@@ -262,7 +262,7 @@ export function TerminalViewer({ onReady }: { onReady: (handle: TerminalHandle) 
 - [ ] **Step 2: FAIL → Step 3: 구현** — 페이지·레이아웃은 기존 패턴 그대로:
 
 ```tsx
-// app/src/app/authoring/layout.tsx — 서버 컴포넌트. 데스크톱 폭 컨테이너 + 상단 내비.
+// apps/web/src/app/authoring/layout.tsx — 서버 컴포넌트. 데스크톱 폭 컨테이너 + 상단 내비.
 import Link from "next/link";
 export default function AuthoringLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -279,7 +279,7 @@ export default function AuthoringLayout({ children }: { children: React.ReactNod
   );
 }
 
-// app/src/app/authoring/page.tsx
+// apps/web/src/app/authoring/page.tsx
 import { RequireAuth } from "@/features/auth/require-auth";
 import { DraftsScreen } from "@/features/authoring/components/drafts-screen";
 export const dynamic = "force-dynamic";
@@ -299,8 +299,8 @@ export default function AuthoringDraftsPage() {
 ### Task 5: 잡 터미널 화면 (/authoring/jobs/[jobId])
 
 **Files:**
-- Create: `app/src/app/authoring/jobs/[jobId]/page.tsx`, `app/src/features/authoring/components/job-screen.tsx`
-- Test: `app/src/test/authoring-job-screen.test.tsx`
+- Create: `apps/web/src/app/authoring/jobs/[jobId]/page.tsx`, `apps/web/src/features/authoring/components/job-screen.tsx`
+- Test: `apps/web/src/test/authoring-job-screen.test.tsx`
 
 **Interfaces:**
 - Consumes: T2 `useJobLogStream`, T3 `TerminalViewer`/`JobStatusChip`, T1 `getJob`
@@ -315,8 +315,8 @@ export default function AuthoringDraftsPage() {
 ### Task 6: Draft 상세 + 검수/승인 플로우
 
 **Files:**
-- Create: `app/src/app/authoring/drafts/[draftId]/page.tsx`, `app/src/features/authoring/components/draft-detail-screen.tsx`, `review-sheet.tsx`, `approve-sheet.tsx`
-- Test: `app/src/test/authoring-draft-detail.test.tsx`
+- Create: `apps/web/src/app/authoring/drafts/[draftId]/page.tsx`, `apps/web/src/features/authoring/components/draft-detail-screen.tsx`, `review-sheet.tsx`, `approve-sheet.tsx`
+- Test: `apps/web/src/test/authoring-draft-detail.test.tsx`
 
 **Interfaces:**
 - Consumes: T1 `getDraft`/`reviewDraft`/`approveDraft`, T3 칩, 기존 BottomSheet/Button/Card/Feedback/useAppToast
@@ -331,8 +331,8 @@ export default function AuthoringDraftsPage() {
 ### Task 7: 라이브 문제 목록 + 개선 플로우
 
 **Files:**
-- Create: `app/src/app/authoring/quizzes/page.tsx`, `app/src/features/authoring/components/quizzes-screen.tsx`, `improve-sheet.tsx`
-- Test: `app/src/test/authoring-quizzes-screen.test.tsx`
+- Create: `apps/web/src/app/authoring/quizzes/page.tsx`, `apps/web/src/features/authoring/components/quizzes-screen.tsx`, `improve-sheet.tsx`
+- Test: `apps/web/src/test/authoring-quizzes-screen.test.tsx`
 
 **Interfaces:**
 - Consumes: T1 `getAuthoringQuizzes`/`improveQuiz`
@@ -345,7 +345,7 @@ export default function AuthoringDraftsPage() {
 
 ### Task 8: 최종 게이트 + 마무리
 
-- [ ] **Step 1: 전체 게이트 실행** — `cd app && pnpm typecheck && pnpm lint && pnpm test && pnpm check:design && pnpm build` 전부 통과. build는 `/authoring/*` 라우트가 정적 프리렌더를 시도하다 실패하지 않는지 확인(`force-dynamic` 누락 탐지).
+- [ ] **Step 1: 전체 게이트 실행** — `cd apps/web && pnpm typecheck && pnpm lint && pnpm test && pnpm check:design && pnpm build` 전부 통과. build는 `/authoring/*` 라우트가 정적 프리렌더를 시도하다 실패하지 않는지 확인(`force-dynamic` 누락 탐지).
 - [ ] **Step 2: 수동 확인 목록 기록** — PR 본문에 남길 스모크 체크리스트: 로그인 → /authoring 진입, 생성 시트 제출 → 잡 화면 이동(서버 없으면 에러 상태 확인까지).
 - [ ] **Step 3: 커밋** — `chore(app): 저작 대시보드 게이트 통과 정리 (#176)` (필요한 수정이 있었던 경우만)
 

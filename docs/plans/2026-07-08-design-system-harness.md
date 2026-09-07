@@ -19,7 +19,7 @@
 - **테마**: 라이트 고정. `prefers-color-scheme: dark` 분기 제거. 다크는 그래프 화면(#10) 전용 `--color-graph-*` 토큰으로만(이번 범위에서 값 정의는 하지 않고 네이밍만 예약).
 - **폰트**: 한국어 본문 = Pretendard Variable, 코드 = Geist Mono. create-next-app 잔재(Arial, Geist Sans 본문)를 교체.
 - **커밋 규약**: `main` 직접 커밋 금지. 브랜치 `feat/38-design-system`. 커밋 메시지 `<type>(app): <한국어 요약> (#38)` (예: `feat(app): 디자인 토큰 정의 (#38)`). 각 태스크 끝에서 커밋.
-- **작업 경로**: 모든 파일 읽기/수정은 워크트리 `~/DEV/thumbsup__worktrees/feat-38-design-system/` 기준. 명령은 `app/`에서 실행(별도 명시 없으면).
+- **작업 경로**: 모든 파일 읽기/수정은 워크트리 `~/DEV/thumbsup__worktrees/feat-38-design-system/` 기준. 명령은 `apps/web/`에서 실행(별도 명시 없으면).
 
 ## 값 추출 원칙 (Task 1·2에서 확정, 이후 태스크는 이름으로 참조)
 
@@ -39,8 +39,8 @@
 디자인 언어를 레포에 문서로 박제한다. `impeccable` 스킬이 세션마다 자동 로드하는 문서이므로 하네스 ①의 토대다.
 
 **Files:**
-- Create: `app/PRODUCT.md`
-- Create: `app/DESIGN.md`
+- Create: `apps/web/PRODUCT.md`
+- Create: `apps/web/DESIGN.md`
 - Read (참조): `docs/design/references/*.png` (6장), `docs/specs/2026-07-08-design-system-harness-design.md` §3
 
 **Interfaces:**
@@ -68,7 +68,7 @@
 - [ ] **Step 3: 커밋**
 
 ```bash
-git add app/PRODUCT.md app/DESIGN.md
+git add apps/web/PRODUCT.md apps/web/DESIGN.md
 git commit -m "docs(app): 디자인 기준 문서 PRODUCT·DESIGN 작성 (#38)"
 ```
 
@@ -81,9 +81,9 @@ git commit -m "docs(app): 디자인 기준 문서 PRODUCT·DESIGN 작성 (#38)"
 DESIGN.md를 코드로 고정한다. 이 태스크가 확정하는 **토큰 이름**이 이후 모든 컴포넌트의 계약이다.
 
 **Files:**
-- Modify: `app/src/app/globals.css` (전면 교체)
-- Modify: `app/src/app/layout.tsx` (폰트)
-- Create: `app/src/app/fonts/PretendardVariable.woff2` (다운로드) — 또는 Google 폴백(Step 2 참고)
+- Modify: `apps/web/src/app/globals.css` (전면 교체)
+- Modify: `apps/web/src/app/layout.tsx` (폰트)
+- Create: `apps/web/src/app/fonts/PretendardVariable.woff2` (다운로드) — 또는 Google 폴백(Step 2 참고)
 
 **Interfaces:**
 - Produces: 아래 토큰 이름 집합. Tailwind v4는 `--color-primary` → `bg-primary`/`text-primary`, `--radius-card` → `rounded-card`, `--shadow-card` → `shadow-card` 유틸리티를 자동 생성한다.
@@ -141,7 +141,7 @@ body {
 
 - [ ] **Step 2: Pretendard 폰트 적용 (layout.tsx)**
 
-기본안 = `next/font/local`. `app/src/app/fonts/PretendardVariable.woff2`를 추가(출처: `https://github.com/orioncactus/pretendard` 릴리스의 `PretendardVariable.woff2`). layout.tsx를 교체:
+기본안 = `next/font/local`. `apps/web/src/app/fonts/PretendardVariable.woff2`를 추가(출처: `https://github.com/orioncactus/pretendard` 릴리스의 `PretendardVariable.woff2`). layout.tsx를 교체:
 
 ```tsx
 import type { Metadata } from "next";
@@ -182,7 +182,7 @@ Expected: 성공. 폰트·CSS 에러 없음.
 - [ ] **Step 4: 커밋**
 
 ```bash
-git add app/src/app/globals.css app/src/app/layout.tsx app/src/app/fonts
+git add apps/web/src/app/globals.css apps/web/src/app/layout.tsx apps/web/src/app/fonts
 git commit -m "feat(app): 디자인 토큰·폰트 정의 (#38)"
 ```
 
@@ -195,15 +195,15 @@ git commit -m "feat(app): 디자인 토큰·폰트 정의 (#38)"
 토큰 미준수(raw hex·arbitrary value)와 스토리 누락을 검출하는 순수 로직 + 테스트. Node 내장 러너로 TDD(신규 의존성 0).
 
 **Files:**
-- Create: `app/scripts/check-design.mjs`
-- Test: `app/scripts/check-design.test.mjs`
+- Create: `apps/web/scripts/check-design.mjs`
+- Test: `apps/web/scripts/check-design.test.mjs`
 
 **Interfaces:**
-- Produces: `findStyleViolations(source: string, file: string) => {file,line,kind,text}[]`, `findMissingStories(uiFileNames: string[]) => {component,expected}[]`. CLI 진입점은 `app/`에서 `src`를 스캔하고 위반 시 `process.exit(1)`.
+- Produces: `findStyleViolations(source: string, file: string) => {file,line,kind,text}[]`, `findMissingStories(uiFileNames: string[]) => {component,expected}[]`. CLI 진입점은 `apps/web/`에서 `src`를 스캔하고 위반 시 `process.exit(1)`.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`app/scripts/check-design.test.mjs`:
+`apps/web/scripts/check-design.test.mjs`:
 
 ```js
 import { test } from "node:test";
@@ -234,19 +234,19 @@ test("스토리 없는 컴포넌트를 찾는다", () => {
 
 - [ ] **Step 2: 테스트 실패 확인**
 
-Run: `cd app && node --test scripts/check-design.test.mjs`
+Run: `cd apps/web && node --test scripts/check-design.test.mjs`
 Expected: FAIL — `check-design.mjs`가 없어 import 에러.
 
 - [ ] **Step 3: check-design.mjs 구현**
 
-`app/scripts/check-design.mjs`:
+`apps/web/scripts/check-design.mjs`:
 
 ```js
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url)); // app/
+const ROOT = fileURLToPath(new URL("..", import.meta.url)); // apps/web/
 const SRC = join(ROOT, "src");
 
 // 색상 길이(3/4/6/8)의 raw hex
@@ -312,13 +312,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) main();
 
 - [ ] **Step 4: 테스트 통과 확인**
 
-Run: `cd app && node --test scripts/check-design.test.mjs`
+Run: `cd apps/web && node --test scripts/check-design.test.mjs`
 Expected: PASS (4 tests).
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/scripts/check-design.mjs app/scripts/check-design.test.mjs
+git add apps/web/scripts/check-design.mjs apps/web/scripts/check-design.test.mjs
 git commit -m "feat(app): 디자인 토큰 준수 검사 스크립트 (#38)"
 ```
 
@@ -331,8 +331,8 @@ git commit -m "feat(app): 디자인 토큰 준수 검사 스크립트 (#38)"
 게이트 ②를 실제 파이프라인에 배선한다.
 
 **Files:**
-- Modify: `app/package.json` (scripts)
-- Modify: `.claude/skills/verify-app/SKILL.md`
+- Modify: `apps/web/package.json` (scripts)
+- Modify: `.claude/skills/verify-apps/web/SKILL.md`
 - Modify: `.github/workflows/app-ci.yml`
 
 - [ ] **Step 1: package.json scripts 추가**
@@ -346,18 +346,18 @@ git commit -m "feat(app): 디자인 토큰 준수 검사 스크립트 (#38)"
 
 - [ ] **Step 2: 고의 위반으로 게이트 작동 확인**
 
-임시로 `app/src/app/page.tsx`의 최상위 요소에 `className="bg-[#123456]"`를 넣고:
+임시로 `apps/web/src/app/page.tsx`의 최상위 요소에 `className="bg-[#123456]"`를 넣고:
 
-Run: `cd app && pnpm check:design`
+Run: `cd apps/web && pnpm check:design`
 Expected: `🔴 src/app/page.tsx:… arbitrary-value → bg-[#123456]` 출력 + exit 1.
 확인 후 임시 변경 되돌린다. Run 재실행 → `✅`.
 
 - [ ] **Step 3: verify-app 스킬에 4번 게이트 추가**
 
-`.claude/skills/verify-app/SKILL.md`의 명령 블록을 아래로 교체:
+`.claude/skills/verify-apps/web/SKILL.md`의 명령 블록을 아래로 교체:
 
 ```bash
-cd app
+cd apps/web
 pnpm typecheck   # 1. 타입 에러 0개
 pnpm lint        # 2. 실패 시 pnpm lint:fix 후 재확인 (수정 diff 검토 필수)
 pnpm build       # 3. 프로덕션 빌드 성공
@@ -378,7 +378,7 @@ pnpm check:design # 4. 토큰·스토리 규칙 위반 0건
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/package.json .claude/skills/verify-app/SKILL.md .github/workflows/app-ci.yml
+git add apps/web/package.json .claude/skills/verify-apps/web/SKILL.md .github/workflows/app-ci.yml
 git commit -m "chore(app): check-design을 verify-app·CI 게이트에 연결 (#38)"
 ```
 
@@ -392,8 +392,8 @@ git commit -m "chore(app): check-design을 verify-app·CI 게이트에 연결 (#
 
 **Files:**
 - Create: `.storybook/main.ts`, `.storybook/preview.ts` (init 산출물, 수정)
-- Modify: `app/package.json` (init이 scripts·devDeps 추가)
-- Create: `app/src/components/ui/tokens.mdx`
+- Modify: `apps/web/package.json` (init이 scripts·devDeps 추가)
+- Create: `apps/web/src/components/ui/tokens.mdx`
 - Delete: init이 만든 샘플 `src/stories/` 디렉터리
 
 - [ ] **Step 1: Storybook init**
@@ -422,11 +422,11 @@ export default preview;
 
 - [ ] **Step 3: stories glob 정리 + 샘플 삭제**
 
-`.storybook/main.ts`의 `stories`를 `["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"]`로. init이 만든 `app/src/stories/` 샘플 디렉터리 삭제.
+`.storybook/main.ts`의 `stories`를 `["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"]`로. init이 만든 `apps/web/src/stories/` 샘플 디렉터리 삭제.
 
 - [ ] **Step 4: 토큰 MDX 문서**
 
-`app/src/components/ui/tokens.mdx` — 팀원이 코드 없이 브라우징하는 진입점. 컬러 스와치·radius·그림자를 토큰 유틸리티로 렌더:
+`apps/web/src/components/ui/tokens.mdx` — 팀원이 코드 없이 브라우징하는 진입점. 컬러 스와치·radius·그림자를 토큰 유틸리티로 렌더:
 
 ```mdx
 import { Meta } from "@storybook/addon-docs/blocks";
@@ -467,14 +467,14 @@ import { Meta } from "@storybook/addon-docs/blocks";
 
 - [ ] **Step 5: 기동 확인**
 
-Run: `cd app && pnpm build-storybook`
+Run: `cd apps/web && pnpm build-storybook`
 Expected: 성공(스토리 빌드). `pnpm storybook`으로 로컬 확인 시 토큰 페이지 렌더.
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add app/.storybook app/package.json app/pnpm-lock.yaml app/src/components/ui/tokens.mdx
-git rm -r app/src/stories 2>/dev/null; git add -A app/src/stories
+git add apps/web/.storybook apps/web/package.json apps/web/pnpm-lock.yaml apps/web/src/components/ui/tokens.mdx
+git rm -r apps/web/src/stories 2>/dev/null; git add -A apps/web/src/stories
 git commit -m "chore(app): Storybook 카탈로그·토큰 문서 도입 (#38)"
 ```
 
@@ -487,8 +487,8 @@ git commit -m "chore(app): Storybook 카탈로그·토큰 문서 도입 (#38)"
 가장 복잡한 상호작용(loading 중 연타 차단) 포함 — 컴포넌트 패턴의 기준이 된다.
 
 **Files:**
-- Create: `app/src/components/ui/button.tsx`
-- Create: `app/src/components/ui/button.stories.tsx`
+- Create: `apps/web/src/components/ui/button.tsx`
+- Create: `apps/web/src/components/ui/button.stories.tsx`
 
 **Interfaces:**
 - Produces: `Button` — `variant: "primary" | "secondary" | "ghost"`(기본 primary), `loading?: boolean`, 그 외 `React.ComponentProps<"button">`. `loading` 시 `disabled`이며 클릭 무효(TC-38-10).
@@ -553,13 +553,13 @@ export const Disabled: Story = { args: { disabled: true, children: "정답 확�
 
 - [ ] **Step 3: 게이트 확인**
 
-Run: `cd app && pnpm typecheck && pnpm check:design`
+Run: `cd apps/web && pnpm typecheck && pnpm check:design`
 Expected: 통과(스토리 존재 → 누락 없음, 토큰 클래스 → 위반 없음).
 
 - [ ] **Step 4: 커밋**
 
 ```bash
-git add app/src/components/ui/button.tsx app/src/components/ui/button.stories.tsx
+git add apps/web/src/components/ui/button.tsx apps/web/src/components/ui/button.stories.tsx
 git commit -m "feat(app): Button 공통 컴포넌트 (#38)"
 ```
 
@@ -570,8 +570,8 @@ git commit -m "feat(app): Button 공통 컴포넌트 (#38)"
 ## Task 7: Card · Chip 컴포넌트 + 스토리
 
 **Files:**
-- Create: `app/src/components/ui/card.tsx`, `app/src/components/ui/card.stories.tsx`
-- Create: `app/src/components/ui/chip.tsx`, `app/src/components/ui/chip.stories.tsx`
+- Create: `apps/web/src/components/ui/card.tsx`, `apps/web/src/components/ui/card.stories.tsx`
+- Create: `apps/web/src/components/ui/chip.tsx`, `apps/web/src/components/ui/chip.stories.tsx`
 
 **Interfaces:**
 - Produces: `Card` — `variant: "surface" | "hero"`(기본 surface), `React.ComponentProps<"div">`. `Chip` — `tone?: "neutral" | "primary" | "success" | "danger"`(기본 neutral), `React.ComponentProps<"span">`.
@@ -655,8 +655,8 @@ export const Success: Story = { args: { tone: "success", children: "정답" } };
 - [ ] **Step 4: 게이트 + 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm check:design
-git add app/src/components/ui/card.tsx app/src/components/ui/card.stories.tsx app/src/components/ui/chip.tsx app/src/components/ui/chip.stories.tsx
+cd apps/web && pnpm typecheck && pnpm check:design
+git add apps/web/src/components/ui/card.tsx apps/web/src/components/ui/card.stories.tsx apps/web/src/components/ui/chip.tsx apps/web/src/components/ui/chip.stories.tsx
 git commit -m "feat(app): Card·Chip 공통 컴포넌트 (#38)"
 ```
 
@@ -669,7 +669,7 @@ git commit -m "feat(app): Card·Chip 공통 컴포넌트 (#38)"
 홈의 기존 탭바를 재사용 가능한 컴포넌트로 승격(레퍼런스: `home-today.png` 4탭, `today-streak-recovery.png` 3탭).
 
 **Files:**
-- Create: `app/src/components/ui/bottom-tab-bar.tsx`, `app/src/components/ui/bottom-tab-bar.stories.tsx`
+- Create: `apps/web/src/components/ui/bottom-tab-bar.tsx`, `apps/web/src/components/ui/bottom-tab-bar.stories.tsx`
 
 **Interfaces:**
 - Produces: `BottomTabBar` — `tabs: { key: string; label: string; active?: boolean; onSelect?: () => void }[]`. `nav[aria-label]` 래핑, 활성 탭은 `aria-current="page"`.
@@ -735,8 +735,8 @@ export const FourTabs: Story = {
 - [ ] **Step 3: 게이트 + 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm check:design
-git add app/src/components/ui/bottom-tab-bar.tsx app/src/components/ui/bottom-tab-bar.stories.tsx
+cd apps/web && pnpm typecheck && pnpm check:design
+git add apps/web/src/components/ui/bottom-tab-bar.tsx apps/web/src/components/ui/bottom-tab-bar.stories.tsx
 git commit -m "feat(app): BottomTabBar 공통 컴포넌트 (#38)"
 ```
 
@@ -749,7 +749,7 @@ git commit -m "feat(app): BottomTabBar 공통 컴포넌트 (#38)"
 mock 화면 통일 안내(TC-38-17~19). 색만으로 구분하지 않도록 아이콘 문자 병행.
 
 **Files:**
-- Create: `app/src/components/ui/feedback.tsx`, `app/src/components/ui/feedback.stories.tsx`
+- Create: `apps/web/src/components/ui/feedback.tsx`, `apps/web/src/components/ui/feedback.stories.tsx`
 
 **Interfaces:**
 - Produces: `Feedback` — `tone: "info" | "pending" | "error" | "success"`(기본 info), `onRetry?: () => void`(error일 때 재시도 버튼 노출), children=메시지. `role="status"` + `aria-live="polite"`(정답/에러 낭독, TC-38-27).
@@ -818,8 +818,8 @@ export const Error: Story = { args: { tone: "error", children: "불러오지 못
 - [ ] **Step 3: 게이트 + 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm check:design
-git add app/src/components/ui/feedback.tsx app/src/components/ui/feedback.stories.tsx
+cd apps/web && pnpm typecheck && pnpm check:design
+git add apps/web/src/components/ui/feedback.tsx apps/web/src/components/ui/feedback.stories.tsx
 git commit -m "feat(app): Feedback 공통 컴포넌트 (#38)"
 ```
 
@@ -832,9 +832,9 @@ git commit -m "feat(app): Feedback 공통 컴포넌트 (#38)"
 간단한 표시 컴포넌트 3종(TC-38-15·20, 퀴즈 진행바).
 
 **Files:**
-- Create: `app/src/components/ui/progress.tsx` (+ `.stories.tsx`)
-- Create: `app/src/components/ui/skeleton.tsx` (+ `.stories.tsx`)
-- Create: `app/src/components/ui/empty-state.tsx` (+ `.stories.tsx`)
+- Create: `apps/web/src/components/ui/progress.tsx` (+ `.stories.tsx`)
+- Create: `apps/web/src/components/ui/skeleton.tsx` (+ `.stories.tsx`)
+- Create: `apps/web/src/components/ui/empty-state.tsx` (+ `.stories.tsx`)
 
 **Interfaces:**
 - Produces: `Progress` — `value: number`, `max?: number`(기본 10), `role="progressbar"` + aria 값. `Skeleton` — `React.ComponentProps<"div">`(펄스 플레이스홀더). `EmptyState` — `title: string`, `description?: string`, `action?: ReactNode`.
@@ -940,8 +940,8 @@ export const NoData: StoryObj<typeof EmptyState> = {
 - [ ] **Step 5: 게이트 + 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm check:design
-git add app/src/components/ui/progress.tsx app/src/components/ui/progress.stories.tsx app/src/components/ui/skeleton.tsx app/src/components/ui/skeleton.stories.tsx app/src/components/ui/empty-state.tsx app/src/components/ui/empty-state.stories.tsx
+cd apps/web && pnpm typecheck && pnpm check:design
+git add apps/web/src/components/ui/progress.tsx apps/web/src/components/ui/progress.stories.tsx apps/web/src/components/ui/skeleton.tsx apps/web/src/components/ui/skeleton.stories.tsx apps/web/src/components/ui/empty-state.tsx apps/web/src/components/ui/empty-state.stories.tsx
 git commit -m "feat(app): Progress·Skeleton·EmptyState 공통 컴포넌트 (#38)"
 ```
 
@@ -955,7 +955,7 @@ git commit -m "feat(app): Progress·Skeleton·EmptyState 공통 컴포넌트 (#3
 
 **Files:**
 - Create: `.claude/skills/design-system/SKILL.md`
-- Modify: `app/CLAUDE.md`
+- Modify: `apps/web/CLAUDE.md`
 
 - [ ] **Step 1: SKILL.md 작성**
 
@@ -969,7 +969,7 @@ description: app UI(화면·컴포넌트·스타일)를 만들거나 고칠 때 
 
 # design-system — 떰즈업 디자인 규약
 
-UI 작업 전 이 규칙을 따른다. 상세는 `app/DESIGN.md`, 토큰은 `app/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
+UI 작업 전 이 규칙을 따른다. 상세는 `apps/web/DESIGN.md`, 토큰은 `apps/web/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
 
 ## 규칙
 - **토큰만 사용.** `bg-primary`·`rounded-card`·`shadow-hero`·`text-ink` 등 이름 유틸리티로만. `bg-[#...]`·`rounded-[36px]`·raw hex 금지.
@@ -983,9 +983,9 @@ UI 작업 전 이 규칙을 따른다. 상세는 `app/DESIGN.md`, 토큰은 `app
 `verify-app` 게이트(typecheck·lint·build·check:design)를 통과. UI를 바꿨으면 `visual-qa`도.
 ```
 
-- [ ] **Step 2: app/CLAUDE.md 규약 교체**
+- [ ] **Step 2: apps/web/CLAUDE.md 규약 교체**
 
-`app/CLAUDE.md`의 스타일 조항을 교체:
+`apps/web/CLAUDE.md`의 스타일 조항을 교체:
 - 기존: `- 스타일은 Tailwind 유틸리티 우선. **@theme 커스텀 토큰·공통 컴포넌트 도입 금지** — 디자인 시스템은 #38에서 설계한다`
 - 변경: `- **UI 작업 시 design-system 스킬 필수 로드.** 스타일은 globals.css @theme 토큰·src/components/ui 컴포넌트만 사용(arbitrary value·raw hex 금지, check:design 게이트가 강제)`
 
@@ -994,22 +994,22 @@ UI 작업 전 이 규칙을 따른다. 상세는 `app/DESIGN.md`, 토큰은 `app
 - [ ] **Step 3: 커밋**
 
 ```bash
-git add .claude/skills/design-system/SKILL.md app/CLAUDE.md
+git add .claude/skills/design-system/SKILL.md apps/web/CLAUDE.md
 git commit -m "docs(app): design-system 스킬 신설·CLAUDE.md 규약 전환 (#38)"
 ```
 
-**Acceptance:** 스킬 파일 존재. app/CLAUDE.md의 "#38 전까지 금지" 조항이 "스킬 필수 로드"로 교체됨.
+**Acceptance:** 스킬 파일 존재. apps/web/CLAUDE.md의 "#38 전까지 금지" 조항이 "스킬 필수 로드"로 교체됨.
 
 ---
 
-## Task 12: CodeRabbit app/** 지침에 디자인 룰 추가 (보조)
+## Task 12: CodeRabbit apps/web/** 지침에 디자인 룰 추가 (보조)
 
 **Files:**
 - Modify: `.coderabbit.yaml`
 
-- [ ] **Step 1: app/** path_instructions에 한 줄 추가**
+- [ ] **Step 1: apps/web/** path_instructions에 한 줄 추가**
 
-`.coderabbit.yaml`의 `path: 'app/**'` instructions의 "우선적으로 리뷰" 목록에 추가:
+`.coderabbit.yaml`의 `path: 'apps/web/**'` instructions의 "우선적으로 리뷰" 목록에 추가:
 
 ```
         - 디자인 토큰 준수 (globals.css @theme 이름만 사용, arbitrary value·raw hex 금지)
@@ -1023,7 +1023,7 @@ git add .coderabbit.yaml
 git commit -m "chore: CodeRabbit app 리뷰 지침에 디자인 룰 추가 (#38)"
 ```
 
-**Acceptance:** yaml 유효(들여쓰기 유지). app/** 지침에 토큰·컴포넌트 항목 존재.
+**Acceptance:** yaml 유효(들여쓰기 유지). apps/web/** 지침에 토큰·컴포넌트 항목 존재.
 
 ---
 
@@ -1032,9 +1032,9 @@ git commit -m "chore: CodeRabbit app 리뷰 지침에 디자인 룰 추가 (#38)
 시안 대조 모드로 전환하는 코드 변경. **키 없이도 안전**(soft skip). CI 리뷰 활성화는 엔드포인트 확보 후 Task 16.
 
 **Files:**
-- Modify: `app/e2e/qa-routes.ts`
-- Modify: `app/e2e/visual-qa.ts`
-- Create: `app/e2e/designs/home.png` (또는 심링크/복사)
+- Modify: `apps/web/e2e/qa-routes.ts`
+- Modify: `apps/web/e2e/visual-qa.ts`
+- Create: `apps/web/e2e/designs/home.png` (또는 심링크/복사)
 
 **Interfaces:**
 - Consumes: `docs/design/references/home-today.png`(홈 시안). `qa-routes.ts`의 `design` 필드.
@@ -1042,11 +1042,11 @@ git commit -m "chore: CodeRabbit app 리뷰 지침에 디자인 룰 추가 (#38)
 - [ ] **Step 1: 홈 시안을 e2e/designs로 복사**
 
 ```bash
-mkdir -p app/e2e/designs
-cp docs/design/references/home-today.png app/e2e/designs/home.png
+mkdir -p apps/web/e2e/designs
+cp docs/design/references/home-today.png apps/web/e2e/designs/home.png
 ```
 
-(`visual-qa.ts`의 `design` 경로는 app/ 기준 상대. `docs/`는 app 밖이라 복사한다.)
+(`visual-qa.ts`의 `design` 경로는 apps/web/ 기준 상대. `docs/`는 app 밖이라 복사한다.)
 
 - [ ] **Step 2: qa-routes.ts에서 홈을 시안 대조로**
 
@@ -1076,14 +1076,14 @@ const model = process.env.ELICE_QA_MODEL || "google/gemini-3.1-pro-preview";
 
 - [ ] **Step 4: soft skip 동작 확인 (키 없이)**
 
-Run: `cd app && pnpm build && QA_TARGET_URL=http://localhost:3000 pnpm qa:visual`
+Run: `cd apps/web && pnpm build && QA_TARGET_URL=http://localhost:3000 pnpm qa:visual`
 (dev 서버 미기동이면 캡처에서 에러 후 soft-fail exit 0 — 리포트 미생성. Playwright 미설치면 설치 후 재시도: `pnpm exec playwright install chromium`.)
 Expected: 크래시 없이 종료(soft gate). 키가 없으므로 리뷰는 스킵.
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/e2e/qa-routes.ts app/e2e/visual-qa.ts app/e2e/designs
+git add apps/web/e2e/qa-routes.ts apps/web/e2e/visual-qa.ts apps/web/e2e/designs
 git commit -m "feat(app): 시각 QA 홈 시안 대조 모드·env 자동 로드 (#38)"
 ```
 
@@ -1096,7 +1096,7 @@ git commit -m "feat(app): 시각 QA 홈 시안 대조 모드·env 자동 로드 
 **선행 조건: PR #85가 main에 머지되어야 함.** 미머지 상태면 여기서 중단하고 Task 15로.
 
 **Files:**
-- Modify(rebase 후): `app/src/features/home/components/*.tsx`, `app/src/app/page.tsx`
+- Modify(rebase 후): `apps/web/src/features/home/components/*.tsx`, `apps/web/src/app/page.tsx`
 
 **Interfaces:**
 - Consumes: `src/components/ui/*` (Task 6–10), 토큰(Task 2).
@@ -1109,7 +1109,7 @@ git -C ~/DEV/thumbsup__worktrees/feat-38-design-system fetch origin main
 git rebase origin/main
 ```
 
-충돌 예상 파일: `app/package.json`·`app/pnpm-lock.yaml`(양쪽 devDeps 추가 — 둘 다 유지), `app/src/app/page.tsx`(retrofit 대상 — 다음 스텝에서 재작성). 충돌 해소 후 `pnpm install`.
+충돌 예상 파일: `apps/web/package.json`·`apps/web/pnpm-lock.yaml`(양쪽 devDeps 추가 — 둘 다 유지), `apps/web/src/app/page.tsx`(retrofit 대상 — 다음 스텝에서 재작성). 충돌 해소 후 `pnpm install`.
 
 - [ ] **Step 2: 홈 컴포넌트를 토큰·공통 컴포넌트로 재조립**
 
@@ -1117,18 +1117,18 @@ git rebase origin/main
 
 - [ ] **Step 3: 기존 홈 테스트 통과 확인 (vitest는 #85로 유입됨)**
 
-Run: `cd app && pnpm test` (또는 #85가 등록한 스크립트)
+Run: `cd apps/web && pnpm test` (또는 #85가 등록한 스크립트)
 Expected: 기존 홈 테스트 PASS(동작 불변).
 
 - [ ] **Step 4: 게이트 — 홈에서 check:design 통과**
 
-Run: `cd app && pnpm check:design`
+Run: `cd apps/web && pnpm check:design`
 Expected: `✅` — 홈의 하드코딩이 전부 토큰으로 치환되어 위반 0.
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/src/features/home app/src/app/page.tsx
+git add apps/web/src/features/home apps/web/src/app/page.tsx
 git commit -m "refactor(app): 홈 화면을 디자인 토큰·공통 컴포넌트로 재조립 (#38)"
 ```
 
@@ -1142,12 +1142,12 @@ git commit -m "refactor(app): 홈 화면을 디자인 토큰·공통 컴포넌�
 
 - [ ] **Step 1: 전체 verify-app 게이트**
 
-Run: `cd app && pnpm typecheck && pnpm lint && pnpm build && pnpm check:design && pnpm test:design`
+Run: `cd apps/web && pnpm typecheck && pnpm lint && pnpm build && pnpm check:design && pnpm test:design`
 Expected: 전부 통과.
 
 - [ ] **Step 2: Storybook 빌드 확인**
 
-Run: `cd app && pnpm build-storybook`
+Run: `cd apps/web && pnpm build-storybook`
 Expected: 성공. 전 ui 컴포넌트 스토리 + 토큰 MDX 포함.
 
 - [ ] **Step 3: PR 생성 (`pr` 스킬 사용)**
@@ -1173,14 +1173,14 @@ gh secret set ELICE_QA_BASE_URL -R thumbsup-studio/thumbsup --body "<Gemini 엔�
 gh variable set ELICE_QA_MODEL -R thumbsup-studio/thumbsup --body "google/gemini-3.1-pro-preview"
 ```
 
-(값은 셸 히스토리·로그에 남지 않게 `app/.env.local`을 `source`해서 `$ELICE_API_KEY` 형태로 주입하는 방식 권장.)
+(값은 셸 히스토리·로그에 남지 않게 `apps/web/.env.local`을 `source`해서 `$ELICE_API_KEY` 형태로 주입하는 방식 권장.)
 
 - [ ] **Step 2: 엔드포인트 스모크 (등록 전 로컬 검증)**
 
-`app/.env.local`을 채우고:
+`apps/web/.env.local`을 채우고:
 
 ```bash
-cd app && curl -sS -X POST "$ELICE_QA_BASE_URL/chat/completions" \
+cd apps/web && curl -sS -X POST "$ELICE_QA_BASE_URL/chat/completions" \
   -H "Authorization: Bearer $ELICE_API_KEY" -H "Content-Type: application/json" \
   -d '{"model":"google/gemini-3.1-pro-preview","messages":[{"role":"user","content":"ping"}]}' | head -c 400
 ```

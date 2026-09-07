@@ -2,7 +2,7 @@
 
 - **날짜**: 2026-07-19
 - **이슈**: [#63](https://github.com/thumbsup-studio/thumbsup/issues/63) (M2)
-- **관련 코드**: `app/src/features/play/components/play-page.tsx`, `server/src/main/java/studio/thumbsup/server/quiz/QuizService.java`
+- **관련 코드**: `apps/web/src/features/play/components/play-page.tsx`, `server/src/main/java/studio/thumbsup/server/quiz/QuizService.java`
 - **상태**: 사용자 승인 완료 (2026-07-19) — 구현 대기
 
 ---

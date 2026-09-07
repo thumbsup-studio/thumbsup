@@ -798,7 +798,7 @@ import studio.thumbsup.server.quiz.QuizStep;
 /**
  * 홈 화면 조회 응답 — 스트릭·포인트·오늘의 학습 진입점을 한 번에 담는다.
  * 필드명은 앱 홈(#2/#52)이 이미 쓰는 courseTitle/unitTitle/streakDays와 정렬한다
- * (app/src/features/play/types.ts, app/src/features/home/types.ts 참조).
+ * (apps/web/src/features/play/types.ts, apps/web/src/features/home/types.ts 참조).
  */
 public record HomeResponse(int streakDays, int points, boolean todayCompleted, TodayLearning today) {
 

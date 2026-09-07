@@ -14,7 +14,7 @@
 
 - 작업 경로: `~/DEV/thumbsup__worktrees/feat/202-pm-bot-phase2/tools/pm-bot/` (워크트리, 브랜치 `feat/202-pm-bot-phase2` 생성됨). 모든 상대 경로는 `tools/pm-bot/` 기준
 - ESM — 로컬 import는 `./foo.js` 확장자 필수. 타입 전용은 `import type`
-- pm-bot은 독립 패키지 — 레포 내 다른 워크스페이스(`app/`, `tools/bridge/`) import 금지
+- pm-bot은 독립 패키지 — 레포 내 다른 워크스페이스(`apps/web/`, `tools/bridge/`) import 금지
 - public 레포 — 토큰·Slack 원문·`*.sqlite*`·`.workrepo/` 커밋 금지
 - gh·git 호출은 전부 CLI(execa) — Octokit 미도입. claude 호출 실패만 1회 재시도(`runWithRetry`), gh·git 실패는 재시도 없이 즉시 보고
 - GitHub 대상: repo `thumbsup-studio/thumbsup`, 프로젝트 **"Thumbs Up Roadmap" #2** (org `thumbsup-studio`). 보드 필드(2026-07-21 실측): `Status`(Todo/In Progress/Done), `Area`(INFRA 환경/S0 로그인/…/QA 검수) — 단 필드·옵션은 하드코딩하지 않고 GraphQL로 런타임 조회

@@ -50,7 +50,7 @@ const res = await fetch(`${ELICE_QA_BASE_URL}/chat/completions`, {
 ## 보관 정책
 
 - **public 레포라 키·엔드포인트 둘 다 노출 금지.** GitHub에는 Secret(`ELICE_API_KEY`·`ELICE_QA_BASE_URL`), Variable에는 비민감값(`ELICE_QA_MODEL`)만.
-- **로컬**: `app/.env.local`(gitignored). `app/.env.example`를 복사해 채운다(`cp .env.example .env.local`).
+- **로컬**: `apps/web/.env.local`(gitignored). `apps/web/.env.example`를 복사해 채운다(`cp .env.example .env.local`).
 - **server**: SSM Parameter Store `/thumbsup/prod/*`.
 - gitleaks CI가 커밋 유출을 2차 방어.
 
@@ -65,7 +65,7 @@ serverless **종량제**(무제한 아님, 스프린트 제공 리소스로 충�
 ## 스모크 테스트
 
 ```bash
-cd app && set -a && . ./.env.local && set +a
+cd apps/web && set -a && . ./.env.local && set +a
 curl -sS -X POST "$ELICE_QA_BASE_URL/chat/completions" \
   -H "Authorization: Bearer $ELICE_API_KEY" -H "Content-Type: application/json" \
   -d '{"model":"'"$ELICE_QA_MODEL"'","messages":[{"role":"user","content":"ping"}]}'

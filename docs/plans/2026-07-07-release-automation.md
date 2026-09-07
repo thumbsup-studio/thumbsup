@@ -4,7 +4,7 @@
 
 **Goal:** release-please로 릴리즈(태그·GitHub Release·CHANGELOG·버전)를 자동화하고, 프로덕션 링크 노출 + 배포·릴리즈 스킬 문서화 + server 배포 제외 규약을 정비한다.
 
-**Architecture:** main push마다 release-please-action이 Conventional Commits를 모아 Release PR을 만들고(CHANGELOG·version.txt·app/package.json bump), 그 PR을 머지하면 git 태그+GitHub Release가 생성된다. 배포(app-deploy.yml)와는 독립. 스킬 2개와 CONTRIBUTING 규약은 사람·에이전트용 문서.
+**Architecture:** main push마다 release-please-action이 Conventional Commits를 모아 Release PR을 만들고(CHANGELOG·version.txt·apps/web/package.json bump), 그 PR을 머지하면 git 태그+GitHub Release가 생성된다. 배포(app-deploy.yml)와는 독립. 스킬 2개와 CONTRIBUTING 규약은 사람·에이전트용 문서.
 
 **Tech Stack:** googleapis/release-please-action@v4, release-type "simple"(통합 버전), GitHub Actions, gh CLI
 
@@ -16,8 +16,8 @@
 - main 직접 커밋 금지. 커밋은 `commit` 스킬 형식: `<type>(<scope>): 한국어 요약 (#78)`, scope는 루트 작업이면 생략 가능
 - 커밋 트레일러: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
 - **통합 버전** — 컴포넌트 접두어 없는 태그(`v0.1.0`), 저장소 전체 단일 버전
-- **첫 버전 0.1.0** — `.release-please-manifest.json`·`version.txt` 모두 `0.1.0`, 현재 `app/package.json`(0.1.0)과 일치
-- `app/package.json`의 `$.version`은 `extra-files`로 동기화(단일 소스=version.txt/manifest, package.json은 파생)
+- **첫 버전 0.1.0** — `.release-please-manifest.json`·`version.txt` 모두 `0.1.0`, 현재 `apps/web/package.json`(0.1.0)과 일치
+- `apps/web/package.json`의 `$.version`은 `extra-files`로 동기화(단일 소스=version.txt/manifest, package.json은 파생)
 - 프로덕션 URL: `https://thumbsup-app.vercel.app`
 - 스킬 SKILL.md는 frontmatter(`name`·`description`) 필수. `.codex/skills`는 `.claude/skills` 심링크라 별도 작업 불필요(노출만 확인)
 - YAML 문법 검증은 `npx --yes yaml-lint <파일>`
@@ -105,7 +105,7 @@ cat version.txt   # 기대: 0.1.0 (개행 없음)
       "extra-files": [
         {
           "type": "json",
-          "path": "app/package.json",
+          "path": "apps/web/package.json",
           "jsonpath": "$.version"
         }
       ]
@@ -194,9 +194,9 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`). G
 
 ## 트리거
 
-- **main push (`app/**` 변경)** → 프로덕션 배포 (`vercel deploy --prod`)
-- **PR (`app/**` 변경)** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
-- **`server/**`만 변경** → 배포 안 됨 (paths 필터가 `app/**`만 감시). 서버 배포는 #47에서 별도로 다룬다.
+- **main push (`apps/web/**` 변경)** → 프로덕션 배포 (`vercel deploy --prod`)
+- **PR (`apps/web/**` 변경)** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
+- **`server/**`만 변경** → 배포 안 됨 (paths 필터가 `apps/web/**`만 감시). 서버 배포는 #47에서 별도로 다룬다.
 
 ## 도메인
 
@@ -205,7 +205,7 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`). G
 
 ## 시각 QA (soft gate)
 
-PR 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR sticky 코멘트. 머지를 막지 않는다. `ELICE_API_KEY` 미등록 시 스크린샷만 찍고 리뷰는 스킵. 검사 라우트는 `app/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고.
+PR 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR sticky 코멘트. 머지를 막지 않는다. `ELICE_API_KEY` 미등록 시 스크린샷만 찍고 리뷰는 스킵. 검사 라우트는 `apps/web/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고.
 
 ## 시크릿·변수
 
@@ -265,7 +265,7 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 ## 흐름 (2단계)
 
-1. **main에 `feat`/`fix` 등이 머지되면** → release-please가 **"chore(main): release X.Y.Z" Release PR**을 자동 생성/갱신한다. 이 PR 안에서 CHANGELOG·`version.txt`·`app/package.json` version이 함께 갱신된다.
+1. **main에 `feat`/`fix` 등이 머지되면** → release-please가 **"chore(main): release X.Y.Z" Release PR**을 자동 생성/갱신한다. 이 PR 안에서 CHANGELOG·`version.txt`·`apps/web/package.json` version이 함께 갱신된다.
 2. **그 Release PR을 사람이 머지하면** → git 태그 `vX.Y.Z` + GitHub Release(노트 게시)가 생성된다.
 
 즉 릴리즈하려면: **Release PR을 확인하고 머지**하면 끝. 태그·노트는 자동.
@@ -283,11 +283,11 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 ## 버전의 단일 소스
 
-`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `app/package.json`의 version은 릴리즈 시 여기에 맞춰 갱신된다(수동 편집 금지 — Release PR이 관리).
+`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `apps/web/package.json`의 version은 릴리즈 시 여기에 맞춰 갱신된다(수동 편집 금지 — Release PR이 관리).
 
 ## 배포와의 관계
 
-릴리즈와 배포는 **독립**이다. 배포는 main push마다(`app/**` 변경 시) 즉시 일어나고(→ `deploying` 스킬), 릴리즈는 태그·노트만 관리한다. 태그가 배포를 트리거하지 않는다.
+릴리즈와 배포는 **독립**이다. 배포는 main push마다(`apps/web/**` 변경 시) 즉시 일어나고(→ `deploying` 스킬), 릴리즈는 태그·노트만 관리한다. 태그가 배포를 트리거하지 않는다.
 ```
 
 - [ ] **Step 2: 검증**
@@ -326,7 +326,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ## 7. 배포 · 릴리즈
 
-- **배포는 `app/**` 변경에만 반응한다.** `.github/workflows/app-deploy.yml`이 main push(`app/**`)를 프로덕션에, PR(`app/**`)을 프리뷰에 배포한다. **server 작업은 Vercel 배포 대상이 아니다** — 서버 배포는 #47에서 별도로 다룬다. 상세는 `deploying` 스킬.
+- **배포는 `apps/web/**` 변경에만 반응한다.** `.github/workflows/app-deploy.yml`이 main push(`apps/web/**`)를 프로덕션에, PR(`apps/web/**`)을 프리뷰에 배포한다. **server 작업은 Vercel 배포 대상이 아니다** — 서버 배포는 #47에서 별도로 다룬다. 상세는 `deploying` 스킬.
 - **릴리즈는 release-please가 자동화한다.** main 머지 시 Release PR이 생성되고, 이를 머지하면 통합 버전 태그(`vX.Y.Z`)와 GitHub Release가 만들어진다. 버전은 Conventional Commits 타입으로 결정된다(`feat`→minor, `fix`→patch). 상세는 `releasing` 스킬.
 ```
 
@@ -364,7 +364,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 3: 머지 후 release-please 첫 동작 관찰 (사용자와 함께)**
   - main 머지 후, main에 그다음 `feat`/`fix` 커밋이 쌓이면 release-please가 Release PR을 생성하는지 확인
-  - 이 PR 자체는 전부 `docs`/`chore`라 버전은 안 오름 — Release PR은 다음 `feat`/`fix`부터 생성됨(정상). 최초 부트스트랩 동작(첫 Release PR에 CHANGELOG·version.txt·app/package.json 3곳 갱신)을 그때 확인
+  - 이 PR 자체는 전부 `docs`/`chore`라 버전은 안 오름 — Release PR은 다음 `feat`/`fix`부터 생성됨(정상). 최초 부트스트랩 동작(첫 Release PR에 CHANGELOG·version.txt·apps/web/package.json 3곳 갱신)을 그때 확인
   - Release PR 머지 → 태그 `v0.2.0`(등) + GitHub Release 생성 확인
 
 - [ ] **Step 4: 이슈 상태** — PR 머지로 `Closes #78` 자동 close

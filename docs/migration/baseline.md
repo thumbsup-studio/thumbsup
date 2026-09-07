@@ -8,16 +8,16 @@
 
 | 확인 항목 | 명령 | 결과 |
 |---|---|---:|
-| 전체 페이지 | `find app/src/app -name page.tsx \| wc -l` | 17 |
-| 저작 페이지 | `find app/src/app/authoring -name page.tsx \| wc -l` | 5 |
-| 사용자 페이지 | `find app/src/app -name page.tsx ! -path '*/authoring/*' \| wc -l` | 12 |
-| 사용자 `page.tsx`의 `use client` | `find app/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -lE "^[\"']use client[\"']" \| wc -l` | 0 |
-| `redirect()`를 직접 쓰는 사용자 페이지 | `find app/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -l 'redirect(' \| wc -l` | 3 |
-| `metadata`를 직접 선언하는 사용자 페이지 | `find app/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -l 'metadata' \| wc -l` | 2 |
-| `force-dynamic` 사용자 페이지 | `find app/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -l 'force-dynamic' \| wc -l` | 10 |
-| 라우트별 상태 파일 | `find app/src/app -type f \( -name 'loading.tsx' -o -name 'error.tsx' -o -name 'not-found.tsx' -o -name 'offline.tsx' \) \| wc -l` | 0 |
+| 전체 페이지 | `find apps/web/src/app -name page.tsx \| wc -l` | 17 |
+| 저작 페이지 | `find apps/web/src/app/authoring -name page.tsx \| wc -l` | 5 |
+| 사용자 페이지 | `find apps/web/src/app -name page.tsx ! -path '*/authoring/*' \| wc -l` | 12 |
+| 사용자 `page.tsx`의 `use client` | `find apps/web/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -lE "^[\"']use client[\"']" \| wc -l` | 0 |
+| `redirect()`를 직접 쓰는 사용자 페이지 | `find apps/web/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -l 'redirect(' \| wc -l` | 3 |
+| `metadata`를 직접 선언하는 사용자 페이지 | `find apps/web/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -l 'metadata' \| wc -l` | 2 |
+| `force-dynamic` 사용자 페이지 | `find apps/web/src/app -name page.tsx ! -path '*/authoring/*' -print0 \| xargs -0 grep -l 'force-dynamic' \| wc -l` | 10 |
+| 라우트별 상태 파일 | `find apps/web/src/app -type f \( -name 'loading.tsx' -o -name 'error.tsx' -o -name 'not-found.tsx' -o -name 'offline.tsx' \) \| wc -l` | 0 |
 
-API 연결은 `rg -n 'apiRequest' app/src/lib/api app/src/features --glob '*.ts' --glob '*.tsx'`로 정의를 찾고, 각 `page.tsx`의 import에서 화면 컴포넌트까지 따라가 호출부를 확인했다. 접근성 후보는 `rg -n 'aria-|alt=|tabIndex|onKey|focus\\(|prefers-reduced-motion|usePrefersReducedMotion' app/src --glob '*.tsx' --glob '*.ts' --glob '*.css'`로 찾은 다음 해당 컴포넌트를 읽었다.
+API 연결은 `rg -n 'apiRequest' apps/web/src/lib/api apps/web/src/features --glob '*.ts' --glob '*.tsx'`로 정의를 찾고, 각 `page.tsx`의 import에서 화면 컴포넌트까지 따라가 호출부를 확인했다. 접근성 후보는 `rg -n 'aria-|alt=|tabIndex|onKey|focus\\(|prefers-reduced-motion|usePrefersReducedMotion' apps/web/src --glob '*.tsx' --glob '*.ts' --glob '*.css'`로 찾은 다음 해당 컴포넌트를 읽었다.
 
 ## 라우트와 상태 기준선
 

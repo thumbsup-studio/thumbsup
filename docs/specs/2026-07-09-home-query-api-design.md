@@ -4,7 +4,7 @@
 - **상태**: 구현 완료 (빌드·테스트 그린, 커밋/PR 대기) — 단, 아래 "보류 결정"이 남아있어 그 결론에 따라 이번 구현이 바뀔 수 있음
 - **관련 이슈**: [#45 feat(server): 홈 화면 조회 API](https://github.com/thumbsup-studio/thumbsup/issues/45)
 - **선행**: #40(문제 세트 DB 저장, closed) — 이번 작업은 결과적으로 `quiz` 스키마를 확장하지 않고 별도 `learning` 피처를 신설했다(아래 결정 기록 참조)
-- **연계**: #2/#51/#52(앱 홈, closed·mock 기반) — 응답 필드명은 앱이 이미 쓰는 `courseTitle`/`unitTitle`/`streakDays`(`app/src/features/play/types.ts`, `app/src/features/home/types.ts`)에 맞췄다. 실 연동(mock 제거)은 후속.
+- **연계**: #2/#51/#52(앱 홈, closed·mock 기반) — 응답 필드명은 앱이 이미 쓰는 `courseTitle`/`unitTitle`/`streakDays`(`apps/web/src/features/play/types.ts`, `apps/web/src/features/home/types.ts`)에 맞췄다. 실 연동(mock 제거)은 후속.
 
 ## 배경과 목표
 
@@ -20,7 +20,7 @@
 |------|------|------|
 | 피처 분리 vs `quiz` 확장 | 새 `learning` 피처(Course/Unit/UserProgress) 신설, `quiz`는 무수정 | `quiz`에 `courseId`/스트릭/포인트를 얹으면 이미 머지된 #40/#42 스키마·서비스를 다시 여는 것 — "광범위 리팩터링과 feature 구현을 한 PR에 섞지 않는다"(backend-development-guide.md §7)에 위배. 분리하면 #45 범위(조회 API)만으로 완결 |
 | `learning`이 `quiz`/`auth` 데이터를 어떻게 얻는가 | 얻지 않는다 — 자기 소유 테이블(course/unit/user_progress)만 가진다 | ArchUnit `피처_간_직접_의존_금지`(`ArchitectureTest.java`)가 `common` 제외 모든 feature 슬라이스 간 의존을 전면 차단한다. `dto-and-query-patterns.md`의 크로스 도메인 조회 예시(`userRepository.findAllById(...)`)는 실제로는 이 규칙과 충돌하는 아직 검증 안 된 아상적 예시였다 — 이번이 그 충돌을 실제로 만난 첫 케이스라, 회피 대신 애초에 크로스 피처 조회가 필요 없도록 도메인을 분리하는 쪽을 택함 |
-| 엔티티 명칭 | `Course` / `Unit` / `UserProgress`, 패키지 `learning` | 프론트가 이미 `courseTitle`/`unitTitle`(`app/src/features/play/types.ts`)·`streakDays`(`app/src/features/home/types.ts`)를 쓰고 있어 앱 변환 없이 그대로 소비 가능. 진행상태는 유저별 값이라 `UserProgress`로 — 기존 `quiz.QuizProgress`(커리큘럼 스텝 진행)와 클래스·테이블명(`user_progress` vs `quiz_progress`) 모두 구분 |
+| 엔티티 명칭 | `Course` / `Unit` / `UserProgress`, 패키지 `learning` | 프론트가 이미 `courseTitle`/`unitTitle`(`apps/web/src/features/play/types.ts`)·`streakDays`(`apps/web/src/features/home/types.ts`)를 쓰고 있어 앱 변환 없이 그대로 소비 가능. 진행상태는 유저별 값이라 `UserProgress`로 — 기존 `quiz.QuizProgress`(커리큘럼 스텝 진행)와 클래스·테이블명(`user_progress` vs `quiz_progress`) 모두 구분 |
 | 스트릭·포인트 범위 | **조회만** — `user_progress`에 저장된 값을 그대로 읽어 반환 | 이슈 제목이 "조회 API". 문제 완료 시 streak+1/포인트 적립 같은 쓰기 로직은 `quiz.submitAnswer` 흐름과 맞물려야 하는데(cross-feature), 이는 별도 티켓의 몫 — 이번 PR은 시드 데이터로 조회 동작만 검증 |
 | `lastCompletedDate` 등 복구 배너(#55)용 컬럼 | 이번 PR에 추가하지 않음 | #55는 M2이고 착수 여부·컬럼 형태 모두 미확정 — 쓰지도 않는 컬럼을 지금 넣는 것은 YAGNI. 필요해지면 그 PR에서 새 마이그레이션으로 추가 |
 | 커서가 전체 화 수를 넘는 경우(코스 완주) | 마지막 화로 clamp | 에러 대신 "완주 상태"를 표현 — 앱 쪽 "코스 완주" UX 정책은 미확정이라 최소한 크래시 없는 값을 내려줌 |
@@ -40,7 +40,7 @@
 - 👍 "그냥 구경하는" 방문자마다 계정이 생기지 않음(DB 오염 없음)
 - 👎 **이 레포에서 유일하게 인증 없이 동작하는 API가 된다** — `api-standard.md` §8은 "모든 API 공통" 계약이고, 이 문서는 "계약 변경은 FE·서버 모두에 파급 — 단독 PR로 올리고 양쪽 개발자 확인"이라고 명시한 정본 문서. 이걸 홈 하나 때문에 조용히 깨는 셈
 - 👎 Spring Security 기본 익명 인증을 끄는 건 `SecurityConfig` 전역 변경 — 지금은 다른 모든 API가 어차피 인증 필수라 영향 없지만, "왜 껐는지"를 아는 사람이 없으면 다음 사람이 다시 켜서 이 버그가 재발할 수 있음
-- 👎 **앱이 지금 이 변경의 혜택을 전혀 못 받는다** — `RequireAuth`(`app/src/features/auth/require-auth.tsx`)가 비로그인 방문자를 무조건 `/login`으로 보내버리고, 홈 페이지는 애초에 실 API를 안 부르고 `mock-home-data.ts`만 쓴다. 서버만 고쳐서는 아무 것도 안 바뀌고, 앱까지 같이 고쳐야 실제로 의미가 생김(= 서버 #45 범위를 넘어서는 앱 작업이 필연적으로 따라붙음)
+- 👎 **앱이 지금 이 변경의 혜택을 전혀 못 받는다** — `RequireAuth`(`apps/web/src/features/auth/require-auth.tsx`)가 비로그인 방문자를 무조건 `/login`으로 보내버리고, 홈 페이지는 애초에 실 API를 안 부르고 `mock-home-data.ts`만 쓴다. 서버만 고쳐서는 아무 것도 안 바뀌고, 앱까지 같이 고쳐야 실제로 의미가 생김(= 서버 #45 범위를 넘어서는 앱 작업이 필연적으로 따라붙음)
 
 ### B안 — 게스트 계정 자동 발급 (듀오링고 방식)
 

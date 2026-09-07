@@ -8,7 +8,7 @@
 ## 배경과 목표
 
 홈 화면(S2)에 상주하는 캐릭터 '보리'가 최근 학습 여부를 포만감(fullness, 0~100) 게이지와 표정으로 보여준다.
-서버는 포만감 원본값만 관리하고, "몇 %면 어떤 표정인가"는 프론트(`app/src/features/home/home-logic.ts`)가 판단한다.
+서버는 포만감 원본값만 관리하고, "몇 %면 어떤 표정인가"는 프론트(`apps/web/src/features/home/home-logic.ts`)가 판단한다.
 
 ## 결정 기록
 
@@ -36,7 +36,7 @@ studio.thumbsup.server.mascot/
 └─ dto/
    └─ MascotResponse.java   (name, fullness — 표정은 서버 응답에 없음)
 
-app/src/features/home/
+apps/web/src/features/home/
 ├─ home-logic.ts            (getCharacterMood: fullness → happy/neutral/hungry, formatFullness)
 └─ components/
    ├─ character-block.tsx        (게이지 링 + DogIcon mood 렌더)

@@ -20,10 +20,10 @@
 |------|------|------|
 | 릴리즈 도구 | **release-please** (googleapis/release-please-action@v4) | 이미 Conventional Commits 사용 → 궁합. Release PR로 사람이 최종 검토(MVP 안전), '머지 시 노트 채움' 요구에 정확히 부합 |
 | 버전 단위 | **저장소 통합 버전 하나** | app만 배포되고 server는 시작 단계 → 단순. 필요 시 컴포넌트별 분리 가능 |
-| 첫 버전 | **0.1.0** (현재 app/package.json 값 유지) | 인프라 구축 단계, 소급 정리 불필요 |
-| package.json bump | **동기화함** (release-please extra-files) | 사용자 결정 — 통합 버전과 app/package.json version을 일치시킴 |
+| 첫 버전 | **0.1.0** (현재 apps/web/package.json 값 유지) | 인프라 구축 단계, 소급 정리 불필요 |
+| package.json bump | **동기화함** (release-please extra-files) | 사용자 결정 — 통합 버전과 apps/web/package.json version을 일치시킴 |
 | 하네스 | **실행 하네스 (A)** — release-please.yml(신규) + app-deploy.yml(기존) | 검증 CI(B)는 현 규모에 YAGNI. paths·guard로 이미 방어됨 |
-| server 배포 제외 | **문서 명문화만** | app-deploy.yml이 이미 `paths: app/**`라 server 변경은 배포 미트리거 — 코드 변경 불필요 |
+| server 배포 제외 | **문서 명문화만** | app-deploy.yml이 이미 `paths: apps/web/**`라 server 변경은 배포 미트리거 — 코드 변경 불필요 |
 
 ## 1. 프로덕션 링크
 
@@ -41,7 +41,7 @@ release-please-config.json             # 단일 패키지 "."
 version.txt                            # 0.1.0  (simple 타입이 관리하는 버전 파일)
 ```
 
-**version.txt 관련 (검증된 사실)**: `release-type: "simple"`은 루트 `version.txt`를 버전 파일로 관리한다(공식 문서 확인). 통합 버전 저장소에서 이 파일이 "저장소 전체 버전"의 물리적 소스가 되어 오히려 자연스럽다. `app/package.json`의 version은 `extra-files`로 여기에 **미러링**된다(단일 소스=version.txt/manifest, app/package.json은 파생).
+**version.txt 관련 (검증된 사실)**: `release-type: "simple"`은 루트 `version.txt`를 버전 파일로 관리한다(공식 문서 확인). 통합 버전 저장소에서 이 파일이 "저장소 전체 버전"의 물리적 소스가 되어 오히려 자연스럽다. `apps/web/package.json`의 version은 `extra-files`로 여기에 **미러링**된다(단일 소스=version.txt/manifest, apps/web/package.json은 파생).
 
 **`release-please-config.json`** (핵심 구조):
 ```json
@@ -53,7 +53,7 @@ version.txt                            # 0.1.0  (simple 타입이 관리하는 �
       "changelog-path": "CHANGELOG.md",
       "include-component-in-tag": false,
       "extra-files": [
-        { "type": "json", "path": "app/package.json", "jsonpath": "$.version" }
+        { "type": "json", "path": "apps/web/package.json", "jsonpath": "$.version" }
       ]
     }
   }
@@ -61,7 +61,7 @@ version.txt                            # 0.1.0  (simple 타입이 관리하는 �
 ```
 - `release-type: "simple"` — 언어 비종속(모노레포에 Next.js+Spring 혼재). CHANGELOG·버전 파일만 관리, 언어별 빌드 가정 없음
 - `include-component-in-tag: false` — 태그가 `v0.1.0` 형식(컴포넌트 접두어 없음, 통합 버전)
-- `extra-files` — 릴리즈 시 `app/package.json`의 `version`도 함께 bump(사용자 결정)
+- `extra-files` — 릴리즈 시 `apps/web/package.json`의 `version`도 함께 bump(사용자 결정)
 
 **`.release-please-manifest.json`**:
 ```json
@@ -93,7 +93,7 @@ jobs:
 
 ### 동작 (2단계)
 
-1. main에 `feat`/`fix` 등 머지 → release-please가 **"chore(main): release 0.2.0" Release PR**을 자동 생성/갱신. CHANGELOG에 커밋 노트가 쌓이고 `app/package.json` version이 bump됨(PR 안에서).
+1. main에 `feat`/`fix` 등 머지 → release-please가 **"chore(main): release 0.2.0" Release PR**을 자동 생성/갱신. CHANGELOG에 커밋 노트가 쌓이고 `apps/web/package.json` version이 bump됨(PR 안에서).
 2. Release PR을 사람이 머지 → **git 태그 `v0.2.0` + GitHub Release**(노트 게시).
 
 ### 버전 규칙 (Conventional Commits 표준)
@@ -107,34 +107,34 @@ jobs:
 
 ### 배포와의 관계
 
-**독립.** 배포(app-deploy.yml)는 main push마다(`app/**` 변경 시), 릴리즈는 release-please가 태그·노트만 관리 — 서로 안 엮어 단순하게 둔다. release-please는 기본 `GITHUB_TOKEN`(contents·PR write)으로 충분.
+**독립.** 배포(app-deploy.yml)는 main push마다(`apps/web/**` 변경 시), 릴리즈는 release-please가 태그·노트만 관리 — 서로 안 엮어 단순하게 둔다. release-please는 기본 `GITHUB_TOKEN`(contents·PR write)으로 충분.
 
 ## 3. 스킬 문서화 (2개)
 
 관심사가 달라 분리한다.
 
 **`.claude/skills/deploying/SKILL.md`** — 배포 파이프라인:
-- main→프로덕션, PR(`app/**`)→프리뷰, Vercel CLI 방식(Git 연동 아님)
-- **server는 배포 대상 아님** (app-deploy는 `app/**`만 반응)
+- main→프로덕션, PR(`apps/web/**`)→프리뷰, Vercel CLI 방식(Git 연동 아님)
+- **server는 배포 대상 아님** (app-deploy는 `apps/web/**`만 반응)
 - 시크릿(VERCEL_*·ELICE_*), 프리뷰 URL, 시각 QA 연계
 - 프로덕션/프리뷰 도메인 패턴
 
 **`.claude/skills/releasing/SKILL.md`** — 릴리즈 흐름:
 - Release PR 확인 → 머지 → 태그·GitHub Release 생성 절차
 - 버전 규칙(feat→minor 등), Conventional Commits와의 관계
-- 통합 버전 체계, `app/package.json` 동기화 설명
+- 통합 버전 체계, `apps/web/package.json` 동기화 설명
 
 두 스킬 모두 `.codex/skills` 심링크 경유로 Codex에도 노출(기존 패턴).
 
 ## 4. server 배포 제외 명문화
 
-- **코드 변경 없음** — `app-deploy.yml`이 이미 `paths: app/**`라 `server/**` 변경은 배포 미트리거
-- CONTRIBUTING.md에 한 줄: "app-deploy는 `app/**` 변경에만 반응한다. server 작업은 Vercel 배포 대상이 아니며, 서버 배포는 #47에서 별도로 다룬다."
+- **코드 변경 없음** — `app-deploy.yml`이 이미 `paths: apps/web/**`라 `server/**` 변경은 배포 미트리거
+- CONTRIBUTING.md에 한 줄: "app-deploy는 `apps/web/**` 변경에만 반응한다. server 작업은 Vercel 배포 대상이 아니며, 서버 배포는 #47에서 별도로 다룬다."
 
 ## 검증 계획
 
 - **release-please.yml**: `npx yaml-lint`로 워크플로우 문법 검증
-- **config/manifest 동작 검증 (핵심 게이트)**: 구현 시 release-please를 로컬 dry-run으로 돌려 두 가지를 반드시 확인 — (a) `simple` 타입이 `version.txt`를 정상 생성/관리하는가, (b) `extra-files`가 `app/package.json`의 `$.version`을 실제로 bump하는가. 로컬 dry-run이 인증 등으로 어려우면, 이 PR 머지 후 첫 Release PR에서 CHANGELOG·version.txt·app/package.json 세 곳이 모두 갱신되는지 관찰하는 것으로 대체(실질 검증). **dry-run에서 extra-files가 simple 타입과 호환되지 않으면 → `release-type`을 유지하되 app/package.json 동기화만 별도 처리하거나 사용자에게 에스컬레이션**
+- **config/manifest 동작 검증 (핵심 게이트)**: 구현 시 release-please를 로컬 dry-run으로 돌려 두 가지를 반드시 확인 — (a) `simple` 타입이 `version.txt`를 정상 생성/관리하는가, (b) `extra-files`가 `apps/web/package.json`의 `$.version`을 실제로 bump하는가. 로컬 dry-run이 인증 등으로 어려우면, 이 PR 머지 후 첫 Release PR에서 CHANGELOG·version.txt·apps/web/package.json 세 곳이 모두 갱신되는지 관찰하는 것으로 대체(실질 검증). **dry-run에서 extra-files가 simple 타입과 호환되지 않으면 → `release-type`을 유지하되 apps/web/package.json 동기화만 별도 처리하거나 사용자에게 에스컬레이션**
 - 실질 검증: 이 PR 머지 후 main에서 release-please가 첫 Release PR을 생성하는지 관찰
 - **프로덕션 링크**: `gh repo view --json homepageUrl`로 반영 확인, README 렌더
 - **스킬**: SKILL.md frontmatter(name/description) 유효, `.codex/skills` 심링크 노출, 참조 경로 실재

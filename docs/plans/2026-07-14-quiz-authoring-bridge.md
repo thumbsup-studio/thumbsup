@@ -22,7 +22,7 @@
 
 - Base URL: config의 `serverUrl` (예: `https://thumbsup-api.duckdns.org`), prefix `/api/v1`.
 - 엔벨로프: 모든 응답 `{code, message, data, meta}` — `code === "SUCCESS"`면 성공, `data` 언랩. 401 + `code === "TOKEN_EXPIRED"`면 refresh 후 1회 재시도.
-- 인증: `Authorization: Bearer <accessToken>`. 리프레시: `POST /api/v1/auth/refresh` — 요청/응답 정확한 형태는 **app의 `app/src/lib/api/client.ts`의 `doRefresh()`를 정본으로 미러링**(회전 발급이므로 응답의 새 accessToken+refreshToken 둘 다 저장).
+- 인증: `Authorization: Bearer <accessToken>`. 리프레시: `POST /api/v1/auth/refresh` — 요청/응답 정확한 형태는 **app의 `apps/web/src/lib/api/client.ts`의 `doRefresh()`를 정본으로 미러링**(회전 발급이므로 응답의 새 accessToken+refreshToken 둘 다 저장).
 - 로그인: `POST /api/v1/auth/login` `{email, password}` → `data:{accessToken, refreshToken}`.
 
 ```

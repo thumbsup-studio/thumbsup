@@ -3,7 +3,7 @@
 `thumbsup-studio/thumbsup` **모노레포**의 커밋 · 브랜치 · PR · 이슈 · 라벨 · 마일스톤 컨벤션.
 바탕: [Conventional Commits](https://www.conventionalcommits.org) + 스프린트 추적 ID(F-xx · Q-xx) → GitHub Issue 흐름.
 
-레포 구성(예정): `app/` (클라이언트) · `server/` (백엔드) · `shared/` (공용).
+레포 구성(예정): `apps/web/` (클라이언트) · `server/` (백엔드) · `shared/` (공용).
 
 에이전트 스킬 진입점은 Claude/Codex 공용으로 유지한다.
 - Claude Code는 `.claude/skills/`를 읽는다.
@@ -98,5 +98,5 @@ CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
 
 ## 7. 배포 · 릴리즈
 
-- **app과 server는 배포 파이프라인이 분리돼 있다.** `app/**` 변경은 `app-deploy.yml`이 Vercel에(main→프로덕션, PR→프리뷰), `server/**` 변경은 `server-deploy.yml`이 AWS ECR에 배포한다. 서로 상대 경로에 반응하지 않는다. app 배포 상세는 `deploying` 스킬.
+- **app과 server는 배포 파이프라인이 분리돼 있다.** `apps/web/**` 변경은 `app-deploy.yml`이 Vercel에(main→프로덕션, PR→프리뷰), `server/**` 변경은 `server-deploy.yml`이 AWS ECR에 배포한다. 서로 상대 경로에 반응하지 않는다. app 배포 상세는 `deploying` 스킬.
 - **릴리즈는 release-please로 자동화된다.** main 머지 시 Release PR이 생기고, 이를 머지하면 통합 버전 태그(`vX.Y.Z`)+GitHub Release가 만들어진다(버전은 `feat`→minor, `fix`→patch). 전용 토큰(`RELEASE_PLEASE_TOKEN`)으로 구동한다. 상세는 `releasing` 스킬.

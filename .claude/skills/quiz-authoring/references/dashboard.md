@@ -1,4 +1,4 @@
-# 저작 대시보드 (`app/src/features/authoring/`)
+# 저작 대시보드 (`apps/web/src/features/authoring/`)
 
 ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([bridge.md](./bridge.md)), 결과 초안을 검수·승인하면 라이브에 반영된다.
 
@@ -12,7 +12,7 @@ ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([b
 | `/authoring/quizzes` | `courses-index-screen` | 라이브 코스 목록 |
 | `/authoring/quizzes/[course]` | `course-quizzes-screen` | 스텝·문제 아코디언 + "개선" 진입 |
 
-레이아웃(`app/src/app/authoring/layout.tsx`)이 전체를 `<RequireAdmin>`으로 감싸고, 각 페이지는 다시 `<RequireAuth>`로 감싼다(이중 가드). 5개 페이지 모두 `force-dynamic`.
+레이아웃(`apps/web/src/app/authoring/layout.tsx`)이 전체를 `<RequireAdmin>`으로 감싸고, 각 페이지는 다시 `<RequireAuth>`로 감싼다(이중 가드). 5개 페이지 모두 `force-dynamic`.
 
 **앱 어디에도 `/authoring`으로 가는 링크가 없다.** ADMIN이 홈에 있다가 저작으로 가려면 URL을 직접 치거나 재로그인해야 한다. 반대로 저작 화면에서 나가는 로그아웃 진입점도 없다(#216).
 
@@ -40,7 +40,7 @@ ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([b
 
 전부 `apiRequest`(`lib/api/client.ts`) 경유 — envelope 언랩 · Bearer 자동 부착 · 401 `TOKEN_EXPIRED` 1회 refresh 재시도. 규약은 `frontend-api` 스킬 참조.
 
-`app/src/features/authoring/api.ts`에 전량 모여 있으니 목록은 그 파일을 읽어라. 계약을 바꾸면 `app/src/test/authoring-api.test.ts`가 먼저 깨진다(URL·메서드·body·언랩까지 검증).
+`apps/web/src/features/authoring/api.ts`에 전량 모여 있으니 목록은 그 파일을 읽어라. 계약을 바꾸면 `apps/web/src/test/authoring-api.test.ts`가 먼저 깨진다(URL·메서드·body·언랩까지 검증).
 
 주의할 두 가지:
 - `getAuthoringQuizzes`(`GET /authoring/quizzes`)는 **어느 화면도 쓰지 않는 죽은 코드**다. 라이브 화면은 `/authoring/courses` 계열을 쓴다.

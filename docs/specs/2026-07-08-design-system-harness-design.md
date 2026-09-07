@@ -45,7 +45,7 @@ preview에 배포됐고, 후속 화면이 이 디자인과 일관되게 만들�
 
 ### 3.2 PRODUCT.md · DESIGN.md — impeccable init으로 작성
 
-`/impeccable init`으로 `app/PRODUCT.md`·`app/DESIGN.md`를 생성한다.
+`/impeccable init`으로 `apps/web/PRODUCT.md`·`apps/web/DESIGN.md`를 생성한다.
 단순 문서 생성이 아니라 하네스의 일부다: impeccable은 세션마다 `context.mjs`로
 이 문서를 자동 로드하므로, 문서가 "사람이 읽는 규약"이 아니라 **"도구가 매 세션
 주입하는 컨텍스트"**가 된다.
@@ -122,13 +122,13 @@ devDependency만 추가되므로 "신규 런타임 의존성 0" 결정과 충돌
 
 `.claude/skills/design-system/SKILL.md` 신설. 내용: DESIGN.md 요약 + 토큰 목록 +
 규칙(arbitrary value 금지 / 새 스타일이 필요하면 토큰을 먼저 추가 / 새 컴포넌트·variant는
-스토리 필수 작성 / 시안에 없는 상태는 lazyweb 레퍼런스 확보). `app/CLAUDE.md`의 기존 "#38 전까지 `@theme`
+스토리 필수 작성 / 시안에 없는 상태는 lazyweb 레퍼런스 확보). `apps/web/CLAUDE.md`의 기존 "#38 전까지 `@theme`
 토큰·공통 컴포넌트 금지" 조항을 **"UI 작업 시 design-system 스킬 필수 로드,
 토큰·`components/ui`만 사용"**으로 교체한다. 팀원 세션도 레포를 열면 같은 규칙을 받는다.
 
 ### ② 정적 게이트 — check-design
 
-`app/scripts/check-design.mjs`: 두 가지를 검사해 위반 목록과 함께 실패한다.
+`apps/web/scripts/check-design.mjs`: 두 가지를 검사해 위반 목록과 함께 실패한다.
 
 1. `src/**/*.tsx`에서 raw hex(`#2f63ff`)·arbitrary 클래스(`bg-[`, `rounded-[`, `shadow-[`, `text-[` 등) 검출
 2. `components/ui/*.tsx`마다 대응하는 `*.stories.tsx` 존재 확인 (스토리 없는 컴포넌트 = 실패)
@@ -151,7 +151,7 @@ devDependency만 추가되므로 "신규 런타임 의존성 0" 결정과 충돌
 
 ### 보조 장치 (게이트 아님)
 
-- `.coderabbit.yaml`의 `app/**` 지침에 토큰·공통 컴포넌트 사용 규칙 추가 → PR 리뷰에서 한 번 더
+- `.coderabbit.yaml`의 `apps/web/**` 지침에 토큰·공통 컴포넌트 사용 규칙 추가 → PR 리뷰에서 한 번 더
 - `impeccable audit`은 **비차단** 품질 리뷰 도구로 수시 활용 (게이트로 넣지 않는 이유: 판단이 들어가는 도구라 pass/fail 자동화에 부적합, 게이트 증가는 마찰 증가)
 
 ## 6. 홈 화면 retrofit (시스템 검증 겸 부채 청산)
@@ -187,7 +187,7 @@ PR #85는 그대로 머지한다(로직·테스트 유효). 이후 본 브랜치
   활성화되며(§5-③), **팀원 개별 키 배포가 불필요**해진다. 주의: Secret은 등록 후 값 재조회
   불가(write-only)이므로 로컬 사용과는 별개
 - **2차(선택) — 개인 `.env.local`**: 로컬에서 리뷰까지 돌리며 빠르게 반복하고 싶은 사람만.
-  커밋된 `app/.env.example`을 복사해 채운다 (`cp .env.example .env.local`).
+  커밋된 `apps/web/.env.example`을 복사해 채운다 (`cp .env.example .env.local`).
   `.env*`는 gitignored + gitleaks CI 이중 방어. `visual-qa.ts`에 `process.loadEnvFile()`
   (Node 22, try/catch) 자동 로드를 추가해 셸에 키 붙여넣는 방식 제거. 키 없이 로컬 실행하면
   스크린샷만 저장(soft skip)되므로 키 없어도 육안 QA는 가능
@@ -214,4 +214,4 @@ PR #85는 그대로 머지한다(로직·테스트 유효). 이후 본 브랜치
 - [ ] visual-qa 시안 대조 모드로 홈 리포트 생성 확인
 - [ ] 홈이 토큰·공통 컴포넌트만으로 렌더링되고 기존 테스트 통과
 - [ ] Storybook 기동(`pnpm storybook`) + 전 ui 컴포넌트 스토리·토큰 MDX 페이지 존재
-- [ ] `app/CLAUDE.md`·verify-app·visual-qa 스킬 문서 갱신
+- [ ] `apps/web/CLAUDE.md`·verify-app·visual-qa 스킬 문서 갱신

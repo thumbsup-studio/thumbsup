@@ -26,27 +26,27 @@
 | 작업 구조 | 2-PR 적층 (PR1=#33, PR2=#46) | 이슈 경계와 일치 |
 | #38(디자인 토큰·컴포넌트) 영역 | **선세팅 안 함** | 사용자 지시. 디자인 규약 문서·컴포넌트 뼈대·`@theme` 토큰은 #38의 몫 |
 | 시각 QA 진화 | 1단계 휴리스틱 → 2단계 원본 디자인 대조 | #38이 이슈별 디자인 시안을 만들면 "시안 vs 구현" 차이 비교로 전환 |
-| 워크스페이스 구조 | pnpm, `app/` 단독 패키지 (루트 워크스페이스 없음) | 서버는 Spring Boot(Java), JS 패키지는 당분간 하나 → YAGNI. `shared/` 생길 때 도입 |
+| 워크스페이스 구조 | pnpm, `apps/web/` 단독 패키지 (루트 워크스페이스 없음) | 서버는 Spring Boot(Java), JS 패키지는 당분간 하나 → YAGNI. `shared/` 생길 때 도입 |
 | Node | 22 LTS 고정 (`.nvmrc` + CI) | 로컬/CI/Vercel 런타임 통일 |
 
 ## 전체 구조 (두 PR 완료 후)
 
 ```
 thumbsup/
-├── app/                          # ← PR1
+├── apps/web/                          # ← PR1
 │   ├── src/app/                  #    Next.js App Router (create-next-app 기본 구조)
 │   ├── e2e/                      # ← PR2: Playwright 시각 QA (qa-routes.ts, 스크립트)
 │   ├── biome.json                #    Linter+Formatter
 │   ├── package.json              #    pnpm 독립 패키지
 │   └── CLAUDE.md (+AGENTS.md 심링크)
 ├── .github/workflows/
-│   ├── app-ci.yml                # ← PR1: typecheck·lint·build (paths: app/**)
+│   ├── app-ci.yml                # ← PR1: typecheck·lint·build (paths: apps/web/**)
 │   ├── claude.yml                # ← PR1: @claude 봇
 │   └── app-deploy.yml            # ← PR2: 배포 + 프리뷰 코멘트 + 시각 QA
 ├── CLAUDE.md (+AGENTS.md 심링크)   # ← PR1: 루트 규약
 ├── .claude/skills/
 │   ├── commit/ · pr/             #    기존 유지
-│   ├── verify-app/               # ← PR1: 검증 게이트 절차
+│   ├── verify-apps/web/               # ← PR1: 검증 게이트 절차
 │   └── next-best-practices/      # ← PR1: Vercel 공식 스킬 vendoring
 ├── .coderabbit.yaml              # ← PR1: frontend→app, backend→server 경로 수정
 ├── docs/specs/       #    이 문서
@@ -61,19 +61,19 @@ thumbsup/
 - ESLint 대신 **Biome**: `biome.json` 하나로 lint+format, CI에서는 `biome ci`
 - Tailwind v4는 CSS-first 설정(`globals.css`의 `@import "tailwindcss"`) — `@theme` 커스텀 토큰 선언은 #38 몫이라 기본값 그대로 둔다
 - 샘플 페이지(기본 홈)에서 Tailwind 클래스 적용 확인 (이슈 acceptance)
-- `.nvmrc`(Node 22) + `app/package.json` engines 명시
+- `.nvmrc`(Node 22) + `apps/web/package.json` engines 명시
 
 ### 에이전트 워크스페이스
 
-- **루트 `CLAUDE.md`**: 레포 지도(`app/`=Next.js, `server/`=Spring Boot 예정), 커밋·브랜치·PR 규약 요약과 CONTRIBUTING 링크, 금지사항(main 직접 커밋 금지, `Closes #N` 필수 등)
-- **`app/CLAUDE.md`**: 스택 명세, 명령어(`pnpm dev/build/typecheck/lint`), 코드 규약(Server Component 기본, `'use client'` 최소화 — CodeRabbit 지침과 동일 기준), **"app 작업 시 `next-best-practices` 스킬 필수 로드"**, 작업 완료 전 `verify-app` 실행 의무
+- **루트 `CLAUDE.md`**: 레포 지도(`apps/web/`=Next.js, `server/`=Spring Boot 예정), 커밋·브랜치·PR 규약 요약과 CONTRIBUTING 링크, 금지사항(main 직접 커밋 금지, `Closes #N` 필수 등)
+- **`apps/web/CLAUDE.md`**: 스택 명세, 명령어(`pnpm dev/build/typecheck/lint`), 코드 규약(Server Component 기본, `'use client'` 최소화 — CodeRabbit 지침과 동일 기준), **"app 작업 시 `next-best-practices` 스킬 필수 로드"**, 작업 완료 전 `verify-app` 실행 의무
 - 두 위치 모두 `AGENTS.md`는 `CLAUDE.md`로의 심링크 — Codex가 같은 규약을 읽음 (기존 `.codex/skills → .claude/skills` 패턴과 동일)
 - **`verify-app` 스킬**: `pnpm typecheck → pnpm lint → pnpm build` 3단 게이트를 절차화. 에이전트가 "완료" 주장 전 반드시 통과
 - **`next-best-practices` 스킬**: `npx skills add https://github.com/vercel/nextjs-skills --skill next-best-practices`로 레포에 vendoring
 
 ### CI — `app-ci.yml`
 
-- 트리거: PR + main push, `paths: app/**` (+ 워크플로우 자신)
+- 트리거: PR + main push, `paths: apps/web/**` (+ 워크플로우 자신)
 - 잡: pnpm 셋업 → `pnpm typecheck` → `pnpm lint`(biome ci) → `pnpm build`
 - **hard gate** — 실패 시 머지 불가
 
@@ -86,7 +86,7 @@ thumbsup/
 
 ### CodeRabbit 정합
 
-- `.coderabbit.yaml`: `frontend/**`→`app/**`, `backend/**`→`server/**` (path_instructions·path_filters 모두)
+- `.coderabbit.yaml`: `frontend/**`→`apps/web/**`, `backend/**`→`server/**` (path_instructions·path_filters 모두)
 - README의 CodeRabbit 문단도 같은 경로로 갱신
 - 이유: 현재 설정은 존재하지 않을 폴더명을 가리켜 경로별 리뷰 지침이 전혀 적용되지 않음
 
@@ -94,7 +94,7 @@ thumbsup/
 
 | Acceptance | 구현 |
 |---|---|
-| `app/`에 Next.js(App Router, TS) 초기화 | create-next-app 스캐폴딩 |
+| `apps/web/`에 Next.js(App Router, TS) 초기화 | create-next-app 스캐폴딩 |
 | Tailwind 설정 + 샘플 페이지 적용 확인 | v4 기본 설정 + 홈 페이지 검증 |
 | Biome 적용 | biome.json + CI `biome ci` |
 | 로컬 dev 서버 구동 문서화 | README에 사전 요구사항·명령어 |
@@ -102,7 +102,7 @@ thumbsup/
 
 ## PR2 — #46: 배포 + 시각 QA
 
-### `app-deploy.yml` — 잡 3개 체이닝, `app/**` 변경 시만
+### `app-deploy.yml` — 잡 3개 체이닝, `apps/web/**` 변경 시만
 
 **잡 1 — 배포**: `vercel build` + `vercel deploy --prebuilt` (PR=프리뷰, main push=`--prod`). Git 연동이 아닌 CLI 배포라 org 레포+Hobby 무료 제약을 우회. 프리뷰 URL을 잡 output으로 전달. 시크릿: `VERCEL_TOKEN`·`VERCEL_ORG_ID`·`VERCEL_PROJECT_ID`
 
@@ -111,7 +111,7 @@ thumbsup/
 **잡 3 — 시각 QA**:
 
 ```ts
-// app/e2e/qa-routes.ts — 라우트별 QA 설정
+// apps/web/e2e/qa-routes.ts — 라우트별 QA 설정
 export const qaRoutes = [
   { path: '/', design: null },
   // #38 이후: { path: '/quiz', design: 'designs/quiz.png' } → 시안 대조 모드
@@ -147,7 +147,7 @@ export const qaRoutes = [
 
 ## 검증 계획
 
-**PR1**: ① 로컬 `pnpm dev` + 샘플 페이지 Tailwind 적용 확인 ② `verify-app` 3단 게이트 통과 ③ 테스트 이슈에 `@claude` 멘션 스모크(브랜치·구현·코멘트 확인) ④ CodeRabbit이 `app/**` 지침으로 리뷰하는지 확인
+**PR1**: ① 로컬 `pnpm dev` + 샘플 페이지 Tailwind 적용 확인 ② `verify-app` 3단 게이트 통과 ③ 테스트 이슈에 `@claude` 멘션 스모크(브랜치·구현·코멘트 확인) ④ CodeRabbit이 `apps/web/**` 지침으로 리뷰하는지 확인
 
 **PR2**: ① PR 오픈 → 프리뷰 URL 코멘트 확인 + 실제 접속 ② main 머지 → 프로덕션 배포 확인 ③ 키 부재 시 QA 스킵 확인 → 키 등록 후 QA 코멘트 재확인
 

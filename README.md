@@ -13,7 +13,7 @@ AI agent skills are shared across clients:
 
 ```bash
 pnpm install
-cd app
+cd apps/web
 pnpm dev   # http://localhost:3000
 ```
 
@@ -25,15 +25,15 @@ pnpm dev   # http://localhost:3000
 - peer dependency는 자동 설치 기본값을 유지하고, 불일치는 해당 패키지에서 명시적으로 해결한다.
 - lockfile은 루트 `pnpm-lock.yaml` 하나만 커밋하며 하위 패키지 lockfile은 만들지 않는다.
 - install script는 루트 `pnpm-workspace.yaml`의 `onlyBuiltDependencies` 허용 목록으로 제한한다.
-- Vercel prebuilt가 의존성을 수집할 수 있도록 pnpm virtual store는 `app/node_modules/.pnpm`에 둔다.
+- Vercel prebuilt가 의존성을 수집할 수 있도록 pnpm virtual store는 `apps/web/node_modules/.pnpm`에 둔다.
 
 ## 배포 (app)
 
 Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Git 연동 아님).
 
 - **main 머지** → 프로덕션 자동 배포
-- **PR (app/** 변경)** → 프리뷰 배포 + PR에 프리뷰 URL 코멘트 자동 게시
-- **AI 시각 QA** → 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR 코멘트 (soft — 머지를 막지 않음). 검사 라우트는 `app/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고
+- **PR (apps/web/** 변경)** → 프리뷰 배포 + PR에 프리뷰 URL 코멘트 자동 게시
+- **AI 시각 QA** → 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR 코멘트 (soft — 머지를 막지 않음). 검사 라우트는 `apps/web/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고
 
 ### 환경변수·시크릿
 
@@ -56,7 +56,7 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Gi
 이 저장소는 CodeRabbit를 사용해 Pull Request 단위의 자동 코드 리뷰를 수행한다.
 
 - 목적: PR에서 놓치기 쉬운 구현 결함, 타입/에러 처리, 보안·접근성 이슈를 빠르게 점검한다.
-- 적용 범위: `.coderabbit.yaml` 기준으로 PR 변경 파일을 리뷰하며, `app/**`와 `server/**`에 각기 다른 리뷰 지침을 적용한다.
+- 적용 범위: `.coderabbit.yaml` 기준으로 PR 변경 파일을 리뷰하며, `apps/web/**`와 `server/**`에 각기 다른 리뷰 지침을 적용한다.
 - 제외 범위: 빌드 산출물, 커버리지, `node_modules`, 락파일 등 리뷰 가치가 낮은 경로는 제외한다.
 
 리뷰가 달리면 PR 대화와 Checks에서 CodeRabbit 코멘트를 확인하고, 필요한 수정 커밋을 같은 브랜치에 추가한다. 설정 변경이 필요하면 `.coderabbit.yaml`을 수정하고 관련 문서도 함께 갱신한다.

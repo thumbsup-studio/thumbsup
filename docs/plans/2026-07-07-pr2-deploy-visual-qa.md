@@ -33,7 +33,7 @@
 ```bash
 cd ~/DEV/thumbsup && git checkout main && git pull
 git worktree add ~/DEV/thumbsup__worktrees/chore/46-deploy-infra -b chore/46-deploy-infra
-cd ~/DEV/thumbsup__worktrees/chore/46-deploy-infra && ls app/package.json   # PR1 산출물 존재 확인
+cd ~/DEV/thumbsup__worktrees/chore/46-deploy-infra && ls apps/web/package.json   # PR1 산출물 존재 확인
 ```
 
 - [ ] **Step 2: 의존성 설치 (워크트리 격리)**
@@ -47,7 +47,7 @@ cd ~/DEV/thumbsup__worktrees/chore/46-deploy-infra/app && pnpm install --frozen-
 ### Task 2: Vercel 프로젝트 연결 (사용자 개입 필요)
 
 **Files:**
-- Modify: `app/.gitignore` (`.vercel` 추가)
+- Modify: `apps/web/.gitignore` (`.vercel` 추가)
 
 **Interfaces:**
 - Produces: GitHub 시크릿 3개(`VERCEL_TOKEN`·`VERCEL_ORG_ID`·`VERCEL_PROJECT_ID`) — Task 5 워크플로우가 소비
@@ -61,18 +61,18 @@ export VERCEL_TOKEN=<발급값>
 - [ ] **Step 2: 프로젝트 생성+링크** (app 디렉터리에서)
 
 ```bash
-cd app && npx vercel@latest link --yes --project thumbsup-app --token "$VERCEL_TOKEN"
+cd apps/web && npx vercel@latest link --yes --project thumbsup-app --token "$VERCEL_TOKEN"
 cat .vercel/project.json   # {"orgId":"...","projectId":"..."}
 ```
 
-- [ ] **Step 3: `.vercel` gitignore** — `app/.gitignore` 맨 아래 추가:
+- [ ] **Step 3: `.vercel` gitignore** — `apps/web/.gitignore` 맨 아래 추가:
 
 ```
 # vercel
 .vercel
 ```
 
-- [ ] **Step 4: GitHub 시크릿 등록** (`app/` 디렉터리에서 — `.vercel/project.json` 상대경로 사용)
+- [ ] **Step 4: GitHub 시크릿 등록** (`apps/web/` 디렉터리에서 — `.vercel/project.json` 상대경로 사용)
 
 ```bash
 cd ~/DEV/thumbsup__worktrees/chore/46-deploy-infra/app
@@ -86,7 +86,7 @@ gh secret set VERCEL_PROJECT_ID -R thumbsup-studio/thumbsup --body "$(node -p "r
 - [ ] **Step 6: 수동 프리뷰 배포로 연결 검증**
 
 ```bash
-cd app && npx vercel@latest deploy --token "$VERCEL_TOKEN"
+cd apps/web && npx vercel@latest deploy --token "$VERCEL_TOKEN"
 ```
 
 기대: `https://thumbsup-app-*.vercel.app` URL 출력, 접속 시 "Thumbs Up 👍" 홈 렌더
@@ -94,7 +94,7 @@ cd app && npx vercel@latest deploy --token "$VERCEL_TOKEN"
 - [ ] **Step 7: 커밋**
 
 ```bash
-git add app/.gitignore
+git add apps/web/.gitignore
 git commit -m "chore(app): Vercel 링크 산출물 gitignore (#46)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -105,26 +105,26 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: 시각 QA 스크립트 (qa-routes + visual-qa)
 
 **Files:**
-- Create: `app/e2e/qa-routes.ts`, `app/e2e/visual-qa.ts`
-- Modify: `app/package.json` (devDeps: `playwright`·`tsx`, script `qa:visual`), `app/.gitignore` (QA 산출물)
+- Create: `apps/web/e2e/qa-routes.ts`, `apps/web/e2e/visual-qa.ts`
+- Modify: `apps/web/package.json` (devDeps: `playwright`·`tsx`, script `qa:visual`), `apps/web/.gitignore` (QA 산출물)
 
 **Interfaces:**
 - Consumes: env `QA_TARGET_URL`(필수) `ELICE_API_KEY` `ELICE_BASE_URL`(`/v1`로 끝남) `ELICE_QA_MODEL`(기본 `gpt-5.2`)
-- Produces: `pnpm qa:visual` → `app/e2e/qa-report.md`(리뷰 리포트)·`app/e2e/screenshots/*.png` — Task 5 워크플로우가 소비. `QaRoute` 타입(`{ path: string; design: string | null }`)
+- Produces: `pnpm qa:visual` → `apps/web/e2e/qa-report.md`(리뷰 리포트)·`apps/web/e2e/screenshots/*.png` — Task 5 워크플로우가 소비. `QaRoute` 타입(`{ path: string; design: string | null }`)
 
 - [ ] **Step 1: 의존성 설치**
 
 ```bash
-cd app && pnpm add -D playwright tsx && pnpm exec playwright install chromium
+cd apps/web && pnpm add -D playwright tsx && pnpm exec playwright install chromium
 ```
 
-- [ ] **Step 2: `app/e2e/qa-routes.ts` 작성** (전체 내용)
+- [ ] **Step 2: `apps/web/e2e/qa-routes.ts` 작성** (전체 내용)
 
 ```ts
 export type QaRoute = {
   /** 검사할 라우트 경로 */
   path: string;
-  /** 원본 디자인 시안 이미지 경로(app/ 기준 상대). null이면 휴리스틱 모드. #38 이후 시안이 생기면 지정 → 시안 대조 모드 */
+  /** 원본 디자인 시안 이미지 경로(apps/web/ 기준 상대). null이면 휴리스틱 모드. #38 이후 시안이 생기면 지정 → 시안 대조 모드 */
   design: string | null;
 };
 
@@ -134,7 +134,7 @@ export const qaRoutes: QaRoute[] = [
 ];
 ```
 
-- [ ] **Step 3: `app/e2e/visual-qa.ts` 작성** (전체 내용)
+- [ ] **Step 3: `apps/web/e2e/visual-qa.ts` 작성** (전체 내용)
 
 ```ts
 import { existsSync } from "node:fs";
@@ -264,7 +264,7 @@ main().catch((err) => {
 
 - [ ] **Step 4: package.json script + gitignore**
 
-`app/package.json` scripts에 추가:
+`apps/web/package.json` scripts에 추가:
 
 ```json
 {
@@ -274,7 +274,7 @@ main().catch((err) => {
 }
 ```
 
-`app/.gitignore` 맨 아래 추가:
+`apps/web/.gitignore` 맨 아래 추가:
 
 ```
 # visual QA 산출물
@@ -285,7 +285,7 @@ main().catch((err) => {
 - [ ] **Step 5: 계약 검증 3종** (dev 서버 필요: 별도 터미널에서 `pnpm dev`)
 
 ```bash
-cd app
+cd apps/web
 # (1) URL 없음 → exit 1 + 안내
 pnpm qa:visual; echo "exit=$?"                       # 기대: exit=1, "QA_TARGET_URL이 필요합니다"
 # (2) 키 없음 → 스크린샷만, exit 0
@@ -299,8 +299,8 @@ QA_TARGET_URL=http://localhost:3000 ELICE_API_KEY=dummy ELICE_BASE_URL=https://i
 - [ ] **Step 6: 게이트 + 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && pnpm build
-git add app/e2e app/package.json app/pnpm-lock.yaml app/.gitignore
+cd apps/web && pnpm typecheck && pnpm lint && pnpm build
+git add apps/web/e2e apps/web/package.json apps/web/pnpm-lock.yaml apps/web/.gitignore
 git commit -m "feat(app): AI 시각 QA 스크립트 — 스크린샷·엘리스 리뷰 (#46)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -326,19 +326,19 @@ description: UI 변경 후 로컬에서 AI 시각 QA 실행. 스크린샷 → �
 
 # visual-qa — 로컬 AI 시각 QA
 
-1. dev 서버 기동: `cd app && pnpm dev` (별도 터미널/백그라운드)
+1. dev 서버 기동: `cd apps/web && pnpm dev` (별도 터미널/백그라운드)
 2. QA 실행:
 
 ​```bash
-cd app && QA_TARGET_URL=http://localhost:3000 \
+cd apps/web && QA_TARGET_URL=http://localhost:3000 \
   ELICE_API_KEY=<키> ELICE_BASE_URL=<엘리스 OpenAI 호환 엔드포인트, /v1까지> \
   pnpm qa:visual
 ​```
 
-3. `app/e2e/qa-report.md` 확인 — 🔴 항목은 수정 후 재실행, 🟡은 판단해서 처리
-4. 스크린샷 원본은 `app/e2e/screenshots/`에서 직접 확인
+3. `apps/web/e2e/qa-report.md` 확인 — 🔴 항목은 수정 후 재실행, 🟡은 판단해서 처리
+4. 스크린샷 원본은 `apps/web/e2e/screenshots/`에서 직접 확인
 
-메모: 키가 없으면 스크린샷만 저장되고 리뷰는 스킵된다(그 경우 스크린샷을 직접 눈으로 점검). 검사 라우트 추가는 `app/e2e/qa-routes.ts`에 한 줄 — 새 화면 이슈를 구현하면 그 라우트를 반드시 추가한다. #38 이후 시안이 생기면 `design` 필드에 경로를 지정해 시안 대조 모드로 전환.
+메모: 키가 없으면 스크린샷만 저장되고 리뷰는 스킵된다(그 경우 스크린샷을 직접 눈으로 점검). 검사 라우트 추가는 `apps/web/e2e/qa-routes.ts`에 한 줄 — 새 화면 이슈를 구현하면 그 라우트를 반드시 추가한다. #38 이후 시안이 생기면 `design` 필드에 경로를 지정해 시안 대조 모드로 전환.
 ```
 
 - [ ] **Step 2: 검증** — `.codex/skills/visual-qa` 심링크 경유 노출 확인:
@@ -376,11 +376,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'app/**'
+      - 'apps/web/**'
       - '.github/workflows/app-deploy.yml'
   pull_request:
     paths:
-      - 'app/**'
+      - 'apps/web/**'
       - '.github/workflows/app-deploy.yml'
 
 concurrency:
@@ -398,7 +398,7 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
     defaults:
       run:
-        working-directory: app
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - name: 시크릿 가드 (fork PR·미등록 시 스킵)
@@ -419,7 +419,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: apps/web/pnpm-lock.yaml
       - name: Vercel 배포
         id: deploy
         if: steps.guard.outputs.skip != 'true'
@@ -446,7 +446,7 @@ jobs:
           message: |
             🔍 **프리뷰 배포**: ${{ needs.deploy.outputs.url }}
 
-            `app/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.
+            `apps/web/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.
 
   visual-qa:
     needs: deploy
@@ -456,7 +456,7 @@ jobs:
       pull-requests: write
     defaults:
       run:
-        working-directory: app
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -466,7 +466,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: apps/web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: 시각 QA 실행
@@ -477,17 +477,17 @@ jobs:
           ELICE_QA_MODEL: ${{ vars.ELICE_QA_MODEL }}
         run: pnpm qa:visual
       - name: QA 리포트 코멘트
-        if: hashFiles('app/e2e/qa-report.md') != ''
+        if: hashFiles('apps/web/e2e/qa-report.md') != ''
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: visual-qa
-          path: app/e2e/qa-report.md
+          path: apps/web/e2e/qa-report.md
       - name: 스크린샷 아티팩트 업로드
-        if: always() && hashFiles('app/e2e/screenshots/**') != ''
+        if: always() && hashFiles('apps/web/e2e/screenshots/**') != ''
         uses: actions/upload-artifact@v4
         with:
           name: qa-screenshots
-          path: app/e2e/screenshots
+          path: apps/web/e2e/screenshots
 ```
 
 - [ ] **Step 2: YAML 문법 검증**
@@ -523,8 +523,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 Vercel에 GitHub Actions로 배포한다 (`.github/workflows/app-deploy.yml`, Git 연동 아님).
 
 - **main 머지** → 프로덕션 자동 배포
-- **PR (app/** 변경)** → 프리뷰 배포 + PR에 프리뷰 URL 코멘트 자동 게시
-- **AI 시각 QA** → 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR 코멘트 (soft — 머지를 막지 않음). 검사 라우트는 `app/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고
+- **PR (apps/web/** 변경)** → 프리뷰 배포 + PR에 프리뷰 URL 코멘트 자동 게시
+- **AI 시각 QA** → 프리뷰를 Playwright로 스크린샷 → 엘리스 멀티모달 모델이 리뷰 → PR 코멘트 (soft — 머지를 막지 않음). 검사 라우트는 `apps/web/e2e/qa-routes.ts`에서 관리, 로컬 실행은 `visual-qa` 스킬 참고
 
 ### 환경변수·시크릿
 
@@ -558,12 +558,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - [ ] **Step 1: 게이트 재확인**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && pnpm build
+cd apps/web && pnpm typecheck && pnpm lint && pnpm build
 ```
 
 - [ ] **Step 2: 푸시 + PR 오픈** — `pr` 스킬 사용. 제목 `chore(app): 앱 배포 인프라 세팅 (#46)`, 본문 `Closes #46`
 
-- [ ] **Step 3: PR 자체가 통합 테스트** (이 PR이 `app/**`·워크플로우를 변경하므로 배포 워크플로우가 이 PR에서 실행됨)
+- [ ] **Step 3: PR 자체가 통합 테스트** (이 PR이 `apps/web/**`·워크플로우를 변경하므로 배포 워크플로우가 이 PR에서 실행됨)
   - `deploy` 잡 green + 로그에 프리뷰 URL
   - PR에 🔍 프리뷰 코멘트 자동 게시 → URL 접속해 홈 렌더 확인
   - `visual-qa` 잡: `ELICE_API_KEY` 미등록 상태면 "⏭️ 스킵" 로그 + 리포트 코멘트 없음 + 스크린샷 아티팩트 존재 확인

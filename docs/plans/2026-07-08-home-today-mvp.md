@@ -13,16 +13,16 @@
 ## Task 1: Test Setup For Home Logic
 
 **Files:**
-- Modify: `app/package.json`
-- Create: `app/vitest.config.ts`
-- Create: `app/src/test/setup.ts`
-- Create: `app/src/test/home-logic.test.ts`
+- Modify: `apps/web/package.json`
+- Create: `apps/web/vitest.config.ts`
+- Create: `apps/web/src/test/setup.ts`
+- Create: `apps/web/src/test/home-logic.test.ts`
 
 - [ ] **Step 1: Add test dependencies and scripts**
 
 Add dev dependencies for `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/jest-dom`.
 
-Update `app/package.json` scripts to include:
+Update `apps/web/package.json` scripts to include:
 
 ```json
 {
@@ -35,7 +35,7 @@ Update `app/package.json` scripts to include:
 
 - [ ] **Step 2: Add Vitest config**
 
-Create `app/vitest.config.ts`:
+Create `apps/web/vitest.config.ts`:
 
 ```ts
 import { defineConfig } from "vitest/config";
@@ -51,7 +51,7 @@ export default defineConfig({
 
 - [ ] **Step 3: Add test setup**
 
-Create `app/src/test/setup.ts`:
+Create `apps/web/src/test/setup.ts`:
 
 ```ts
 import "@testing-library/jest-dom/vitest";
@@ -59,24 +59,24 @@ import "@testing-library/jest-dom/vitest";
 
 - [ ] **Step 4: Write failing home logic tests**
 
-Create `app/src/test/home-logic.test.ts` covering:
+Create `apps/web/src/test/home-logic.test.ts` covering:
 - `getWelcomeVariant()` returns commute/after-work/night by hour
 - `formatStreakDays(0)` returns hidden state
 - `formatStreakDays(1)` returns `1일`
 
 - [ ] **Step 5: Run tests to verify failure**
 
-Run: `cd app && pnpm test`
+Run: `cd apps/web && pnpm test`
 
 Expected: FAIL because home logic functions do not exist yet
 
 ## Task 2: Home Data And Logic Units
 
 **Files:**
-- Create: `app/src/features/home/types.ts`
-- Create: `app/src/features/home/mock-home-data.ts`
-- Create: `app/src/features/home/home-logic.ts`
-- Test: `app/src/test/home-logic.test.ts`
+- Create: `apps/web/src/features/home/types.ts`
+- Create: `apps/web/src/features/home/mock-home-data.ts`
+- Create: `apps/web/src/features/home/home-logic.ts`
+- Test: `apps/web/src/test/home-logic.test.ts`
 
 - [ ] **Step 1: Create home types**
 
@@ -111,19 +111,19 @@ export function formatStreakDays(streakDays: number): string
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `cd app && pnpm test`
+Run: `cd apps/web && pnpm test`
 
 Expected: PASS for logic tests
 
 ## Task 3: Home UI Components
 
 **Files:**
-- Create: `app/src/features/home/components/home-shell.tsx`
-- Create: `app/src/features/home/components/welcome-block.tsx`
-- Create: `app/src/features/home/components/streak-block.tsx`
-- Create: `app/src/features/home/components/today-course-card.tsx`
-- Create: `app/src/features/home/components/bottom-tab-bar.tsx`
-- Create: `app/src/features/home/components/home-page.tsx`
+- Create: `apps/web/src/features/home/components/home-shell.tsx`
+- Create: `apps/web/src/features/home/components/welcome-block.tsx`
+- Create: `apps/web/src/features/home/components/streak-block.tsx`
+- Create: `apps/web/src/features/home/components/today-course-card.tsx`
+- Create: `apps/web/src/features/home/components/bottom-tab-bar.tsx`
+- Create: `apps/web/src/features/home/components/home-page.tsx`
 
 - [ ] **Step 1: Build welcome block**
 
@@ -159,8 +159,8 @@ Compose welcome, conditional streak, today card, and bottom tabs in a mobile-fir
 ## Task 4: UI Tests
 
 **Files:**
-- Create: `app/src/test/home-page.test.tsx`
-- Test: `app/src/features/home/components/*.tsx`
+- Create: `apps/web/src/test/home-page.test.tsx`
+- Test: `apps/web/src/features/home/components/*.tsx`
 
 - [ ] **Step 1: Write failing UI tests**
 
@@ -171,7 +171,7 @@ Create tests for:
 
 - [ ] **Step 2: Run tests to verify failure**
 
-Run: `cd app && pnpm test`
+Run: `cd apps/web && pnpm test`
 
 Expected: FAIL until components/page are wired correctly
 
@@ -181,20 +181,20 @@ Adjust component props/state until tests pass.
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `cd app && pnpm test`
+Run: `cd apps/web && pnpm test`
 
 Expected: PASS for logic + UI tests
 
 ## Task 5: Wire Root Page And Styling
 
 **Files:**
-- Modify: `app/src/app/page.tsx`
-- Modify: `app/src/app/globals.css`
-- Modify: `app/src/app/layout.tsx` (only if metadata needs updating)
+- Modify: `apps/web/src/app/page.tsx`
+- Modify: `apps/web/src/app/globals.css`
+- Modify: `apps/web/src/app/layout.tsx` (only if metadata needs updating)
 
 - [ ] **Step 1: Replace placeholder root page**
 
-Render the new home page component from `app/src/app/page.tsx`.
+Render the new home page component from `apps/web/src/app/page.tsx`.
 
 - [ ] **Step 2: Adjust global styling only as needed**
 
@@ -202,7 +202,7 @@ Remove conflicting global body styles if they fight the home layout.
 
 - [ ] **Step 3: Run tests**
 
-Run: `cd app && pnpm test`
+Run: `cd apps/web && pnpm test`
 
 Expected: PASS
 
@@ -216,16 +216,16 @@ Expected: PASS
 Run:
 
 ```bash
-cd app && pnpm typecheck
-cd app && pnpm lint
-cd app && pnpm build
+cd apps/web && pnpm typecheck
+cd apps/web && pnpm lint
+cd apps/web && pnpm build
 ```
 
 Expected: all PASS
 
 - [ ] **Step 2: Run visual QA if feasible**
 
-Run: `cd app && pnpm qa:visual`
+Run: `cd apps/web && pnpm qa:visual`
 
 Expected: home route screenshot/report generated or a clear note about why it could not run
 

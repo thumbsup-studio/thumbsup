@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **작업 디렉터리는 `app/`.** 모든 `pnpm` 명령은 `app/`에서 실행한다.
+- **작업 디렉터리는 `apps/web/`.** 모든 `pnpm` 명령은 `apps/web/`에서 실행한다.
 - **브랜치는 `feat/211-quiz-gamification`.** `main`에 직접 커밋 금지. push 금지 — 커밋까지만 한다.
 - **스타일은 `globals.css @theme` 토큰과 `src/components/ui` 컴포넌트만 쓴다.** raw hex(`#2f63ff`)와 Tailwind arbitrary value(`bg-[#fff]`, `rounded-[36px]`) 금지 — `pnpm check:design`이 소스 전체를 정규식으로 막는다.
 - **주석은 한국어.** 무엇을 하는지가 아니라 **왜 그렇게 했는지**를 쓴다. 기존 코드의 주석 밀도에 맞춘다.
@@ -54,8 +54,8 @@
 ## Task 1: 세션 진행 상태
 
 **Files:**
-- Create: `app/src/features/play/session-progress.ts`
-- Test: `app/src/test/session-progress.test.ts`
+- Create: `apps/web/src/features/play/session-progress.ts`
+- Test: `apps/web/src/test/session-progress.test.ts`
 
 **Interfaces:**
 - Consumes: 없음
@@ -63,7 +63,7 @@
 
 - [ ] **Step 1: 실패 테스트 작성**
 
-`app/src/test/session-progress.test.ts`:
+`apps/web/src/test/session-progress.test.ts`:
 
 ```ts
 import { beforeEach, describe, expect, it } from "vitest";
@@ -153,12 +153,12 @@ describe("세션 영속화", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd app && pnpm vitest run src/test/session-progress.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/session-progress.test.ts`
 Expected: FAIL — `Failed to resolve import "@/features/play/session-progress"`
 
 - [ ] **Step 3: 최소 구현**
 
-`app/src/features/play/session-progress.ts`:
+`apps/web/src/features/play/session-progress.ts`:
 
 ```ts
 /**
@@ -301,14 +301,14 @@ export function recordAnswer(stepOrder: number, correct: boolean): PlaySession {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd app && pnpm vitest run src/test/session-progress.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/session-progress.test.ts`
 Expected: PASS (11 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && cd ..
-git add app/src/features/play/session-progress.ts app/src/test/session-progress.test.ts
+cd apps/web && pnpm typecheck && pnpm lint && cd ..
+git add apps/web/src/features/play/session-progress.ts apps/web/src/test/session-progress.test.ts
 git commit -m "feat(app): 퀴즈 세션 진행 상태 모듈 — 콤보·최고콤보·구키 마이그레이션 (#211)"
 ```
 
@@ -317,8 +317,8 @@ git commit -m "feat(app): 퀴즈 세션 진행 상태 모듈 — 콤보·최고�
 ## Task 2: 연출 결정 로직
 
 **Files:**
-- Create: `app/src/features/play/celebration-logic.ts`
-- Test: `app/src/test/celebration-logic.test.ts`
+- Create: `apps/web/src/features/play/celebration-logic.ts`
+- Test: `apps/web/src/test/celebration-logic.test.ts`
 
 **Interfaces:**
 - Consumes: `QuizDifficulty` from `@/lib/api/quiz`
@@ -326,7 +326,7 @@ git commit -m "feat(app): 퀴즈 세션 진행 상태 모듈 — 콤보·최고�
 
 - [ ] **Step 1: 실패 테스트 작성**
 
-`app/src/test/celebration-logic.test.ts`:
+`apps/web/src/test/celebration-logic.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -464,12 +464,12 @@ describe("getCelebration — 모션 줄이기", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd app && pnpm vitest run src/test/celebration-logic.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/celebration-logic.test.ts`
 Expected: FAIL — `Failed to resolve import "@/features/play/celebration-logic"`
 
 - [ ] **Step 3: 최소 구현**
 
-`app/src/features/play/celebration-logic.ts`:
+`apps/web/src/features/play/celebration-logic.ts`:
 
 ```ts
 /**
@@ -585,14 +585,14 @@ export function getCelebration(input: CelebrationInput): Celebration {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd app && pnpm vitest run src/test/celebration-logic.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/celebration-logic.test.ts`
 Expected: PASS (18 tests)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && cd ..
-git add app/src/features/play/celebration-logic.ts app/src/test/celebration-logic.test.ts
+cd apps/web && pnpm typecheck && pnpm lint && cd ..
+git add apps/web/src/features/play/celebration-logic.ts apps/web/src/test/celebration-logic.test.ts
 git commit -m "feat(app): 정답 연출 결정 로직 — 콤보 사다리·맥락 배지·문구 다양화 (#211, #197)"
 ```
 
@@ -601,9 +601,9 @@ git commit -m "feat(app): 정답 연출 결정 로직 — 콤보 사다리·맥�
 ## Task 3: 모션 인프라
 
 **Files:**
-- Create: `app/src/features/play/use-prefers-reduced-motion.ts`
-- Modify: `app/src/test/setup.ts` (끝에 추가)
-- Modify: `app/src/app/globals.css:53-71`(애니메이션 블록 뒤) · 파일 끝
+- Create: `apps/web/src/features/play/use-prefers-reduced-motion.ts`
+- Modify: `apps/web/src/test/setup.ts` (끝에 추가)
+- Modify: `apps/web/src/app/globals.css:53-71`(애니메이션 블록 뒤) · 파일 끝
 
 **Interfaces:**
 - Consumes: 없음
@@ -611,7 +611,7 @@ git commit -m "feat(app): 정답 연출 결정 로직 — 콤보 사다리·맥�
 
 - [ ] **Step 1: 훅 작성**
 
-`app/src/features/play/use-prefers-reduced-motion.ts`:
+`apps/web/src/features/play/use-prefers-reduced-motion.ts`:
 
 ```ts
 "use client";
@@ -655,7 +655,7 @@ export function usePrefersReducedMotion(): boolean {
 
 - [ ] **Step 2: 테스트 setup에 matchMedia 목 추가**
 
-`app/src/test/setup.ts` — `globalThis.ResizeObserver = MockResizeObserver;` 아래, `afterEach` 위에 삽입:
+`apps/web/src/test/setup.ts` — `globalThis.ResizeObserver = MockResizeObserver;` 아래, `afterEach` 위에 삽입:
 
 ```ts
 /**
@@ -692,7 +692,7 @@ afterEach(() => {
 
 - [ ] **Step 3: globals.css에 keyframes와 reduced-motion 가드 추가**
 
-`app/src/app/globals.css` — `@keyframes overlay-fade { ... }` 블록 **뒤**, `@theme`을 닫는 `}` **앞**에 삽입:
+`apps/web/src/app/globals.css` — `@keyframes overlay-fade { ... }` 블록 **뒤**, `@theme`을 닫는 `}` **앞**에 삽입:
 
 ```css
   /* 정답 판정 연출(#211) — 체크 팝 · 콤보/배지 칩 바운스 */
@@ -746,13 +746,13 @@ afterEach(() => {
 
 - [ ] **Step 4: 게이트 확인**
 
-Run: `cd app && pnpm typecheck && pnpm lint && pnpm check:design && pnpm test`
+Run: `cd apps/web && pnpm typecheck && pnpm lint && pnpm check:design && pnpm test`
 Expected: 전부 PASS. `check:design`은 "✅ 위반 없음" — `cubic-bezier(...)`는 arbitrary value 정규식(`-[...]`)에도 hex에도 걸리지 않는다.
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/src/features/play/use-prefers-reduced-motion.ts app/src/test/setup.ts app/src/app/globals.css
+git add apps/web/src/features/play/use-prefers-reduced-motion.ts apps/web/src/test/setup.ts apps/web/src/app/globals.css
 git commit -m "feat(app): 정답 연출용 모션 토큰·모션 줄이기 감지 (#211)"
 ```
 
@@ -761,9 +761,9 @@ git commit -m "feat(app): 정답 연출용 모션 토큰·모션 줄이기 감�
 ## Task 4: 판정 오버레이
 
 **Files:**
-- Create: `app/src/features/play/components/celebration-overlay.tsx`
-- Create: `app/src/features/play/components/celebration-overlay.stories.tsx`
-- Modify: `app/package.json` (의존성 추가)
+- Create: `apps/web/src/features/play/components/celebration-overlay.tsx`
+- Create: `apps/web/src/features/play/components/celebration-overlay.stories.tsx`
+- Modify: `apps/web/package.json` (의존성 추가)
 
 **Interfaces:**
 - Consumes: `Celebration` (Task 2) · `Chip` from `@/components/ui/chip` · `CheckIcon`·`AlertCircleIcon` from `@/components/icons`
@@ -772,14 +772,14 @@ git commit -m "feat(app): 정답 연출용 모션 토큰·모션 줄이기 감�
 - [ ] **Step 1: 의존성 추가**
 
 ```bash
-cd app && pnpm add canvas-confetti@1.9.3 && pnpm add -D @types/canvas-confetti@1.9.0
+cd apps/web && pnpm add canvas-confetti@1.9.3 && pnpm add -D @types/canvas-confetti@1.9.0
 ```
 
 설치 후 `pnpm why canvas-confetti`로 실제 버전을 확인하고, 위 버전이 없으면 최신 1.x를 쓴다. 라이선스는 ISC.
 
 - [ ] **Step 2: 오버레이 구현**
 
-`app/src/features/play/components/celebration-overlay.tsx`:
+`apps/web/src/features/play/components/celebration-overlay.tsx`:
 
 ```tsx
 "use client";
@@ -904,7 +904,7 @@ export function CelebrationOverlay({ celebration, onContinue }: CelebrationOverl
 
 - [ ] **Step 3: 강도 튜닝용 스토리 작성**
 
-`app/src/features/play/components/celebration-overlay.stories.tsx`:
+`apps/web/src/features/play/components/celebration-overlay.stories.tsx`:
 
 ```tsx
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
@@ -980,13 +980,13 @@ export const ReducedMotion: Story = {
 
 - [ ] **Step 4: 게이트 확인**
 
-Run: `cd app && pnpm typecheck && pnpm lint && pnpm check:design`
+Run: `cd apps/web && pnpm typecheck && pnpm lint && pnpm check:design`
 Expected: 전부 PASS
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add app/package.json app/pnpm-lock.yaml app/src/features/play/components/celebration-overlay.tsx app/src/features/play/components/celebration-overlay.stories.tsx
+git add apps/web/package.json apps/web/pnpm-lock.yaml apps/web/src/features/play/components/celebration-overlay.tsx apps/web/src/features/play/components/celebration-overlay.stories.tsx
 git commit -m "feat(app): 정답 판정 오버레이 — 콤보 칩·맥락 배지·컨페티 (#211)"
 ```
 
@@ -995,8 +995,8 @@ git commit -m "feat(app): 정답 판정 오버레이 — 콤보 칩·맥락 배�
 ## Task 5: 퀴즈 화면 통합
 
 **Files:**
-- Modify: `app/src/features/play/components/play-page.tsx`
-- Modify: `app/src/test/play-page.test.tsx`
+- Modify: `apps/web/src/features/play/components/play-page.tsx`
+- Modify: `apps/web/src/test/play-page.test.tsx`
 
 **Interfaces:**
 - Consumes: `recordAnswer`·`resetSession`·`PlaySession` (Task 1) · `getCelebration`·`Celebration` (Task 2) · `usePrefersReducedMotion` (Task 3) · `CelebrationOverlay` (Task 4)
@@ -1201,7 +1201,7 @@ import { type PlaySession, recordAnswer, resetSession } from "@/features/play/se
 
 - [ ] **Step 9: 기존 테스트 마이그레이션**
 
-`app/src/test/play-page.test.tsx`의 `describe("PlayPage", () => {` 안 `beforeEach` (`68-77행`)에 한 줄 추가하고, 상단 import에 setup 헬퍼를 들여온다.
+`apps/web/src/test/play-page.test.tsx`의 `describe("PlayPage", () => {` 안 `beforeEach` (`68-77행`)에 한 줄 추가하고, 상단 import에 setup 헬퍼를 들여온다.
 
 import 블록에 추가:
 
@@ -1220,7 +1220,7 @@ import { setPrefersReducedMotion } from "@/test/setup";
 
 이 한 줄로 **기존 라우팅 단언 9개(95·114·148·163·230·296·463·484·509·557행)가 수정 없이 통과**한다. 실행해서 확인한다.
 
-Run: `cd app && pnpm vitest run src/test/play-page.test.tsx`
+Run: `cd apps/web && pnpm vitest run src/test/play-page.test.tsx`
 Expected: 기존 테스트 전부 PASS
 
 - [ ] **Step 10: 연출 검증 테스트 추가**
@@ -1335,7 +1335,7 @@ Expected: 기존 테스트 전부 PASS
 
 - [ ] **Step 11: 통과 확인**
 
-Run: `cd app && pnpm vitest run src/test/play-page.test.tsx`
+Run: `cd apps/web && pnpm vitest run src/test/play-page.test.tsx`
 Expected: PASS (기존 + 신규 5)
 
 > 만약 fake timer와 Testing Library가 충돌해 `findBy*`가 멈추면, `vi.useFakeTimers({ shouldAdvanceTime: true })`를 유지한 채 `render` **이전**에 타이머를 켰는지 확인한다. 그래도 불안정하면 해당 테스트만 실제 타이머 + `waitFor(..., { timeout: 3000 })`으로 바꾸되, 이유를 주석으로 남긴다.
@@ -1343,8 +1343,8 @@ Expected: PASS (기존 + 신규 5)
 - [ ] **Step 12: 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && pnpm check:design && cd ..
-git add app/src/features/play/components/play-page.tsx app/src/test/play-page.test.tsx
+cd apps/web && pnpm typecheck && pnpm lint && pnpm check:design && cd ..
+git add apps/web/src/features/play/components/play-page.tsx apps/web/src/test/play-page.test.tsx
 git commit -m "feat(app): 퀴즈 화면에 정답 판정 연출 연결 — 지연 이동·중복 라우팅 차단 (#211)"
 ```
 
@@ -1353,9 +1353,9 @@ git commit -m "feat(app): 퀴즈 화면에 정답 판정 연출 연결 — 지�
 ## Task 6: 완주 파라미터 계약
 
 **Files:**
-- Create: `app/src/features/play/completion-params.ts`
-- Test: `app/src/test/completion-params.test.ts`
-- Modify: `app/src/app/insight/page.tsx`
+- Create: `apps/web/src/features/play/completion-params.ts`
+- Test: `apps/web/src/test/completion-params.test.ts`
+- Modify: `apps/web/src/app/insight/page.tsx`
 
 **Interfaces:**
 - Consumes: 없음
@@ -1363,7 +1363,7 @@ git commit -m "feat(app): 퀴즈 화면에 정답 판정 연출 연결 — 지�
 
 - [ ] **Step 1: 실패 테스트 작성**
 
-`app/src/test/completion-params.test.ts`:
+`apps/web/src/test/completion-params.test.ts`:
 
 ```ts
 import { beforeEach, describe, expect, it } from "vitest";
@@ -1451,12 +1451,12 @@ describe("팡파레 1회 가드", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd app && pnpm vitest run src/test/completion-params.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/completion-params.test.ts`
 Expected: FAIL — 모듈 없음
 
 - [ ] **Step 3: 최소 구현**
 
-`app/src/features/play/completion-params.ts`:
+`apps/web/src/features/play/completion-params.ts`:
 
 ```ts
 /**
@@ -1548,12 +1548,12 @@ export function markCompletionFanfarePlayed(key: string) {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd app && pnpm vitest run src/test/completion-params.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/completion-params.test.ts`
 Expected: PASS (10 tests)
 
 - [ ] **Step 5: 라우트에서 파싱해 내려주기**
 
-`app/src/app/insight/page.tsx`를 아래로 **전체 교체**:
+`apps/web/src/app/insight/page.tsx`를 아래로 **전체 교체**:
 
 ```tsx
 import { RequireAuth } from "@/features/auth/require-auth";
@@ -1609,9 +1609,9 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
 ## Task 7: 완주 요약 카드
 
 **Files:**
-- Create: `app/src/features/play/components/completion-card.tsx`
-- Modify: `app/src/features/play/components/insight-page.tsx`
-- Modify: `app/src/test/insight-page.test.tsx`
+- Create: `apps/web/src/features/play/components/completion-card.tsx`
+- Modify: `apps/web/src/features/play/components/insight-page.tsx`
+- Modify: `apps/web/src/test/insight-page.test.tsx`
 
 **Interfaces:**
 - Consumes: `CompletionSummary`·`clampCompletion` (Task 6) · `CircleCheckIcon`·`DogIcon` from `@/components/icons`
@@ -1619,7 +1619,7 @@ export default async function Insight({ searchParams }: InsightRouteProps) {
 
 - [ ] **Step 1: 카드 컴포넌트 작성**
 
-`app/src/features/play/components/completion-card.tsx`:
+`apps/web/src/features/play/components/completion-card.tsx`:
 
 ```tsx
 import { CircleCheckIcon, DogIcon } from "@/components/icons";
@@ -1720,7 +1720,7 @@ import type { CompletionSummary } from "@/features/play/completion-params";
 
 - [ ] **Step 3: 테스트 추가**
 
-`app/src/test/insight-page.test.tsx` 최상위 `describe` 끝(마지막 `it` 뒤, 닫는 `});` 앞)에 삽입:
+`apps/web/src/test/insight-page.test.tsx` 최상위 `describe` 끝(마지막 `it` 뒤, 닫는 `});` 앞)에 삽입:
 
 ```ts
   it("완주 요약을 받으면 정답 수·최고 콤보·보리 줄을 그린다", async () => {
@@ -1785,14 +1785,14 @@ import type { CompletionSummary } from "@/features/play/completion-params";
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd app && pnpm vitest run src/test/insight-page.test.tsx src/test/completion-params.test.ts`
+Run: `cd apps/web && pnpm vitest run src/test/insight-page.test.tsx src/test/completion-params.test.ts`
 Expected: 신규 4개 PASS. **기존 팡파레 테스트 5개는 아직 그대로 통과**해야 한다(팡파레 조건은 Task 8에서 바꾼다).
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && pnpm check:design && cd ..
-git add app/src/features/play/completion-params.ts app/src/test/completion-params.test.ts app/src/app/insight/page.tsx app/src/features/play/components/completion-card.tsx app/src/features/play/components/insight-page.tsx app/src/test/insight-page.test.tsx
+cd apps/web && pnpm typecheck && pnpm lint && pnpm check:design && cd ..
+git add apps/web/src/features/play/completion-params.ts apps/web/src/test/completion-params.test.ts apps/web/src/app/insight/page.tsx apps/web/src/features/play/components/completion-card.tsx apps/web/src/features/play/components/insight-page.tsx apps/web/src/test/insight-page.test.tsx
 git commit -m "feat(app): 완주 요약 카드 — 정답·최고 콤보·보리 (#211)"
 ```
 
@@ -1803,10 +1803,10 @@ git commit -m "feat(app): 완주 요약 카드 — 정답·최고 콤보·보리
 기존 팡파레는 "연속 3정답"에 걸려 있어, S3 연출과 겹쳐 3콤보에서 컨페티가 두 번 터진다. 발동 조건을 **완주 퍼펙트**로 옮겨 사다리 전체가 한 번씩만 터지게 한다.
 
 **Files:**
-- Create: `app/src/features/play/components/fanfare-overlay.tsx`
-- Modify: `app/src/features/play/components/insight-page.tsx`
-- Modify: `app/src/features/history/components/review-summary-page.tsx`
-- Modify: `app/src/test/insight-page.test.tsx`
+- Create: `apps/web/src/features/play/components/fanfare-overlay.tsx`
+- Modify: `apps/web/src/features/play/components/insight-page.tsx`
+- Modify: `apps/web/src/features/history/components/review-summary-page.tsx`
+- Modify: `apps/web/src/test/insight-page.test.tsx`
 
 **Interfaces:**
 - Consumes: `hasPlayedCompletionFanfare`·`markCompletionFanfarePlayed`·`isPerfectCompletion` (Task 6)
@@ -1814,7 +1814,7 @@ git commit -m "feat(app): 완주 요약 카드 — 정답·최고 콤보·보리
 
 - [ ] **Step 1: 팡파레 오버레이 추출**
 
-`app/src/features/play/components/fanfare-overlay.tsx`:
+`apps/web/src/features/play/components/fanfare-overlay.tsx`:
 
 ```tsx
 "use client";
@@ -1957,7 +1957,7 @@ import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
 
 - [ ] **Step 4: 기존 팡파레 테스트 5묶음 재작성**
 
-`app/src/test/insight-page.test.tsx`에서 아래 5개 `it`을 **삭제**한다(현행 220·244·260·294·319행):
+`apps/web/src/test/insight-page.test.tsx`에서 아래 5개 `it`을 **삭제**한다(현행 220·244·260·294·319행):
 - `"shows fanfare from the third consecutive correct answer and hides it on completion"`
 - `"uses vertical fanfare only for the fourth consecutive correct answer"`
 - `"overlays both fanfares from the fifth consecutive correct answer and dismisses on vertical completion"`
@@ -2043,14 +2043,14 @@ import { FanfareOverlay } from "@/features/play/components/fanfare-overlay";
 
 - [ ] **Step 5: 통과 확인**
 
-Run: `cd app && pnpm test`
+Run: `cd apps/web && pnpm test`
 Expected: 전체 스위트 PASS
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && pnpm check:design && cd ..
-git add app/src/features/play/components/fanfare-overlay.tsx app/src/features/play/components/insight-page.tsx app/src/features/history/components/review-summary-page.tsx app/src/test/insight-page.test.tsx
+cd apps/web && pnpm typecheck && pnpm lint && pnpm check:design && cd ..
+git add apps/web/src/features/play/components/fanfare-overlay.tsx apps/web/src/features/play/components/insight-page.tsx apps/web/src/features/history/components/review-summary-page.tsx apps/web/src/test/insight-page.test.tsx
 git commit -m "refactor(app): 팡파레 발동을 연속 3정답에서 완주 퍼펙트로 이동 (#211)"
 ```
 
@@ -2061,7 +2061,7 @@ git commit -m "refactor(app): 팡파레 발동을 연속 3정답에서 완주 �
 - [ ] **Step 1: 전체 게이트 실행**
 
 ```bash
-cd app && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm check:design
+cd apps/web && pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm check:design
 ```
 
 Expected: 5개 전부 통과. `build`는 Turbopack으로 도는데, 이 워크트리는 격리 설치라 심링크 문제가 없어야 한다. 실패하면 로그를 그대로 보고한다.
@@ -2069,7 +2069,7 @@ Expected: 5개 전부 통과. `build`는 Turbopack으로 도는데, 이 워크�
 - [ ] **Step 2: 실제 화면 확인 (가능한 범위)**
 
 ```bash
-cd app && pnpm dev
+cd apps/web && pnpm dev
 ```
 
 `http://localhost:3000/play`에서 로그인 후 문제를 풀어 오버레이가 뜨는지 확인한다. **로그인 자격이 없거나 백엔드에 접속할 수 없으면 이 스텝은 건너뛰고, 건너뛰었다고 보고에 명시한다** — 통과했다고 지어내지 말 것.
@@ -2077,7 +2077,7 @@ cd app && pnpm dev
 Storybook으로 연출만 보는 건 자격 없이도 된다:
 
 ```bash
-cd app && pnpm storybook
+cd apps/web && pnpm storybook
 ```
 
 `play/CelebrationOverlay` 스토리 7개를 눌러보고, 유지 시간이 과하거나 부족하면 `celebration-logic.ts`의 `HOLD_MS`를 조정한 뒤 `celebration-logic.test.ts`의 "등급이 올라갈수록 유지 시간이 길어진다"가 여전히 통과하는지 확인하고 커밋한다.
