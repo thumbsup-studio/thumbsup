@@ -17,11 +17,14 @@ concurrency:
 
 jobs:
   publish:
+    # S3 버킷·OIDC 역할 Variables가 등록되기 전에는 publish를 조용히 건너뛴다 (#348)
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
-      github.event.workflow_run.pull_requests[0].number != null
+      github.event.workflow_run.pull_requests[0].number != null &&
+      vars.MOBILE_ARTIFACTS_BUCKET != '' &&
+      vars.MOBILE_STAGING_PUBLISH_ROLE_ARN != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: mobile-staging-publish
