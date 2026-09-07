@@ -7,7 +7,11 @@
   },
   "packageManager": "pnpm@10.11.0",
   "scripts": {
+    "bootstrap": "pnpm --filter mobile bootstrap",
     "build": "pnpm --filter web build",
+    "dev": "pnpm --filter mobile dev",
+    "dev:install": "pnpm --filter mobile dev:install",
+    "diagnose": "pnpm --filter mobile diagnose",
     "lint": "pnpm --filter web lint",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
