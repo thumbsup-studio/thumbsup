@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ApiProvider, useApi } from "../lib/api/api-provider";
 import { isStagingBuild } from "../lib/app-environment";
+import { ConnectivityProvider } from "../lib/connectivity/connectivity-provider";
 
 const StagingBoundary: ComponentType<{ children: ReactNode }> = isStagingBuild
   ? require("../features/dev-channels/staging-update-provider").StagingUpdateProvider
@@ -37,7 +38,10 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={sessionStatus === "authenticated"}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="briefing" />
+        <Stack.Screen
+          name="briefing"
+          options={{ animation: "slide_from_right", gestureEnabled: true }}
+        />
         <Stack.Screen name="play" />
         <Stack.Screen name="insight" />
         <Stack.Screen name="follow-up" />
@@ -66,11 +70,13 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ApiProvider>
-        <StagingBoundary>
-          <RootNavigator />
-        </StagingBoundary>
-      </ApiProvider>
+      <ConnectivityProvider>
+        <ApiProvider>
+          <StagingBoundary>
+            <RootNavigator />
+          </StagingBoundary>
+        </ApiProvider>
+      </ConnectivityProvider>
     </SafeAreaProvider>
   );
 }

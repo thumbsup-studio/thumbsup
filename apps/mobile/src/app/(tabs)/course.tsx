@@ -1,5 +1,9 @@
-import { PlaceholderScreen } from "../../components/placeholder-screen";
+import { Redirect, useLocalSearchParams } from "expo-router";
+import { CourseScreen as CourseFeatureScreen } from "../../features/course/course-screen";
+import { hasInvalidIdParam, parsePositiveIdParam } from "../../lib/navigation/route-params";
 
 export default function CourseScreen() {
-  return <PlaceholderScreen title="코스" />;
+  const { courseId } = useLocalSearchParams<{ courseId?: string | string[] }>();
+  if (hasInvalidIdParam(courseId)) return <Redirect href="/(tabs)" />;
+  return <CourseFeatureScreen initialOpenCourseId={parsePositiveIdParam(courseId)} />;
 }
