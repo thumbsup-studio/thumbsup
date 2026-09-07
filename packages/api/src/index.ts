@@ -65,4 +65,5 @@ export type {
   RetryHintBlank,
 } from "./quiz";
 export type { TokenStorage, Tokens } from "./token-storage";
+export type { FollowUpQuestionDetail } from "@thumbsup/core/types";
 export { createWebTokenStorage, type WebTokenStorage } from "./web-token-storage";

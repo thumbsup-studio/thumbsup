@@ -1,3 +1,4 @@
+import type { FollowUpQuestionDetail } from "@thumbsup/core/types";
 import type { QuizChoice, QuizDifficulty, QuizType } from "@thumbsup/core/quiz-shared";
 import type { ApiRequest } from "./client";
 
@@ -158,6 +159,12 @@ export function createQuizApi(apiRequest: ApiRequest) {
 
     getQuizExplanation(quizId: number): Promise<QuizExplanationResponse> {
       return apiRequest<QuizExplanationResponse>(`/quizzes/${quizId}/explanation`);
+    },
+
+    getFollowUpQuestion(followUpQuestionId: number): Promise<FollowUpQuestionDetail> {
+      return apiRequest<FollowUpQuestionDetail>(
+        `/follow-up-questions/${followUpQuestionId}`,
+      );
     },
   };
 }
