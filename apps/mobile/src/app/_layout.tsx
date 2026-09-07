@@ -2,10 +2,15 @@ import "../global.css";
 
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ApiProvider, useApi } from "../lib/api/api-provider";
+import { isStagingBuild } from "../lib/app-environment";
+
+const StagingBoundary: ComponentType<{ children: ReactNode }> = isStagingBuild
+  ? require("../features/dev-channels/staging-update-provider").StagingUpdateProvider
+  : ({ children }) => children;
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -63,7 +68,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ApiProvider>
-        <RootNavigator />
+        <StagingBoundary>
+          <RootNavigator />
+        </StagingBoundary>
       </ApiProvider>
     </SafeAreaProvider>
   );

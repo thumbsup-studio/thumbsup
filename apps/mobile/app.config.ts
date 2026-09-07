@@ -8,22 +8,25 @@ type Environment = Record<string, string | undefined>;
 
 const profiles: Record<
   AppEnvironment,
-  { appName: string; applicationId: string; channel: string | undefined }
+  { appName: string; applicationId: string; channel: string | undefined; scheme: string }
 > = {
   development: {
     appName: "Thumbs Up Dev",
     applicationId: "studio.thumbsup.dev",
     channel: undefined,
+    scheme: "thumbsup-dev",
   },
   staging: {
     appName: "Thumbs Up Staging",
     applicationId: "studio.thumbsup.staging",
     channel: "staging",
+    scheme: "thumbsup-staging",
   },
   production: {
     appName: "Thumbs Up",
     applicationId: "studio.thumbsup",
     channel: "production",
+    scheme: "thumbsup",
   },
 };
 
@@ -79,7 +82,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
     slug: "thumbsup-mobile",
     version: "0.1.0",
     orientation: "portrait",
-    scheme: "thumbsup",
+    scheme: profile.scheme,
     userInterfaceStyle: "automatic",
     runtimeVersion: { policy: "appVersion" },
     updates: {
@@ -117,6 +120,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
       appEnvironment,
       apiUrl,
       updateChannel: profile.channel ?? null,
+      updatesUrl,
     },
   };
 }

@@ -12,10 +12,10 @@ const baseEnvironment = {
 
 describe("buildExpoConfig", () => {
   it.each([
-    ["development", "Thumbs Up Dev", "studio.thumbsup.dev", undefined],
-    ["staging", "Thumbs Up Staging", "studio.thumbsup.staging", "staging"],
-    ["production", "Thumbs Up", "studio.thumbsup", "production"],
-  ] as const)("builds the %s identity", (appEnvironment, name, applicationId, channel) => {
+    ["development", "Thumbs Up Dev", "studio.thumbsup.dev", undefined, "thumbsup-dev"],
+    ["staging", "Thumbs Up Staging", "studio.thumbsup.staging", "staging", "thumbsup-staging"],
+    ["production", "Thumbs Up", "studio.thumbsup", "production", "thumbsup"],
+  ] as const)("builds the %s identity", (appEnvironment, name, applicationId, channel, scheme) => {
     const config = buildExpoConfig({
       ...baseEnvironment,
       APP_ENV: appEnvironment,
@@ -26,10 +26,15 @@ describe("buildExpoConfig", () => {
     expect(config.name).toBe(name);
     expect(config.ios?.bundleIdentifier).toBe(applicationId);
     expect(config.android?.package).toBe(applicationId);
+    expect(config.scheme).toBe(scheme);
     expect(config.updates?.requestHeaders).toEqual(
       channel ? { "expo-channel-name": channel } : undefined,
     );
-    expect(config.extra).toMatchObject({ appEnvironment, updateChannel: channel ?? null });
+    expect(config.extra).toMatchObject({
+      appEnvironment,
+      updateChannel: channel ?? null,
+      updatesUrl: baseEnvironment.EXPO_PUBLIC_UPDATES_URL,
+    });
   });
 
   it("uses the updates placeholder until the CloudFront URL is assigned", () => {

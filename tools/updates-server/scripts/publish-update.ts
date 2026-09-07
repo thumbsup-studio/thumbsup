@@ -238,6 +238,10 @@ export async function publishUpdate(options: PublishOptions): Promise<{ channel:
     updateId,
     runtimeVersion: artifact.runtimeVersion,
     createdAt: artifact.createdAt,
+    prNumber: artifact.prNumber,
+    branch: artifact.branch,
+    title: artifact.title,
+    commit: artifact.commit,
   };
   await updateIndex(client, options.bucket, (index) => {
     const existing = index.channels[channel] ?? [];
