@@ -1,9 +1,9 @@
 ---
 name: frontend-api
-description: 프론트엔드에서 Thumbs Up 백엔드 API를 연동·소비하는 법. 응답 envelope 언랩, Bearer 토큰·TOKEN_EXPIRED 재발급 흐름, 에러 코드 분기, 현재 사용 가능한 엔드포인트, base URL·CORS·env 계획을 정리한다. 계약 정본(docs/api-standard·error-spec)은 링크로 참조. 사용자가 "API 어떻게 붙여", "엔드포인트 뭐 있어", "토큰 처리 어떻게 해"라고 할 때 트리거.
+description: apps/web 프론트엔드에서 Thumbs Up 백엔드 API를 연동·소비하는 법. 응답 envelope 언랩, Bearer 토큰·TOKEN_EXPIRED 재발급 흐름, 에러 코드 분기, 현재 사용 가능한 엔드포인트, base URL·CORS·env 계획을 정리한다. 계약 정본(docs/api-standard·error-spec)은 링크로 참조. 사용자가 "API 어떻게 붙여", "엔드포인트 뭐 있어", "토큰 처리 어떻게 해"라고 할 때 트리거.
 ---
 
-# frontend-api — 프론트엔드 API 연동
+# frontend-api — web API 연동
 
 FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서** — 이 스킬은 소비 관점만 모은다.
 

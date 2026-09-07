@@ -3,7 +3,7 @@
 `thumbsup-studio/thumbsup` **모노레포**의 커밋 · 브랜치 · PR · 이슈 · 라벨 · 마일스톤 컨벤션.
 바탕: [Conventional Commits](https://www.conventionalcommits.org) + 스프린트 추적 ID(F-xx · Q-xx) → GitHub Issue 흐름.
 
-레포 구성(예정): `apps/web/` (클라이언트) · `server/` (백엔드) · `shared/` (공용).
+레포 구성: `apps/web/` (웹 클라이언트) · `apps/authoring/` (저작 도구, 예정) · `apps/mobile/` (React Native, 예정) · `packages/` (공용 패키지, 예정) · `tools/` (개발 도구) · `server/` (백엔드).
 
 에이전트 스킬 진입점은 Claude/Codex 공용으로 유지한다.
 - Claude Code는 `.claude/skills/`를 읽는다.
@@ -29,9 +29,9 @@ CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
 ```
 
 - **type**: `feat` `fix` `docs` `refactor` `test` `chore`
-- **scope**(선택): `app` · `server` · `shared`
+- **scope**(선택): `web` · `authoring` · `mobile` · `infra` · `server`
 - 요약은 50자 내외, 끝에 마침표 없이.
-- 예: `feat(app): 좋아요 버튼 롱프레스 애니메이션 (F-05, #12)`
+- 예: `feat(web): 좋아요 버튼 롱프레스 애니메이션 (F-05, #12)`
 
 > 예외: PM 봇(pm-bot)이 자동 생성하는 명세 PR은 이슈 연결 없이 `docs(spec): <요약> (pm-bot)` 형식을 사용한다.
 
@@ -73,7 +73,7 @@ CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
 | 그룹 | 라벨 |
 |------|------|
 | **타입** | `type: feat` `type: fix` `type: docs` `type: refactor` `type: chore` |
-| **스코프** | `scope: app` (Next.js 앱) `scope: server` (Spring Boot 서버) |
+| **스코프** | `scope: web` `scope: authoring` `scope: mobile` `scope: infra` `scope: server` |
 | **영역** | `area: INFRA` `area: S0 로그인` ~ `area: S8 마이페이지` `area: SYS 시스템` |
 | **상태** | `status: todo` `status: in-progress` `status: review` `status: blocked` |
 | **기타** | `good first issue` `help wanted` `question` |
@@ -98,5 +98,5 @@ CodeRabbit는 PR 자동 리뷰 봇으로 사용한다.
 
 ## 7. 배포 · 릴리즈
 
-- **app과 server는 배포 파이프라인이 분리돼 있다.** `apps/web/**` 변경은 `app-deploy.yml`이 Vercel에(main→프로덕션, PR→프리뷰), `server/**` 변경은 `server-deploy.yml`이 AWS ECR에 배포한다. 서로 상대 경로에 반응하지 않는다. app 배포 상세는 `deploying` 스킬.
+- **web과 server는 배포 파이프라인이 분리돼 있다.** `apps/web/**` 변경은 `web-deploy.yml`이 Vercel에(main→프로덕션, PR→프리뷰), `server/**` 변경은 `server-deploy.yml`이 AWS ECR에 배포한다. 워크플로는 모든 대상 이벤트에서 시작하지만 paths-filter 결과에 따라 관련 배포 잡만 실행한다. web 배포 상세는 `deploying` 스킬.
 - **릴리즈는 release-please로 자동화된다.** main 머지 시 Release PR이 생기고, 이를 머지하면 통합 버전 태그(`vX.Y.Z`)+GitHub Release가 만들어진다(버전은 `feat`→minor, `fix`→patch). 전용 토큰(`RELEASE_PLEASE_TOKEN`)으로 구동한다. 상세는 `releasing` 스킬.

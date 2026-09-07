@@ -1,0 +1,66 @@
+name: Mobile CI
+
+# apps/mobile이 추가되기 전에는 mobile-gate가 자동으로 스킵된다.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+      app_exists: ${{ steps.exists.outputs.app_exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - 'apps/mobile/**'
+              - 'packages/**'
+              - 'biome.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - '.github/workflows/mobile-ci.yml'
+      - name: Mobile 앱 존재 확인
+        id: exists
+        run: echo "app_exists=$([ -f apps/mobile/package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  mobile-gate:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true' && needs.changes.outputs.app_exists == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: 워크스페이스 의존성 설치
+        run: pnpm --dir ../.. install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test

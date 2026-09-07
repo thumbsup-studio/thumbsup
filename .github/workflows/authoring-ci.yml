@@ -1,0 +1,67 @@
+name: Authoring CI
+
+# apps/authoring이 추가되기 전에는 authoring-gate가 자동으로 스킵된다.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: authoring-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      authoring: ${{ steps.filter.outputs.authoring }}
+      app_exists: ${{ steps.exists.outputs.app_exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            authoring:
+              - 'apps/authoring/**'
+              - 'packages/**'
+              - 'biome.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - '.github/workflows/authoring-ci.yml'
+      - name: Authoring 앱 존재 확인
+        id: exists
+        run: echo "app_exists=$([ -f apps/authoring/package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  authoring-gate:
+    needs: changes
+    if: needs.changes.outputs.authoring == 'true' && needs.changes.outputs.app_exists == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/authoring
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: 워크스페이스 의존성 설치
+        run: pnpm --dir ../.. install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test

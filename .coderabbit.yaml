@@ -29,6 +29,52 @@ reviews:
         - 단순 취향 차이의 네이밍
         - 이미 일관된 스타일의 사소한 리팩터링
 
+    - path: 'apps/authoring/**'
+      instructions: |
+        이 경로는 문제 저작용 웹 애플리케이션입니다.
+        다음을 우선적으로 리뷰하세요:
+        - 문제 생성·검수·승인 흐름의 상태 전이와 권한 검사
+        - 타입 안정성, 비동기 작업·SSE 연결의 오류 및 재시도 처리
+        - 운영 문제를 변경하는 동작의 확인 절차와 실패 안전성
+        - 접근성 및 공통 패키지 재사용
+
+        다음은 과하게 지적하지 마세요:
+        - 단순 취향 차이의 네이밍
+        - 이미 일관된 스타일의 사소한 리팩터링
+
+    - path: 'apps/mobile/**'
+      instructions: |
+        이 경로는 React Native 모바일 애플리케이션입니다.
+        다음을 우선적으로 리뷰하세요:
+        - iOS·Android 양쪽에서 동작하는 React Native API 사용
+        - 화면 수명주기, 내비게이션, 백그라운드 전환 시 상태 정리
+        - 네트워크 실패·오프라인·권한 거부 처리
+        - 긴 목록과 이미지의 렌더링 성능
+        - 접근성 라벨, 터치 영역, 키보드 회피
+        - 네이티브 시크릿이나 민감정보의 번들 포함 여부
+
+        다음은 과하게 지적하지 마세요:
+        - 플랫폼별로 의도된 작은 UI 차이
+        - 단순 취향 차이의 네이밍
+
+    - path: 'packages/**'
+      instructions: |
+        이 경로는 여러 앱이 공유하는 패키지입니다.
+        다음을 우선적으로 리뷰하세요:
+        - 공개 API와 타입 변경의 하위 호환성
+        - 앱별 런타임이나 프레임워크에 대한 불필요한 결합
+        - 순환 의존성과 중복 구현
+        - 패키지 경계에서의 입력 검증과 오류 처리
+
+    - path: 'tools/**'
+      instructions: |
+        이 경로는 개발·운영 자동화 도구입니다.
+        다음을 우선적으로 리뷰하세요:
+        - 파괴적 작업의 대상 범위와 재실행 안전성
+        - 토큰·시크릿·개인정보의 로그 또는 저장소 노출
+        - 실패 코드, 타임아웃, 부분 실패 처리
+        - 모노레포 루트에서 실행할 때의 경로 안정성
+
     - path: 'server/**'
       instructions: |
         이 경로는 Java 21 + Spring Boot 백엔드 서버입니다 (Gradle, JPA, MySQL).
@@ -55,6 +101,13 @@ reviews:
     - '!apps/web/dist/**'
     - '!apps/web/build/**'
     - '!apps/web/coverage/**'
+    - '!apps/authoring/.next/**'
+    - '!apps/authoring/dist/**'
+    - '!apps/authoring/build/**'
+    - '!apps/authoring/coverage/**'
+    - '!apps/mobile/dist/**'
+    - '!apps/mobile/build/**'
+    - '!apps/mobile/coverage/**'
     - '!server/dist/**'
     - '!server/build/**'
     - '!server/coverage/**'
