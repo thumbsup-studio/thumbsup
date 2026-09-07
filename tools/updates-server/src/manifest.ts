@@ -284,13 +284,14 @@ async function response(
   return { statusCode: 200, headers, body };
 }
 
-export function createHandler(store: ObjectStore) {
+export function createHandler(store: ObjectStore, options: { assetBaseUrl?: string } = {}) {
   return async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> => {
     if (event.requestContext?.http?.method && event.requestContext.http.method !== 'GET') {
       return error(405, 'Expected GET.');
     }
     const request = parseHeaders(event);
     if (!('protocolVersion' in request)) return request;
+    if (options.assetBaseUrl) request.assetBaseUrl = options.assetBaseUrl;
     let index: ChannelIndex;
     try {
       index = json<ChannelIndex>(await store.get('channels/index.json'));

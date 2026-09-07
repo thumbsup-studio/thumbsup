@@ -1,5 +1,3 @@
-import Constants from "expo-constants";
-
 export interface PrChannel {
   prNumber: number;
   title: string;
@@ -64,11 +62,17 @@ export function parseChannelIndex(value: unknown): PrChannel[] {
 }
 
 export function channelIndexUrl(): string {
-  const baseUrl = Constants.expoConfig?.extra?.updatesUrl;
-  if (typeof baseUrl !== "string" || !baseUrl.startsWith("https://")) {
+  const configuredUrl = process.env.EXPO_PUBLIC_UPDATES_URL;
+  if (!configuredUrl) {
     throw new Error("업데이트 서버가 설정되지 않았습니다.");
   }
-  return `${baseUrl.replace(/\/$/, "")}/channels/index.json`;
+  const url = new URL(configuredUrl);
+  const localHttp =
+    url.protocol === "http:" && ["10.0.2.2", "127.0.0.1", "localhost"].includes(url.hostname);
+  if (url.protocol !== "https:" && !localHttp) {
+    throw new Error("업데이트 서버가 설정되지 않았습니다.");
+  }
+  return `${url.origin}/channels/index.json`;
 }
 
 export async function fetchPrChannels(signal?: AbortSignal): Promise<PrChannel[]> {

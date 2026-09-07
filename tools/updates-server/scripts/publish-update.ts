@@ -32,6 +32,7 @@ export interface PublishOptions {
   bucket: string;
   prNumber: number;
   commit: string;
+  channel?: string;
   client?: S3ClientLike;
   sleep?: (milliseconds: number) => Promise<void>;
 }
@@ -54,6 +55,10 @@ function assertPrNumber(value: number): void {
 
 function assertCommit(value: string): void {
   if (!/^[0-9a-f]{40}$/i.test(value)) throw new Error(`Invalid commit SHA: ${value}`);
+}
+
+function assertChannel(value: string): void {
+  if (!/^[A-Za-z0-9._-]+$/.test(value)) throw new Error(`Invalid channel: ${value}`);
 }
 
 function isNotFound(error: unknown): boolean {
@@ -203,7 +208,8 @@ export async function publishUpdate(options: PublishOptions): Promise<{ channel:
     },
   };
 
-  const channel = `pr-${options.prNumber}`;
+  const channel = options.channel ?? `pr-${options.prNumber}`;
+  assertChannel(channel);
   const updateId = options.commit;
   const prefix = `updates/${channel}/${updateId}`;
   const allFiles = await filesBelow(exportDir);
@@ -297,19 +303,28 @@ function argumentsFrom(argv: string[]): Record<string, string> {
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   const args = argumentsFrom(rest);
-  const bucket = args.bucket ?? process.env.ARTIFACTS_BUCKET;
+  const localStore = args['local-store'];
+  const bucket = args.bucket ?? process.env.ARTIFACTS_BUCKET ?? (localStore ? 'local' : undefined);
   const prNumber = Number(args.pr);
   if (!bucket) throw new Error('--bucket or ARTIFACTS_BUCKET is required');
   if (command === 'publish') {
     if (!args['artifact-dir'] || !args.commit) throw new Error('publish requires --artifact-dir and --commit');
+    const client = localStore
+      ? new (await import('./local-s3-client.js')).LocalS3Client(localStore)
+      : undefined;
     const result = await publishUpdate({
       artifactDir: args['artifact-dir'], bucket, prNumber, commit: args.commit,
+      channel: args.channel,
+      client,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
   if (command === 'cleanup') {
-    await cleanupUpdate({ bucket, prNumber });
+    const client = localStore
+      ? new (await import('./local-s3-client.js')).LocalS3Client(localStore)
+      : undefined;
+    await cleanupUpdate({ bucket, prNumber, client });
     return;
   }
   throw new Error('First argument must be publish or cleanup');

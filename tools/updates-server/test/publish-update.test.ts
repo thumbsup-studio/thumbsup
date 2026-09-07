@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdtemp } from 'node:fs/promises';
@@ -10,6 +10,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
 import { cleanupUpdate, publishUpdate, type S3ClientLike } from '../scripts/publish-update.js';
+import { LocalS3Client } from '../scripts/local-s3-client.js';
 
 const sha = '0123456789abcdef0123456789abcdef01234567';
 
@@ -44,6 +45,26 @@ function stream(value: object): { transformToByteArray(): Promise<Uint8Array> } 
 }
 
 describe('publishUpdate', () => {
+  it('publishes an artifact to a local directory with a selected channel', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'thumbsup-local-store-'));
+    const result = await publishUpdate({
+      artifactDir: await artifact(),
+      bucket: 'local',
+      prNumber: 348,
+      commit: sha,
+      channel: 'staging',
+      client: new LocalS3Client(root),
+    });
+
+    expect(result).toEqual({ channel: 'staging', updateId: sha });
+    const index = JSON.parse(await readFile(join(root, 'channels', 'index.json'), 'utf8'));
+    expect(index.channels.staging[0]).toMatchObject({ updateId: sha, runtimeVersion: '0.1.0' });
+    expect(await readFile(
+      join(root, 'updates', 'staging', sha, '_expo', 'static', 'js', 'android', 'app.hbc'),
+      'utf8',
+    )).toBe('android');
+  });
+
   it('uploads assets before metadata and exposes the update with an ETag conditional write', async () => {
     const commands: unknown[] = [];
     const client: S3ClientLike = {
