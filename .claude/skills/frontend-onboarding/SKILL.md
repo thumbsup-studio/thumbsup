@@ -1,11 +1,13 @@
 ---
 name: frontend-onboarding
-description: 백엔드 개발자가 apps/web/(Next.js) 프론트 작업을 맡을 때의 온보딩 지도. 환경 준비물·개발 서버, 프론트 코드 3층 구조(Spring 대응), 작업 순서, 단계별 필수 스킬 라우팅을 안내한다. 규칙 정본은 각 스킬·문서 링크로 참조. 사용자가 "프론트 처음인데", "web 작업 뭐부터 해", "화면 어떻게 만들어", "프론트 환경 세팅", "서버만 하다가 프론트 맡았어"라고 할 때 트리거.
+description: 백엔드 개발자가 apps/web/(Next.js) 프론트 작업을 맡을 때의 온보딩 지도. 환경 준비물·개발 서버, 프론트 코드 3층 구조(Spring 대응), 작업 순서, 단계별 필수 스킬 라우팅을 안내하며 apps/mobile 작업은 mobile-local-dev로 연결한다. 규칙 정본은 각 스킬·문서 링크로 참조. 사용자가 "프론트 처음인데", "web 작업 뭐부터 해", "화면 어떻게 만들어", "프론트 환경 세팅", "서버만 하다가 프론트 맡았어"라고 할 때 트리거.
 ---
 
 # frontend-onboarding — 백엔드 개발자를 위한 프론트 개발 지도
 
 서버만 하던 사람이 `apps/web/` 이슈를 맡았을 때 "무엇을 준비하고, 어디에 코드를 쓰고, 어떤 스킬로 작업하는가". [`docs/frontend-server-dev-guide.md`](../../../docs/frontend-server-dev-guide.md)(FE→서버)의 반대 방향 지도다. 규칙의 **정본은 `apps/web/CLAUDE.md`와 각 스킬** — 여기서 규칙을 다시 쓰지 않는다.
+
+> 작업 대상이 `apps/mobile/`이면 이 웹 온보딩 절차 대신 `apps/mobile/CLAUDE.md`와 `mobile-local-dev` 스킬을 먼저 읽는다.
 
 ## 30초 빠른 시작
 
@@ -50,6 +52,7 @@ pnpm storybook   # http://localhost:6006 — 공통 컴포넌트 카탈로그(�
 
 | 상황 | 로드할 스킬 |
 |---|---|
+| `apps/mobile/` 로컬 개발 | `mobile-local-dev` (필수) |
 | Next.js 코드를 만지는 모든 작업 | `next-best-practices` (필수) |
 | UI·스타일·컴포넌트 | `design-system` (필수) — 토큰·`components/ui`·스토리 규칙 |
 | API 연동·소비 | `frontend-api` (필수) — envelope·토큰·에러 분기 |
