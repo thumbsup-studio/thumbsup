@@ -5,10 +5,16 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/app-deploy.yml'
   pull_request:
     paths:
       - 'app/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/app-deploy.yml'
 
 concurrency:
@@ -43,14 +49,15 @@ jobs:
           fi
       - uses: pnpm/action-setup@v4
         if: steps.guard.outputs.skip != 'true'
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         if: steps.guard.outputs.skip != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
+      - name: 워크스페이스 의존성 설치
+        if: steps.guard.outputs.skip != 'true'
+        run: pnpm --dir .. install --frozen-lockfile
       - name: Vercel 배포
         id: deploy
         if: steps.guard.outputs.skip != 'true'
@@ -60,7 +67,8 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then FLAG="--prod"; ENV_NAME="production"; else FLAG=""; ENV_NAME="preview"; fi
           npx vercel@54 pull --yes --environment=$ENV_NAME --token="$VERCEL_TOKEN"
           npx vercel@54 build $FLAG --token="$VERCEL_TOKEN"
-          URL=$(npx vercel@54 deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
+          mv .vercel ../.vercel
+          URL=$(npx vercel@54 --cwd .. deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "배포 완료: $URL"
 

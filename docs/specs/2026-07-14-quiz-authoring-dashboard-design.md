@@ -78,7 +78,7 @@
 **배치 (모노레포):**
 - `app/` — 대시보드는 기존 Next.js 앱의 **보호된 라우트 그룹**(예: `app/(authoring)/`)으로 MVP. Vercel·인증 인프라 재사용. (분리 여부는 §12 미해결)
 - `server/` — 잡 큐·draft 저장·SSE는 Spring에 추가. 기존 `quiz/generation` 검증 로직 재사용.
-- `bridge/` — 신규 top-level Node/TS 패키지 (`npx thumbsup-bridge`).
+- `tools/bridge/` — 신규 top-level Node/TS 패키지 (`npx thumbsup-bridge`).
 
 ## 5. 데이터 모델
 

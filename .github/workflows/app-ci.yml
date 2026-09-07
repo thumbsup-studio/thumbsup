@@ -4,12 +4,20 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - 'biome.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.nvmrc'
       - '.github/workflows/app-ci.yml'
   push:
     branches: [main]
     paths:
       - 'app/**'
+      - 'biome.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.nvmrc'
       - '.github/workflows/app-ci.yml'
 
@@ -33,14 +41,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm --dir .. install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint:ci
       - run: pnpm build

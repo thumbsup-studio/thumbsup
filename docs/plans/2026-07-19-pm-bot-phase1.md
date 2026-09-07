@@ -4,7 +4,7 @@
 
 **Goal:** Slack 지정 채널을 수집·백필하고, @멘션 질문에 명세(markdown) 근거로 답하는 읽기 전용 PM 봇을 만든다.
 
-**Architecture:** 단일 Node 상주 프로세스. Bolt(Socket Mode)가 이벤트를 받아 SQLite에 적재하고, 기동 시 `conversations.history`로 공백을 백필한다. Q&A는 "멘션 → `qa_pending` 큐 → 순차 drain(명세 인덱스 검색 → `claude -p` 답변 생성 → 스레드 게시)" 단일 경로로 실시간·백필을 동일 처리한다. LLM 호출은 `bridge/src/adapters/`의 claude 어댑터를 이식해 사용한다.
+**Architecture:** 단일 Node 상주 프로세스. Bolt(Socket Mode)가 이벤트를 받아 SQLite에 적재하고, 기동 시 `conversations.history`로 공백을 백필한다. Q&A는 "멘션 → `qa_pending` 큐 → 순차 drain(명세 인덱스 검색 → `claude -p` 답변 생성 → 스레드 게시)" 단일 경로로 실시간·백필을 동일 처리한다. LLM 호출은 `tools/bridge/src/adapters/`의 claude 어댑터를 이식해 사용한다.
 
 **Tech Stack:** TypeScript / Node ≥22 (ESM), `@slack/bolt` v4(Socket Mode), `better-sqlite3`, `execa`(claude CLI spawn), `tsx`(실행), `vitest`(테스트)
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Node `>=22`, `"type": "module"` — 로컬 import는 반드시 `.js` 확장자 (`import ... from "./config.js"`)
-- `pm-bot/`은 bridge 전례를 따라 **독립 pnpm 패키지** (레포 루트 workspace 아님) — 의존성 작업은 `pm-bot/` 안에서 `pnpm ...`
+- `tools/pm-bot/`은 bridge 전례를 따라 **독립 pnpm 패키지** (레포 루트 workspace 아님) — 의존성 작업은 `tools/pm-bot/` 안에서 `pnpm ...`
 - 구현 브랜치: `feat/202-pm-bot-phase1` (워크트리 `~/DEV/thumbsup__worktrees/feat-202-pm-bot-phase1`, main 직접 커밋 금지)
 - 커밋 형식: `<type>(pm-bot): <한국어 요약> (#202)` — 커밋 생성 시 `commit` 스킬 로드
 - claude 어댑터의 CLI 플래그 세트(`--tools "" --strict-mcp-config --setting-sources "" --disable-slash-commands`)와 `BLOCKED_ENV_KEYS` env 격리는 **변경 금지** (개인 구독 보호·환경 미상속 전제)
@@ -23,7 +23,7 @@
 ## File Structure
 
 ```
-pm-bot/
+tools/pm-bot/
   package.json  tsconfig.json  .gitignore  .env.example  pm-bot.config.example.json
   src/
     config.ts        # 설정 로드·검증 (채널·경로)
@@ -42,15 +42,15 @@ pm-bot/
 ### Task 1: 패키지 스캐폴드 + config 로더
 
 **Files:**
-- Create: `pm-bot/package.json`, `pm-bot/tsconfig.json`, `pm-bot/.gitignore`, `pm-bot/.env.example`, `pm-bot/pm-bot.config.example.json`, `pm-bot/src/config.ts`
-- Test: `pm-bot/test/config.test.ts`
+- Create: `tools/pm-bot/package.json`, `tools/pm-bot/tsconfig.json`, `tools/pm-bot/.gitignore`, `tools/pm-bot/.env.example`, `tools/pm-bot/pm-bot.config.example.json`, `tools/pm-bot/src/config.ts`
+- Test: `tools/pm-bot/test/config.test.ts`
 
 **Interfaces:**
 - Produces: `type PmConfig = { channels: string[]; dbPath: string; specDir: string; claudeBin?: string }`, `loadConfig(raw: unknown): PmConfig` (검증 실패 시 누락 키를 담은 Error throw), `readConfigFile(path: string): PmConfig`
 
 - [ ] **Step 1: 스캐폴드 파일 작성**
 
-`pm-bot/package.json`:
+`tools/pm-bot/package.json`:
 
 ```json
 {
@@ -81,7 +81,7 @@ pm-bot/
 }
 ```
 
-`pm-bot/tsconfig.json` (bridge와 동일 계열):
+`tools/pm-bot/tsconfig.json` (bridge와 동일 계열):
 
 ```json
 {
@@ -98,7 +98,7 @@ pm-bot/
 }
 ```
 
-`pm-bot/.gitignore`:
+`tools/pm-bot/.gitignore`:
 
 ```
 node_modules/
@@ -108,24 +108,24 @@ pm-bot.config.json
 *.sqlite-journal
 ```
 
-`pm-bot/.env.example`:
+`tools/pm-bot/.env.example`:
 
 ```
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_APP_TOKEN=xapp-...
 ```
 
-`pm-bot/pm-bot.config.example.json`:
+`tools/pm-bot/pm-bot.config.example.json`:
 
 ```json
 {
   "channels": ["C0PLANNING", "C0DEV"],
   "dbPath": "./pm-bot.sqlite",
-  "specDir": "../docs/product"
+  "specDir": "../../docs/product"
 }
 ```
 
-- [ ] **Step 2: 실패하는 테스트 작성** — `pm-bot/test/config.test.ts`
+- [ ] **Step 2: 실패하는 테스트 작성** — `tools/pm-bot/test/config.test.ts`
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -154,10 +154,10 @@ describe("loadConfig", () => {
 
 - [ ] **Step 3: 실패 확인**
 
-Run: `cd pm-bot && pnpm install && pnpm test`
+Run: `cd tools/pm-bot && pnpm install && pnpm test`
 Expected: FAIL — `Cannot find module '../src/config.js'`
 
-- [ ] **Step 4: 구현** — `pm-bot/src/config.ts`
+- [ ] **Step 4: 구현** — `tools/pm-bot/src/config.ts`
 
 ```ts
 import { readFileSync } from "node:fs";
@@ -201,7 +201,7 @@ Expected: PASS (4 tests)
 - [ ] **Step 6: 커밋** — `commit` 스킬 로드 후
 
 ```bash
-git add pm-bot/
+git add tools/pm-bot/
 git commit -m "feat(pm-bot): 패키지 스캐폴드 + 설정 로더 (#202)"
 ```
 
@@ -210,8 +210,8 @@ git commit -m "feat(pm-bot): 패키지 스캐폴드 + 설정 로더 (#202)"
 ### Task 2: SQLite 저장소 (messages · qa_pending)
 
 **Files:**
-- Create: `pm-bot/src/db.ts`
-- Test: `pm-bot/test/db.test.ts`
+- Create: `tools/pm-bot/src/db.ts`
+- Test: `tools/pm-bot/test/db.test.ts`
 
 **Interfaces:**
 - Consumes: 없음 (독립)
@@ -224,7 +224,7 @@ git commit -m "feat(pm-bot): 패키지 스캐폴드 + 설정 로더 (#202)"
   - `type QaRow = { id: number; channel: string; ts: string; user: string; text: string }`
   - `PmDb.close(): void`
 
-- [ ] **Step 1: 실패하는 테스트 작성** — `pm-bot/test/db.test.ts`
+- [ ] **Step 1: 실패하는 테스트 작성** — `tools/pm-bot/test/db.test.ts`
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -292,7 +292,7 @@ describe("qa_pending", () => {
 Run: `pnpm test`
 Expected: FAIL — `Cannot find module '../src/db.js'`
 
-- [ ] **Step 3: 구현** — `pm-bot/src/db.ts`
+- [ ] **Step 3: 구현** — `tools/pm-bot/src/db.ts`
 
 ```ts
 import Database from "better-sqlite3";
@@ -388,7 +388,7 @@ Expected: PASS (config 4 + db 6)
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/db.ts pm-bot/test/db.test.ts
+git add tools/pm-bot/src/db.ts tools/pm-bot/test/db.test.ts
 git commit -m "feat(pm-bot): SQLite 저장소 — messages·qa_pending (#202)"
 ```
 
@@ -397,8 +397,8 @@ git commit -m "feat(pm-bot): SQLite 저장소 — messages·qa_pending (#202)"
 ### Task 3: 수집기 — 이벤트 적재 + 백필
 
 **Files:**
-- Create: `pm-bot/src/collector.ts`
-- Test: `pm-bot/test/collector.test.ts`
+- Create: `tools/pm-bot/src/collector.ts`
+- Test: `tools/pm-bot/test/collector.test.ts`
 
 **Interfaces:**
 - Consumes: Task 2의 `PmDb`
@@ -408,7 +408,7 @@ git commit -m "feat(pm-bot): SQLite 저장소 — messages·qa_pending (#202)"
   - `type HistoryClient = { history(params: { channel: string; oldest?: string; cursor?: string }): Promise<HistoryPage>; replies(params: { channel: string; ts: string; cursor?: string }): Promise<HistoryPage> }` / `type HistoryPage = { messages: SlackMessage[]; nextCursor?: string }`
   - `backfill(db: PmDb, client: HistoryClient, channels: string[]): Promise<number>` — 채널별 `lastSeenTs` 이후를 페이지네이션 수집, `reply_count > 0`인 메시지는 replies로 스레드 전체 upsert. 반환값 = 새로 저장한 메시지 수
 
-- [ ] **Step 1: 실패하는 테스트 작성** — `pm-bot/test/collector.test.ts`
+- [ ] **Step 1: 실패하는 테스트 작성** — `tools/pm-bot/test/collector.test.ts`
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -491,7 +491,7 @@ describe("backfill", () => {
 Run: `pnpm test`
 Expected: FAIL — `Cannot find module '../src/collector.js'`
 
-- [ ] **Step 3: 구현** — `pm-bot/src/collector.ts`
+- [ ] **Step 3: 구현** — `tools/pm-bot/src/collector.ts`
 
 ```ts
 import type { PmDb } from "./db.js";
@@ -568,7 +568,7 @@ Expected: PASS (누적 15 tests)
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/collector.ts pm-bot/test/collector.test.ts
+git add tools/pm-bot/src/collector.ts tools/pm-bot/test/collector.test.ts
 git commit -m "feat(pm-bot): 수집기 — 이벤트 적재·증분 백필 (#202)"
 ```
 
@@ -577,9 +577,9 @@ git commit -m "feat(pm-bot): 수집기 — 이벤트 적재·증분 백필 (#202
 ### Task 4: claude 어댑터 이식 (bridge → pm-bot)
 
 **Files:**
-- Create: `pm-bot/src/adapters/types.ts`, `pm-bot/src/adapters/spawn.ts`, `pm-bot/src/adapters/claude.ts`
-- Test: `pm-bot/test/adapters.test.ts`
-- 원본 참조: `bridge/src/adapters/{types,spawn,claude}.ts` — 로직 동일 이식, bridge 쪽은 **수정하지 않는다**
+- Create: `tools/pm-bot/src/adapters/types.ts`, `tools/pm-bot/src/adapters/spawn.ts`, `tools/pm-bot/src/adapters/claude.ts`
+- Test: `tools/pm-bot/test/adapters.test.ts`
+- 원본 참조: `tools/bridge/src/adapters/{types,spawn,claude}.ts` — 로직 동일 이식, bridge 쪽은 **수정하지 않는다**
 
 **Interfaces:**
 - Consumes: 없음
@@ -591,7 +591,7 @@ git commit -m "feat(pm-bot): 수집기 — 이벤트 적재·증분 백필 (#202
 
 - [ ] **Step 1: types.ts / spawn.ts 이식**
 
-`pm-bot/src/adapters/types.ts` — bridge 원본에서 `BridgeCli` 의존만 제거:
+`tools/pm-bot/src/adapters/types.ts` — bridge 원본에서 `BridgeCli` 의존만 제거:
 
 ```ts
 export type AdapterInput = { prompt: string; outputSchema: unknown };
@@ -603,9 +603,9 @@ export type CliAdapter = {
 };
 ```
 
-`pm-bot/src/adapters/spawn.ts` — bridge 원본 그대로 복사 (`BLOCKED_ENV_KEYS`, `sanitizedEnv`, `stripFences`). 파일 상단 주석에 `bridge/src/adapters/spawn.ts에서 이식 — 구독 보호 로직 변경 금지` 한 줄을 남긴다.
+`tools/pm-bot/src/adapters/spawn.ts` — bridge 원본 그대로 복사 (`BLOCKED_ENV_KEYS`, `sanitizedEnv`, `stripFences`). 파일 상단 주석에 `tools/bridge/src/adapters/spawn.ts에서 이식 — 구독 보호 로직 변경 금지` 한 줄을 남긴다.
 
-- [ ] **Step 2: 실패하는 테스트 작성** — `pm-bot/test/adapters.test.ts`
+- [ ] **Step 2: 실패하는 테스트 작성** — `tools/pm-bot/test/adapters.test.ts`
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -643,7 +643,7 @@ describe("createClaudeAdapter", () => {
 Run: `pnpm test`
 Expected: FAIL — `Cannot find module '../src/adapters/spawn.js'`
 
-- [ ] **Step 4: claude.ts 이식** — `pm-bot/src/adapters/claude.ts`
+- [ ] **Step 4: claude.ts 이식** — `tools/pm-bot/src/adapters/claude.ts`
 
 bridge 원본을 복사한 뒤 다음 두 가지만 변경한다.
 
@@ -693,7 +693,7 @@ Expected: PASS (누적 19 tests)
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add pm-bot/src/adapters/ pm-bot/test/adapters.test.ts
+git add tools/pm-bot/src/adapters/ tools/pm-bot/test/adapters.test.ts
 git commit -m "feat(pm-bot): bridge claude 어댑터 이식 — 시스템 프롬프트 주입 지원 (#202)"
 ```
 
@@ -702,8 +702,8 @@ git commit -m "feat(pm-bot): bridge claude 어댑터 이식 — 시스템 프롬
 ### Task 5: 명세 인덱스 + Q&A 프롬프트·drain
 
 **Files:**
-- Create: `pm-bot/src/specindex.ts`, `pm-bot/src/qa.ts`
-- Test: `pm-bot/test/specindex.test.ts`, `pm-bot/test/qa.test.ts`
+- Create: `tools/pm-bot/src/specindex.ts`, `tools/pm-bot/src/qa.ts`
+- Test: `tools/pm-bot/test/specindex.test.ts`, `tools/pm-bot/test/qa.test.ts`
 
 **Interfaces:**
 - Consumes: Task 2 `PmDb`(`nextPendingQa`·`markQaDone`·`markQaFailed`·`threadMessages`), Task 4 `CliAdapter`
@@ -715,7 +715,7 @@ git commit -m "feat(pm-bot): bridge claude 어댑터 이식 — 시스템 프롬
   - `type QaDeps = { db: PmDb; adapter: CliAdapter; index: SpecSection[]; postMessage(channel: string, threadTs: string, text: string): Promise<void>; log(line: string): void }`
   - `drainQaQueue(deps: QaDeps): Promise<number>` — pending을 순차 처리, 성공 시 답변 게시+done, 실패 시 failed 마킹+스레드에 실패 알림(스펙 §5 조용한 실패 금지). 반환 = 처리 건수
 
-- [ ] **Step 1: 실패하는 테스트 작성** — `pm-bot/test/specindex.test.ts`
+- [ ] **Step 1: 실패하는 테스트 작성** — `tools/pm-bot/test/specindex.test.ts`
 
 ```ts
 import { mkdtempSync, writeFileSync } from "node:fs";
@@ -758,7 +758,7 @@ describe("search", () => {
 });
 ```
 
-`pm-bot/test/qa.test.ts`:
+`tools/pm-bot/test/qa.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -932,7 +932,7 @@ Expected: PASS (누적 26 tests)
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add pm-bot/src/specindex.ts pm-bot/src/qa.ts pm-bot/test/specindex.test.ts pm-bot/test/qa.test.ts
+git add tools/pm-bot/src/specindex.ts tools/pm-bot/src/qa.ts tools/pm-bot/test/specindex.test.ts tools/pm-bot/test/qa.test.ts
 git commit -m "feat(pm-bot): 명세 인덱스·Q&A 큐 처리 (#202)"
 ```
 
@@ -941,7 +941,7 @@ git commit -m "feat(pm-bot): 명세 인덱스·Q&A 큐 처리 (#202)"
 ### Task 6: 부팅(index.ts) + Socket Mode 와이어링 + 수동 e2e
 
 **Files:**
-- Create: `pm-bot/src/index.ts`, `pm-bot/README.md`
+- Create: `tools/pm-bot/src/index.ts`, `tools/pm-bot/README.md`
 - Modify: 없음
 
 **Interfaces:**
@@ -1041,7 +1041,7 @@ Expected: PASS — index.ts는 컴파일만 검증 (Slack 연결은 다음 스�
 # thumbsup-pm-bot
 
 Slack 지정 채널을 수집하고 명세 근거 Q&A에 답하는 PM 봇 (Phase 1 — 읽기 전용).
-설계: `../docs/specs/2026-07-19-pm-bot-design.md`
+설계: `../../docs/specs/2026-07-19-pm-bot-design.md`
 
 ## 준비
 1. Slack 앱 (Socket Mode ON) — Bot Token Scopes: `channels:history` `channels:read` `chat:write` `reactions:read` `users:read`, Event Subscriptions: `message.channels` `app_mention`
@@ -1069,7 +1069,7 @@ README의 "동작 확인" 3개 시나리오를 테스트 워크스페이스에�
 - [ ] **Step 5: 커밋 + PR**
 
 ```bash
-git add pm-bot/src/index.ts pm-bot/README.md
+git add tools/pm-bot/src/index.ts tools/pm-bot/README.md
 git commit -m "feat(pm-bot): Socket Mode 부팅·백필·Q&A 와이어링 (#202)"
 ```
 
@@ -1080,5 +1080,5 @@ git commit -m "feat(pm-bot): Socket Mode 부팅·백필·Q&A 와이어링 (#202)
 ## Self-Review 결과
 
 - **스펙 커버리지**: §3.1 수집기(Task 3)·Q&A(Task 5)·백필(Task 3, 6) ✓ / §5 조용한 실패 금지(Task 5 실패 알림) ✓ / §6 골든 테스트는 분석기(Phase 2) 대상이라 이 플랜 범위 아님 ✓. **오프라인 중 멘션의 자동 소급 큐잉은 Phase 1에서 의도적으로 제외** (index.ts 주석 + Phase 2 플랜으로 이월 — 스펙 §3.1 `qa_pending` 요구의 부분 구현임을 명시).
-- **플레이스홀더**: Task 4 Step 4의 "bridge 원본과 동일하게 복사"는 원본 파일 경로(`bridge/src/adapters/claude.ts`)가 레포 안에 실재하므로 참조 가능 — 허용. 그 외 TBD 없음.
+- **플레이스홀더**: Task 4 Step 4의 "bridge 원본과 동일하게 복사"는 원본 파일 경로(`tools/bridge/src/adapters/claude.ts`)가 레포 안에 실재하므로 참조 가능 — 허용. 그 외 TBD 없음.
 - **타입 일관성**: `PmDb`·`SlackMessage`·`HistoryClient`·`SpecSection`·`CliAdapter` 시그니처가 태스크 간 일치함을 확인.

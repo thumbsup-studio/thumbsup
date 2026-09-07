@@ -1,7 +1,7 @@
 # thumbsup-pm-bot
 
 Slack 지정 채널을 수집하고 명세 근거 Q&A에 답하는 PM 봇 (Phase 1 — 읽기 전용).
-설계: `../docs/specs/2026-07-19-pm-bot-design.md`
+설계: `../../docs/specs/2026-07-19-pm-bot-design.md`
 
 ## 준비
 1. Slack 앱 — `slack-app-manifest.yml`을 https://api.slack.com/apps 의 `From an app manifest`로 붙여넣기(스코프·이벤트·Socket Mode 일괄 설정). 수동 설정 시 Bot Token Scopes: `app_mentions:read` `channels:history` `channels:read` `chat:write` `reactions:read` `users:read`, Event Subscriptions: `app_mention` `message.channels`
@@ -11,7 +11,8 @@ Slack 지정 채널을 수집하고 명세 근거 Q&A에 답하는 PM 봇 (Phase
 
 ## 실행
 ```bash
-pnpm install
+pnpm install                              # 레포 루트에서 한 번만 실행
+cd tools/pm-bot
 pnpm start          # 포그라운드
 pm2 start "pnpm start" --name pm-bot   # 상주
 ```

@@ -19,7 +19,7 @@ description: Thumbs Up 문제 저작 파이프라인. 웹 대시보드(/authorin
 
 **프롬프트는 서버가 만든다.** 브리지는 프롬프트를 조립하지 않는 "멍청한 실행기"다.
 
-코드: 서버 `server/.../quiz/authoring/` · 앱 `app/src/features/authoring/` · 브리지 `bridge/src/`
+코드: 서버 `server/.../quiz/authoring/` · 앱 `app/src/features/authoring/` · 브리지 `tools/bridge/src/`
 문제 생성·검증의 공유 코어는 `server/.../quiz/generation/`에 있다(패키지 이름은 레거시 CLI 시절 것).
 
 ## 어디를 읽을지
@@ -106,4 +106,4 @@ role 없이 발급된 과거 토큰은 `JwtTokenProvider.DEFAULT_ROLE = "USER"`�
 - `frontend-api` — 대시보드가 쓰는 envelope·토큰 규약
 - `thumbsup-local-server` — 로컬 서버 기동 절차
 - `merge` — Flyway 순서 게이트(과거 콘텐츠 보정 마이그레이션을 낼 때)
-- `deploying` — `server/**` 변경만 백엔드 배포를 트리거한다(`bridge/**`는 아님)
+- `deploying` — `server/**` 변경만 백엔드 배포를 트리거한다(`tools/bridge/**`는 아님)

@@ -5,8 +5,8 @@
 ## 설치
 
 ```bash
-cd bridge
-pnpm install
+pnpm install # 레포 루트에서 한 번만 실행
+cd tools/bridge
 ```
 
 ## 1회 셋업

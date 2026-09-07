@@ -2,7 +2,7 @@
 
 - 날짜: 2026-07-19
 - 상태: 설계 확정 (구현 플랜 작성 전)
-- 관련: 저작 파이프라인 브리지 `bridge/`(#175·#177) — CLI 어댑터 패턴 재사용
+- 관련: 저작 파이프라인 브리지 `tools/bridge/`(#175·#177) — CLI 어댑터 패턴 재사용
 - Phase 2 상세 설계: [2026-07-21-pm-bot-phase2-emoji-design.md](./2026-07-21-pm-bot-phase2-emoji-design.md) — 분석 트리거를 🤖 이모지로 변경(§2 갱신됨)
 
 ## 1. 목적
@@ -27,11 +27,11 @@
 | 분석 범위 | 지정 채널만, 스레드에 🤖 이모지 = 명시적 사람 트리거 | 2026-07-21 갱신: 잠잠(2h) 자동 분석을 대체 — Phase 2 설계 문서 참고. 전 채널 감시·실시간 분석 안 함 |
 | 일정 관리 범위 | 주간 현황 리포트 + 회의 액션아이템 추적 | 정체 이슈 리마인드·마일스톤 위험 감지는 비범위 |
 | 팀원 접근 | Slack 멘션 + MCP stdio 패키지(각자 로컬 실행) | MCP 서버 호스팅 없음 |
-| 스택 | TypeScript / Node ≥22, `bridge/`와 동일 계열 | Slack Bolt·better-sqlite3·execa·gh CLI (2026-07-21 갱신: Octokit 미도입 — 운영자 gh 인증 재사용) |
+| 스택 | TypeScript / Node ≥22, `tools/bridge/`와 동일 계열 | Slack Bolt·better-sqlite3·execa·gh CLI (2026-07-21 갱신: Octokit 미도입 — 운영자 gh 인증 재사용) |
 
 ## 3. 구성 요소
 
-### 3.1 `pm-bot/` — 상주 봇 (모노레포 새 워크스페이스)
+### 3.1 `tools/pm-bot/` — 상주 봇 (모노레포 새 워크스페이스)
 
 운영자 노트북에서 pm2(또는 launchd)로 상시 실행되는 단일 Node 프로세스.
 
@@ -53,7 +53,7 @@ Slack Socket Mode ──▶ 수집기 ──▶ SQLite (messages, threads, actio
 
 - **수집기(collector)**: 지정 채널(설정 파일에 채널 ID 목록)의 메시지·스레드·이모지 이벤트를 SQLite에 적재. 기동 시 `conversations.history`로 마지막 저장 시점 이후를 백필.
 - **리액션 핸들러**: 스레드에 🤖(`robot_face`) 이모지가 달리면 분석 잡 큐잉 (2026-07-21 갱신 — 잠잠 감지 워처를 대체). 라우팅·멱등성은 Phase 2 설계 문서 §4·§6.
-- **분석기(analyzer)**: 스레드 전문 + 관련 명세 발췌를 `claude -p --json-schema`로 보내 구조화 판정을 받는다. `bridge/src/adapters/claude.ts`·`spawn.ts`의 어댑터(환경 격리·stream-json 파싱)를 재사용한다.
+- **분석기(analyzer)**: 스레드 전문 + 관련 명세 발췌를 `claude -p --json-schema`로 보내 구조화 판정을 받는다. `tools/bridge/src/adapters/claude.ts`·`spawn.ts`의 어댑터(환경 격리·stream-json 파싱)를 재사용한다.
 - **액션 실행기(actor)**: 분석 결과를 결정적으로 실행 — git 브랜치·커밋·PR(로컬 전용 clone에서 main 최신화 후 작업), GitHub 이슈 생성·보드 필드 배치(gh CLI, Projects v2 GraphQL), Slack 게시.
 - **승인 핸들러(approver)**: 봇이 올린 명세 변경 알림 메시지에 ✅(white_check_mark) 반응이 달리면 해당 PR을 `--auto --squash`로 merge. ❌ 반응 시 PR 닫고 스레드에 사유 요청.
 - **Q&A 핸들러**: `@PM봇` 멘션 → 간단한 키워드·헤딩 인덱스로 관련 명세 파일 선별 → 파일 내용을 동봉해 `claude -p` 답변 생성 → 스레드에 게시. 오프라인 중 들어온 멘션은 백필 시 `qa_pending`으로 잡아 순차 응답.

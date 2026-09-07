@@ -1,4 +1,4 @@
-// bridge/src/adapters/spawn.ts에서 이식 — 구독 보호 로직 변경 금지
+// tools/bridge/src/adapters/spawn.ts에서 이식 — 구독 보호 로직 변경 금지
 /**
  * CLI 자식 프로세스 env 새니타이즈 + 출력 후처리.
  * 구독 유지 규칙(전제 보호): 자식 env에 API 키가 남아있으면 개인 구독 세션 대신

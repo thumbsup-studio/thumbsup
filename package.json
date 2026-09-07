@@ -1,0 +1,15 @@
+{
+  "name": "thumbsup",
+  "version": "0.4.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "build": "pnpm --filter app build",
+    "lint": "pnpm --filter app lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

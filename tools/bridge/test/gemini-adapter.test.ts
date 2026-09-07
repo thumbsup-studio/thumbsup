@@ -50,10 +50,11 @@ describe("createGeminiAdapter", () => {
         },
       },
     );
+    const finishedAt = Date.now() - start;
     expect(JSON.parse(result)).toEqual({ ok: true });
-    // 픽스처는 첫 줄 직후 150ms를 쉬고서야 둘째 줄+종료. 배치 릴레이라면 첫 줄도 150ms 이후에야
-    // onLog에 도착하므로, 훨씬 이르게(100ms 미만) 도착했는지로 실시간 중계를 검증한다.
+    // 픽스처는 첫 줄 직후 150ms를 쉬고서야 둘째 줄+종료한다. 프로세스 시작 자체는 병렬 테스트의
+    // CPU 경합으로 늦어질 수 있으므로, 첫 줄이 종료보다 충분히 먼저 도착했는지로 실시간 중계를 검증한다.
     expect(firstLineAt).not.toBeNull();
-    expect(firstLineAt).toBeLessThan(100);
+    expect(finishedAt - (firstLineAt ?? finishedAt)).toBeGreaterThan(100);
   });
 });
