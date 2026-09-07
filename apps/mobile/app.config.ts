@@ -110,6 +110,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
         },
       ],
       "expo-updates",
+      "expo-secure-store",
     ],
     experiments: { typedRoutes: true },
     extra: {

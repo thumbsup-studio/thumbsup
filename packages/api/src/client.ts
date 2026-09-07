@@ -112,7 +112,10 @@ export function createApiTransport(baseUrl: string, tokenStorage: TokenStorage):
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new NetworkError("요청 시간이 초과됐어요.", "timeout");
+      }
       throw new NetworkError();
     }
 

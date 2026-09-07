@@ -189,4 +189,14 @@ describe("createApiClient", () => {
 
     await expect(client.apiRequest("/x", { auth: false })).rejects.toBeInstanceOf(NetworkError);
   });
+
+  it("요청 시간 초과를 오프라인과 구분한다", async () => {
+    const client = createApiClient({ baseUrl: BASE_URL, tokenStorage: createMemoryTokenStorage() });
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timeout", "TimeoutError")));
+
+    await expect(client.apiRequest("/x", { auth: false })).rejects.toMatchObject({
+      reason: "timeout",
+      message: "요청 시간이 초과됐어요.",
+    });
+  });
 });
