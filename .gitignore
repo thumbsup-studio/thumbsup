@@ -37,3 +37,4 @@ __pycache__/
 
 # === AI 에이전트 로컬 상태 ===
 .omc/
+tools/updates-server/.local-store/

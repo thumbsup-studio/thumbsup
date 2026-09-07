@@ -53,6 +53,11 @@ function validateUrl(value: string, key: string): string {
   }
 }
 
+function updatesBaseUrl(value: string): string {
+  const url = new URL(value);
+  return url.origin;
+}
+
 export function buildExpoConfig(environment: Environment): ExpoConfig {
   const appEnvironment = parseAppEnvironment(environment.APP_ENV);
   const profile = profiles[appEnvironment];
@@ -68,6 +73,21 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
     environment.EXPO_PUBLIC_UPDATES_URL?.trim() || UPDATES_URL_PLACEHOLDER,
     "EXPO_PUBLIC_UPDATES_URL",
   );
+  const parsedUpdatesUrl = new URL(updatesUrl);
+  if (appEnvironment === "production" && parsedUpdatesUrl.protocol !== "https:") {
+    throw new Error("[mobile config] production updates URL must use HTTPS");
+  }
+  const usesLocalCleartext = appEnvironment === "staging" && parsedUpdatesUrl.protocol === "http:";
+  if (
+    usesLocalCleartext &&
+    !["10.0.2.2", "127.0.0.1", "localhost"].includes(parsedUpdatesUrl.hostname)
+  ) {
+    throw new Error("[mobile config] staging HTTP updates URL must use a local emulator host");
+  }
+  const codeSigningCertificate = environment.EXPO_UPDATES_CODE_SIGNING_CERTIFICATE?.trim();
+  if (codeSigningCertificate && appEnvironment !== "staging") {
+    throw new Error("[mobile config] local code signing certificate is only allowed in staging");
+  }
   const configuredChannel = environment.EXPO_PUBLIC_UPDATES_CHANNEL?.trim();
   if (configuredChannel && configuredChannel !== profile.channel) {
     throw new Error(
@@ -91,6 +111,12 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
       enabled: appEnvironment !== "development",
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 0,
+      ...(codeSigningCertificate
+        ? {
+            codeSigningCertificate,
+            codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+          }
+        : {}),
     },
     ios: {
       supportsTablet: true,
@@ -115,6 +141,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
       "expo-updates",
       "expo-secure-store",
       "expo-asset",
+      ...(usesLocalCleartext ? ["./plugins/with-staging-cleartext"] : []),
     ],
     experiments: { typedRoutes: true },
     extra: {
@@ -122,6 +149,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
       apiUrl,
       updateChannel: profile.channel ?? null,
       updatesUrl,
+      updatesBaseUrl: updatesBaseUrl(updatesUrl),
     },
   };
 }

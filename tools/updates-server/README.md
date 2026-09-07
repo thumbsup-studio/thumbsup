@@ -70,6 +70,28 @@ S3 버킷 `thumbsup-mobile-artifacts`는 모든 공개 접근을 차단한다. C
 
 ## 검증과 배포
 
+### 로컬 검증
+
+AWS 없이 `publish-update.ts`와 manifest 핸들러를 함께 검증하려면 로컬 디렉터리를 저장소로 쓴다. 로컬 저장소는 `tools/updates-server/.local-store/`이며 Git에서 제외된다.
+
+```bash
+# Expo export 결과와 workflow 형식 metadata.json이 들어 있는 디렉터리를 발행한다.
+pnpm --filter updates-server publish:pr publish \
+  --artifact-dir ../../.omc/331/artifacts/pr-101 \
+  --local-store .local-store \
+  --pr 101 \
+  --commit 0123456789abcdef0123456789abcdef01234567
+
+# Android 에뮬레이터에서는 호스트를 10.0.2.2로 접근한다.
+pnpm --filter updates-server local-server \
+  --port 8081 \
+  --store-dir .local-store \
+  --public-url http://10.0.2.2:8081 \
+  --signing-private-key ../../.omc/331/signing/private-key.pem
+```
+
+서버는 `/`와 `/api/manifest`에서 manifest를, `/channels/index.json`에서 채널 목록을, `/updates/*`에서 번들과 에셋을 제공한다. 실패 경로를 확인할 때는 `--manifest-status 404`로 manifest 응답을 강제로 바꿀 수 있다. 로컬 HTTP 허용과 로컬 서명 인증서는 staging 설정에서만 활성화되며 production 업데이트 URL은 HTTPS가 아니면 빌드 설정 단계에서 거부된다.
+
 이 PR에서는 synth까지만 검증한다. 실제 AWS 리소스를 만들거나 바꾸는 `cdk deploy`는 사용자가 비용과 변경 사항을 확인한 뒤 실행해야 한다.
 
 ```bash

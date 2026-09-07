@@ -34,6 +34,7 @@ describe("buildExpoConfig", () => {
       appEnvironment,
       updateChannel: channel ?? null,
       updatesUrl: baseEnvironment.EXPO_PUBLIC_UPDATES_URL,
+      updatesBaseUrl: "https://updates.thumbsup.example",
     });
   });
 
@@ -66,5 +67,48 @@ describe("buildExpoConfig", () => {
     expect(() => buildExpoConfig({ ...baseEnvironment, EXPO_PUBLIC_API_URL: "localhost" })).toThrow(
       "absolute URL",
     );
+  });
+
+  it("enables cleartext traffic only for a staging HTTP updates server", () => {
+    const config = buildExpoConfig({
+      ...baseEnvironment,
+      EXPO_PUBLIC_UPDATES_URL: "http://10.0.2.2:8081",
+    });
+
+    expect(config.plugins).toContain("./plugins/with-staging-cleartext");
+    expect(config.extra?.updatesBaseUrl).toBe("http://10.0.2.2:8081");
+  });
+
+  it("rejects a production HTTP updates server", () => {
+    expect(() =>
+      buildExpoConfig({
+        ...baseEnvironment,
+        APP_ENV: "production",
+        EAS_BUILD_PROFILE: "production",
+        EXPO_PUBLIC_UPDATES_CHANNEL: "production",
+        EXPO_PUBLIC_UPDATES_URL: "http://updates.example.com",
+      }),
+    ).toThrow("must use HTTPS");
+  });
+
+  it("rejects a non-local staging HTTP updates server", () => {
+    expect(() =>
+      buildExpoConfig({
+        ...baseEnvironment,
+        EXPO_PUBLIC_UPDATES_URL: "http://updates.example.com",
+      }),
+    ).toThrow("must use a local emulator host");
+  });
+
+  it("configures a local signing certificate only for staging", () => {
+    const config = buildExpoConfig({
+      ...baseEnvironment,
+      EXPO_UPDATES_CODE_SIGNING_CERTIFICATE: "../../.omc/331/certificate.pem",
+    });
+
+    expect(config.updates).toMatchObject({
+      codeSigningCertificate: "../../.omc/331/certificate.pem",
+      codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+    });
   });
 });
