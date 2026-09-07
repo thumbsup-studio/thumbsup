@@ -25,6 +25,7 @@ pnpm dev   # http://localhost:3000
 - peer dependency는 자동 설치 기본값을 유지하고, 불일치는 해당 패키지에서 명시적으로 해결한다.
 - lockfile은 루트 `pnpm-lock.yaml` 하나만 커밋하며 하위 패키지 lockfile은 만들지 않는다.
 - install script는 루트 `pnpm-workspace.yaml`의 `onlyBuiltDependencies` 허용 목록으로 제한한다.
+- Vercel prebuilt가 의존성을 수집할 수 있도록 pnpm virtual store는 `app/node_modules/.pnpm`에 둔다.
 
 ## 배포 (app)
 
