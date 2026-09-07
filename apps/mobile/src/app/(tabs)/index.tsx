@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "../../components/placeholder-screen";
+import { HomeScreen as HomeFeatureScreen } from "../../features/home/home-screen";
 
 export default function HomeScreen() {
-  return <PlaceholderScreen title="홈" />;
+  return <HomeFeatureScreen />;
 }
