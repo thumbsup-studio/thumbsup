@@ -120,6 +120,23 @@ describe("endpoint APIs", () => {
     });
   });
 
+  it("꼬리 질문 상세를 인증 경로로 조회한다", async () => {
+    const client = createApiClient({
+      baseUrl: "https://api.example.com",
+      tokenStorage: createMemoryTokenStorage({ accessToken: "acc", refreshToken: "ref" }),
+    });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, envelope("SUCCESS", { followUpQuestionId: 12, question: "왜일까요?" })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(client.getFollowUpQuestion(12)).resolves.toMatchObject({
+      followUpQuestionId: 12,
+    });
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("/api/v1/follow-up-questions/12");
+    expect(callInit(fetchMock, 0).headers.Authorization).toBe("Bearer acc");
+  });
+
   it("코스 목록과 의견 보내기도 같은 transport를 사용한다", async () => {
     const client = createApiClient({
       baseUrl: "https://api.example.com",
