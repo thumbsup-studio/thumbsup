@@ -1,5 +1,10 @@
 # Design
 
+토큰 값의 단일 정본은 `packages/tokens/src/index.ts`다. 웹은 생성된
+`@thumbsup/tokens/web.css`를 가져오며, 모바일은 NativeWind v4용
+`@thumbsup/tokens/nativewind-v4` 프리셋을 사용한다. 값은 이 문서가 아니라 토큰 정본에서 수정한 뒤
+`pnpm --filter @thumbsup/tokens generate`로 두 생성물을 함께 갱신한다.
+
 Thumbs Up의 시각 언어를 기록한다. 근거는 `docs/design/references/`에 커밋된 시안 6장
 (`home-today.png` · `today-streak-recovery.png` · `quiz-types-board.png` ·
 `quiz-flow-board.png` · `answer-insight.png` · `answer-feedback-popover.png`)이며,

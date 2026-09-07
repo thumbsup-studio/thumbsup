@@ -1,13 +1,7 @@
+import type { QuizChoice, QuizDifficulty, QuizType } from "@thumbsup/core/quiz-shared";
 import { apiRequest } from "./client";
 
-export type QuizType = "OX" | "MULTIPLE_CHOICE" | "KEYWORD_BLANK";
-export type QuizDifficulty = "EASY" | "MEDIUM" | "HARD";
-
-export type QuizChoice = {
-  choiceId: number;
-  content: string;
-  displayOrder: number;
-};
+export type { QuizChoice, QuizDifficulty, QuizType } from "@thumbsup/core/quiz-shared";
 
 export type QuizNextResponse = {
   quizId: number;

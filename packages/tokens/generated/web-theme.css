@@ -1,0 +1,116 @@
+/* 이 파일은 pnpm --filter @thumbsup/tokens generate로 생성합니다. 직접 수정하지 마세요. */
+@theme {
+  --color-primary: #2f63ff;
+  --color-primary-fg: #ffffff;
+  --color-accent: #f5923e;
+  --color-badge: #ffce31;
+  --color-badge-fg: #4a3200;
+  --color-ox-o: #3fc27c;
+  --color-ox-x: #ee6868;
+  --color-success: #1f7a4d;
+  --color-danger: #dc2626;
+  --color-warning: #f59e0b;
+  --color-info: #4f7096;
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef2f8;
+  --color-ink: #020617;
+  --color-ink-muted: #5b6b81;
+  --color-border: #e2e8f0;
+  --color-graph-bg: #0a0f1f;
+  --color-graph-surface: #1d273f;
+  --color-graph-master: #34c88a;
+  --color-graph-learning: #2f63ff;
+  --color-graph-unlearned: #8a97b5;
+  --color-graph-edge: #4b5a80;
+  --color-graph-fg: #ffffff;
+  --color-graph-fg-muted: #b8c2da;
+  --color-character-fur: #c99b72;
+  --color-character-muzzle: #f0e1c8;
+  --color-character-nose: #3b2a20;
+  --color-character-blush: #f3b9ac;
+  --radius-card: 2rem;
+  --radius-control: 1rem;
+  --radius-chip: 9999px;
+  --shadow-card: 0 24px 60px rgba(15, 23, 42, 0.1);
+  --shadow-hero: 0 24px 48px rgba(47, 99, 255, 0.24);
+  --shadow-choice: 0 4px 0 var(--color-border);
+  --shadow-choice-selected: 0 4px 0 var(--color-primary);
+  --font-sans: var(--font-pretendard), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --animate-sheet-rise: sheet-rise 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-overlay-fade: overlay-fade 0.18s ease;
+  --animate-celebration-pop: celebration-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-combo-bounce: combo-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-rise-in: rise-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-choice-in: choice-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-check-draw: check-draw 0.4s cubic-bezier(0.65, 0, 0.35, 1) both;
+  @keyframes sheet-rise {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  @keyframes overlay-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes celebration-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes choice-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes check-draw {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes combo-bounce {
+    0% {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.8);
+    }
+    60% {
+      opacity: 1;
+      transform: translateY(-0.25rem) scale(1.08);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}

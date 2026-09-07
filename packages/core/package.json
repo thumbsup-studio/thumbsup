@@ -1,0 +1,25 @@
+{
+  "name": "@thumbsup/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./play-logic": "./src/play-logic.ts",
+    "./celebration-logic": "./src/celebration-logic.ts",
+    "./completion-params": "./src/completion-params.ts",
+    "./course-params": "./src/course-params.ts",
+    "./mock-play-session": "./src/mock-play-session.ts",
+    "./quiz-shared": "./src/quiz-shared.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "jsdom": "^27.0.1",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}
