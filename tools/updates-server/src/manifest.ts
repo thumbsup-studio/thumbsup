@@ -26,6 +26,7 @@ interface RequestHeaders {
   assetBaseUrl: string;
   currentUpdateId?: string;
   embeddedUpdateId?: string;
+  clientId: string;
 }
 
 interface ManifestAsset {
@@ -76,6 +77,9 @@ function parseHeaders(event: APIGatewayProxyEventV2): RequestHeaders | APIGatewa
     return error(406, 'Accept must allow application/json, application/expo+json, or multipart/mixed.');
   }
   const expectSignature = headers['expo-expect-signature'];
+  if (channel === 'production' && expectSignature === undefined) {
+    return error(406, 'Production updates require code signing.');
+  }
   const configuredKeyId = process.env.SIGNING_KEY_ID ?? 'main';
   const requestedKeyId = expectSignature?.match(/(?:^|,)\s*keyid\s*=\s*"([^"]+)"/)?.[1];
   const requestedAlgorithm = expectSignature?.match(/(?:^|,)\s*alg\s*=\s*"([^"]+)"/)?.[1];
@@ -84,6 +88,10 @@ function parseHeaders(event: APIGatewayProxyEventV2): RequestHeaders | APIGatewa
   }
   if (requestedAlgorithm && requestedAlgorithm !== 'rsa-v1_5-sha256') {
     return error(406, `Unsupported signing algorithm: ${requestedAlgorithm}.`);
+  }
+  const clientId = headers['expo-client-id'] ?? randomUUID();
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(clientId)) {
+    return error(400, 'Invalid Expo client ID.');
   }
   return {
     protocolVersion: Number(protocol) as 0 | 1,
@@ -97,6 +105,7 @@ function parseHeaders(event: APIGatewayProxyEventV2): RequestHeaders | APIGatewa
     assetBaseUrl: process.env.ASSET_BASE_URL ?? `https://${headers['x-forwarded-host'] ?? ''}`,
     currentUpdateId: headers['expo-current-update-id'],
     embeddedUpdateId: headers['expo-embedded-update-id'],
+    clientId,
   };
 }
 
@@ -146,6 +155,7 @@ function noContent(request: RequestHeaders): APIGatewayProxyStructuredResultV2 {
       'cache-control': 'no-cache',
       'expo-protocol-version': String(request.protocolVersion),
       'expo-sfv-version': '0',
+      'expo-server-defined-headers': `expo-client-id="${request.clientId}"`,
     },
   };
 }
@@ -190,13 +200,25 @@ async function asset(
   };
 }
 
+export function rolloutBucket(clientId: string): number {
+  return createHash('sha256').update(clientId).digest().readUInt32BE(0) % 100;
+}
+
 function latestForRuntime(
   entries: Array<ChannelUpdate | ChannelRollback>,
   runtimeVersion: string,
+  clientId: string,
 ): ChannelUpdate | ChannelRollback | undefined {
-  return entries.filter((entry) => entry.runtimeVersion === runtimeVersion).sort(
+  const compatible = entries.filter((entry) => entry.runtimeVersion === runtimeVersion).sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
-  )[0];
+  );
+  const latest = compatible[0];
+  if (!latest || latest.type === 'rollback') return latest;
+  const percentage = latest.rolloutPercentage ?? 100;
+  if (percentage >= 100 || rolloutBucket(clientId) < percentage) return latest;
+  return compatible.slice(1).find((entry) =>
+    entry.type === 'rollback' || (entry.rolloutPercentage ?? 100) === 100,
+  );
 }
 
 function uuid(value: string): string | null {
@@ -273,6 +295,7 @@ async function response(
     'expo-protocol-version': String(request.protocolVersion),
     'expo-sfv-version': '0',
     'cache-control': 'no-cache',
+    'expo-server-defined-headers': `expo-client-id="${request.clientId}"`,
   };
   if (forceMultipart || request.responseContentType === 'multipart/mixed') {
     const encoded = multipart(partName, body, signature);
@@ -300,9 +323,12 @@ export function createHandler(store: ObjectStore, options: { assetBaseUrl?: stri
     }
     const channel = index.channels[request.channel];
     if (!channel?.length) return noContent(request);
-    const latest = latestForRuntime(channel, request.runtimeVersion);
-    if (!latest) {
+    if (!channel.some((entry) => entry.runtimeVersion === request.runtimeVersion)) {
       return error(406, `No update for runtimeVersion ${request.runtimeVersion}.`);
+    }
+    const latest = latestForRuntime(channel, request.runtimeVersion, request.clientId);
+    if (!latest) {
+      return noContent(request);
     }
     if (latest.type === 'rollback') {
       if (request.protocolVersion !== 1) return error(406, 'Rollback directives require protocol version 1.');

@@ -1,0 +1,256 @@
+name: Mobile Production Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 승격할 v* 릴리즈 태그
+        required: true
+        type: string
+      rollout_percentage:
+        description: production OTA 초기 배포 비율(0~100)
+        required: true
+        default: '10'
+        type: string
+      dry_run:
+        description: S3·스토어를 변경하지 않고 검증만 실행
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-production-release
+  cancel-in-progress: false
+
+jobs:
+  release-scope:
+    runs-on: ubuntu-latest
+    outputs:
+      mobile_changed: ${{ steps.scope.outputs.mobile_changed }}
+      tag: ${{ steps.scope.outputs.tag }}
+      version: ${{ steps.scope.outputs.version }}
+      commit: ${{ steps.scope.outputs.commit }}
+      dry_run: ${{ steps.scope.outputs.dry_run }}
+      rollout_percentage: ${{ steps.scope.outputs.rollout_percentage }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 모바일 변경 포함 여부 확인
+        id: scope
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+          REQUESTED_ROLLOUT: ${{ github.event_name == 'workflow_dispatch' && inputs.rollout_percentage || '10' }}
+          REQUESTED_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: |
+          if [[ ! "$REQUESTED_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "vX.Y.Z 형식의 릴리즈 태그가 필요합니다: $REQUESTED_TAG" >&2
+            exit 1
+          fi
+          git rev-parse --verify "refs/tags/$REQUESTED_TAG^{commit}" >/dev/null
+          commit="$(git rev-list -n 1 "$REQUESTED_TAG")"
+          previous="$(git describe --tags --abbrev=0 "$REQUESTED_TAG^" 2>/dev/null || true)"
+          release_parent="$REQUESTED_TAG^"
+          if [[ -n "$previous" ]]; then
+            changed="$(git diff --name-only "$previous" "$release_parent" -- apps/mobile packages)"
+          else
+            empty_tree="$(git hash-object -t tree /dev/null)"
+            changed="$(git diff --name-only "$empty_tree" "$release_parent" -- apps/mobile packages)"
+          fi
+          if [[ -n "$changed" ]]; then
+            mobile_changed=true
+            echo "모바일 변경 감지 ($previous..$REQUESTED_TAG)"
+            printf '%s\n' "$changed"
+          else
+            mobile_changed=false
+            echo "모바일 변경 없음 ($previous..$REQUESTED_TAG): production 릴리즈를 건너뜁니다."
+          fi
+          version="$(jq -er '.version' apps/mobile/package.json)"
+          if [[ "v$version" != "$REQUESTED_TAG" ]]; then
+            echo "모바일 package version(v$version)과 태그($REQUESTED_TAG)가 다릅니다." >&2
+            exit 1
+          fi
+          if ! [[ "$REQUESTED_ROLLOUT" =~ ^[0-9]+$ ]] || (( REQUESTED_ROLLOUT > 100 )); then
+            echo "rollout_percentage는 0~100 정수여야 합니다." >&2
+            exit 1
+          fi
+          {
+            echo "mobile_changed=$mobile_changed"
+            echo "tag=$REQUESTED_TAG"
+            echo "version=$version"
+            echo "commit=$commit"
+            echo "dry_run=$REQUESTED_DRY_RUN"
+            echo "rollout_percentage=$REQUESTED_ROLLOUT"
+          } >> "$GITHUB_OUTPUT"
+
+  no-mobile-release:
+    needs: release-scope
+    if: needs.release-scope.outputs.mobile_changed != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ needs.release-scope.outputs.tag }}에는 모바일 변경이 없어 모든 승격 job을 건너뜁니다."
+
+  production-bundle-guard:
+    needs: release-scope
+    if: needs.release-scope.outputs.mobile_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-scope.outputs.tag }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: production export에서 채널 서핑 코드 검사
+        run: pnpm --filter mobile check:production-export
+
+  promote-binary:
+    needs: [release-scope, production-bundle-guard]
+    if: needs.release-scope.outputs.mobile_changed == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 75
+    environment: mobile-production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+      VERSION: ${{ needs.release-scope.outputs.version }}
+      RELEASE_COMMIT: ${{ needs.release-scope.outputs.commit }}
+      DRY_RUN: ${{ needs.release-scope.outputs.dry_run }}
+      ASC_KEY_ID: ${{ secrets.MOBILE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.MOBILE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8_BASE64: ${{ secrets.MOBILE_ASC_API_KEY_P8_BASE64 }}
+      GOOGLE_PLAY_JSON_BASE64: ${{ secrets.MOBILE_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-scope.outputs.tag }}
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.7'
+          bundler-cache: true
+          working-directory: apps/mobile
+      - name: production 역할·스토어 설정 확인
+        run: |
+          required=(ARTIFACTS_BUCKET)
+          if [[ "$DRY_RUN" != true ]]; then
+            required+=(ASC_KEY_ID ASC_ISSUER_ID ASC_API_KEY_P8_BASE64 GOOGLE_PLAY_JSON_BASE64)
+          fi
+          for key in "${required[@]}"; do
+            if [[ -z "${!key}" ]]; then echo "$key is required for production promotion" >&2; exit 1; fi
+          done
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_PRODUCTION_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: 검증된 RC 객체 다운로드
+        run: |
+          for platform in android ios; do
+            mkdir -p "$RUNNER_TEMP/$platform"
+            extension="$([[ "$platform" == android ]] && echo aab || echo ipa)"
+            for attempt in {1..180}; do
+              if aws s3 cp "s3://$ARTIFACTS_BUCKET/binaries/staging/$VERSION/$platform/metadata.json" "$RUNNER_TEMP/$platform/metadata.json" --no-progress \
+                && aws s3 cp "s3://$ARTIFACTS_BUCKET/binaries/staging/$VERSION/$platform/app.$extension" "$RUNNER_TEMP/$platform/app.$extension" --no-progress; then
+                break
+              fi
+              if (( attempt == 180 )); then echo "$platform RC를 찾지 못했습니다." >&2; exit 1; fi
+              sleep 20
+            done
+          done
+      - name: RC provenance·SHA-256 검증
+        run: |
+          for platform in android ios; do
+            extension="$([[ "$platform" == android ]] && echo aab || echo ipa)"
+            metadata="$RUNNER_TEMP/$platform/metadata.json"
+            jq -e \
+              --arg version "$VERSION" --arg commit "$RELEASE_COMMIT" --arg platform "$platform" \
+              '.runtimeVersion == $version and .commit == $commit and .platform == $platform and .profile == "release-candidate" and .appEnvironment == "production" and .signed == true' \
+              "$metadata" >/dev/null
+            expected="$(jq -er '.sha256' "$metadata")"
+            actual="$(shasum -a 256 "$RUNNER_TEMP/$platform/app.$extension" | cut -d' ' -f1)"
+            [[ "$actual" == "$expected" ]] || { echo "$platform RC SHA-256 불일치" >&2; exit 1; }
+          done
+      - name: 스토어 production 승격
+        working-directory: apps/mobile
+        run: |
+          ios_build="$(jq -er '.buildNumber' "$RUNNER_TEMP/ios/metadata.json")"
+          android_build="$(jq -er '.buildNumber' "$RUNNER_TEMP/android/metadata.json")"
+          if [[ "$DRY_RUN" == true ]]; then
+            echo "[dry-run] fastlane deliver: TestFlight build $ios_build 선택, binary 재업로드 없음"
+            echo "[dry-run] fastlane supply: internal versionCode $android_build → production"
+            exit 0
+          fi
+          printf '%s' "$ASC_API_KEY_P8_BASE64" | openssl base64 -d -A -out "$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          jq -n --arg key_id "$ASC_KEY_ID" --arg issuer_id "$ASC_ISSUER_ID" \
+            --rawfile key "$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8" \
+            '{key_id: $key_id, issuer_id: $issuer_id, key: $key, in_house: false}' \
+            > "$RUNNER_TEMP/asc-api-key.json"
+          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode > "$RUNNER_TEMP/google-play.json"
+          bundle exec fastlane deliver \
+            --api_key_path "$RUNNER_TEMP/asc-api-key.json" --app_identifier studio.thumbsup \
+            --build_number "$ios_build" --skip_binary_upload true --skip_metadata true \
+            --skip_screenshots true --submit_for_review false --automatic_release false --force true
+          bundle exec fastlane supply \
+            --json_key "$RUNNER_TEMP/google-play.json" --package_name studio.thumbsup \
+            --track internal --track_promote_to production --version_code "$android_build" \
+            --track_promote_release_status draft --skip_upload_metadata true --skip_upload_images true \
+            --skip_upload_screenshots true
+      - name: 임시 스토어 자격증명 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/asc-api-key.json" "$RUNNER_TEMP/google-play.json" "$RUNNER_TEMP"/AuthKey_*.p8
+
+  promote-ota:
+    needs: [release-scope, production-bundle-guard]
+    if: needs.release-scope.outputs.mobile_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: mobile-production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-scope.outputs.tag }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_PRODUCTION_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: staging OTA를 production으로 승격
+        env:
+          UPDATE_ID: ${{ needs.release-scope.outputs.commit }}
+          RUNTIME_VERSION: ${{ needs.release-scope.outputs.version }}
+          ROLLOUT_PERCENTAGE: ${{ needs.release-scope.outputs.rollout_percentage }}
+          DRY_RUN: ${{ needs.release-scope.outputs.dry_run }}
+        run: |
+          dry_run=()
+          if [[ "$DRY_RUN" == true ]]; then dry_run+=(--dry-run); fi
+          pnpm --filter updates-server updates -- promote \
+            --bucket "$ARTIFACTS_BUCKET" --from staging --update-id "$UPDATE_ID" \
+            --to production --runtime-version "$RUNTIME_VERSION" \
+            --rollout-percentage "$ROLLOUT_PERCENTAGE" "${dry_run[@]}"

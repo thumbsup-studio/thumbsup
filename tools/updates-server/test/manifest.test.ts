@@ -1,7 +1,7 @@
 import { generateKeyPairSync, verify } from 'node:crypto';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createHandler, sha256Base64Url } from '../src/manifest.js';
+import { createHandler, rolloutBucket, sha256Base64Url } from '../src/manifest.js';
 import { resetSigningKeyCache } from '../src/signing.js';
 import type { ObjectStore } from '../src/types.js';
 
@@ -11,6 +11,11 @@ const launchAssets = {
   android: new TextEncoder().encode('console.log("android fixture")'),
 };
 const image = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const signingKeys = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+});
 
 class MemoryStore implements ObjectStore {
   constructor(private readonly objects: Record<string, Uint8Array>) {}
@@ -68,6 +73,8 @@ function headers(platform: 'ios' | 'android', accept: string): Record<string, st
     'expo-platform': platform,
     'expo-runtime-version': '1',
     'expo-channel-name': 'production',
+    'expo-client-id': 'client-fixture',
+    'expo-expect-signature': 'sig, keyid="main", alg="rsa-v1_5-sha256"',
     accept,
   };
 }
@@ -86,7 +93,7 @@ function multipartPart(body: string): { headers: Record<string, string>; value: 
 
 beforeEach(() => {
   process.env.ASSET_BASE_URL = 'https://updates.example.com';
-  delete process.env.SIGNING_PRIVATE_KEY;
+  process.env.SIGNING_PRIVATE_KEY = signingKeys.privateKey;
   delete process.env.SIGNING_PRIVATE_KEY_PARAMETER;
   resetSigningKeyCache();
 });
@@ -184,6 +191,63 @@ it('returns 204 when the channel has no update', async () => {
   expect(result.statusCode).toBe(204);
 });
 
+it('requires code signing negotiation on the production channel', async () => {
+  const requestHeaders = headers('ios', 'application/json');
+  delete requestHeaders['expo-expect-signature'];
+  const result = await createHandler(new MemoryStore(fixtures()))(event(requestHeaders));
+  expect(result.statusCode).toBe(406);
+  expect(result.body).toContain('require code signing');
+});
+
+it('persists a generated rollout client ID with server-defined headers', async () => {
+  const requestHeaders = headers('ios', 'application/json');
+  delete requestHeaders['expo-client-id'];
+  const result = await createHandler(new MemoryStore(fixtures()))(event(requestHeaders));
+  expect(result.headers?.['expo-server-defined-headers']).toMatch(
+    /^expo-client-id="[0-9a-f-]{36}"$/,
+  );
+});
+
+it('uses a stable client hash to split a gradual rollout', async () => {
+  const includedClient = Array.from({ length: 1000 }, (_, index) => `included-${index}`)
+    .find((value) => rolloutBucket(value) < 10);
+  const excludedClient = Array.from({ length: 1000 }, (_, index) => `excluded-${index}`)
+    .find((value) => rolloutBucket(value) >= 10);
+  expect(includedClient).toBeTruthy();
+  expect(excludedClient).toBeTruthy();
+  const previousId = 'a25ed6d8-f39b-04ad-a248-fa3b95fd7e0e';
+  const objects = fixtures();
+  objects['channels/index.json'] = bytes({
+    channels: {
+      production: [
+        {
+          updateId,
+          runtimeVersion: '1',
+          createdAt: '2026-09-08T00:00:00.000Z',
+          rolloutPercentage: 10,
+        },
+        {
+          updateId: previousId,
+          runtimeVersion: '1',
+          createdAt: '2026-09-07T00:00:00.000Z',
+          rolloutPercentage: 100,
+        },
+      ],
+    },
+  });
+  for (const [key, value] of Object.entries(fixtures())) {
+    if (key.includes(updateId)) objects[key.replace(updateId, previousId)] = value;
+  }
+  const includedHeaders = headers('ios', 'application/json');
+  includedHeaders['expo-client-id'] = includedClient!;
+  const excludedHeaders = headers('ios', 'application/json');
+  excludedHeaders['expo-client-id'] = excludedClient!;
+
+  const handler = createHandler(new MemoryStore(objects));
+  expect(JSON.parse((await handler(event(includedHeaders))).body ?? '{}').id).toBe(updateId);
+  expect(JSON.parse((await handler(event(excludedHeaders))).body ?? '{}').id).toBe(previousId);
+});
+
 it('returns 204 when a protocol v1 client already has the latest update', async () => {
   const requestHeaders = headers('ios', 'application/json');
   requestHeaders['expo-current-update-id'] = updateId;
@@ -216,20 +280,18 @@ it('rejects a rollback directive when multipart is not accepted', async () => {
 });
 
 it('signs the exact manifest body when expo-expect-signature is present', async () => {
-  const { privateKey, publicKey } = generateKeyPairSync('rsa', {
-    modulusLength: 2048,
-    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
-  });
-  process.env.SIGNING_PRIVATE_KEY = privateKey;
   const requestHeaders = headers('ios', 'application/json');
-  requestHeaders['expo-expect-signature'] = 'sig, keyid="main"';
 
   const result = await createHandler(new MemoryStore(fixtures()))(event(requestHeaders));
   const signature = String(result.headers?.['expo-signature']).match(/sig="([^"]+)"/)?.[1];
 
   expect(signature).toBeTruthy();
-  expect(verify('RSA-SHA256', Buffer.from(result.body ?? ''), publicKey, Buffer.from(signature!, 'base64'))).toBe(true);
+  expect(verify(
+    'RSA-SHA256',
+    Buffer.from(result.body ?? ''),
+    signingKeys.publicKey,
+    Buffer.from(signature!, 'base64'),
+  )).toBe(true);
 });
 
 it('rejects an unsupported requested signing key', async () => {

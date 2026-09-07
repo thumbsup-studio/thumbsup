@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.build.json",
     "local-server": "tsx scripts/local-server.ts",
     "publish:pr": "tsx scripts/publish-update.ts",
+    "updates": "tsx scripts/publish-update.ts",
     "telemetry:report": "tsx scripts/telemetry-report.ts",
     "synth": "cdk synth --app 'tsx bin/updates-server.ts'",
     "test": "vitest run",

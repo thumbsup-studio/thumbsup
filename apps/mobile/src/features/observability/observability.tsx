@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import * as Updates from "expo-updates";
+import Updates from "expo-updates/build/ExpoUpdates";
 import { Component, type ErrorInfo, type ReactNode, useEffect } from "react";
 import { Platform, Text, View } from "react-native";
 import { TelemetryClient } from "./telemetry-client";

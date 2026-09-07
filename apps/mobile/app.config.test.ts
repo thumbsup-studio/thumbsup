@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildExpoConfig, UPDATES_URL_PLACEHOLDER } from "./app.config";
+import packageJson from "./package.json";
 
 const baseEnvironment = {
   APP_ENV: "staging",
@@ -22,6 +23,9 @@ describe("buildExpoConfig", () => {
       APP_ENV: appEnvironment,
       EAS_BUILD_PROFILE: appEnvironment,
       EXPO_PUBLIC_UPDATES_CHANNEL: channel,
+      ...(appEnvironment === "production"
+        ? { EXPO_UPDATES_CODE_SIGNING_CERTIFICATE: "/tmp/production-certificate.pem" }
+        : {}),
     });
 
     expect(config.name).toBe(name);
@@ -30,6 +34,7 @@ describe("buildExpoConfig", () => {
     expect(config.android?.versionCode).toBe(42);
     expect(config.ios?.buildNumber).toBe("42");
     expect(config.scheme).toBe(scheme);
+    expect(config.version).toBe(packageJson.version);
     expect(config.updates?.requestHeaders).toEqual(
       channel ? { "expo-channel-name": channel } : undefined,
     );
@@ -90,6 +95,7 @@ describe("buildExpoConfig", () => {
         EAS_BUILD_PROFILE: "production",
         EXPO_PUBLIC_UPDATES_CHANNEL: "production",
         EXPO_PUBLIC_UPDATES_URL: "http://updates.example.com",
+        EXPO_UPDATES_CODE_SIGNING_CERTIFICATE: "/tmp/production-certificate.pem",
       }),
     ).toThrow("must use HTTPS");
   });
@@ -113,6 +119,17 @@ describe("buildExpoConfig", () => {
       codeSigningCertificate: "../../.omc/331/certificate.pem",
       codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
     });
+  });
+
+  it("requires a code signing certificate for production", () => {
+    expect(() =>
+      buildExpoConfig({
+        ...baseEnvironment,
+        APP_ENV: "production",
+        EAS_BUILD_PROFILE: "production",
+        EXPO_PUBLIC_UPDATES_CHANNEL: "production",
+      }),
+    ).toThrow("production requires EXPO_UPDATES_CODE_SIGNING_CERTIFICATE");
   });
 
   it("rejects an invalid native build number", () => {

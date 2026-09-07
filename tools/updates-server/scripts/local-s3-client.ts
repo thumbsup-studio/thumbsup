@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve, sep } from 'node:path';
 import {
+  CopyObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
@@ -68,6 +69,22 @@ export class LocalS3Client implements S3ClientLike {
   }
 
   async send(command: unknown): Promise<any> {
+    if (command instanceof CopyObjectCommand) {
+      const key = String(command.input.Key ?? '');
+      const copySource = decodeURIComponent(String(command.input.CopySource ?? ''));
+      const separator = copySource.indexOf('/');
+      if (separator < 0) throw new Error(`Invalid local copy source: ${copySource}`);
+      const sourceKey = copySource.slice(separator + 1);
+      const bytes = await optionalBytes(resolveObjectPath(this.root, sourceKey));
+      if (!bytes) throw notFound(sourceKey);
+      const path = resolveObjectPath(this.root, key);
+      await mkdir(dirname(path), { recursive: true });
+      const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+      await writeFile(temporary, bytes);
+      await rename(temporary, path);
+      return { CopyObjectResult: { ETag: etag(bytes) } };
+    }
+
     if (command instanceof GetObjectCommand) {
       const key = String(command.input.Key ?? '');
       const bytes = await optionalBytes(resolveObjectPath(this.root, key));
