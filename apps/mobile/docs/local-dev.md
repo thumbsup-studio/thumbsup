@@ -21,20 +21,20 @@ pnpm dev
 
 ## dev-client 설치
 
-dev-client 배포를 맡은 #350은 아직 구현되지 않았다. 따라서 `MOBILE_DEV_CLIENT_BASE_URL`도 설정되어 있지 않으며, 현재 `pnpm dev:install android`는 `expo run:android`로 로컬 빌드를 만들어 설치한다.
+dev-client 워크플로우가 S3에 배포되려면 `MOBILE_ARTIFACTS_BUCKET`과 `MOBILE_BINARY_PUBLISH_ROLE_ARN` 등록이 필요하다. `MOBILE_DEV_CLIENT_BASE_URL`이 아직 없다면 `pnpm dev:install android`는 `expo run:android`로 로컬 빌드를 만들어 설치한다.
 
 ```bash
 pnpm dev:install android
 ```
 
-#350이 배포된 뒤에는 `.env.local`이 아니라 명령을 실행하는 셸에 아티팩트 URL을 설정한다. 스크립트가 Android의 `android/latest.apk` 또는 iOS 시뮬레이터의 `ios/latest.zip`을 내려받아 설치한다.
+S3 배포를 활성화한 뒤에는 `.env.local`이 아니라 명령을 실행하는 셸에 아티팩트 URL을 설정한다. URL은 `binaries/dev-client/<runtimeVersion>`까지 포함해야 한다. 스크립트가 그 아래의 `android/latest.apk` 또는 `ios/latest.zip`을 내려받아 설치한다.
 
 ```bash
-MOBILE_DEV_CLIENT_BASE_URL=https://<아티팩트-호스트>/dev-client pnpm dev:install android
-MOBILE_DEV_CLIENT_BASE_URL=https://<아티팩트-호스트>/dev-client pnpm dev:install ios
+MOBILE_DEV_CLIENT_BASE_URL=https://<아티팩트-호스트>/binaries/dev-client/0.1.0 pnpm dev:install android
+MOBILE_DEV_CLIENT_BASE_URL=https://<아티팩트-호스트>/binaries/dev-client/0.1.0 pnpm dev:install ios
 ```
 
-iOS URL에는 압축을 풀었을 때 최상위에 `.app` 하나가 있는 ZIP이 필요하다. IPA를 실기기에 설치하는 흐름은 #350에서 서명·기기 등록 방식이 결정된 뒤 추가한다.
+iOS URL에는 압축을 풀었을 때 최상위에 `.app` 하나가 있는 ZIP이 필요하다. iOS 실기기 staging 배포는 TestFlight 내부 테스트를 사용한다.
 
 현재 이 머신의 Xcode는 26.0.1이다. Expo SDK 57의 `expo run:ios`가 컴파일 오류로 끝나므로 iOS 네이티브 빌드는 Xcode 26.4로 업그레이드한 뒤 다시 확인해야 한다. 그전에는 아래처럼 Expo Go를 사용한다.
 

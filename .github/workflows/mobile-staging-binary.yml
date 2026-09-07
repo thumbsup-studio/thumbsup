@@ -1,0 +1,365 @@
+name: Mobile Staging Binary
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-staging-binary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      native: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.native == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@v3
+        if: github.event_name == 'push'
+        id: filter
+        with:
+          filters: |
+            native:
+              - 'apps/mobile/app.config.ts'
+              - 'apps/mobile/package.json'
+              - 'apps/mobile/Gemfile*'
+              - 'apps/mobile/plugins/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - '.github/workflows/mobile-staging-binary.yml'
+
+  android:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP_ENV: staging
+      EAS_BUILD_PROFILE: staging
+      NODE_ENV: production
+      MOBILE_BUILD_NUMBER: ${{ github.run_number }}
+      EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
+      EXPO_PUBLIC_UPDATES_CHANNEL: staging
+      EXPO_PUBLIC_UPDATES_URL: ${{ vars.MOBILE_UPDATES_URL || 'https://updates.thumbsup.invalid' }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.MOBILE_ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.MOBILE_ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEY_PASSWORD }}
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+      BINARY_ROLE_ARN: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: Android 네이티브 프로젝트 생성
+        run: pnpm --filter mobile exec expo prebuild --clean --platform android --no-install
+      - name: 서명·배포 설정 확인
+        id: settings
+        shell: bash
+        run: |
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "signing=true" >> "$GITHUB_OUTPUT"
+            echo "label=signed" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Android 서명::배포용 upload keystore로 release APK를 빌드합니다."
+          else
+            echo "signing=false" >> "$GITHUB_OUTPUT"
+            echo "label=unsigned" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Android 서명 생략::서명 Secrets가 없어 debug 서명 APK를 '미서명' artifact로 만듭니다."
+          fi
+          if [[ -n "$ARTIFACTS_BUCKET" && -n "$BINARY_ROLE_ARN" ]]; then
+            echo "s3=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "s3=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_BINARY_PUBLISH_ROLE_ARN 변수가 없습니다."
+          fi
+      - name: Android release APK 빌드
+        if: steps.settings.outputs.signing == 'true'
+        working-directory: apps/mobile/android
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/staging-upload.keystore"
+          ./gradlew :app:assembleRelease --no-daemon \
+            -Dorg.gradle.jvmargs='-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' \
+            -PTHUMBSUP_UPLOAD_STORE_FILE="$RUNNER_TEMP/staging-upload.keystore" \
+            -PTHUMBSUP_UPLOAD_STORE_PASSWORD="$ANDROID_KEYSTORE_PASSWORD" \
+            -PTHUMBSUP_UPLOAD_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
+            -PTHUMBSUP_UPLOAD_KEY_PASSWORD="$ANDROID_KEY_PASSWORD"
+      - name: Android release APK debug 서명 대체 빌드
+        if: steps.settings.outputs.signing != 'true'
+        working-directory: apps/mobile/android
+        run: >-
+          ./gradlew :app:assembleRelease --no-daemon
+          -Dorg.gradle.jvmargs='-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8'
+      - name: Android artifact 메타데이터 생성
+        id: metadata
+        env:
+          DISTRIBUTION_SIGNED: ${{ steps.settings.outputs.signing }}
+        run: |
+          config="$(pnpm --filter mobile exec expo config --type public --json)"
+          runtime_version="$(jq -er 'if (.runtimeVersion | type) == "string" then .runtimeVersion elif .runtimeVersion.policy == "appVersion" then .version else error("unsupported runtimeVersion policy") end' <<<"$config")"
+          artifact_dir="$RUNNER_TEMP/mobile-staging-android"
+          mkdir -p "$artifact_dir"
+          if [[ "$DISTRIBUTION_SIGNED" == "true" ]]; then
+            cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk "$artifact_dir/thumbsup-staging.apk"
+            signing=release
+          else
+            cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk "$artifact_dir/thumbsup-staging-unsigned.apk"
+            signing=debug
+          fi
+          jq -n \
+            --arg runtimeVersion "$runtime_version" \
+            --arg commit "$GITHUB_SHA" \
+            --arg profile staging \
+            --arg platform android \
+            --arg signing "$signing" \
+            --argjson signed "$DISTRIBUTION_SIGNED" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, profile: $profile, platform: $platform, signed: $signed, signing: $signing, createdAt: $createdAt}' \
+            > "$artifact_dir/metadata.json"
+          echo "runtime_version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - name: Android APK artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-staging-android-${{ steps.settings.outputs.label }}-${{ github.run_number }}
+          path: ${{ runner.temp }}/mobile-staging-android
+          if-no-files-found: error
+          retention-days: 14
+      - name: AWS 바이너리 배포 역할 위임
+        if: steps.settings.outputs.s3 == 'true' && steps.settings.outputs.signing == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: Android staging APK를 S3에 배포
+        if: steps.settings.outputs.s3 == 'true' && steps.settings.outputs.signing == 'true'
+        env:
+          RUNTIME_VERSION: ${{ steps.metadata.outputs.runtime_version }}
+        run: |
+          prefix="s3://$ARTIFACTS_BUCKET/binaries/staging/$RUNTIME_VERSION/android"
+          aws s3 cp "$RUNNER_TEMP/mobile-staging-android/thumbsup-staging.apk" "$prefix/app.apk" --no-progress
+          aws s3 cp "$RUNNER_TEMP/mobile-staging-android/metadata.json" "$prefix/metadata.json" --content-type application/json --no-progress
+      - name: Android 미서명 staging S3 배포 생략 안내
+        if: steps.settings.outputs.s3 == 'true' && steps.settings.outputs.signing != 'true'
+        run: echo "::notice title=S3 배포 생략::debug key로 서명한 staging APK는 GitHub artifact에만 보관합니다."
+      - name: 서명 키 파일 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/staging-upload.keystore"
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      APP_ENV: staging
+      EAS_BUILD_PROFILE: staging
+      NODE_ENV: production
+      MOBILE_BUILD_NUMBER: ${{ github.run_number }}
+      EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
+      EXPO_PUBLIC_UPDATES_CHANNEL: staging
+      EXPO_PUBLIC_UPDATES_URL: ${{ vars.MOBILE_UPDATES_URL || 'https://updates.thumbsup.invalid' }}
+      IOS_CERTIFICATE_P12_BASE64: ${{ secrets.MOBILE_IOS_CERTIFICATE_P12_BASE64 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.MOBILE_IOS_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MOBILE_IOS_PROVISIONING_PROFILE_BASE64 }}
+      APPLE_TEAM_ID: ${{ vars.MOBILE_APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.MOBILE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.MOBILE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8_BASE64: ${{ secrets.MOBILE_ASC_API_KEY_P8_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.4'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.7'
+          bundler-cache: true
+          working-directory: apps/mobile
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: iOS 네이티브 프로젝트 생성
+        run: pnpm --filter mobile exec expo prebuild --clean --platform ios --no-install
+      - name: CocoaPods 의존성 설치
+        working-directory: apps/mobile
+        run: bundle exec pod install --project-directory=ios
+      - name: 서명·TestFlight 설정 확인
+        id: settings
+        shell: bash
+        run: |
+          if [[ -n "$IOS_CERTIFICATE_P12_BASE64" && -n "$IOS_CERTIFICATE_PASSWORD" && -n "$IOS_PROVISIONING_PROFILE_BASE64" && -n "$APPLE_TEAM_ID" ]]; then
+            echo "signing=true" >> "$GITHUB_OUTPUT"
+            echo "label=signed" >> "$GITHUB_OUTPUT"
+            echo "::notice title=iOS 서명::App Store 배포 인증서와 provisioning profile로 archive를 만듭니다."
+          else
+            echo "signing=false" >> "$GITHUB_OUTPUT"
+            echo "label=simulator" >> "$GITHUB_OUTPUT"
+            echo "::warning title=iOS 서명 생략::배포 자격증명이 없어 시뮬레이터용 앱을 빌드합니다."
+          fi
+          if [[ -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" && -n "$ASC_API_KEY_P8_BASE64" ]]; then
+            echo "testflight=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "testflight=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=TestFlight 업로드 생략::App Store Connect API key Secrets가 없습니다."
+          fi
+      - name: iOS 배포 자격증명 설치
+        id: credentials
+        if: steps.settings.outputs.signing == 'true'
+        run: |
+          keychain_path="$RUNNER_TEMP/mobile-build.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate_path="$RUNNER_TEMP/distribution.p12"
+          profile_path="$RUNNER_TEMP/staging.mobileprovision"
+          printf '%s' "$IOS_CERTIFICATE_P12_BASE64" | openssl base64 -d -A -out "$certificate_path"
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | openssl base64 -d -A -out "$profile_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" login.keychain-db
+          security default-keychain -d user -s "$keychain_path"
+          security cms -D -i "$profile_path" > "$RUNNER_TEMP/profile.plist"
+          profile_uuid="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")"
+          profile_name="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$profile_path" "$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.mobileprovision"
+          echo "profile_uuid=$profile_uuid" >> "$GITHUB_OUTPUT"
+          echo "profile_name=$profile_name" >> "$GITHUB_OUTPUT"
+      - name: iOS 서명 archive 생성
+        if: steps.settings.outputs.signing == 'true'
+        working-directory: apps/mobile
+        env:
+          PROFILE_NAME: ${{ steps.credentials.outputs.profile_name }}
+        run: |
+          xcodebuild archive \
+            -workspace ios/ThumbsUpStaging.xcworkspace \
+            -scheme ThumbsUpStaging \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/ThumbsUpStaging.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>destination</key><string>export</string>
+            <key>method</key><string>app-store-connect</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>provisioningProfiles</key><dict>
+              <key>studio.thumbsup.staging</key><string>$PROFILE_NAME</string>
+            </dict>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/ThumbsUpStaging.xcarchive" \
+            -exportPath "$RUNNER_TEMP/staging-export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+      - name: iOS 시뮬레이터 앱 대체 빌드
+        if: steps.settings.outputs.signing != 'true'
+        working-directory: apps/mobile
+        run: |
+          xcodebuild build \
+            -workspace ios/ThumbsUpStaging.xcworkspace \
+            -scheme ThumbsUpStaging \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/staging-derived-data" \
+            CODE_SIGNING_ALLOWED=NO
+      - name: iOS artifact 메타데이터 생성
+        id: metadata
+        env:
+          DISTRIBUTION_SIGNED: ${{ steps.settings.outputs.signing }}
+        run: |
+          config="$(pnpm --filter mobile exec expo config --type public --json)"
+          runtime_version="$(jq -er 'if (.runtimeVersion | type) == "string" then .runtimeVersion elif .runtimeVersion.policy == "appVersion" then .version else error("unsupported runtimeVersion policy") end' <<<"$config")"
+          artifact_dir="$RUNNER_TEMP/mobile-staging-ios"
+          mkdir -p "$artifact_dir"
+          if [[ "$DISTRIBUTION_SIGNED" == "true" ]]; then
+            ipa="$(find "$RUNNER_TEMP/staging-export" -maxdepth 1 -name '*.ipa' -print -quit)"
+            cp "$ipa" "$artifact_dir/thumbsup-staging.ipa"
+            signing="app-store"
+          else
+            app="$(find "$RUNNER_TEMP/staging-derived-data/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' -print -quit)"
+            ditto -c -k --sequesterRsrc --keepParent "$app" "$artifact_dir/thumbsup-staging-simulator.zip"
+            signing=simulator
+          fi
+          jq -n \
+            --arg runtimeVersion "$runtime_version" \
+            --arg commit "$GITHUB_SHA" \
+            --arg profile staging \
+            --arg platform ios \
+            --arg signing "$signing" \
+            --argjson signed "$DISTRIBUTION_SIGNED" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, profile: $profile, platform: $platform, signed: $signed, signing: $signing, createdAt: $createdAt}' \
+            > "$artifact_dir/metadata.json"
+          echo "runtime_version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - name: iOS artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-staging-ios-${{ steps.settings.outputs.label }}-${{ github.run_number }}
+          path: ${{ runner.temp }}/mobile-staging-ios
+          if-no-files-found: error
+          retention-days: 14
+      - name: TestFlight 내부 테스트에 업로드
+        if: steps.settings.outputs.signing == 'true' && steps.settings.outputs.testflight == 'true'
+        working-directory: apps/mobile
+        run: |
+          printf '%s' "$ASC_API_KEY_P8_BASE64" | openssl base64 -d -A -out "$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          jq -n \
+            --arg key_id "$ASC_KEY_ID" \
+            --arg issuer_id "$ASC_ISSUER_ID" \
+            --rawfile key "$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8" \
+            '{key_id: $key_id, issuer_id: $issuer_id, key: $key, in_house: false}' \
+            > "$RUNNER_TEMP/asc-api-key.json"
+          bundle exec fastlane pilot upload \
+            --ipa "$RUNNER_TEMP/mobile-staging-ios/thumbsup-staging.ipa" \
+            --api_key_path "$RUNNER_TEMP/asc-api-key.json" \
+            --skip_waiting_for_build_processing true \
+            --distribute_external false
+      - name: iOS 임시 자격증명 삭제
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/mobile-build.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/staging.mobileprovision" "$RUNNER_TEMP/profile.plist" "$RUNNER_TEMP/asc-api-key.json" "$RUNNER_TEMP"/AuthKey_*.p8
+          if [[ -n "${{ steps.credentials.outputs.profile_uuid }}" ]]; then
+            rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/${{ steps.credentials.outputs.profile_uuid }}.mobileprovision"
+          fi

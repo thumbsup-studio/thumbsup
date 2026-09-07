@@ -1,0 +1,190 @@
+name: Mobile Dev Client
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-dev-client
+  cancel-in-progress: true
+
+env:
+  APP_ENV: development
+  EAS_BUILD_PROFILE: development
+  NODE_ENV: development
+  MOBILE_BUILD_NUMBER: ${{ github.run_number }}
+  EXPO_PUBLIC_API_URL: http://localhost:8080
+  ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+  BINARY_ROLE_ARN: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: Android development 프로젝트 생성
+        run: pnpm --filter mobile exec expo prebuild --clean --platform android --no-install
+      - name: Android dev-client debug APK 빌드
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Android dev-client 메타데이터 생성
+        id: metadata
+        run: |
+          config="$(pnpm --filter mobile exec expo config --type public --json)"
+          runtime_version="$(jq -er 'if (.runtimeVersion | type) == "string" then .runtimeVersion elif .runtimeVersion.policy == "appVersion" then .version else error("unsupported runtimeVersion policy") end' <<<"$config")"
+          artifact_dir="$RUNNER_TEMP/mobile-dev-client-android"
+          mkdir -p "$artifact_dir"
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$artifact_dir/latest.apk"
+          jq -n \
+            --arg runtimeVersion "$runtime_version" \
+            --arg commit "$GITHUB_SHA" \
+            --arg profile development \
+            --arg platform android \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, profile: $profile, platform: $platform, signed: false, signing: "debug", createdAt: $createdAt}' \
+            > "$artifact_dir/metadata.json"
+          echo "runtime_version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - name: Android dev-client artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-dev-client-android-${{ github.run_number }}
+          path: ${{ runner.temp }}/mobile-dev-client-android
+          if-no-files-found: error
+          retention-days: 14
+      - name: S3 설정 확인
+        id: s3
+        run: |
+          if [[ -n "$ARTIFACTS_BUCKET" && -n "$BINARY_ROLE_ARN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_BINARY_PUBLISH_ROLE_ARN 변수가 없습니다."
+          fi
+      - name: AWS 바이너리 배포 역할 위임
+        if: steps.s3.outputs.enabled == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: Android dev-client를 S3에 배포
+        if: steps.s3.outputs.enabled == 'true'
+        env:
+          RUNTIME_VERSION: ${{ steps.metadata.outputs.runtime_version }}
+        run: |
+          prefix="s3://$ARTIFACTS_BUCKET/binaries/dev-client/$RUNTIME_VERSION/android"
+          aws s3 cp "$RUNNER_TEMP/mobile-dev-client-android/latest.apk" "$prefix/latest.apk" --cache-control no-cache --no-progress
+          aws s3 cp "$RUNNER_TEMP/mobile-dev-client-android/metadata.json" "$prefix/metadata.json" --content-type application/json --cache-control no-cache --no-progress
+
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.4'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.7'
+          bundler-cache: true
+          working-directory: apps/mobile
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: iOS development 프로젝트 생성
+        run: pnpm --filter mobile exec expo prebuild --clean --platform ios --no-install
+      - name: CocoaPods 의존성 설치
+        working-directory: apps/mobile
+        run: bundle exec pod install --project-directory=ios
+      - name: iOS 시뮬레이터 dev-client 빌드
+        working-directory: apps/mobile
+        run: |
+          xcodebuild build \
+            -workspace ios/ThumbsUpDev.xcworkspace \
+            -scheme ThumbsUpDev \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dev-client-derived-data" \
+            CODE_SIGNING_ALLOWED=NO
+      - name: iOS dev-client 메타데이터 생성
+        id: metadata
+        run: |
+          config="$(pnpm --filter mobile exec expo config --type public --json)"
+          runtime_version="$(jq -er 'if (.runtimeVersion | type) == "string" then .runtimeVersion elif .runtimeVersion.policy == "appVersion" then .version else error("unsupported runtimeVersion policy") end' <<<"$config")"
+          artifact_dir="$RUNNER_TEMP/mobile-dev-client-ios"
+          mkdir -p "$artifact_dir"
+          app="$(find "$RUNNER_TEMP/dev-client-derived-data/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' -print -quit)"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$artifact_dir/latest.zip"
+          jq -n \
+            --arg runtimeVersion "$runtime_version" \
+            --arg commit "$GITHUB_SHA" \
+            --arg profile development \
+            --arg platform ios \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, profile: $profile, platform: $platform, signed: false, signing: "simulator", createdAt: $createdAt}' \
+            > "$artifact_dir/metadata.json"
+          echo "runtime_version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - name: iOS dev-client artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-dev-client-ios-${{ github.run_number }}
+          path: ${{ runner.temp }}/mobile-dev-client-ios
+          if-no-files-found: error
+          retention-days: 14
+      - name: S3 설정 확인
+        id: s3
+        run: |
+          if [[ -n "$ARTIFACTS_BUCKET" && -n "$BINARY_ROLE_ARN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_BINARY_PUBLISH_ROLE_ARN 변수가 없습니다."
+          fi
+      - name: AWS 바이너리 배포 역할 위임
+        if: steps.s3.outputs.enabled == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: iOS dev-client를 S3에 배포
+        if: steps.s3.outputs.enabled == 'true'
+        env:
+          RUNTIME_VERSION: ${{ steps.metadata.outputs.runtime_version }}
+        run: |
+          prefix="s3://$ARTIFACTS_BUCKET/binaries/dev-client/$RUNTIME_VERSION/ios"
+          aws s3 cp "$RUNNER_TEMP/mobile-dev-client-ios/latest.zip" "$prefix/latest.zip" --cache-control no-cache --no-progress
+          aws s3 cp "$RUNNER_TEMP/mobile-dev-client-ios/metadata.json" "$prefix/metadata.json" --content-type application/json --cache-control no-cache --no-progress
