@@ -1,6 +1,6 @@
 ---
 name: visual-qa
-description: UI 변경 후 로컬에서 AI 시각 QA 실행. 스크린샷 → 엘리스 멀티모달 리뷰 → 리포트 확인. UI 작업 완료 전 자가 점검용, 사용자가 "시각 QA 돌려"라고 할 때도 트리거.
+description: apps/web UI 변경 후 로컬에서 AI 시각 QA 실행. 스크린샷 → 엘리스 멀티모달 리뷰 → 리포트 확인. web UI 작업 완료 전 자가 점검용, 사용자가 "시각 QA 돌려"라고 할 때도 트리거.
 ---
 
 # visual-qa — 로컬 AI 시각 QA

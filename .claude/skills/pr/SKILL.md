@@ -12,13 +12,15 @@ description: 이 레포에서 Pull Request를 올릴 때 항상 사용. PR 제�
 3. **연결할 이슈 확인** — 브랜치명(`feat/12-...`)에서 이슈 번호 추출. 없으면 사용자에게 확인.
 4. **push** — `git push -u origin <branch>`
 
+scope는 `web` | `authoring` | `mobile` | `infra` | `server` 중에서 고른다. 루트 공통 작업이면 생략할 수 있다.
+
 ## 제목 형식 (커밋과 동일)
 
 ```
 <type>(<scope>): <요약> (#이슈)
 ```
 
-예: `feat(app): 홈 투데이 학습 진입점 구현 (#2)`
+예: `feat(web): 홈 투데이 학습 진입점 구현 (#2)`
 
 ## 본문 형식 (템플릿 그대로 채우기)
 

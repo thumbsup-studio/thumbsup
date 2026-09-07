@@ -38,7 +38,7 @@ GitHub의 `mergeable`만 믿지 않는다. 머지 안전성의 **대부분**(PR 
 
 변경 경로별 게이트는 형제 스킬에 위임한다.
 
-- `apps/web/**`: `verify-app`의 로컬 게이트 + App CI `gate` + 프리뷰/시각 QA(`deploying`).
+- `apps/web/**`: `verify-app`의 로컬 게이트 + Web CI `web-gate` + 프리뷰/시각 QA(`deploying`).
 - `server/**`: `server`에서 `./gradlew --no-daemon spotlessCheck build` + Server CI `build-and-test`·`gitleaks`.
 - `.github/workflows/**`·`.coderabbit.yaml`·배포/검증 스크립트: YAML/스크립트를 직접 리뷰한다(trigger·permissions·path filter·secret guard). **변경된 workflow가 자기 자신을 검사했을 것이라고 가정하지 않는다.**
 
@@ -81,7 +81,7 @@ python3 .claude/skills/merge/scripts/check_flyway_order.py \
 동시 머지로 main이 움직였을 수 있으므로, 머지 직전 상태를 다시 고정한다.
 
 1. 최신 main OID를 다시 읽는다: 검증 모드 `git ls-remote origin refs/heads/main`, 병합 모드 `git fetch origin main`.
-2. **base OID가 검증값과 달라졌으면** 소유·clean 브랜치를 `origin/main`에 rebase하고 해당 경로(2A/2B) 게이트를 **처음부터 반복**한다. 이전 head의 성공 결과를 재사용하지 않는다. (app 머지가 main을 전진시킨 경우가 여기 걸린다.)
+2. **base OID가 검증값과 달라졌으면** 소유·clean 브랜치를 `origin/main`에 rebase하고 해당 경로(2A/2B) 게이트를 **처음부터 반복**한다. 이전 head의 성공 결과를 재사용하지 않는다. (web 머지가 main을 전진시킨 경우가 여기 걸린다.)
 3. head OID가 CI·리뷰를 통과한 OID와 같은지 확인한다. Flyway PR이면 운영 history·main 최고 버전·open PR migration도 다시 조회한다.
 4. **base 최신성 보장 방식.** strict(up-to-date) 보호나 merge queue가 있으면 그 메커니즘이 base 최신성을 보장한다. **둘 다 없으면(현재 이 레포가 그렇다)** 위 1~2의 머지 직전 재확인이 그 보장을 사람이 대신 수행하는 것이다 — base가 움직였으면 중단하고 재검증한다. `--match-head-commit`은 head만 고정하고 base 변경은 막지 못하므로 이 재확인이 유일한 안전장치다.
 5. rebase push가 필요하면 기록한 원격 head를 lease 예상값으로 직접 고정한다. 일반 `--force-with-lease`를 쓰지 않는다. 타인/fork/소유권 불명 브랜치는 owner에게 rebase를 요청한다.
@@ -107,7 +107,7 @@ python3 .claude/skills/merge/scripts/check_flyway_order.py \
 1. merge commit이 `origin/main`에 포함됐는지 확인한다.
 2. merge commit SHA에 결박된 워크플로우만 추적한다.
    - **server**: run의 `headSha`와 배포 `IMAGE_TAG`가 merge SHA인지, Deploy step 성공, 겹친 main 배포 없음을 확인한다. 운영 컨테이너 image tag/digest도 해당 이미지와 일치하는지 read-only로 확인한 뒤 공개 health를 연속 확인한다.
-   - **app**: guard로 skip된 성공을 배포 성공으로 보지 않는다. 실제 Vercel deploy step, production URL, deployment metadata의 commit SHA, 핵심 경로를 확인한다.
+   - **web**: guard로 skip된 성공을 배포 성공으로 보지 않는다. 실제 Vercel deploy step, production URL, deployment metadata의 commit SHA, 핵심 경로를 확인한다.
    - **Release PR**: release-please 성공 후 manifest/version, `vX.Y.Z` tag, GitHub Release를 확인한다.
 3. 동일 workflow의 이전·후속 main run이 겹쳤으면 모두 종료될 때까지 기다리고 최종 배포 SHA를 다시 확인한다.
 4. 실패하면 완료 처리하지 않고 원인을 먼저 분류한다. 코드·migration 회귀면 이슈를 reopen/`status: in-progress`로 되돌리고 hotfix PR에 전체 게이트를 적용한다. runner·cloud·secret 등 인프라 장애면 제품 이슈 상태를 자동 변경하지 않는다.

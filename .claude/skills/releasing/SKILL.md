@@ -5,13 +5,13 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 # releasing — release-please 릴리즈
 
-릴리즈는 `release-please`가 자동화한다 (`.github/workflows/release-please.yml`). 저장소 **통합 버전**(컴포넌트 접두어 없는 `vX.Y.Z` 태그) — app·server 공통 단일 버전.
+릴리즈는 `release-please`가 자동화한다 (`.github/workflows/release-please.yml`). 저장소 **통합 버전**(컴포넌트 접두어 없는 `vX.Y.Z` 태그) — apps·server 공통 단일 버전.
 
 > **활성 상태.** main push마다 자동 실행된다. 전용 토큰 `RELEASE_PLEASE_TOKEN`(사람 신원 fine-grained PAT)으로 구동하는데, 기본 GITHUB_TOKEN은 Release PR 생성이 차단되고 봇이 만든 PR은 필수 체크(server-ci 등)를 트리거하지 못해 머지도 막히기 때문이다. 버전 앵커는 `v0.1.0` 릴리즈(2026-07-08 생성) — 그 이후 커밋부터 버전이 오른다. 토큰이 만료되면 재발급 후 시크릿만 갱신하면 된다.
 
 ## 흐름 (2단계)
 
-1. **main에 `feat`/`fix` 등이 머지되면** → release-please가 **"chore(main): release X.Y.Z" Release PR**을 자동 생성/갱신한다. 이 PR 안에서 CHANGELOG·`version.txt`·`apps/web/package.json` version이 함께 갱신된다.
+1. **main에 `feat`/`fix` 등이 머지되면** → release-please가 **"chore(main): release X.Y.Z" Release PR**을 자동 생성/갱신한다. 이 PR 안에서 CHANGELOG·`version.txt`·`apps/web/package.json` version이 함께 갱신된다. `apps/authoring/package.json`과 `apps/mobile/package.json`은 각 앱이 생기면 같은 `extra-files` 목록에 추가한다.
 2. **그 Release PR을 사람이 머지하면** → git 태그 `vX.Y.Z` + GitHub Release(노트 게시)가 생성된다.
 
 즉 릴리즈하려면: **Release PR을 확인하고 머지**하면 끝. 태그·노트는 자동.
@@ -29,7 +29,7 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 ## 버전의 단일 소스
 
-`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `apps/web/package.json`의 version은 릴리즈 시 여기에 맞춰 갱신된다(수동 편집 금지 — Release PR이 관리).
+`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `release-please-config.json`의 `extra-files`에 등록된 앱 `package.json`만 릴리즈 시 여기에 맞춰 갱신된다. 현재 등록된 앱 파일은 `apps/web/package.json`이며, 새 앱은 `extra-files`에 별도로 등록해야 한다(수동 편집 금지 — Release PR이 관리).
 
 ## 배포와의 관계
 
