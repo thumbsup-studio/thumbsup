@@ -6,6 +6,8 @@
 
 **설치·로그인 정본은 [`tools/bridge/README.md`](../../../../tools/bridge/README.md)다.** 여기에 복붙하지 말고 그쪽을 볼 것. 요약하면 `claude setup-token`으로 구독 로그인 → `pnpm start login` → `pnpm start`.
 
+브리지는 시작할 때 저작 앱 주소를 출력한다. 기본값은 `https://thumbsup-authoring.vercel.app`이고, 프리뷰나 롤백 배포를 쓸 때는 `THUMBSUP_AUTHORING_URL`로 덮어쓴다. API 접속 주소는 별도로 `~/.thumbsup/bridge.json`의 `serverUrl`을 쓴다.
+
 ## ⚠️ 잡은 CLI가 아니라 **계정**으로 라우팅된다
 
 이게 "잡이 계속 QUEUED"의 가장 흔한 원인이다.

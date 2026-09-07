@@ -8,5 +8,5 @@ export const apiClient = createApiClient({
   tokenStorage: tokenStore,
 });
 
-export const { apiRequest, apiUrl, getMyProfile, login } = apiClient;
+export const { apiRequest, apiUrl, getMyProfile, login, logout } = apiClient;
 export * from "@thumbsup/api";

@@ -1,4 +1,4 @@
-name: Web Deploy
+name: Authoring Deploy
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: web-deploy-${{ github.ref }}
+  group: authoring-deploy-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -20,7 +20,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      web: ${{ steps.filter.outputs.web }}
+      authoring: ${{ steps.filter.outputs.authoring }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,28 +29,28 @@ jobs:
         id: filter
         with:
           filters: |
-            web:
-              - 'apps/web/**'
+            authoring:
+              - 'apps/authoring/**'
               - 'packages/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.nvmrc'
-              - '.github/workflows/web-deploy.yml'
+              - '.github/workflows/authoring-deploy.yml'
 
   deploy:
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.authoring == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
       url: ${{ steps.deploy.outputs.url }}
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WEB || secrets.VERCEL_PROJECT_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_AUTHORING }}
     defaults:
       run:
-        working-directory: apps/web
+        working-directory: apps/authoring
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,7 +62,7 @@ jobs:
         run: |
           if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Vercel 배포 시크릿 미설정 — 배포를 건너뜁니다"
+            echo "::notice::Vercel 배포 시크릿 미설정 — authoring 배포를 건너뜁니다"
           fi
       - uses: pnpm/action-setup@v4
         if: steps.guard.outputs.skip != 'true'
@@ -99,8 +99,8 @@ jobs:
     steps:
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: preview
+          header: authoring-preview
           message: |
-            🔍 **프리뷰 배포**: ${{ needs.deploy.outputs.url }}
+            🔍 **Authoring 프리뷰 배포**: ${{ needs.deploy.outputs.url }}
 
-            `apps/web/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.
+            `apps/authoring/**` 변경이 반영된 미리보기입니다. 푸시할 때마다 갱신됩니다.

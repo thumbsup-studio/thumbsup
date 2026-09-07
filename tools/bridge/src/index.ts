@@ -3,7 +3,7 @@ import { createCodexAdapter } from "./adapters/codex.js";
 import { createGeminiAdapter } from "./adapters/gemini.js";
 import type { CliAdapter } from "./adapters/types.js";
 import { BridgeApi } from "./api.js";
-import { type BridgeCli, loadConfig, saveConfig } from "./config.js";
+import { type BridgeCli, getAuthoringUrl, loadConfig, saveConfig } from "./config.js";
 import { runLogin } from "./login.js";
 import { runLoop } from "./runner.js";
 
@@ -31,6 +31,7 @@ async function main(): Promise<void> {
   const adapter = adapterFor(config.cli);
 
   console.log(`thumbsup-bridge 시작 — 서버: ${config.serverUrl}, CLI: ${config.cli}`);
+  console.log(`저작 앱: ${getAuthoringUrl()}`);
   console.log("Ctrl+C로 종료");
 
   const controller = new AbortController();

@@ -2,7 +2,14 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadConfig, saveConfig, type BridgeCli, type BridgeConfig } from "../src/config.js";
+import {
+  DEFAULT_AUTHORING_URL,
+  getAuthoringUrl,
+  loadConfig,
+  saveConfig,
+  type BridgeCli,
+  type BridgeConfig,
+} from "../src/config.js";
 
 describe("config", () => {
   const valid: BridgeConfig = { serverUrl: "http://localhost:8080", cli: "CLAUDE", accessToken: "a", refreshToken: "r" };
@@ -29,5 +36,12 @@ describe("config", () => {
     const path = join(mkdtempSync(join(tmpdir(), "bridge-")), "bridge.json");
     writeFileSync(path, "null");
     expect(() => loadConfig(path)).toThrow(/login/);
+  });
+
+  it("저작 앱 URL은 운영 주소를 기본값으로 쓰고 환경변수로 바꿀 수 있다", () => {
+    expect(getAuthoringUrl({})).toBe(DEFAULT_AUTHORING_URL);
+    expect(getAuthoringUrl({ THUMBSUP_AUTHORING_URL: "https://authoring.example.com/" })).toBe(
+      "https://authoring.example.com",
+    );
   });
 });
