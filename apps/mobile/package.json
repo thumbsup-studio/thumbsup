@@ -4,8 +4,11 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "bootstrap": "node ./scripts/setup.mjs",
     "build:graph": "node ./scripts/build-graph.mjs",
-    "dev": "expo start",
+    "dev": "expo start --dev-client",
+    "dev:install": "node ./scripts/dev-install.mjs",
+    "diagnose": "node ./scripts/doctor.mjs",
     "preexport": "pnpm build:graph",
     "export": "expo export --platform all --output-dir dist",
     "typecheck": "tsc --noEmit",
