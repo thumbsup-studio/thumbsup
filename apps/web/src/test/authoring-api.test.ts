@@ -11,7 +11,7 @@ import {
   improveQuiz,
   reviewDraft,
 } from "@/features/authoring/api";
-import { tokenStore } from "@/lib/api/token-store";
+import { tokenStore } from "@/lib/api";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {

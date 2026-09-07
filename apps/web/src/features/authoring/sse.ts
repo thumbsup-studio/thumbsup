@@ -4,8 +4,7 @@
  * 프레임워크 무관 함수로 둬서 파서 로직을 단독 테스트할 수 있게 한다.
  */
 
-import { apiUrl } from "@/lib/api/client";
-import { tokenStore } from "@/lib/api/token-store";
+import { type ApiClient, apiClient } from "@/lib/api";
 
 export type SseHandlers = {
   onLog: (entry: { seq: number; line: string }) => void;
@@ -25,42 +24,49 @@ function parseFrame(frame: string): { name: string; data: string } {
   return { name, data: dataLines.join("\n") };
 }
 
-export async function streamJobLogs(
-  jobId: number,
-  handlers: SseHandlers,
-  signal: AbortSignal,
-): Promise<void> {
-  try {
-    const access = tokenStore.getAccess();
-    const res = await fetch(apiUrl(`/authoring/jobs/${jobId}/stream`), {
-      headers: { Accept: "text/event-stream", Authorization: `Bearer ${access ?? ""}` },
-      signal,
-    });
-    if (!res.ok || !res.body) {
-      handlers.onError(new Error(`stream ${res.status}`));
-      return;
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+type SseDependencies = Pick<ApiClient, "apiUrl" | "getAccessToken">;
+
+/** API 인스턴스를 주입받아 해당 인스턴스의 URL과 토큰으로 SSE를 연결한다. */
+export function createJobLogStreamer({ apiUrl, getAccessToken }: SseDependencies) {
+  return async function streamJobLogs(
+    jobId: number,
+    handlers: SseHandlers,
+    signal: AbortSignal,
+  ): Promise<void> {
+    try {
+      const access = await getAccessToken();
+      const res = await fetch(apiUrl(`/authoring/jobs/${jobId}/stream`), {
+        headers: { Accept: "text/event-stream", Authorization: `Bearer ${access ?? ""}` },
+        signal,
+      });
+      if (!res.ok || !res.body) {
+        handlers.onError(new Error(`stream ${res.status}`));
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
       for (;;) {
-        const sep = buffer.indexOf("\n\n");
-        if (sep < 0) break;
-        const frame = buffer.slice(0, sep);
-        buffer = buffer.slice(sep + 2);
-        const event = parseFrame(frame);
-        if (event.name === "log") handlers.onLog(JSON.parse(event.data));
-        else if (event.name === "status") {
-          handlers.onStatus(JSON.parse(event.data));
-          return;
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        for (;;) {
+          const sep = buffer.indexOf("\n\n");
+          if (sep < 0) break;
+          const frame = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          const event = parseFrame(frame);
+          if (event.name === "log") handlers.onLog(JSON.parse(event.data));
+          else if (event.name === "status") {
+            handlers.onStatus(JSON.parse(event.data));
+            return;
+          }
         }
       }
+    } catch (error) {
+      if (!signal.aborted) handlers.onError(error);
     }
-  } catch (error) {
-    if (!signal.aborted) handlers.onError(error);
-  }
+  };
 }
+
+export const streamJobLogs = createJobLogStreamer(apiClient);

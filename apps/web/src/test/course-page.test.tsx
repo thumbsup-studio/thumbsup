@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CoursePage } from "@/features/course/components/course-page";
-import { type CourseItem, getCourses } from "@/lib/api/course";
+import { type CourseItem, getCourses } from "@/lib/api";
 
 const mockRouter = vi.hoisted(() => ({
   push: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
 }));
 
-vi.mock("@/lib/api/course", () => ({
+vi.mock("@/lib/api", () => ({
   getCourses: vi.fn(),
 }));
 

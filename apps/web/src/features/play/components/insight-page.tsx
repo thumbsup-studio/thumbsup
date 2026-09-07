@@ -33,11 +33,7 @@ import {
   isUnauthorized,
 } from "@/features/play/quiz-shared";
 import { usePrefersReducedMotion } from "@/features/play/use-prefers-reduced-motion";
-import {
-  type AnnotatedText,
-  getQuizExplanation,
-  type QuizExplanationResponse,
-} from "@/lib/api/quiz";
+import { type AnnotatedText, getQuizExplanation, type QuizExplanationResponse } from "@/lib/api";
 
 type InsightPageProps = {
   /** 값이 있으면 이 문제로 스텝 한 판이 끝났다는 뜻 — 완주 요약 카드를 그린다. */

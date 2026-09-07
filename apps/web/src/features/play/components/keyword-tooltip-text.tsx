@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FollowUpKeyword } from "@/features/play/types";
-import type { AnnotatedText, QuizKeyword } from "@/lib/api/quiz";
+import type { AnnotatedText, QuizKeyword } from "@/lib/api";
 
 type KeywordTooltipTextProps = {
   dict: Map<string, string>;

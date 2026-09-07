@@ -1,5 +1,5 @@
 import type { QuizChoice, QuizDifficulty, QuizType } from "@thumbsup/core/quiz-shared";
-import { apiRequest } from "./client";
+import type { ApiRequest } from "./client";
 
 export type { QuizChoice, QuizDifficulty, QuizType } from "@thumbsup/core/quiz-shared";
 
@@ -111,49 +111,53 @@ export type QuizStepBriefingResponse = {
   blocks: QuizStepBriefingBlock[];
 };
 
-/** courseId 생략 시 서버가 기본 코스를 쓴다(코스 탭에서 코스를 지정해 진입할 때만 넘긴다). */
-export function getNextQuiz(courseId?: number): Promise<QuizNextResponse> {
-  return apiRequest<QuizNextResponse>(
-    courseId ? `/quizzes/next?courseId=${courseId}` : "/quizzes/next",
-  );
-}
+export function createQuizApi(apiRequest: ApiRequest) {
+  return {
+    /** courseId 생략 시 서버가 기본 코스를 쓴다(코스 탭에서 코스를 지정해 진입할 때만 넘긴다). */
+    getNextQuiz(courseId?: number): Promise<QuizNextResponse> {
+      return apiRequest<QuizNextResponse>(
+        courseId ? `/quizzes/next?courseId=${courseId}` : "/quizzes/next",
+      );
+    },
 
-/** 해당 코스에서 지금 풀 차례인 스텝의 문제 전 개념 브리핑. */
-export function getNextStepBriefing(courseId: number): Promise<QuizStepBriefingResponse> {
-  return apiRequest<QuizStepBriefingResponse>(`/courses/${courseId}/next-step/briefing`);
-}
+    /** 해당 코스에서 지금 풀 차례인 스텝의 문제 전 개념 브리핑. */
+    getNextStepBriefing(courseId: number): Promise<QuizStepBriefingResponse> {
+      return apiRequest<QuizStepBriefingResponse>(`/courses/${courseId}/next-step/briefing`);
+    },
 
-/** 브리핑에서 확정한 스텝 안에서 아직 시도하지 않은 다음 문제. */
-export function getNextQuizForStep(quizStepId: number): Promise<QuizNextResponse> {
-  return apiRequest<QuizNextResponse>(`/quiz-steps/${quizStepId}/quizzes/next`);
-}
+    /** 브리핑에서 확정한 스텝 안에서 아직 시도하지 않은 다음 문제. */
+    getNextQuizForStep(quizStepId: number): Promise<QuizNextResponse> {
+      return apiRequest<QuizNextResponse>(`/quiz-steps/${quizStepId}/quizzes/next`);
+    },
 
-/** 유저가 완료한(현재 진행 스텝보다 이전) 스텝 목록 — 히스토리 복습 화면용. */
-export function getCompletedSteps(): Promise<CompletedStepsResponse> {
-  return apiRequest<CompletedStepsResponse>("/quizzes/steps/completed");
-}
+    /** 유저가 완료한(현재 진행 스텝보다 이전) 스텝 목록 — 히스토리 복습 화면용. */
+    getCompletedSteps(): Promise<CompletedStepsResponse> {
+      return apiRequest<CompletedStepsResponse>("/quizzes/steps/completed");
+    },
 
-/**
- * 지정한 스텝·슬롯의 문제 1개. `/quizzes/next`와 동일 계약이지만 시도 여부와 무관하게
- * 항상 슬롯 순서로 준다(완료 스텝 재풀이용).
- */
-export function getStepQuiz(stepOrder: number, slotOrder: number): Promise<QuizNextResponse> {
-  return apiRequest<QuizNextResponse>(`/quizzes/steps/${stepOrder}/${slotOrder}`);
-}
+    /**
+     * 지정한 스텝·슬롯의 문제 1개. `/quizzes/next`와 동일 계약이지만 시도 여부와 무관하게
+     * 항상 슬롯 순서로 준다(완료 스텝 재풀이용).
+     */
+    getStepQuiz(stepOrder: number, slotOrder: number): Promise<QuizNextResponse> {
+      return apiRequest<QuizNextResponse>(`/quizzes/steps/${stepOrder}/${slotOrder}`);
+    },
 
-export function submitQuizAnswer(quizId: number, answers: string[]): Promise<AnswerSubmitResponse> {
-  return apiRequest<AnswerSubmitResponse>(`/quizzes/${quizId}/answers`, {
-    method: "POST",
-    body: { answers },
-  });
-}
+    submitQuizAnswer(quizId: number, answers: string[]): Promise<AnswerSubmitResponse> {
+      return apiRequest<AnswerSubmitResponse>(`/quizzes/${quizId}/answers`, {
+        method: "POST",
+        body: { answers },
+      });
+    },
 
-export function requestQuizHint(quizId: number): Promise<QuizHintResponse> {
-  return apiRequest<QuizHintResponse>(`/quizzes/${quizId}/hints`, {
-    method: "POST",
-  });
-}
+    requestQuizHint(quizId: number): Promise<QuizHintResponse> {
+      return apiRequest<QuizHintResponse>(`/quizzes/${quizId}/hints`, {
+        method: "POST",
+      });
+    },
 
-export function getQuizExplanation(quizId: number): Promise<QuizExplanationResponse> {
-  return apiRequest<QuizExplanationResponse>(`/quizzes/${quizId}/explanation`);
+    getQuizExplanation(quizId: number): Promise<QuizExplanationResponse> {
+      return apiRequest<QuizExplanationResponse>(`/quizzes/${quizId}/explanation`);
+    },
+  };
 }

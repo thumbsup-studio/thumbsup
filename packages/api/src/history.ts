@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import type { ApiRequest } from "./client";
 
 export type HistoryGraphRelatedStep = {
   stepOrder: number;
@@ -24,6 +24,10 @@ export type HistoryGraphResponse = {
   edges: HistoryGraphEdge[];
 };
 
-export function getHistoryGraph(): Promise<HistoryGraphResponse> {
-  return apiRequest<HistoryGraphResponse>("/history/graph");
+export function createHistoryApi(apiRequest: ApiRequest) {
+  return {
+    getHistoryGraph(): Promise<HistoryGraphResponse> {
+      return apiRequest<HistoryGraphResponse>("/history/graph");
+    },
+  };
 }
