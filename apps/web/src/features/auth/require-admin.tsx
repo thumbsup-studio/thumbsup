@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
-import { fetchMe } from "@/features/profile/api";
-import { ApiError } from "@/lib/api";
+import { ApiError, getMyProfile } from "@/lib/api";
 
 /**
  * /authoring(문제 저작 대시보드) 진입 관문(이슈 176) — `GET /auth/me`의 role이 ADMIN인지 확인해
@@ -18,7 +17,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   useEffect(() => {
     let ignore = false;
 
-    fetchMe()
+    getMyProfile()
       .then((me) => {
         if (ignore) return;
         if (me.role === "ADMIN") {

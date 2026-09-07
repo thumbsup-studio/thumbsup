@@ -6,8 +6,8 @@ import { LockIcon, MailIcon, RotateCcwIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
-import { fetchMe } from "@/features/profile/api";
-import { ApiError, login, NetworkError } from "@/lib/api";
+import { ApiError, getMyProfile, login, NetworkError } from "@/lib/api";
+import { getAuthoringUrl } from "./authoring-url";
 import { PlaceholderLink } from "./placeholder-link";
 import { validateEmail, validatePassword } from "./validation";
 
@@ -38,9 +38,9 @@ export function LoginForm() {
       // role 조회 실패는 로그인 성공과 분리 — 홈으로 폴백한다.
       let destination = "/";
       try {
-        const me = await fetchMe();
+        const me = await getMyProfile();
         if (me.role === "ADMIN") {
-          destination = "/authoring";
+          destination = getAuthoringUrl();
         }
       } catch {
         // role 확인 실패 시 홈으로(로그인 자체는 성공).

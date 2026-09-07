@@ -1,5 +1,6 @@
 "use client";
 
+import { BriefingContent } from "@thumbsup/ui-web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -7,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Feedback } from "@/components/ui/feedback";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BriefingContent } from "@/features/briefing/components/briefing-content";
 import {
   buildCourseListHref,
   buildPlayHref,

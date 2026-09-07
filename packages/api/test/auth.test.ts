@@ -7,6 +7,27 @@ beforeEach(() => {
 });
 
 describe("auth", () => {
+  it("현재 로그인한 사용자의 프로필과 역할을 조회한다", async () => {
+    const storage = createMemoryTokenStorage({ accessToken: "a", refreshToken: "r" });
+    const client = createApiClient({ baseUrl: "https://api.example.com", tokenStorage: storage });
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        200,
+        envelope("SUCCESS", { email: "admin@example.com", role: "ADMIN" }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(client.getMyProfile()).resolves.toEqual({
+      email: "admin@example.com",
+      role: "ADMIN",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.com/api/v1/auth/me",
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer a" }) }),
+    );
+  });
+
   it("signup과 login 성공 시 발급 토큰을 저장한다", async () => {
     const storage = createMemoryTokenStorage();
     const client = createApiClient({ baseUrl: "https://api.example.com", tokenStorage: storage });

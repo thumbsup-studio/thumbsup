@@ -16,6 +16,7 @@ export const {
   getCompletedSteps,
   getCourses,
   getHistoryGraph,
+  getMyProfile,
   getNextQuiz,
   getNextQuizForStep,
   getNextStepBriefing,
