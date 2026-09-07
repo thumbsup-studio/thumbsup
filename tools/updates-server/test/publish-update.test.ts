@@ -67,6 +67,14 @@ describe('publishUpdate', () => {
     ]);
     expect(puts.at(-1)?.input.IfMatch).toBe('"index-v1"');
     expect(puts.at(-1)?.input.IfNoneMatch).toBeUndefined();
+    const indexBody = JSON.parse(String(puts.at(-1)?.input.Body));
+    expect(indexBody.channels['pr-348'][0]).toMatchObject({
+      prNumber: 348,
+      branch: 'feat/348-pr-bundle-publish',
+      title: 'safe publish',
+      commit: sha,
+      runtimeVersion: '0.1.0',
+    });
   });
 
   it('reloads and retries the index after a competing conditional write', async () => {

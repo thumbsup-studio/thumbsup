@@ -5,6 +5,10 @@ export interface ChannelUpdate {
   runtimeVersion: string;
   createdAt: string;
   type?: 'update';
+  prNumber?: number;
+  branch?: string;
+  title?: string;
+  commit?: string;
 }
 
 export interface ChannelRollback {
