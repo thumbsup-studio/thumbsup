@@ -8,6 +8,7 @@ const baseEnvironment = {
   EXPO_PUBLIC_API_URL: "https://staging-api.thumbsup.example",
   EXPO_PUBLIC_UPDATES_URL: "https://updates.thumbsup.example",
   EXPO_PUBLIC_UPDATES_CHANNEL: "staging",
+  MOBILE_BUILD_NUMBER: "42",
 };
 
 describe("buildExpoConfig", () => {
@@ -26,6 +27,8 @@ describe("buildExpoConfig", () => {
     expect(config.name).toBe(name);
     expect(config.ios?.bundleIdentifier).toBe(applicationId);
     expect(config.android?.package).toBe(applicationId);
+    expect(config.android?.versionCode).toBe(42);
+    expect(config.ios?.buildNumber).toBe("42");
     expect(config.scheme).toBe(scheme);
     expect(config.updates?.requestHeaders).toEqual(
       channel ? { "expo-channel-name": channel } : undefined,
@@ -110,5 +113,11 @@ describe("buildExpoConfig", () => {
       codeSigningCertificate: "../../.omc/331/certificate.pem",
       codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
     });
+  });
+
+  it("rejects an invalid native build number", () => {
+    expect(() => buildExpoConfig({ ...baseEnvironment, MOBILE_BUILD_NUMBER: "0" })).toThrow(
+      "positive integer",
+    );
   });
 });

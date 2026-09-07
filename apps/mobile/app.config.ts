@@ -58,9 +58,18 @@ function updatesBaseUrl(value: string): string {
   return url.origin;
 }
 
+function parseBuildNumber(value: string | undefined): number {
+  const normalized = value?.trim() || "1";
+  if (!/^[1-9]\d*$/.test(normalized)) {
+    throw new Error("[mobile config] MOBILE_BUILD_NUMBER must be a positive integer");
+  }
+  return Number(normalized);
+}
+
 export function buildExpoConfig(environment: Environment): ExpoConfig {
   const appEnvironment = parseAppEnvironment(environment.APP_ENV);
   const profile = profiles[appEnvironment];
+  const buildNumber = parseBuildNumber(environment.MOBILE_BUILD_NUMBER);
   const buildProfile = environment.EAS_BUILD_PROFILE?.trim();
   if (buildProfile && buildProfile !== appEnvironment) {
     throw new Error(
@@ -121,9 +130,11 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
     ios: {
       supportsTablet: true,
       bundleIdentifier: profile.applicationId,
+      buildNumber: String(buildNumber),
     },
     android: {
       package: profile.applicationId,
+      versionCode: buildNumber,
     },
     web: {
       bundler: "metro",
@@ -142,6 +153,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
       "expo-secure-store",
       "expo-asset",
       ...(usesLocalCleartext ? ["./plugins/with-staging-cleartext"] : []),
+      "./plugins/with-ci-android-signing",
     ],
     experiments: { typedRoutes: true },
     extra: {

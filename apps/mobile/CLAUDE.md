@@ -4,6 +4,7 @@
 
 - [로컬 개발](./docs/local-dev.md): 환경 설정, dev-client 설치, 기기별 네트워크 연결
 - [빌드 파이프라인](./docs/build-pipeline.md): 현재 CI·PR 번들 흐름과 예정된 배포
+- [서명 자격증명 운영](../../docs/mobile/signing-credentials.md): Android·Apple 자격증명 생성, 보관, 회전, 복구
 - [staging QA](./docs/staging-qa.md): PR 채널 선택기 사용법과 복구 절차
 
 ## 로컬 명령
