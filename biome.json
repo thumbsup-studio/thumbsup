@@ -10,6 +10,13 @@
       "apps/web/*.json",
       "apps/web/*.mjs",
       "apps/web/scripts/**",
+      "apps/mobile/src/**",
+      "apps/mobile/*.ts",
+      "apps/mobile/*.tsx",
+      "apps/mobile/*.json",
+      "apps/mobile/*.js",
+      "apps/mobile/*.mjs",
+      "apps/mobile/scripts/**",
       "packages/**/*.ts",
       "packages/**/*.tsx",
       "packages/**/*.json"
