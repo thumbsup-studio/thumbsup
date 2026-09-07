@@ -32,11 +32,14 @@ reviews:
     - path: 'apps/authoring/**'
       instructions: |
         이 경로는 문제 저작용 웹 애플리케이션입니다.
+        사용자 라우트는 /authoring 접두사 없이 /, /drafts, /jobs, /quizzes를 사용하며,
+        이전 /authoring 경로는 next.config.ts의 호환 리다이렉트로만 유지합니다.
         다음을 우선적으로 리뷰하세요:
         - 문제 생성·검수·승인 흐름의 상태 전이와 권한 검사
         - 타입 안정성, 비동기 작업·SSE 연결의 오류 및 재시도 처리
         - 운영 문제를 변경하는 동작의 확인 절차와 실패 안전성
         - 접근성 및 공통 패키지 재사용
+        - xterm과 SSE 로그 스트림 의존성이 apps/authoring 밖으로 새지 않는지
 
         다음은 과하게 지적하지 마세요:
         - 단순 취향 차이의 네이밍

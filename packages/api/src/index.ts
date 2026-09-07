@@ -65,3 +65,4 @@ export type {
   RetryHintBlank,
 } from "./quiz";
 export type { TokenStorage, Tokens } from "./token-storage";
+export { createWebTokenStorage, type WebTokenStorage } from "./web-token-storage";

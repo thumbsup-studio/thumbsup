@@ -6,7 +6,7 @@
 
 ## 1. 문제 정의
 
-문제 저작 대시보드의 "라이브 문제" 탭(`/authoring/quizzes`)은 지금 문제 **요약**(유형·난이도·질문 텍스트)만 보여준다. 관리자가 각 코스의 문제에 담긴 **키워드·해설(요약/실무예시/오답)·꼬리질문·선택지·정답**을 확인할 방법이 없다.
+문제 저작 대시보드의 "라이브 문제" 탭(`/quizzes`, 분리 전 `/authoring/quizzes`)은 지금 문제 **요약**(유형·난이도·질문 텍스트)만 보여준다. 관리자가 각 코스의 문제에 담긴 **키워드·해설(요약/실무예시/오답)·꼬리질문·선택지·정답**을 확인할 방법이 없다.
 
 목표: 코스 → 스텝 → 문제 → 전체 상세를 훑어보는 뷰. 지금은 코스가 OS 1개뿐이지만, 라우트·API·화면 구조를 다중 코스에 맞춰 forward-compatible하게 만든다.
 
@@ -22,11 +22,11 @@
 ## 3. 아키텍처 & 데이터 흐름
 
 ```
-/authoring/quizzes            →  CoursesIndexScreen (기존 요약 탭 자리 재작성)
+/quizzes                      →  CoursesIndexScreen (기존 요약 탭 자리 재작성)
                                  GET /authoring/courses → 코스 카드 목록(현재 OS 1개)
-        │ 코스 클릭 → /authoring/quizzes/{courseId}
+        │ 코스 클릭 → /quizzes/{courseId}
         ▼
-/authoring/quizzes/[course]   →  CourseQuizzesScreen (신규)
+/quizzes/[course]             →  CourseQuizzesScreen (신규)
                                  GET /authoring/courses/{courseId}/quizzes
                                  STEP 아코디언 → 문제 요약 행 → 클릭 → 전체 상세(QuizDetailCard)
 ```
@@ -74,11 +74,11 @@ GET /api/v1/authoring/courses/{courseId}/quizzes
 ### 5.1 파일
 
 ```
-apps/web/src/app/authoring/quizzes/page.tsx                  (재작성) → CoursesIndexScreen
-apps/web/src/app/authoring/quizzes/[course]/page.tsx         (신규)   → CourseQuizzesScreen({courseId})
-apps/web/src/features/authoring/components/courses-index-screen.tsx  (신규)
-apps/web/src/features/authoring/components/course-quizzes-screen.tsx (신규)
-apps/web/src/features/authoring/components/quiz-detail-card.tsx      (신규, 추출)
+apps/authoring/src/app/(dashboard)/quizzes/page.tsx                  (재작성) → CoursesIndexScreen
+apps/authoring/src/app/(dashboard)/quizzes/[course]/page.tsx         (신규)   → CourseQuizzesScreen({courseId})
+apps/authoring/src/features/authoring/components/courses-index-screen.tsx  (신규)
+apps/authoring/src/features/authoring/components/course-quizzes-screen.tsx (신규)
+apps/authoring/src/features/authoring/components/quiz-detail-card.tsx      (신규, 추출)
 ```
 
 ### 5.2 QuizDetailCard 추출 (surgical)
@@ -87,7 +87,7 @@ apps/web/src/features/authoring/components/quiz-detail-card.tsx      (신규, �
 
 ### 5.3 CoursesIndexScreen
 
-- `getAuthoringCourses()` 호출 → 코스 카드 목록. 각 카드: title(+category chip) → `<Link href={/authoring/quizzes/${courseId}}>`.
+- `getAuthoringCourses()` 호출 → 코스 카드 목록. 각 카드: title(+category chip) → `<Link href={/quizzes/${courseId}}>`.
 - 로딩 Skeleton / 에러 Feedback(재시도) / 빈 상태 EmptyState. 401→`/login`, 403→`/` (기존 패턴 동일).
 
 ### 5.4 CourseQuizzesScreen (핵심 인터랙션 — 3단 아코디언)
@@ -123,7 +123,7 @@ getAuthoringCourseQuizzes(courseId: number): Promise<AuthoringCourseDetail>
 
 ## 7. 완료 기준
 
-- `/authoring/quizzes` 코스 인덱스 → 코스 클릭 → `/authoring/quizzes/[course]` 이동.
+- `/quizzes` 코스 인덱스 → 코스 클릭 → `/quizzes/[course]` 이동.
 - 스텝 아코디언(초기 접힘) → 스텝 펼침 → 문제 행 클릭 → 키워드·해설·꼬리질문·선택지·정답 전체 노출.
 - 문제별 "개선" 진입점 유지.
 - 서버 신규 엔드포인트 2개 ADMIN 게이트 동작 + 테스트, 없는 courseId 404.

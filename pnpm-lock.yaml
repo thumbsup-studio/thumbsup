@@ -8,6 +8,70 @@ importers:
 
   .: {}
 
+  apps/authoring:
+    dependencies:
+      '@thumbsup/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@thumbsup/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@thumbsup/tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
+      '@thumbsup/ui-web':
+        specifier: workspace:*
+        version: link:../../packages/ui-web
+      '@xterm/addon-fit':
+        specifier: ^0.11.0
+        version: 0.11.0
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
+      next:
+        specifier: 16.2.10
+        version: 16.2.10(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      react-dom:
+        specifier: 19.2.4
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@biomejs/biome':
+        specifier: 2.5.2
+        version: 2.5.2
+      '@tailwindcss/postcss':
+        specifier: ^4
+        version: 4.3.3
+      '@testing-library/jest-dom':
+        specifier: ^6.9.1
+        version: 6.10.0(@testing-library/dom@10.4.1)
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.2.7(@types/react@19.2.4))(@types/react@19.2.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      '@types/react':
+        specifier: ^19
+        version: 19.2.4
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.7(@types/react@19.2.4)
+      jsdom:
+        specifier: ^27.0.1
+        version: 27.4.0
+      tailwindcss:
+        specifier: ^4
+        version: 4.3.3
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@20.19.43)(jiti@2.7.0)(jsdom@27.4.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.0)
+
   apps/mobile:
     dependencies:
       '@thumbsup/tokens':
@@ -125,12 +189,6 @@ importers:
       '@thumbsup/ui-web':
         specifier: workspace:*
         version: link:../../packages/ui-web
-      '@xterm/addon-fit':
-        specifier: ^0.11.0
-        version: 0.11.0
-      '@xterm/xterm':
-        specifier: ^6.0.0
-        version: 6.0.0
       canvas-confetti:
         specifier: 1.9.3
         version: 1.9.3
