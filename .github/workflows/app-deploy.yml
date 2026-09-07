@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: 워크스페이스 의존성 설치
         if: steps.guard.outputs.skip != 'true'
-        run: pnpm --dir .. install --frozen-lockfile --virtual-store-dir "$GITHUB_WORKSPACE/app/node_modules/.pnpm"
+        run: pnpm --dir .. install --frozen-lockfile
       - name: Vercel 배포
         id: deploy
         if: steps.guard.outputs.skip != 'true'
@@ -67,7 +67,8 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then FLAG="--prod"; ENV_NAME="production"; else FLAG=""; ENV_NAME="preview"; fi
           npx vercel@54 pull --yes --environment=$ENV_NAME --token="$VERCEL_TOKEN"
           npx vercel@54 build $FLAG --token="$VERCEL_TOKEN"
-          URL=$(npx vercel@54 deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
+          mv .vercel ../.vercel
+          URL=$(npx vercel@54 --cwd .. deploy --prebuilt $FLAG --token="$VERCEL_TOKEN")
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "배포 완료: $URL"
 
