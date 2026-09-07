@@ -9,8 +9,9 @@ Vercel에 GitHub Actions로 배포한다 (`.github/workflows/web-deploy.yml`). G
 
 ## 트리거
 
-- **main push (`apps/web/**` 변경)** → 프로덕션 배포 (`vercel deploy --prod`)
-- **PR (`apps/web/**` 변경)** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
+- **배포 대상 경로**: `apps/web/**`, `packages/**`, 루트 `package.json`·`pnpm-lock.yaml`·`pnpm-workspace.yaml`·`.nvmrc`, `.github/workflows/web-deploy.yml`
+- **main push에서 배포 대상 경로 변경** → 프로덕션 배포 (`vercel deploy --prod`)
+- **PR에서 배포 대상 경로 변경** → 프리뷰 배포 + PR에 프리뷰 URL sticky 코멘트
 - **`server/**`만 변경** → 워크플로는 시작되지만 paths-filter 결과에 따라 deploy 잡을 스킵한다. 서버는 별도 `server-deploy.yml`이 main push(`server/**`)를 AWS ECR로 배포한다 — web(Vercel)과 완전히 분리된 파이프라인이다.
 
 ## 도메인

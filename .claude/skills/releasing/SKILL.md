@@ -29,7 +29,7 @@ description: 릴리즈(버전·태그·GitHub Release·CHANGELOG) 처리. releas
 
 ## 버전의 단일 소스
 
-`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 존재하는 `apps/*/package.json`의 version은 릴리즈 시 여기에 맞춰 갱신된다(수동 편집 금지 — Release PR이 관리).
+`.release-please-manifest.json`이 현재 버전의 진실 소스다. `version.txt`와 `release-please-config.json`의 `extra-files`에 등록된 앱 `package.json`만 릴리즈 시 여기에 맞춰 갱신된다. 현재 등록된 앱 파일은 `apps/web/package.json`이며, 새 앱은 `extra-files`에 별도로 등록해야 한다(수동 편집 금지 — Release PR이 관리).
 
 ## 배포와의 관계
 

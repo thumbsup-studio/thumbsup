@@ -17,6 +17,9 @@ concurrency:
 jobs:
   changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
       app_exists: ${{ steps.exists.outputs.app_exists }}
