@@ -2,8 +2,19 @@ import type { ApiRequest } from "./client";
 import { ApiError } from "./errors";
 import type { TokenStorage, Tokens } from "./token-storage";
 
+export type Role = "USER" | "ADMIN";
+
+export type MyProfile = {
+  email: string;
+  role: Role;
+};
+
 export function createAuthApi(apiRequest: ApiRequest, tokenStorage: TokenStorage) {
   return {
+    getMyProfile(): Promise<MyProfile> {
+      return apiRequest<MyProfile>("/auth/me");
+    },
+
     async signup(email: string, password: string): Promise<Tokens> {
       const tokens = await apiRequest<Tokens>("/auth/signup", {
         method: "POST",

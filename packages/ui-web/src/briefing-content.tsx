@@ -1,14 +1,22 @@
-import { Card } from "@/components/ui/card";
-import { Chip } from "@/components/ui/chip";
-import type { QuizStepBriefingBlock, QuizStepBriefingBlockType } from "@/lib/api";
+import { Card } from "./card";
+import { Chip } from "./chip";
 
-const BLOCK_LABEL: Record<QuizStepBriefingBlockType, string> = {
+export type BriefingBlockType = "CONCEPT" | "EXAMPLE" | "CAUTION";
+
+export type BriefingBlock = {
+  type: BriefingBlockType;
+  heading: string;
+  content: string;
+  displayOrder: number;
+};
+
+const BLOCK_LABEL: Record<BriefingBlockType, string> = {
   CONCEPT: "핵심 개념",
   EXAMPLE: "예시",
   CAUTION: "주의",
 };
 
-const BLOCK_TONE: Record<QuizStepBriefingBlockType, "primary" | "success" | "danger"> = {
+const BLOCK_TONE: Record<BriefingBlockType, "primary" | "success" | "danger"> = {
   CONCEPT: "primary",
   EXAMPLE: "success",
   CAUTION: "danger",
@@ -16,14 +24,17 @@ const BLOCK_TONE: Record<QuizStepBriefingBlockType, "primary" | "success" | "dan
 
 type BriefingContentProps = {
   summary: string;
-  blocks: QuizStepBriefingBlock[];
+  blocks: BriefingBlock[];
   headingLevel?: "h2" | "h3" | "h4";
   /** 저작 검수는 전체 보기, 학습자 첫 진입은 요약 우선 보기로 구분한다. */
   variant?: "full" | "overview";
   expanded?: boolean;
 };
 
-/** 학습 화면과 저작 검수 화면이 같은 순서·분류로 브리핑을 보여주는 공통 표현. */
+/**
+ * 학습 화면과 저작 검수 화면이 공유하는 순수 표시 컴포넌트다.
+ * 두 기능 중 어느 한쪽에도 소유권을 두지 않도록 이슈 338에서 ui-web으로 승격했다.
+ */
 export function BriefingContent({
   summary,
   blocks,

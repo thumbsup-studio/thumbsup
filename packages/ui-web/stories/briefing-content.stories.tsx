@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { BriefingContent } from "./briefing-content";
+import { BriefingContent } from "../src/briefing-content";
 
 const meta = {
-  title: "Features/Briefing/BriefingContent",
+  title: "UI/BriefingContent",
   component: BriefingContent,
   args: {
     summary: "CPU를 기다리는 작업의 실행 순서와 응답성 사이의 관계를 살펴봅니다.",

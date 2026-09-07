@@ -7,11 +7,8 @@
  */
 
 import type { ProfileData } from "@/features/profile/types";
-import { apiRequest } from "@/lib/api";
-
-type MeResponse = { email: string; role: ProfileData["role"] };
+import { getMyProfile } from "@/lib/api";
 
 export async function fetchMe(): Promise<ProfileData> {
-  const res = await apiRequest<MeResponse>("/auth/me");
-  return { email: res.email, role: res.role };
+  return getMyProfile();
 }

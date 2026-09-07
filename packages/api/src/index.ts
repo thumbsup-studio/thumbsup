@@ -35,6 +35,7 @@ export type {
   EnvelopeResult,
   RequestOptions,
 } from "./client";
+export type { MyProfile, Role } from "./auth";
 export type { CourseItem, CourseListResponse, CourseStep, CourseStepState } from "./course";
 export { ApiError, ErrorCode, type ErrorCodeValue, type FieldError, NetworkError } from "./errors";
 export type {

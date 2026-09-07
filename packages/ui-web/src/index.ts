@@ -1,5 +1,6 @@
 export * from "./bottom-sheet";
 export * from "./bottom-tab-bar";
+export * from "./briefing-content";
 export * from "./button";
 export * from "./card";
 export * from "./chip";

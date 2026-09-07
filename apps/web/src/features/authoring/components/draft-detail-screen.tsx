@@ -1,5 +1,6 @@
 "use client";
 
+import { BriefingContent } from "@thumbsup/ui-web";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import { ApproveSheet } from "@/features/authoring/components/approve-sheet";
 import { QuizDetailCard } from "@/features/authoring/components/quiz-detail-card";
 import { ReviewSheet } from "@/features/authoring/components/review-sheet";
 import type { DraftDetail, DraftOrigin, DraftStatus } from "@/features/authoring/types";
-import { BriefingContent } from "@/features/briefing/components/briefing-content";
 import { ApiError } from "@/lib/api";
 
 type LoadState =

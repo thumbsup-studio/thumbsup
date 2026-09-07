@@ -1,8 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/features/auth/login-form";
-import { fetchMe } from "@/features/profile/api";
-import { ApiError, login } from "@/lib/api";
+import { ApiError, getMyProfile, login } from "@/lib/api";
 import { AppToastProvider } from "@/providers/app-toast-provider";
 
 const renderForm = () => render(<LoginForm />, { wrapper: AppToastProvider });
@@ -13,12 +12,11 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, login: vi.fn() };
+  return { ...actual, getMyProfile: vi.fn(), login: vi.fn() };
 });
-vi.mock("@/features/profile/api", () => ({ fetchMe: vi.fn() }));
 
 const loginMock = vi.mocked(login);
-const fetchMeMock = vi.mocked(fetchMe);
+const getMyProfileMock = vi.mocked(getMyProfile);
 
 function fillForm(email: string, password: string) {
   fireEvent.change(screen.getByLabelText("이메일"), { target: { value: email } });
@@ -26,16 +24,17 @@ function fillForm(email: string, password: string) {
 }
 
 beforeEach(() => {
+  vi.unstubAllEnvs();
   pushMock.mockClear();
   replaceMock.mockClear();
   loginMock.mockReset();
-  fetchMeMock.mockReset();
+  getMyProfileMock.mockReset();
 });
 
 describe("LoginForm", () => {
   it("일반 유저 로그인 성공 시 입력값으로 login을 호출하고 홈으로 이동한다", async () => {
     loginMock.mockResolvedValue({ accessToken: "a", refreshToken: "r" });
-    fetchMeMock.mockResolvedValue({ email: "user@example.com", role: "USER" });
+    getMyProfileMock.mockResolvedValue({ email: "user@example.com", role: "USER" });
     renderForm();
 
     fillForm("user@example.com", "password123");
@@ -47,7 +46,7 @@ describe("LoginForm", () => {
 
   it("ADMIN 로그인 성공 시 저작 대시보드(/authoring)로 이동한다", async () => {
     loginMock.mockResolvedValue({ accessToken: "a", refreshToken: "r" });
-    fetchMeMock.mockResolvedValue({ email: "admin@thumbsup.local", role: "ADMIN" });
+    getMyProfileMock.mockResolvedValue({ email: "admin@thumbsup.local", role: "ADMIN" });
     renderForm();
 
     fillForm("admin@thumbsup.local", "admin1234");
@@ -56,9 +55,21 @@ describe("LoginForm", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/authoring"));
   });
 
+  it("저작 앱 URL이 설정되면 ADMIN 로그인 후 절대 URL로 이동한다", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AUTHORING_URL", "https://authoring.example.com");
+    loginMock.mockResolvedValue({ accessToken: "a", refreshToken: "r" });
+    getMyProfileMock.mockResolvedValue({ email: "admin@thumbsup.local", role: "ADMIN" });
+    renderForm();
+
+    fillForm("admin@thumbsup.local", "admin1234");
+    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("https://authoring.example.com"));
+  });
+
   it("role 조회가 실패해도 로그인은 성공 처리하고 홈으로 이동한다", async () => {
     loginMock.mockResolvedValue({ accessToken: "a", refreshToken: "r" });
-    fetchMeMock.mockRejectedValue(new Error("network"));
+    getMyProfileMock.mockRejectedValue(new Error("network"));
     renderForm();
 
     fillForm("user@example.com", "password123");
