@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   cleanup:
+    # S3 버킷·정리 역할 Variables가 등록되기 전에는 건너뛴다 (#348)
+    if: vars.MOBILE_ARTIFACTS_BUCKET != '' && vars.MOBILE_STAGING_CLEANUP_ROLE_ARN != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: mobile-staging-cleanup
