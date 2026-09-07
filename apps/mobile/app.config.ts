@@ -114,6 +114,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
       ],
       "expo-updates",
       "expo-secure-store",
+      "expo-asset",
     ],
     experiments: { typedRoutes: true },
     extra: {

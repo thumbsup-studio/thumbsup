@@ -4,7 +4,9 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "build:graph": "node ./scripts/build-graph.mjs",
     "dev": "expo start",
+    "preexport": "pnpm build:graph",
     "export": "expo export --platform all --output-dir dist",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
@@ -16,8 +18,10 @@
     "@thumbsup/core": "workspace:*",
     "@thumbsup/tokens": "workspace:*",
     "expo": "57.0.20",
+    "expo-asset": "~57.0.16",
     "expo-constants": "57.0.17",
     "expo-dev-client": "57.0.18",
+    "expo-file-system": "~57.0.6",
     "expo-font": "57.0.3",
     "expo-linking": "57.0.9",
     "expo-router": "57.0.19",
@@ -35,6 +39,7 @@
     "react-native-safe-area-context": "5.7.0",
     "react-native-screens": "4.26.0",
     "react-native-web": "0.21.2",
+    "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
@@ -44,10 +49,13 @@
     "@types/node": "22.18.1",
     "@types/react": "19.2.4",
     "babel-preset-expo": "57.0.10",
+    "force-graph": "1.51.2",
     "jest": "29.7.0",
     "jest-expo": "57.0.5",
     "tailwindcss": "3.4.17",
     "typescript": "6.0.3",
+    "vite": "7.1.5",
+    "vite-plugin-singlefile": "2.3.0",
     "vitest": "3.2.4"
   }
 }
