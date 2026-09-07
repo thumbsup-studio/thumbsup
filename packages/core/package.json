@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./auth-validation": "./src/auth-validation.ts",
     "./play-logic": "./src/play-logic.ts",
     "./celebration-logic": "./src/celebration-logic.ts",
     "./completion-params": "./src/completion-params.ts",

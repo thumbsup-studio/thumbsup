@@ -55,8 +55,11 @@ export class ApiError extends Error {
 
 /** 네트워크 단절 등 응답을 받기 전 실패 */
 export class NetworkError extends Error {
-  constructor(message = "네트워크에 연결할 수 없어요.") {
+  readonly reason: "offline" | "timeout";
+
+  constructor(message = "네트워크에 연결할 수 없어요.", reason: "offline" | "timeout" = "offline") {
     super(message);
     this.name = "NetworkError";
+    this.reason = reason;
   }
 }

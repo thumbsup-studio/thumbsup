@@ -1,3 +1,4 @@
+export * from "./auth-validation";
 export * from "./celebration-logic";
 export * from "./completion-params";
 export * from "./course-params";
