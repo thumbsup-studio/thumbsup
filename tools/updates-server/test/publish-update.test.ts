@@ -1,18 +1,28 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdtemp } from 'node:fs/promises';
 import {
+  CopyObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { describe, expect, it } from 'vitest';
-import { cleanupUpdate, publishUpdate, type S3ClientLike } from '../scripts/publish-update.js';
+import {
+  cleanupUpdate,
+  promoteUpdate,
+  publishUpdate,
+  rollbackUpdate,
+  type S3ClientLike,
+} from '../scripts/publish-update.js';
 import { LocalS3Client } from '../scripts/local-s3-client.js';
 
 const sha = '0123456789abcdef0123456789abcdef01234567';
+const execFileAsync = promisify(execFile);
 
 async function artifact(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'thumbsup-pr-bundle-'));
@@ -158,4 +168,126 @@ describe('cleanupUpdate', () => {
     if (!list) throw new Error('ListObjectsV2Command was not sent');
     expect(list.input.Prefix).toBe('updates/pr-348/');
   });
+});
+
+describe('promoteUpdate', () => {
+  it('copies the exact staging objects and advances the production pointer', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'thumbsup-promote-store-'));
+    await publishUpdate({
+      artifactDir: await artifact(),
+      bucket: 'local',
+      prNumber: 348,
+      commit: sha,
+      channel: 'staging',
+      client: new LocalS3Client(root),
+    });
+    const result = await promoteUpdate({
+      bucket: 'local',
+      from: 'staging',
+      to: 'production',
+      updateId: sha,
+      runtimeVersion: '0.1.0',
+      rolloutPercentage: 25,
+      client: new LocalS3Client(root),
+      now: () => '2026-09-09T00:00:00.000Z',
+    });
+
+    expect(result).toMatchObject({ updateId: sha, copiedObjects: 3, dryRun: false });
+    expect(await readFile(
+      join(root, 'updates', 'production', sha, '_expo', 'static', 'js', 'ios', 'app.hbc'),
+      'utf8',
+    )).toBe('ios');
+    const index = JSON.parse(await readFile(join(root, 'channels', 'index.json'), 'utf8'));
+    expect(index.channels.production[0]).toMatchObject({
+      updateId: sha,
+      runtimeVersion: '0.1.0',
+      rolloutPercentage: 25,
+      createdAt: '2026-09-09T00:00:00.000Z',
+    });
+  });
+
+  it('validates runtimeVersion and makes no copy during dry-run', async () => {
+    const commands: unknown[] = [];
+    const client: S3ClientLike = {
+      async send(command) {
+        commands.push(command);
+        if (command instanceof GetObjectCommand) {
+          if (command.input.Key === 'channels/index.json') {
+            return { ETag: '"v1"', Body: stream({ channels: { staging: [{
+              updateId: sha, runtimeVersion: '0.1.0', createdAt: '2026-09-08T00:00:00.000Z',
+            }] } }) };
+          }
+          return { Body: stream({ extra: { runtimeVersion: '0.1.0' } }) };
+        }
+        if (command instanceof ListObjectsV2Command) {
+          return { Contents: [{ Key: `updates/staging/${sha}/metadata.json` }] };
+        }
+        return {};
+      },
+    };
+    await expect(promoteUpdate({
+      bucket: 'bucket', from: 'staging', to: 'production', updateId: sha,
+      runtimeVersion: '9.9.9', client,
+    })).rejects.toThrow('runtimeVersion mismatch');
+    const result = await promoteUpdate({
+      bucket: 'bucket', from: 'staging', to: 'production', updateId: sha,
+      runtimeVersion: '0.1.0', dryRun: true, client,
+    });
+    expect(result.dryRun).toBe(true);
+    expect(commands.some((command) => command instanceof CopyObjectCommand)).toBe(false);
+    expect(commands.some((command) => command instanceof PutObjectCommand)).toBe(false);
+  });
+});
+
+describe('rollbackUpdate', () => {
+  it('moves a previous production update to the channel head', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'thumbsup-rollback-store-'));
+    await mkdir(join(root, 'channels'), { recursive: true });
+    await writeFile(join(root, 'channels', 'index.json'), JSON.stringify({ channels: {
+      production: [{ updateId: sha, runtimeVersion: '0.1.0', createdAt: '2026-09-08T00:00:00.000Z' }],
+    } }));
+    await rollbackUpdate({
+      bucket: 'local', channel: 'production', to: sha, client: new LocalS3Client(root),
+      now: () => '2026-09-09T00:00:00.000Z',
+    });
+    const index = JSON.parse(await readFile(join(root, 'channels', 'index.json'), 'utf8'));
+    expect(index.channels.production[0]).toMatchObject({
+      updateId: sha, rolloutPercentage: 100, createdAt: '2026-09-09T00:00:00.000Z',
+    });
+  });
+
+  it('writes an embedded rollback directive for the kill switch', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'thumbsup-kill-switch-store-'));
+    await mkdir(join(root, 'channels'), { recursive: true });
+    await writeFile(join(root, 'channels', 'index.json'), JSON.stringify({ channels: {} }));
+    await rollbackUpdate({
+      bucket: 'local', channel: 'production', to: 'embedded', runtimeVersion: '0.1.0',
+      commitTime: '2026-09-07T00:00:00.000Z', client: new LocalS3Client(root),
+      now: () => '2026-09-09T00:00:00.000Z',
+    });
+    const index = JSON.parse(await readFile(join(root, 'channels', 'index.json'), 'utf8'));
+    expect(index.channels.production[0]).toEqual({
+      type: 'rollback',
+      runtimeVersion: '0.1.0',
+      createdAt: '2026-09-09T00:00:00.000Z',
+      commitTime: '2026-09-07T00:00:00.000Z',
+    });
+  });
+});
+
+it('parses the promote --dry-run CLI without mutating the local store', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'thumbsup-cli-dry-run-'));
+  await publishUpdate({
+    artifactDir: await artifact(), bucket: 'local', prNumber: 348, commit: sha,
+    channel: 'staging', client: new LocalS3Client(root),
+  });
+  const { stdout } = await execFileAsync('pnpm', [
+    'exec', 'tsx', 'scripts/publish-update.ts', 'promote',
+    '--local-store', root, '--from', 'staging', '--update-id', sha,
+    '--to', 'production', '--runtime-version', '0.1.0', '--dry-run',
+  ], { cwd: new URL('..', import.meta.url) });
+
+  expect(JSON.parse(stdout)).toMatchObject({ updateId: sha, dryRun: true, copiedObjects: 3 });
+  const index = JSON.parse(await readFile(join(root, 'channels', 'index.json'), 'utf8'));
+  expect(index.channels.production).toBeUndefined();
 });

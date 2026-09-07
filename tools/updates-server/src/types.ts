@@ -9,6 +9,7 @@ export interface ChannelUpdate {
   branch?: string;
   title?: string;
   commit?: string;
+  rolloutPercentage?: number;
 }
 
 export interface ChannelRollback {

@@ -23,12 +23,15 @@ jest.mock("expo-constants", () => ({
   },
 }));
 jest.mock("expo-device", () => ({ modelName: "Pixel 9" }));
-jest.mock("expo-updates", () => ({
-  updateId: "update-1",
-  runtimeVersion: "0.1.0",
-  channel: "production",
-  isEmergencyLaunch: true,
-  launchDuration: 240,
+jest.mock("expo-updates/build/ExpoUpdates", () => ({
+  __esModule: true,
+  default: {
+    updateId: "update-1",
+    runtimeVersion: "0.1.0",
+    channel: "production",
+    isEmergencyLaunch: true,
+    launchDuration: 240,
+  },
 }));
 
 describe("ObservabilityProvider", () => {

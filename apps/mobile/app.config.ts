@@ -1,4 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
+import packageJson from "./package.json";
 
 export const UPDATES_URL_PLACEHOLDER = "https://updates.thumbsup.invalid";
 
@@ -94,8 +95,11 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
     throw new Error("[mobile config] staging HTTP updates URL must use a local emulator host");
   }
   const codeSigningCertificate = environment.EXPO_UPDATES_CODE_SIGNING_CERTIFICATE?.trim();
-  if (codeSigningCertificate && appEnvironment !== "staging") {
-    throw new Error("[mobile config] local code signing certificate is only allowed in staging");
+  if (codeSigningCertificate && appEnvironment === "development") {
+    throw new Error("[mobile config] code signing certificate is not allowed in development");
+  }
+  if (appEnvironment === "production" && !codeSigningCertificate) {
+    throw new Error("[mobile config] production requires EXPO_UPDATES_CODE_SIGNING_CERTIFICATE");
   }
   const configuredChannel = environment.EXPO_PUBLIC_UPDATES_CHANNEL?.trim();
   if (configuredChannel && configuredChannel !== profile.channel) {
@@ -109,7 +113,7 @@ export function buildExpoConfig(environment: Environment): ExpoConfig {
   return {
     name: profile.appName,
     slug: "thumbsup-mobile",
-    version: "0.1.0",
+    version: packageJson.version,
     orientation: "portrait",
     scheme: profile.scheme,
     userInterfaceStyle: "automatic",

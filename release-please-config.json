@@ -10,6 +10,11 @@
           "type": "json",
           "path": "apps/web/package.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "apps/mobile/package.json",
+          "jsonpath": "$.version"
         }
       ]
     }

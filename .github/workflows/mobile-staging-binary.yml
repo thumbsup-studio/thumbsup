@@ -2,6 +2,15 @@ name: Mobile Staging Binary
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: staging 앱 또는 production release candidate
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - release-candidate
   push:
     branches: [main]
 
@@ -16,10 +25,12 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      native: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.native == 'true' }}
+      native: ${{ steps.mode.outputs.native }}
+      mode: ${{ steps.mode.outputs.value }}
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: dorny/paths-filter@v3
         if: github.event_name == 'push'
@@ -36,10 +47,70 @@ jobs:
               - 'pnpm-workspace.yaml'
               - '.nvmrc'
               - '.github/workflows/mobile-staging-binary.yml'
+            release_candidate:
+              - 'apps/mobile/package.json'
+      - name: 빌드 모드 결정
+        id: mode
+        env:
+          REQUESTED_MODE: ${{ inputs.mode }}
+          VERSION_CHANGED: ${{ steps.filter.outputs.release_candidate }}
+        run: |
+          mode=staging
+          native="${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.native == 'true' }}"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            mode="$REQUESTED_MODE"
+          elif [[ "$VERSION_CHANGED" == true ]] && [[ "$(git log -1 --pretty=%s)" == "chore(main): release "* ]]; then
+            previous="$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)"
+            if [[ -n "$previous" ]] && [[ -n "$(git diff --name-only "$previous" HEAD^ -- apps/mobile packages)" ]]; then
+              mode=release-candidate
+            else
+              native=false
+            fi
+          fi
+          echo "value=$mode" >> "$GITHUB_OUTPUT"
+          echo "native=$native" >> "$GITHUB_OUTPUT"
+          echo "선택한 빌드 모드: $mode (native=$native)"
 
-  android:
+  build-number:
     needs: changes
     if: needs.changes.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      value: ${{ steps.reserve.outputs.value }}
+    steps:
+      - name: AWS 바이너리 역할 위임
+        if: vars.MOBILE_ARTIFACTS_BUCKET != '' && vars.MOBILE_BINARY_PUBLISH_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: 단조 증가 build number 예약
+        id: reserve
+        env:
+          ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+          BINARY_ROLE_ARN: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+        run: |
+          candidate=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          if [[ -n "$ARTIFACTS_BUCKET" && -n "$BINARY_ROLE_ARN" ]]; then
+            previous="$(aws s3 cp "s3://$ARTIFACTS_BUCKET/binaries/build-number.txt" - 2>/dev/null || echo 0)"
+            if (( candidate <= previous )); then candidate=$((previous + 1)); fi
+            printf '%s\n' "$candidate" > "$RUNNER_TEMP/build-number.txt"
+            aws s3 cp "$RUNNER_TEMP/build-number.txt" "s3://$ARTIFACTS_BUCKET/binaries/build-number.txt" --no-progress
+          else
+            echo "::warning title=build number 로컬 계산::S3 변수가 없어 github.run_number×100+run_attempt 값을 씁니다."
+          fi
+          if (( candidate > 2100000000 )); then
+            echo "Android versionCode 범위를 초과했습니다: $candidate" >&2
+            exit 1
+          fi
+          echo "value=$candidate" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: [changes, build-number]
+    if: needs.changes.outputs.native == 'true' && needs.changes.outputs.mode == 'staging'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     permissions:
@@ -49,7 +120,7 @@ jobs:
       APP_ENV: staging
       EAS_BUILD_PROFILE: staging
       NODE_ENV: production
-      MOBILE_BUILD_NUMBER: ${{ github.run_number }}
+      MOBILE_BUILD_NUMBER: ${{ needs.build-number.outputs.value }}
       EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
       EXPO_PUBLIC_UPDATES_CHANNEL: staging
       EXPO_PUBLIC_UPDATES_URL: ${{ vars.MOBILE_UPDATES_URL || 'https://updates.thumbsup.invalid' }}
@@ -170,8 +241,8 @@ jobs:
         run: rm -f "$RUNNER_TEMP/staging-upload.keystore"
 
   ios:
-    needs: changes
-    if: needs.changes.outputs.native == 'true'
+    needs: [changes, build-number]
+    if: needs.changes.outputs.native == 'true' && needs.changes.outputs.mode == 'staging'
     runs-on: macos-latest
     timeout-minutes: 60
     permissions:
@@ -180,7 +251,7 @@ jobs:
       APP_ENV: staging
       EAS_BUILD_PROFILE: staging
       NODE_ENV: production
-      MOBILE_BUILD_NUMBER: ${{ github.run_number }}
+      MOBILE_BUILD_NUMBER: ${{ needs.build-number.outputs.value }}
       EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
       EXPO_PUBLIC_UPDATES_CHANNEL: staging
       EXPO_PUBLIC_UPDATES_URL: ${{ vars.MOBILE_UPDATES_URL || 'https://updates.thumbsup.invalid' }}
@@ -360,6 +431,313 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/mobile-build.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/staging.mobileprovision" "$RUNNER_TEMP/profile.plist" "$RUNNER_TEMP/asc-api-key.json" "$RUNNER_TEMP"/AuthKey_*.p8
+          if [[ -n "${{ steps.credentials.outputs.profile_uuid }}" ]]; then
+            rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/${{ steps.credentials.outputs.profile_uuid }}.mobileprovision"
+          fi
+
+  release-candidate-android:
+    needs: [changes, build-number]
+    if: needs.changes.outputs.native == 'true' && needs.changes.outputs.mode == 'release-candidate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP_ENV: production
+      EAS_BUILD_PROFILE: production
+      NODE_ENV: production
+      MOBILE_BUILD_NUMBER: ${{ needs.build-number.outputs.value }}
+      EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
+      EXPO_PUBLIC_UPDATES_CHANNEL: production
+      EXPO_PUBLIC_UPDATES_URL: ${{ vars.MOBILE_UPDATES_URL }}
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.MOBILE_PRODUCTION_ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MOBILE_PRODUCTION_ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.MOBILE_PRODUCTION_ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.MOBILE_PRODUCTION_ANDROID_KEY_PASSWORD }}
+      UPDATES_CERTIFICATE_BASE64: ${{ secrets.MOBILE_UPDATES_CODE_SIGNING_CERTIFICATE_BASE64 }}
+      GOOGLE_PLAY_JSON_BASE64: ${{ secrets.MOBILE_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.7'
+          bundler-cache: true
+          working-directory: apps/mobile
+      - name: production RC 설정 확인
+        run: |
+          required=(
+            EXPO_PUBLIC_UPDATES_URL ARTIFACTS_BUCKET ANDROID_KEYSTORE_BASE64
+            ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
+            UPDATES_CERTIFICATE_BASE64 GOOGLE_PLAY_JSON_BASE64
+          )
+          for key in "${required[@]}"; do
+            if [[ -z "${!key}" ]]; then echo "$key is required for a release candidate" >&2; exit 1; fi
+          done
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: OTA 공개 인증서 설치
+        run: |
+          printf '%s' "$UPDATES_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/updates-certificate.pem"
+          echo "EXPO_UPDATES_CODE_SIGNING_CERTIFICATE=$RUNNER_TEMP/updates-certificate.pem" >> "$GITHUB_ENV"
+      - name: production export·채널 서핑 차단 검사
+        run: |
+          pnpm --filter mobile build:graph
+          pnpm --filter mobile exec expo export --platform all --output-dir "$RUNNER_TEMP/release-candidate/dist"
+          if grep -R -a -q 'setUpdateRequestHeadersOverride' "$RUNNER_TEMP/release-candidate/dist"; then
+            echo "production 번들에 staging 채널 전환 API가 포함됐습니다." >&2
+            exit 1
+          fi
+      - name: OTA RC 메타데이터 생성
+        run: |
+          runtime_version="$(jq -er '.version' apps/mobile/package.json)"
+          jq -n \
+            --arg runtimeVersion "$runtime_version" \
+            --arg commit "$GITHUB_SHA" \
+            --arg branch "$GITHUB_REF_NAME" \
+            --arg title "production release candidate $runtime_version" \
+            --arg releaseTag "v$runtime_version" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, branch: $branch, title: $title, releaseTag: $releaseTag, createdAt: $createdAt}' \
+            > "$RUNNER_TEMP/release-candidate/metadata.json"
+      - name: Android production 네이티브 프로젝트 생성
+        run: pnpm --filter mobile exec expo prebuild --clean --platform android --no-install
+      - name: production AAB 빌드
+        working-directory: apps/mobile/android
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/production-upload.keystore"
+          ./gradlew :app:bundleRelease --no-daemon \
+            -Dorg.gradle.jvmargs='-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' \
+            -PTHUMBSUP_UPLOAD_STORE_FILE="$RUNNER_TEMP/production-upload.keystore" \
+            -PTHUMBSUP_UPLOAD_STORE_PASSWORD="$ANDROID_KEYSTORE_PASSWORD" \
+            -PTHUMBSUP_UPLOAD_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
+            -PTHUMBSUP_UPLOAD_KEY_PASSWORD="$ANDROID_KEY_PASSWORD"
+      - name: Android RC artifact 메타데이터 생성
+        id: metadata
+        run: |
+          artifact_dir="$RUNNER_TEMP/mobile-release-candidate-android"
+          mkdir -p "$artifact_dir"
+          cp apps/mobile/android/app/build/outputs/bundle/release/app-release.aab "$artifact_dir/thumbsup-production.aab"
+          runtime_version="$(jq -er '.version' apps/mobile/package.json)"
+          sha256="$(shasum -a 256 "$artifact_dir/thumbsup-production.aab" | cut -d' ' -f1)"
+          jq -n \
+            --arg runtimeVersion "$runtime_version" --arg commit "$GITHUB_SHA" \
+            --arg buildNumber "$MOBILE_BUILD_NUMBER" --arg sha256 "$sha256" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, profile: "release-candidate", appEnvironment: "production", platform: "android", packageName: "studio.thumbsup", buildNumber: $buildNumber, sha256: $sha256, signed: true, signing: "play-upload", createdAt: $createdAt}' \
+            > "$artifact_dir/metadata.json"
+          echo "runtime_version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-release-candidate-android-${{ github.run_number }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mobile-release-candidate-android
+          if-no-files-found: error
+          retention-days: 30
+      - name: AWS 바이너리 배포 역할 위임
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: Android RC와 staging OTA를 S3에 배포
+        env:
+          RUNTIME_VERSION: ${{ steps.metadata.outputs.runtime_version }}
+        run: |
+          prefix="s3://$ARTIFACTS_BUCKET/binaries/staging/$RUNTIME_VERSION/android"
+          aws s3 cp "$RUNNER_TEMP/mobile-release-candidate-android/thumbsup-production.aab" "$prefix/app.aab" --no-progress
+          aws s3 cp "$RUNNER_TEMP/mobile-release-candidate-android/metadata.json" "$prefix/metadata.json" --content-type application/json --no-progress
+          pnpm --filter updates-server updates -- publish \
+            --artifact-dir "$RUNNER_TEMP/release-candidate" \
+            --bucket "$ARTIFACTS_BUCKET" --channel staging --commit "$GITHUB_SHA"
+      - name: Play 내부 테스트 트랙 업로드
+        working-directory: apps/mobile
+        run: |
+          printf '%s' "$GOOGLE_PLAY_JSON_BASE64" | base64 --decode > "$RUNNER_TEMP/google-play.json"
+          bundle exec fastlane supply \
+            --aab "$RUNNER_TEMP/mobile-release-candidate-android/thumbsup-production.aab" \
+            --package_name studio.thumbsup --track internal --release_status draft \
+            --json_key "$RUNNER_TEMP/google-play.json" \
+            --skip_upload_metadata true --skip_upload_images true --skip_upload_screenshots true
+      - name: Android 임시 자격증명 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/production-upload.keystore" "$RUNNER_TEMP/google-play.json" "$RUNNER_TEMP/updates-certificate.pem"
+
+  release-candidate-ios:
+    needs: [changes, build-number]
+    if: needs.changes.outputs.native == 'true' && needs.changes.outputs.mode == 'release-candidate'
+    runs-on: macos-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      APP_ENV: production
+      EAS_BUILD_PROFILE: production
+      NODE_ENV: production
+      MOBILE_BUILD_NUMBER: ${{ needs.build-number.outputs.value }}
+      EXPO_PUBLIC_API_URL: https://thumbsup-api.duckdns.org
+      EXPO_PUBLIC_UPDATES_CHANNEL: production
+      EXPO_PUBLIC_UPDATES_URL: ${{ vars.MOBILE_UPDATES_URL }}
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+      IOS_CERTIFICATE_P12_BASE64: ${{ secrets.MOBILE_PRODUCTION_IOS_CERTIFICATE_P12_BASE64 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.MOBILE_PRODUCTION_IOS_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MOBILE_PRODUCTION_IOS_PROVISIONING_PROFILE_BASE64 }}
+      APPLE_TEAM_ID: ${{ vars.MOBILE_APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.MOBILE_ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.MOBILE_ASC_ISSUER_ID }}
+      ASC_API_KEY_P8_BASE64: ${{ secrets.MOBILE_ASC_API_KEY_P8_BASE64 }}
+      UPDATES_CERTIFICATE_BASE64: ${{ secrets.MOBILE_UPDATES_CODE_SIGNING_CERTIFICATE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.4'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.7'
+          bundler-cache: true
+          working-directory: apps/mobile
+      - name: production RC 설정 확인
+        run: |
+          required=(
+            EXPO_PUBLIC_UPDATES_URL ARTIFACTS_BUCKET IOS_CERTIFICATE_P12_BASE64
+            IOS_CERTIFICATE_PASSWORD IOS_PROVISIONING_PROFILE_BASE64 APPLE_TEAM_ID
+            ASC_KEY_ID ASC_ISSUER_ID ASC_API_KEY_P8_BASE64 UPDATES_CERTIFICATE_BASE64
+          )
+          for key in "${required[@]}"; do
+            if [[ -z "${!key}" ]]; then echo "$key is required for a release candidate" >&2; exit 1; fi
+          done
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: OTA 공개 인증서 설치
+        run: |
+          printf '%s' "$UPDATES_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/updates-certificate.pem"
+          echo "EXPO_UPDATES_CODE_SIGNING_CERTIFICATE=$RUNNER_TEMP/updates-certificate.pem" >> "$GITHUB_ENV"
+      - name: iOS production 네이티브 프로젝트 생성
+        run: pnpm --filter mobile exec expo prebuild --clean --platform ios --no-install
+      - name: CocoaPods 의존성 설치
+        working-directory: apps/mobile
+        run: bundle exec pod install --project-directory=ios
+      - name: iOS 배포 자격증명 설치
+        id: credentials
+        run: |
+          keychain_path="$RUNNER_TEMP/mobile-production.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate_path="$RUNNER_TEMP/distribution.p12"
+          profile_path="$RUNNER_TEMP/production.mobileprovision"
+          printf '%s' "$IOS_CERTIFICATE_P12_BASE64" | openssl base64 -d -A -out "$certificate_path"
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | openssl base64 -d -A -out "$profile_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" login.keychain-db
+          security default-keychain -d user -s "$keychain_path"
+          security cms -D -i "$profile_path" > "$RUNNER_TEMP/profile.plist"
+          profile_uuid="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")"
+          profile_name="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$profile_path" "$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.mobileprovision"
+          echo "profile_uuid=$profile_uuid" >> "$GITHUB_OUTPUT"
+          echo "profile_name=$profile_name" >> "$GITHUB_OUTPUT"
+      - name: iOS production archive 생성
+        working-directory: apps/mobile
+        env:
+          PROFILE_NAME: ${{ steps.credentials.outputs.profile_name }}
+        run: |
+          xcodebuild archive \
+            -workspace ios/ThumbsUp.xcworkspace -scheme ThumbsUp -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/ThumbsUp.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>destination</key><string>export</string>
+            <key>method</key><string>app-store-connect</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>provisioningProfiles</key><dict>
+              <key>studio.thumbsup</key><string>$PROFILE_NAME</string>
+            </dict>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/ThumbsUp.xcarchive" \
+            -exportPath "$RUNNER_TEMP/production-export" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+      - name: iOS RC artifact 메타데이터 생성
+        id: metadata
+        run: |
+          artifact_dir="$RUNNER_TEMP/mobile-release-candidate-ios"
+          mkdir -p "$artifact_dir"
+          ipa="$(find "$RUNNER_TEMP/production-export" -maxdepth 1 -name '*.ipa' -print -quit)"
+          cp "$ipa" "$artifact_dir/thumbsup-production.ipa"
+          runtime_version="$(jq -er '.version' apps/mobile/package.json)"
+          sha256="$(shasum -a 256 "$artifact_dir/thumbsup-production.ipa" | cut -d' ' -f1)"
+          jq -n \
+            --arg runtimeVersion "$runtime_version" --arg commit "$GITHUB_SHA" \
+            --arg buildNumber "$MOBILE_BUILD_NUMBER" --arg sha256 "$sha256" \
+            --arg createdAt "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{schemaVersion: 1, runtimeVersion: $runtimeVersion, commit: $commit, profile: "release-candidate", appEnvironment: "production", platform: "ios", bundleIdentifier: "studio.thumbsup", buildNumber: $buildNumber, sha256: $sha256, signed: true, signing: "app-store", createdAt: $createdAt}' \
+            > "$artifact_dir/metadata.json"
+          echo "runtime_version=$runtime_version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-release-candidate-ios-${{ github.run_number }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mobile-release-candidate-ios
+          if-no-files-found: error
+          retention-days: 30
+      - name: AWS 바이너리 배포 역할 위임
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: iOS RC를 S3에 배포
+        env:
+          RUNTIME_VERSION: ${{ steps.metadata.outputs.runtime_version }}
+        run: |
+          prefix="s3://$ARTIFACTS_BUCKET/binaries/staging/$RUNTIME_VERSION/ios"
+          aws s3 cp "$RUNNER_TEMP/mobile-release-candidate-ios/thumbsup-production.ipa" "$prefix/app.ipa" --no-progress
+          aws s3 cp "$RUNNER_TEMP/mobile-release-candidate-ios/metadata.json" "$prefix/metadata.json" --content-type application/json --no-progress
+      - name: TestFlight 내부 테스트 업로드
+        working-directory: apps/mobile
+        run: |
+          printf '%s' "$ASC_API_KEY_P8_BASE64" | openssl base64 -d -A -out "$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          jq -n --arg key_id "$ASC_KEY_ID" --arg issuer_id "$ASC_ISSUER_ID" \
+            --rawfile key "$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8" \
+            '{key_id: $key_id, issuer_id: $issuer_id, key: $key, in_house: false}' \
+            > "$RUNNER_TEMP/asc-api-key.json"
+          bundle exec fastlane pilot upload \
+            --ipa "$RUNNER_TEMP/mobile-release-candidate-ios/thumbsup-production.ipa" \
+            --api_key_path "$RUNNER_TEMP/asc-api-key.json" \
+            --skip_waiting_for_build_processing true --distribute_external false
+      - name: iOS 임시 자격증명 삭제
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/mobile-production.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/production.mobileprovision" "$RUNNER_TEMP/profile.plist" "$RUNNER_TEMP/asc-api-key.json" "$RUNNER_TEMP"/AuthKey_*.p8 "$RUNNER_TEMP/updates-certificate.pem"
           if [[ -n "${{ steps.credentials.outputs.profile_uuid }}" ]]; then
             rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/${{ steps.credentials.outputs.profile_uuid }}.mobileprovision"
           fi
