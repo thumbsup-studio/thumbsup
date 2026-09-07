@@ -1,0 +1,22 @@
+{
+  "name": "@thumbsup/tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./web.css": "./generated/web-theme.css",
+    "./nativewind-v4": "./generated/nativewind-v4.preset.cjs"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.23.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}

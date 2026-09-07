@@ -4,6 +4,61 @@ import { afterEach } from "vitest";
 
 process.env.NEXT_PUBLIC_API_URL = "https://thumbsup-api.duckdns.org";
 
+// Node 22의 불완전한 전역 Web Storage가 jsdom 구현을 가리는 환경에서도 테스트를 결정적으로 유지한다.
+if (typeof window.localStorage.clear !== "function") {
+  const valuesByStorage = new WeakMap<Storage, Map<string, string>>();
+  const valuesFor = (storage: Storage) => {
+    let values = valuesByStorage.get(storage);
+    if (!values) {
+      values = new Map();
+      valuesByStorage.set(storage, values);
+    }
+    return values;
+  };
+  Object.defineProperties(Storage.prototype, {
+    clear: {
+      configurable: true,
+      value(this: Storage) {
+        valuesFor(this).clear();
+      },
+    },
+    getItem: {
+      configurable: true,
+      value(this: Storage, key: string) {
+        return valuesFor(this).get(key) ?? null;
+      },
+    },
+    key: {
+      configurable: true,
+      value(this: Storage, index: number) {
+        return [...valuesFor(this).keys()][index] ?? null;
+      },
+    },
+    length: {
+      configurable: true,
+      get(this: Storage) {
+        return valuesFor(this).size;
+      },
+    },
+    removeItem: {
+      configurable: true,
+      value(this: Storage, key: string) {
+        valuesFor(this).delete(key);
+      },
+    },
+    setItem: {
+      configurable: true,
+      value(this: Storage, key: string, value: string) {
+        valuesFor(this).set(key, value);
+      },
+    },
+  });
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: Object.create(Storage.prototype) as Storage,
+  });
+}
+
 class MockIntersectionObserver implements IntersectionObserver {
   readonly root: Element | Document | null = null;
   readonly rootMargin = "";
