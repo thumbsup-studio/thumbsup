@@ -44,7 +44,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.native == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     permissions:
       contents: read
       id-token: write
@@ -106,6 +106,7 @@ jobs:
         run: |
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/staging-upload.keystore"
           ./gradlew :app:assembleRelease --no-daemon \
+            -Dorg.gradle.jvmargs='-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' \
             -PTHUMBSUP_UPLOAD_STORE_FILE="$RUNNER_TEMP/staging-upload.keystore" \
             -PTHUMBSUP_UPLOAD_STORE_PASSWORD="$ANDROID_KEYSTORE_PASSWORD" \
             -PTHUMBSUP_UPLOAD_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
@@ -113,7 +114,9 @@ jobs:
       - name: Android release APK debug 서명 대체 빌드
         if: steps.settings.outputs.signing != 'true'
         working-directory: apps/mobile/android
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: >-
+          ./gradlew :app:assembleRelease --no-daemon
+          -Dorg.gradle.jvmargs='-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8'
       - name: Android artifact 메타데이터 생성
         id: metadata
         env:
