@@ -2,6 +2,8 @@
 
 ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([bridge.md](./bridge.md)), 결과 초안을 검수·승인하면 라이브에 반영된다.
 
+운영 주소는 `https://thumbsup-authoring.vercel.app`이다. 다른 배포를 쓰는 브리지는 `THUMBSUP_AUTHORING_URL`로 시작 안내 주소를 맞춘다.
+
 ## 화면 지도
 
 | 라우트 | 화면 | 하는 일 |
@@ -14,7 +16,7 @@ ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([b
 
 대시보드 레이아웃(`apps/authoring/src/app/(dashboard)/layout.tsx`)이 5개 라우트를 `<RequireAdmin>`으로 감싼다. 로그인은 별도 `/login` 라우트에서 처리하며, 5개 대시보드 페이지는 모두 `force-dynamic`이다. 이전 `/authoring/*` 주소는 `next.config.ts`가 새 경로로 영구 리다이렉트한다.
 
-사용자 웹 앱은 `NEXT_PUBLIC_AUTHORING_URL`이 설정된 환경에서 ADMIN 로그인 뒤 독립 저작 앱으로 이동한다. 저작 화면에서 나가는 로그아웃 진입점은 아직 없다(#216).
+사용자 웹 앱은 `NEXT_PUBLIC_AUTHORING_URL`이 설정된 환경에서 ADMIN 로그인 뒤 독립 저작 앱으로 이동한다. 저작 앱의 상단 로그아웃 버튼은 서버 세션 폐기를 시도한 뒤 origin별 로컬 토큰을 지우고 `/login`으로 이동한다.
 
 ## 워크플로우
 
@@ -85,10 +87,8 @@ ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([b
 
 ## 인증 가드
 
-Next.js **미들웨어가 없다.** 라우트 보호가 전부 클라이언트 컴포넌트 가드라, 비ADMIN이 `/authoring`을 직접 열면 `fetchMe` 왕복만큼 빈 화면을 본 뒤 `/`로 튕긴다. 서버는 fail-closed라 데이터 유출은 없다.
+Next.js **미들웨어가 없다.** 라우트 보호가 전부 클라이언트 컴포넌트 가드라, 비ADMIN이 저작 앱 경로를 직접 열면 `fetchMe` 왕복만큼 빈 화면을 본 뒤 `/login`으로 이동한다. 서버는 fail-closed라 데이터 유출은 없다.
 
-ADMIN 판정은 **오직 `GET /auth/me`의 `role`** 이다 — 프론트에서 JWT를 디코드하지 않는다. 로그인 후 `/authoring`으로 보내는 분기는 `login-form.tsx`와 `redirect-if-authenticated.tsx` 두 곳. `RequireAdmin`은 레이아웃 마운트당 1회만 검증하므로 저작 내부 이동에선 재검증되지 않는다.
-
-**회원가입 직후엔 role 분기가 없다** — 무조건 홈으로 간다.
+ADMIN 판정은 **오직 `GET /auth/me`의 `role`** 이다 — 프론트에서 JWT를 디코드하지 않는다. `authoring-login-form.tsx`는 로그인 직후 이 값을 확인해 ADMIN만 `/`로 보내며, 나머지는 토큰을 지우고 로그인 화면에 남긴다. `RequireAdmin`은 레이아웃 마운트당 1회만 검증하므로 저작 내부 이동에선 재검증되지 않는다.
 
 권한이 안 풀리는 문제는 [ADMIN 게이트](../SKILL.md#admin-게이트-fail-closed)를 볼 것.
