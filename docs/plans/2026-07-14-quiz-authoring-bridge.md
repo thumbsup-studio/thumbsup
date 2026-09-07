@@ -4,7 +4,7 @@
 
 **Goal:** 팀원 노트북에서 서버 잡 큐를 폴링해 claude-code/codex/gemini CLI를 **개인 구독 세션으로 헤드리스 실행**하고, 로그를 서버로 중계하며 결과 JSON을 제출하는 Node/TS 실행기.
 
-**Architecture:** `bridge/` 신규 top-level 패키지(모노레포에 루트 pnpm workspace 없음 — app처럼 독립 패키지). 구조 = config + 서버 API 클라이언트 + CLI 어댑터 3종 + 메인 루프. 어댑터는 `execa`로 CLI를 spawn하고 각 CLI의 출력 봉투를 파싱해 **결과 JSON 문자열**을 돌려준다(검증·적용은 서버 책임).
+**Architecture:** `tools/bridge/` 신규 top-level 패키지(모노레포에 루트 pnpm workspace 없음 — app처럼 독립 패키지). 구조 = config + 서버 API 클라이언트 + CLI 어댑터 3종 + 메인 루프. 어댑터는 `execa`로 CLI를 spawn하고 각 CLI의 출력 봉투를 파싱해 **결과 JSON 문자열**을 돌려준다(검증·적용은 서버 책임).
 
 **Tech Stack:** Node 22, TypeScript(strict, NodeNext, ESM), execa ^9, vitest, tsx.
 
@@ -15,7 +15,7 @@
 - 브랜치: `feat/175-authoring-bridge`, 커밋 형식 `feat(bridge): <한국어 요약> (#175)` — main 직접 커밋 금지. (scope `bridge`는 이 패키지 신설에 따른 컨벤션 확장.)
 - **구독 유지 규칙 (전제 보호 — 절대 위반 금지):** 자식 프로세스 env에서 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `GEMINI_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS` 제거. claude에 `--bare` 플래그 금지. Claude Agent SDK 사용 금지(API 키 강제) — CLI 직접 exec만.
 - 프롬프트는 서버가 렌더링해 잡에 실어 보낸다 — 브리지는 **프롬프트를 만들지 않는다** (멍청한 실행기).
-- 게이트: `cd bridge && pnpm typecheck && pnpm test`. 관련 없는 파일 수정 금지. 각 태스크 완료 시 커밋.
+- 게이트: `cd tools/bridge && pnpm typecheck && pnpm test`. 관련 없는 파일 수정 금지. 각 태스크 완료 시 커밋.
 - 테스트에서 실제 CLI(claude/codex/gemini)나 실제 서버를 호출하지 않는다 — 가짜 CLI 스크립트·`node:http` 가짜 서버 픽스처만 사용.
 
 ## 서버 HTTP 계약 (정본은 서버 플랜 — 여기 복제본과 불일치 시 서버 플랜 우선)
@@ -37,7 +37,7 @@ POST /api/v1/authoring/bridge/jobs/{jobId}/fail    {error: string}              
 ## 파일 맵
 
 ```
-bridge/
+tools/bridge/
   package.json, tsconfig.json                          [T1]
   src/config.ts                                        [T1]  ~/.thumbsup/bridge.json 로드·저장
   src/api.ts                                           [T2]  서버 클라이언트 (envelope·refresh)
@@ -56,8 +56,8 @@ bridge/
 ### Task 1: 패키지 스캐폴드 + config
 
 **Files:**
-- Create: `bridge/package.json`, `bridge/tsconfig.json`, `bridge/src/config.ts`
-- Test: `bridge/test/config.test.ts`
+- Create: `tools/bridge/package.json`, `tools/bridge/tsconfig.json`, `tools/bridge/src/config.ts`
+- Test: `tools/bridge/test/config.test.ts`
 
 **Interfaces (Produces):**
 ```ts
@@ -71,7 +71,7 @@ export function saveConfig(config: BridgeConfig, path?: string): void; // 디렉
 - [ ] **Step 1: 스캐폴드 작성**
 
 ```json
-// bridge/package.json
+// tools/bridge/package.json
 {
   "name": "thumbsup-bridge",
   "version": "0.1.0",
@@ -91,7 +91,7 @@ export function saveConfig(config: BridgeConfig, path?: string): void; // 디렉
 ```
 
 ```json
-// bridge/tsconfig.json
+// tools/bridge/tsconfig.json
 {
   "compilerOptions": {
     "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext",
@@ -130,7 +130,7 @@ describe("config", () => {
 });
 ```
 
-- [ ] **Step 3: 실행 — FAIL 확인** — `cd bridge && pnpm install && pnpm test` → 모듈 미존재 FAIL.
+- [ ] **Step 3: 실행 — FAIL 확인** — `cd tools/bridge && pnpm install && pnpm test` → 모듈 미존재 FAIL.
 - [ ] **Step 4: config.ts 구현** — `readFileSync`+`JSON.parse`, 필드별 검증(serverUrl 존재·trailing slash 제거, cli는 3값 중 하나, 토큰 비어있지 않음), `saveConfig`는 `mkdirSync(dirname, {recursive:true})` + `writeFileSync(..., {mode: 0o600})`.
 - [ ] **Step 5: PASS 확인 → Step 6: 커밋** — `feat(bridge): 패키지 스캐폴드·config 로더 (#175)`
 
@@ -139,8 +139,8 @@ describe("config", () => {
 ### Task 2: 서버 API 클라이언트 + 로그인 커맨드
 
 **Files:**
-- Create: `bridge/src/api.ts`, `bridge/src/login.ts`
-- Test: `bridge/test/api.test.ts`
+- Create: `tools/bridge/src/api.ts`, `tools/bridge/src/login.ts`
+- Test: `tools/bridge/test/api.test.ts`
 
 **Interfaces (Produces — T6 러너가 소비):**
 ```ts
@@ -195,8 +195,8 @@ async function request<T>(path: string, init: { method?: string; body?: unknown;
 ### Task 3: 어댑터 인터페이스 + env 새니타이즈 + Claude 어댑터
 
 **Files:**
-- Create: `bridge/src/adapters/types.ts`, `bridge/src/adapters/spawn.ts`, `bridge/src/adapters/claude.ts`
-- Test: `bridge/test/claude-adapter.test.ts`, `bridge/test/fixtures/fake-claude.mjs`
+- Create: `tools/bridge/src/adapters/types.ts`, `tools/bridge/src/adapters/spawn.ts`, `tools/bridge/src/adapters/claude.ts`
+- Test: `tools/bridge/test/claude-adapter.test.ts`, `tools/bridge/test/fixtures/fake-claude.mjs`
 
 **Interfaces (Produces):**
 ```ts
@@ -291,8 +291,8 @@ export function createClaudeAdapter(opts: { bin?: string } = {}): CliAdapter {
 ### Task 4: Codex 어댑터
 
 **Files:**
-- Create: `bridge/src/adapters/codex.ts`
-- Test: `bridge/test/codex-adapter.test.ts`, `bridge/test/fixtures/fake-codex.mjs`
+- Create: `tools/bridge/src/adapters/codex.ts`
+- Test: `tools/bridge/test/codex-adapter.test.ts`, `tools/bridge/test/fixtures/fake-codex.mjs`
 
 **Interfaces:** `export function createCodexAdapter(opts?: { bin?: string }): CliAdapter;`
 
@@ -308,8 +308,8 @@ export function createClaudeAdapter(opts: { bin?: string } = {}): CliAdapter {
 ### Task 5: Gemini 어댑터
 
 **Files:**
-- Create: `bridge/src/adapters/gemini.ts`
-- Test: `bridge/test/gemini-adapter.test.ts`, `bridge/test/fixtures/fake-gemini.mjs`
+- Create: `tools/bridge/src/adapters/gemini.ts`
+- Test: `tools/bridge/test/gemini-adapter.test.ts`, `tools/bridge/test/fixtures/fake-gemini.mjs`
 
 **Interfaces:** `export function createGeminiAdapter(opts?: { bin?: string }): CliAdapter;`
 
@@ -323,8 +323,8 @@ export function createClaudeAdapter(opts: { bin?: string } = {}): CliAdapter {
 ### Task 6: 메인 루프 + CLI 엔트리 + README
 
 **Files:**
-- Create: `bridge/src/runner.ts`, `bridge/src/index.ts`, `bridge/README.md`
-- Test: `bridge/test/runner.test.ts` (가짜 서버 + 가짜 CLI 통합)
+- Create: `tools/bridge/src/runner.ts`, `tools/bridge/src/index.ts`, `tools/bridge/README.md`
+- Test: `tools/bridge/test/runner.test.ts` (가짜 서버 + 가짜 CLI 통합)
 
 **Interfaces:**
 ```ts

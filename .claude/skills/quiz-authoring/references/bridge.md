@@ -1,10 +1,10 @@
-# 브리지 (`bridge/`)
+# 브리지 (`tools/bridge/`)
 
 팀원 노트북에서 도는 로컬 실행기. 서버 잡 큐를 폴링해 **각자의 개인 AI CLI 구독**으로 헤드리스 실행하고, 로그를 중계하고, 결과 JSON을 제출한다. 공용 API 키로 토큰당 과금하지 않는 것이 이 구조의 존재 이유다.
 
 브리지는 프롬프트를 조립하지 않는 **멍청한 실행기**다 — 서버가 렌더링해 잡에 실어 보낸다.
 
-**설치·로그인 정본은 [`bridge/README.md`](../../../../bridge/README.md)다.** 여기에 복붙하지 말고 그쪽을 볼 것. 요약하면 `claude setup-token`으로 구독 로그인 → `pnpm start login` → `pnpm start`.
+**설치·로그인 정본은 [`tools/bridge/README.md`](../../../../tools/bridge/README.md)다.** 여기에 복붙하지 말고 그쪽을 볼 것. 요약하면 `claude setup-token`으로 구독 로그인 → `pnpm start login` → `pnpm start`.
 
 ## ⚠️ 잡은 CLI가 아니라 **계정**으로 라우팅된다
 
@@ -76,7 +76,7 @@ GEMINI_API_KEY · GOOGLE_APPLICATION_CREDENTIALS
 | 스키마를 CLI에 강제 | ✅ `--json-schema` | ❌ (의도적 제거) | ❌ (플래그 없음) |
 | 중간 로그 스트리밍 | ✅ | ✅ | ❌ (완료까지 무음) |
 
-**codex·gemini는 cwd를 지정하지 않아 `bridge/`에서 실행된다** → 레포 루트의 `AGENTS.md`를 상속한다. codex의 `--output-schema`는 strict 비호환(400)이라 제거됐고, 두 CLI 모두 문제 개수를 프롬프트 지시로만 통제하므로 **5문제 제약이 어긋날 확률이 구조적으로 높다.**
+**codex·gemini는 cwd를 지정하지 않아 `tools/bridge/`에서 실행된다** → 레포 루트의 `AGENTS.md`를 상속한다. codex의 `--output-schema`는 strict 비호환(400)이라 제거됐고, 두 CLI 모두 문제 개수를 프롬프트 지시로만 통제하므로 **5문제 제약이 어긋날 확률이 구조적으로 높다.**
 
 팀 주력은 **claude**다(실기기 검증 완료). codex·gemini는 팀 미구독으로 실측 미검증.
 

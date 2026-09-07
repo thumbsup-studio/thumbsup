@@ -24,7 +24,7 @@
 | 명세 수정 자율성 | PR → 스레드 답글 → ✅ 승인 → auto-merge | 원 설계 §2 유지 |
 | 이슈 자율성 | 즉시 등록·수정 + 스레드 사후 보고. 신규 이슈는 보드 **Backlog**에 배치(트리아지 대기) | 원 설계 §2 유지 + 백로그 규칙 |
 | 새 이슈 vs 기존 수정 | 열린 이슈 목록을 판정 프롬프트에 동봉, claude가 create/update 판단 | 별도 중복 검색 로직 없음 |
-| 작업 레포 | `pm-bot/.workrepo/` blobless clone (`git clone --filter=blob:none`) | 워크트리 미사용 — 상주 데몬이 운영자 작업 레포와 `.git`을 공유하면 락 경합·장애 반경 문제 |
+| 작업 레포 | `tools/pm-bot/.workrepo/` blobless clone (`git clone --filter=blob:none`) | 워크트리 미사용 — 상주 데몬이 운영자 작업 레포와 `.git`을 공유하면 락 경합·장애 반경 문제 |
 | 범위 | 이모지 기능만 | Phase 2 백로그 8건은 별도 작업(§9), `action_items` 추적도 비범위(Phase 3) |
 
 ## 3. 이벤트 배관 변경 (Slack 앱)

@@ -5,10 +5,16 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/app-deploy.yml'
   pull_request:
     paths:
       - 'app/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/app-deploy.yml'
 
 concurrency:
@@ -50,7 +56,10 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
+      - name: 워크스페이스 의존성 설치
+        if: steps.guard.outputs.skip != 'true'
+        run: pnpm --dir .. install --frozen-lockfile
       - name: Vercel 배포
         id: deploy
         if: steps.guard.outputs.skip != 'true'

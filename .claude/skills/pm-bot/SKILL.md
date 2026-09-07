@@ -23,7 +23,7 @@ description: Slack에서 팀 대화를 수집하고 명세 근거 Q&A에 답하�
               └─ docs/specs/*.md 를 섹션 단위로 인덱싱
 ```
 
-`bridge/`와 **무관하다.** 둘 다 `claude -p`로 개인 구독을 쓰지만 `import` 관계가 없고, `pm-bot/src/adapters/`는 bridge에서 **복사해 온 독립 사본**이다(`spawn.ts` 첫 줄 주석). bridge가 꺼져 있어도 pm-bot은 돈다.
+`tools/bridge/`와 **무관하다.** 둘 다 `claude -p`로 개인 구독을 쓰지만 `import` 관계가 없고, `tools/pm-bot/src/adapters/`는 bridge에서 **복사해 온 독립 사본**이다(`spawn.ts` 첫 줄 주석). bridge가 꺼져 있어도 pm-bot은 돈다.
 
 ## 기동·종료
 
@@ -37,16 +37,16 @@ pgrep -fl "pm-bot.*src/index.ts"
 
 프로세스가 있으면 켜지 말고 "이미 실행 중"이라고 보고한다. 같은 앱 토큰으로 두 개를 띄우면 Slack이 이벤트를 **한쪽에만** 배달하므로(브로드캐스트 아님) 두 DB에 대화가 쪼개져 쌓인다. 기록이 갈라지면 되돌리기 어렵다.
 
-**2. 기동.** 반드시 `pm-bot/`에서 실행한다 — `dbPath`·`specDir`이 cwd 상대경로라 다른 데서 띄우면 DB가 엉뚱한 곳에 생기고 명세를 못 찾는다.
+**2. 기동.** 반드시 `tools/pm-bot/`에서 실행한다 — `dbPath`·`specDir`이 cwd 상대경로라 다른 데서 띄우면 DB가 엉뚱한 곳에 생기고 명세를 못 찾는다.
 
 ```bash
-cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm start
+cd /Users/kmjnnhyk/DEV/thumbsup/tools/pm-bot && pnpm start
 ```
 
 백그라운드로 띄울 때는 로그를 파일로 받아야 진단할 수 있다:
 
 ```bash
-cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm start > /tmp/pm-bot.log 2>&1
+cd /Users/kmjnnhyk/DEV/thumbsup/tools/pm-bot && pnpm start > /tmp/pm-bot.log 2>&1
 ```
 
 **3. 성공 확인.** 이 두 줄이 **모두** 떠야 한다. 5~10초 걸린다.
@@ -65,7 +65,7 @@ pgrep -f "pm-bot.*src/index.ts" > /dev/null && echo 실행중 || echo 죽음
 ### 상주 (pm2)
 
 ```bash
-cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot
+cd /Users/kmjnnhyk/DEV/thumbsup/tools/pm-bot
 pm2 start "pnpm start" --name pm-bot
 pm2 logs pm-bot
 pm2 stop pm-bot
@@ -84,7 +84,7 @@ pkill -TERM -f "pm-bot.*src/index.ts"
 ### 최초 1회
 
 ```bash
-cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm install
+cd /Users/kmjnnhyk/DEV/thumbsup && pnpm install
 ```
 
 `.env`·`pm-bot.config.json`이 없으면 기동이 실패한다 → Phase 0 셋업 참고.
@@ -117,7 +117,7 @@ cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm install
 
 ### 1. 앱 생성 — https://api.slack.com/apps
 
-`Create New App` → **`From an app manifest`** → `pm-bot/slack-app-manifest.yml` 내용을 YAML 탭에 붙여넣기.
+`Create New App` → **`From an app manifest`** → `tools/pm-bot/slack-app-manifest.yml` 내용을 YAML 탭에 붙여넣기.
 
 수동으로 스코프를 클릭해 넣지 말 것. 매니페스트가 스코프 7개·이벤트 3개·Socket Mode를 한 번에 설정한다.
 
@@ -128,7 +128,7 @@ cd /Users/kmjnnhyk/DEV/thumbsup/pm-bot && pnpm install
 | `xapp-…` | Basic Information → App-Level Tokens → Generate | **`connections:write` 스코프 필수** |
 | `xoxb-…` | OAuth & Permissions → Install to Workspace | 설치해야 발급됨 |
 
-`pm-bot/.env`에 넣는다 (`.env.example` 참고):
+`tools/pm-bot/.env`에 넣는다 (`.env.example` 참고):
 
 ```
 SLACK_BOT_TOKEN=xoxb-...
@@ -137,13 +137,13 @@ SLACK_APP_TOKEN=xapp-...
 
 ### 3. 채널 설정
 
-`pm-bot/pm-bot.config.json` (`pm-bot.config.example.json` 참고):
+`tools/pm-bot/pm-bot.config.json` (`pm-bot.config.example.json` 참고):
 
 ```json
 {
   "channels": ["C0BK8M5N7EU"],
   "dbPath": "./pm-bot.sqlite",
-  "specDir": "../docs/specs",
+  "specDir": "../../docs/specs",
   "github": {
     "repo": "thumbsup-studio/thumbsup",
     "projectOwner": "thumbsup-studio",
@@ -155,7 +155,7 @@ SLACK_APP_TOKEN=xapp-...
 ```
 
 - `channels`는 채널 **이름이 아니라 ID**(`C`로 시작). Slack에서 채널명 클릭 → 정보 창 맨 아래.
-- `specDir`은 현재 `../docs/specs`. example의 `../docs/product`는 스프린트 레포 subtree 병합 후에나 존재한다(미실행).
+- `specDir`은 현재 `../../docs/specs`. example의 `../../docs/product`는 스프린트 레포 subtree 병합 후에나 존재한다(미실행).
 - `github`은 Phase 2 전용(선택). **없으면 GitHub 액션 비활성, 수집·Q&A만 동작**한다 — 명세 PR·이슈 생성 없이 Phase 1처럼 쓸 수 있다.
 
 ### 4. 채널에 초대
@@ -170,7 +170,7 @@ SLACK_APP_TOKEN=xapp-...
 
 매니페스트에 `reaction_added` 이벤트·`reactions:write` 스코프가 추가됐다. 기존 앱에 반영하려면:
 
-1. https://api.slack.com/apps → 앱 선택 → **App Manifest** → `pm-bot/slack-app-manifest.yml` 내용으로 교체 → Save
+1. https://api.slack.com/apps → 앱 선택 → **App Manifest** → `tools/pm-bot/slack-app-manifest.yml` 내용으로 교체 → Save
 2. 스코프가 바뀌었으므로 **Reinstall to Workspace** 버튼이 뜬다 → 재설치 (토큰은 그대로 유효)
 3. 봇 재기동 후 테스트 채널 스레드에 🤖를 달아 👀가 달리는지 확인
 
@@ -223,7 +223,7 @@ Socket Mode 연결에 필요하다. 없으면 부팅하자마자 소켓 연결�
 ## DB 들여다보기
 
 ```bash
-cd pm-bot
+cd tools/pm-bot
 sqlite3 pm-bot.sqlite "select ts, user, text from messages order by ts"
 sqlite3 pm-bot.sqlite "select id, status, error from qa_pending"
 sqlite3 pm-bot.sqlite "select thread_ts, status, error from analyses"
@@ -232,15 +232,15 @@ sqlite3 pm-bot.sqlite "select pr_number, status from spec_prs"
 
 `qa_pending.status`: `pending` → `done` / `failed`(`error`에 사유). 답변 실패 시 스레드에도 `⚠️ 답변 생성에 실패했어요`가 올라간다 — 조용히 실패하지 않는다.
 
-`*.sqlite*`는 `pm-bot/.gitignore`가 덮는다. **이 레포는 public이므로 DB를 레포 루트로 옮기지 말 것** — 루트 `.gitignore`엔 sqlite 규칙이 없어서 Slack 원문이 그대로 커밋된다.
+`*.sqlite*`는 `tools/pm-bot/.gitignore`가 덮는다. **이 레포는 public이므로 DB를 레포 루트로 옮기지 말 것** — 루트 `.gitignore`엔 sqlite 규칙이 없어서 Slack 원문이 그대로 커밋된다.
 
 ## Slack 없이 답변 품질만 보기
 
 `qa-dryrun.ts`가 Slack·DB를 건너뛰고 검색 → 프롬프트 → `claude -p`만 돌린다. 검색이 엉뚱한 문서를 물어오는지 확인할 때 쓴다.
 
 ```bash
-cd pm-bot
-pnpm tsx qa-dryrun.ts ../docs/specs "빈칸 정답 매칭 규칙이 뭐야?"
+cd tools/pm-bot
+pnpm tsx qa-dryrun.ts ../../docs/specs "빈칸 정답 매칭 규칙이 뭐야?"
 ```
 
 히트한 섹션 목록과 최종 답변을 같이 출력한다. 히트 0건이면 봇도 "모른다"고 답한다.
@@ -248,7 +248,7 @@ pnpm tsx qa-dryrun.ts ../docs/specs "빈칸 정답 매칭 규칙이 뭐야?"
 Phase 2 스레드 분석도 dryrun이 있다. `analyze-dryrun.ts`는 Slack 반응 이벤트·DB·`gh` PR 생성 없이 fetch → 판정 → (`--edit` 시) 편집 diff 미리보기까지만 돈다. `config.github`이 있어야 한다(열린 이슈·보드 옵션 조회용, 읽기 전용).
 
 ```bash
-cd pm-bot
+cd tools/pm-bot
 pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <channel> <thread_ts> [--edit]
 ```
 

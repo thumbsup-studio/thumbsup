@@ -4,7 +4,7 @@
 
 **Goal:** Slack 스레드에 🤖 이모지가 달리면 봇이 스레드를 분석해 명세 수정 PR(✅ 승인 → auto-merge)과 GitHub 이슈 등록/갱신(Roadmap 보드 배치)을 수행한다.
 
-**Architecture:** `reaction_added` 이벤트를 라우터가 승인(✅/❌)·트리거(🤖) 분기로 나누고, 트리거는 SQLite 큐(`analyses`)에 넣어 drain 루프가 순차 처리한다. 분석 입력은 DB가 아니라 이모지 시점의 `conversations.replies` 실시간 fetch(봇 메시지 = 허들 AI 노트 포함). 판정과 명세 편집은 `claude -p` 2회 호출로 분리하고, GitHub 실행은 gh CLI 래퍼(`github.ts`)가 결정적으로 수행한다. 명세 PR은 `pm-bot/.workrepo/`(blobless clone)에서 만든다.
+**Architecture:** `reaction_added` 이벤트를 라우터가 승인(✅/❌)·트리거(🤖) 분기로 나누고, 트리거는 SQLite 큐(`analyses`)에 넣어 drain 루프가 순차 처리한다. 분석 입력은 DB가 아니라 이모지 시점의 `conversations.replies` 실시간 fetch(봇 메시지 = 허들 AI 노트 포함). 판정과 명세 편집은 `claude -p` 2회 호출로 분리하고, GitHub 실행은 gh CLI 래퍼(`github.ts`)가 결정적으로 수행한다. 명세 PR은 `tools/pm-bot/.workrepo/`(blobless clone)에서 만든다.
 
 **Tech Stack:** TypeScript / Node ≥22 / ESM, @slack/bolt(Socket Mode), better-sqlite3, execa + gh CLI, vitest. 새 npm 의존성은 `@slack/web-api`(dryrun 하네스용) 1개.
 
@@ -12,14 +12,14 @@
 
 ## Global Constraints
 
-- 작업 경로: `~/DEV/thumbsup__worktrees/feat/202-pm-bot-phase2/pm-bot/` (워크트리, 브랜치 `feat/202-pm-bot-phase2` 생성됨). 모든 상대 경로는 `pm-bot/` 기준
+- 작업 경로: `~/DEV/thumbsup__worktrees/feat/202-pm-bot-phase2/tools/pm-bot/` (워크트리, 브랜치 `feat/202-pm-bot-phase2` 생성됨). 모든 상대 경로는 `tools/pm-bot/` 기준
 - ESM — 로컬 import는 `./foo.js` 확장자 필수. 타입 전용은 `import type`
-- pm-bot은 독립 패키지 — 레포 내 다른 워크스페이스(`app/`, `bridge/`) import 금지
+- pm-bot은 독립 패키지 — 레포 내 다른 워크스페이스(`app/`, `tools/bridge/`) import 금지
 - public 레포 — 토큰·Slack 원문·`*.sqlite*`·`.workrepo/` 커밋 금지
 - gh·git 호출은 전부 CLI(execa) — Octokit 미도입. claude 호출 실패만 1회 재시도(`runWithRetry`), gh·git 실패는 재시도 없이 즉시 보고
 - GitHub 대상: repo `thumbsup-studio/thumbsup`, 프로젝트 **"Thumbs Up Roadmap" #2** (org `thumbsup-studio`). 보드 필드(2026-07-21 실측): `Status`(Todo/In Progress/Done), `Area`(INFRA 환경/S0 로그인/…/QA 검수) — 단 필드·옵션은 하드코딩하지 않고 GraphQL로 런타임 조회
 - 커밋 형식: `<type>(pm-bot): <한국어 요약> (#202)` — commit 스킬 규약. 커밋 명령엔 `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>` 푸터
-- 테스트 실행: `cd pm-bot && pnpm vitest run test/<파일>` (전체는 `pnpm test`), 타입은 `pnpm typecheck`
+- 테스트 실행: `cd tools/pm-bot && pnpm vitest run test/<파일>` (전체는 `pnpm test`), 타입은 `pnpm typecheck`
 
 ---
 
@@ -112,7 +112,7 @@ describe("spec_prs", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/db.test.ts`
+Run: `cd tools/pm-bot && pnpm vitest run test/db.test.ts`
 Expected: FAIL — `requestAnalysis is not a function`
 
 - [ ] **Step 3: 구현** — `src/db.ts`
@@ -223,13 +223,13 @@ markSpecPr(prNumber: number, status: "approved" | "rejected"): void {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/db.test.ts && pnpm typecheck`
+Run: `cd tools/pm-bot && pnpm vitest run test/db.test.ts && pnpm typecheck`
 Expected: PASS (기존 8개 + 신규 6개)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/db.ts pm-bot/test/db.test.ts
+git add tools/pm-bot/src/db.ts tools/pm-bot/test/db.test.ts
 git commit -m "feat(pm-bot): analyses·spec_prs 테이블 — 분석 큐·승인 대기 PR 저장 (#202)"
 ```
 
@@ -300,7 +300,7 @@ describe("routeReaction", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/reactions.test.ts`
+Run: `cd tools/pm-bot && pnpm vitest run test/reactions.test.ts`
 Expected: FAIL — `Cannot find module '../src/reactions.js'`
 
 - [ ] **Step 3: 구현** — `src/reactions.ts` (파일 전체)
@@ -341,13 +341,13 @@ export function routeReaction(ev: ReactionEvent, deps: RouteDeps): Route {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/reactions.test.ts && pnpm typecheck`
+Run: `cd tools/pm-bot && pnpm vitest run test/reactions.test.ts && pnpm typecheck`
 Expected: PASS (5개)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/reactions.ts pm-bot/test/reactions.test.ts
+git add tools/pm-bot/src/reactions.ts tools/pm-bot/test/reactions.test.ts
 git commit -m "feat(pm-bot): reaction_added 라우터 — 🤖 트리거·✅/❌ 승인 분기 (#202)"
 ```
 
@@ -440,7 +440,7 @@ describe("buildEditPrompt", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/analysis.test.ts`
+Run: `cd tools/pm-bot && pnpm vitest run test/analysis.test.ts`
 Expected: FAIL — `Cannot find module '../src/analysis.js'`
 
 - [ ] **Step 3: `runWithRetry`를 adapters/claude.ts로 이동**
@@ -467,7 +467,7 @@ export async function runWithRetry(adapter: CliAdapter, input: AdapterInput, hoo
 import { runWithRetry } from "./adapters/claude.js";
 ```
 
-Run: `cd pm-bot && pnpm vitest run test/qa.test.ts` → PASS 유지 확인 (기존 8개)
+Run: `cd tools/pm-bot && pnpm vitest run test/qa.test.ts` → PASS 유지 확인 (기존 8개)
 
 - [ ] **Step 4: `src/analysis.ts` 구현** (1부 — 프롬프트·치환. drain은 Task 6에서 이어서)
 
@@ -595,13 +595,13 @@ export function applyEdits(content: string, edits: Array<{ old: string; new: str
 
 - [ ] **Step 5: 통과 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/analysis.test.ts test/qa.test.ts && pnpm typecheck`
+Run: `cd tools/pm-bot && pnpm vitest run test/analysis.test.ts test/qa.test.ts && pnpm typecheck`
 Expected: PASS (analysis 8개 + qa 기존 8개)
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add pm-bot/src/analysis.ts pm-bot/src/adapters/claude.ts pm-bot/src/qa.ts pm-bot/test/analysis.test.ts
+git add tools/pm-bot/src/analysis.ts tools/pm-bot/src/adapters/claude.ts tools/pm-bot/src/qa.ts tools/pm-bot/test/analysis.test.ts
 git commit -m "feat(pm-bot): 판정·편집 프롬프트와 치환 적용기 — runWithRetry 공용화 (#202)"
 ```
 
@@ -716,7 +716,7 @@ describe("createGhClient — 인증·이슈·보드", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/github.test.ts`
+Run: `cd tools/pm-bot && pnpm vitest run test/github.test.ts`
 Expected: FAIL — `Cannot find module '../src/github.js'`
 
 - [ ] **Step 3: 구현** — `src/github.ts`
@@ -825,13 +825,13 @@ export function createGhClient(cfg: GhConfig, exec: Exec) {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/github.test.ts && pnpm typecheck`
+Run: `cd tools/pm-bot && pnpm vitest run test/github.test.ts && pnpm typecheck`
 Expected: PASS (6개)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/github.ts pm-bot/test/github.test.ts
+git add tools/pm-bot/src/github.ts tools/pm-bot/test/github.test.ts
 git commit -m "feat(pm-bot): gh CLI 클라이언트 — 인증·이슈·Roadmap 보드 배치 (#202)"
 ```
 
@@ -923,7 +923,7 @@ describe("createGhClient — .workrepo 명세 PR", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/github.test.ts`
+Run: `cd tools/pm-bot && pnpm vitest run test/github.test.ts`
 Expected: FAIL — `prepareSpecRepo is not a function`
 
 - [ ] **Step 3: 구현** — `src/github.ts` 반환 객체에 메서드 추가 (파일 상단에 `import { existsSync } from "node:fs"; import { mkdir, readFile, writeFile } from "node:fs/promises"; import { dirname, join } from "node:path";`)
@@ -975,13 +975,13 @@ async closePr(prNumber: number, comment: string): Promise<void> {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/github.test.ts && pnpm typecheck`
+Run: `cd tools/pm-bot && pnpm vitest run test/github.test.ts && pnpm typecheck`
 Expected: PASS (11개)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/github.ts pm-bot/test/github.test.ts
+git add tools/pm-bot/src/github.ts tools/pm-bot/test/github.test.ts
 git commit -m "feat(pm-bot): .workrepo blobless clone 기반 명세 PR·auto-merge (#202)"
 ```
 
@@ -1136,7 +1136,7 @@ describe("drainAnalysisQueue", () => {
 
 - [ ] **Step 2: 실패 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/analysis.test.ts`
+Run: `cd tools/pm-bot && pnpm vitest run test/analysis.test.ts`
 Expected: FAIL — `fetchThread is not a function` 등
 
 - [ ] **Step 3: 구현** — `src/analysis.ts`에 추가 (import: `runWithRetry`(adapters/claude.js), `search`·`SpecSection`(specindex.js), `HistoryClient`(collector.js), `PmDb`(db.js), `GhClient`(github.js), `CliAdapter`(adapters/types.js))
@@ -1262,13 +1262,13 @@ export async function drainAnalysisQueue(deps: AnalysisDeps): Promise<number> {
 
 - [ ] **Step 4: 통과 확인**
 
-Run: `cd pm-bot && pnpm vitest run test/analysis.test.ts && pnpm typecheck`
+Run: `cd tools/pm-bot && pnpm vitest run test/analysis.test.ts && pnpm typecheck`
 Expected: PASS (1부 8개 + 2부 7개)
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add pm-bot/src/analysis.ts pm-bot/test/analysis.test.ts
+git add tools/pm-bot/src/analysis.ts tools/pm-bot/test/analysis.test.ts
 git commit -m "feat(pm-bot): 실시간 스레드 fetch·분석 drain — 멱등 재트리거·부분 실패 보고 (#202)"
 ```
 
@@ -1301,7 +1301,7 @@ it("github 블록이 없으면 undefined로 통과한다 (Phase 1 설정 호환)
 
 - [ ] **Step 2: 실패 확인 후 config 구현**
 
-Run: `cd pm-bot && pnpm vitest run test/config.test.ts` → FAIL 확인. `src/config.ts`:
+Run: `cd tools/pm-bot && pnpm vitest run test/config.test.ts` → FAIL 확인. `src/config.ts`:
 
 ```ts
 export type GithubConfig = { repo: string; projectOwner: string; projectNumber: number; specDirInRepo: string; account?: string };
@@ -1482,7 +1482,7 @@ if (resetCount > 0) console.log(`[pm-bot] 중단됐던 분석 ${resetCount}건 �
 {
   "channels": ["C0PLANNING", "C0DEV"],
   "dbPath": "./pm-bot.sqlite",
-  "specDir": "../docs/product",
+  "specDir": "../../docs/product",
   "github": {
     "repo": "thumbsup-studio/thumbsup",
     "projectOwner": "thumbsup-studio",
@@ -1495,20 +1495,20 @@ if (resetCount > 0) console.log(`[pm-bot] 중단됐던 분석 ${resetCount}건 �
 
 - [ ] **Step 5: 전체 게이트 + 기동 스모크**
 
-Run: `cd pm-bot && pnpm typecheck && pnpm test`
+Run: `cd tools/pm-bot && pnpm typecheck && pnpm test`
 Expected: 전체 PASS
 
 기동 스모크(운영 봇이 떠 있으면 **먼저 내리지 말 것** — 같은 앱 토큰 중복 기동 금지, SKILL.md 함정. 운영 봇이 꺼진 상태에서만):
 
 ```bash
-cd pm-bot && timeout 30 pnpm start
+cd tools/pm-bot && timeout 30 pnpm start
 ```
 Expected: `Socket Mode 연결됨` + `백필 완료` + (config.github 있으면) gh 경고 없음. `reaction_added` 미구독 상태라 이모지는 아직 안 들어옴 — 정상 (재설치는 Task 10).
 
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add pm-bot/src/config.ts pm-bot/src/index.ts pm-bot/slack-app-manifest.yml pm-bot/.gitignore pm-bot/pm-bot.config.example.json pm-bot/test/config.test.ts
+git add tools/pm-bot/src/config.ts tools/pm-bot/src/index.ts tools/pm-bot/slack-app-manifest.yml tools/pm-bot/.gitignore tools/pm-bot/pm-bot.config.example.json tools/pm-bot/test/config.test.ts
 git commit -m "feat(pm-bot): reaction_added 배선 — 트리거·승인 핸들러·gh 초기화 (#202)"
 ```
 
@@ -1527,7 +1527,7 @@ git commit -m "feat(pm-bot): reaction_added 배선 — 트리거·승인 핸들�
 - [ ] **Step 1: 의존성 추가**
 
 ```bash
-cd pm-bot && pnpm add @slack/web-api
+cd tools/pm-bot && pnpm add @slack/web-api
 ```
 
 (bolt의 전이 의존성이지만 pnpm 격리 구조상 직접 선언해야 import 가능. **워크트리는 격리 install이므로 main 레포에 leak 없음** — lockfile 변경은 이 브랜치 커밋에 포함)
@@ -1611,13 +1611,13 @@ if (wantEdit) {
 
 - [ ] **Step 3: 검증**
 
-Run: `cd pm-bot && pnpm typecheck && pnpm test`
+Run: `cd tools/pm-bot && pnpm typecheck && pnpm test`
 Expected: PASS (dryrun은 실행 안 함 — 실 데이터 검증은 Task 10 e2e 직전에 운영자가 수행)
 
 - [ ] **Step 4: 커밋**
 
 ```bash
-git add pm-bot/analyze-dryrun.ts pm-bot/package.json pm-bot/pnpm-lock.yaml
+git add tools/pm-bot/analyze-dryrun.ts tools/pm-bot/package.json tools/pm-bot/pnpm-lock.yaml
 git commit -m "feat(pm-bot): analyze-dryrun 하네스 — Slack·gh 실행 없이 분석 품질 검증 (#202)"
 ```
 
@@ -1661,7 +1661,7 @@ frontmatter `description`에 트리거 문구 추가: 기존 문구 끝에 `, "�
 
 매니페스트에 `reaction_added` 이벤트·`reactions:write` 스코프가 추가됐다. 기존 앱에 반영하려면:
 
-1. https://api.slack.com/apps → 앱 선택 → **App Manifest** → `pm-bot/slack-app-manifest.yml` 내용으로 교체 → Save
+1. https://api.slack.com/apps → 앱 선택 → **App Manifest** → `tools/pm-bot/slack-app-manifest.yml` 내용으로 교체 → Save
 2. 스코프가 바뀌었으므로 **Reinstall to Workspace** 버튼이 뜬다 → 재설치 (토큰은 그대로 유효)
 3. 봇 재기동 후 테스트 채널 스레드에 🤖를 달아 👀가 달리는지 확인
 ```
@@ -1701,7 +1701,7 @@ git commit -m "docs(pm-bot): Phase 2 운영법 — 🤖 사용법·앱 재설치
 - [ ] **Step 1: 전체 게이트**
 
 ```bash
-cd pm-bot && pnpm typecheck && pnpm test
+cd tools/pm-bot && pnpm typecheck && pnpm test
 ```
 Expected: 전체 PASS. 실패 시 수정 후 재실행 (subagent 클레임 신뢰 금지 — 메인 세션이 직접 재실행).
 
@@ -1710,7 +1710,7 @@ Expected: 전체 PASS. 실패 시 수정 후 재실행 (subagent 클레임 신�
 - [ ] **Step 3: dryrun으로 분석 품질 선검증** (e2e 전 필수)
 
 ```bash
-cd pm-bot && pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <테스트채널ID> <기존 스레드 ts> --edit
+cd tools/pm-bot && pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <테스트채널ID> <기존 스레드 ts> --edit
 ```
 확인: 스레드 fetch에 봇 메시지(허들 AI 노트) 포함 여부, 판정 JSON의 file·area·status 유효성, 편집 치환 검증 통과. **AI 노트의 text가 비어 있으면(blocks 전용 메시지) 여기서 드러난다** — 그 경우 fetchThread에 blocks 텍스트 추출을 추가하는 후속 수정 필요.
 
@@ -1728,7 +1728,7 @@ cd pm-bot && pnpm tsx --env-file-if-exists=.env analyze-dryrun.ts <테스트채�
 - [ ] **Step 5: e2e에서 나온 수정사항 커밋 후 최종 게이트 재실행**
 
 ```bash
-cd pm-bot && pnpm typecheck && pnpm test
+cd tools/pm-bot && pnpm typecheck && pnpm test
 ```
 
 - [ ] **Step 6: PR 생성** — `pr` 스킬 사용. 본문 `Refs #202` (**Closes 금지** — #202는 Phase 4까지 열어둠). 푸시 전 `gh auth status`로 kmjnnhyk 계정 확인.

@@ -12,12 +12,19 @@ AI agent skills are shared across clients:
 사전 요구사항: Node 22 (`.nvmrc`, `nvm use`), pnpm 10 (`corepack enable`)
 
 ```bash
-cd app
 pnpm install
+cd app
 pnpm dev   # http://localhost:3000
 ```
 
 품질 게이트(머지 전 필수): `pnpm typecheck && pnpm lint && pnpm build`
+
+### pnpm workspace 정책
+
+- 의존성 버전은 각 패키지의 `package.json`에서 관리하며, 공통 catalog나 overrides는 실제 충돌이 생길 때만 루트에 추가한다.
+- peer dependency는 자동 설치 기본값을 유지하고, 불일치는 해당 패키지에서 명시적으로 해결한다.
+- lockfile은 루트 `pnpm-lock.yaml` 하나만 커밋하며 하위 패키지 lockfile은 만들지 않는다.
+- install script는 루트 `pnpm-workspace.yaml`의 `onlyBuiltDependencies` 허용 목록으로 제한한다.
 
 ## 배포 (app)
 
