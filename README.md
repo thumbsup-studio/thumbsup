@@ -1,7 +1,7 @@
 # thumbsup
 Thumbs Up — 학습 앱 모노레포 (app + server)
 
-**사용자 앱**: https://thumbsup-app.vercel.app · **저작 앱**: https://thumbsup-authoring.vercel.app
+**사용자 앱**: https://thumbsup-app.vercel.app · **저작 앱**: https://authoring-thumbsup.vercel.app
 
 AI agent skills are shared across clients:
 - Claude Code: `.claude/skills/`

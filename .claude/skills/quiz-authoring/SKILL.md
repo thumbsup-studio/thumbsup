@@ -1,6 +1,6 @@
 ---
 name: quiz-authoring
-description: Thumbs Up 문제 저작 파이프라인. 독립 저작 앱(https://thumbsup-authoring.vercel.app)에서 문제를 생성·검수·개선·승인하고, 팀원 노트북의 로컬 브리지가 각자의 개인 AI CLI 구독으로 실행한다(#174·#175·#176). 브리지 기동·잡이 안 끝남·403 FORBIDDEN·생성 검증 실패·[[키워드]] 마커나 빈칸 규칙·프롬프트 수정·초안 승인·라이브 반영을 알아야 할 때 반드시 로드할 것. 사용자가 "브리지 어떻게 켜", "잡이 안 끝나", "생성이 안 돼", "저작 대시보드", "초안 승인", "문제 어떻게 생성해", "새 스텝 만들어줘", "커리큘럼 추가"라고 할 때 트리거.
+description: Thumbs Up 문제 저작 파이프라인. 독립 저작 앱(https://authoring-thumbsup.vercel.app)에서 문제를 생성·검수·개선·승인하고, 팀원 노트북의 로컬 브리지가 각자의 개인 AI CLI 구독으로 실행한다(#174·#175·#176). 브리지 기동·잡이 안 끝남·403 FORBIDDEN·생성 검증 실패·[[키워드]] 마커나 빈칸 규칙·프롬프트 수정·초안 승인·라이브 반영을 알아야 할 때 반드시 로드할 것. 사용자가 "브리지 어떻게 켜", "잡이 안 끝나", "생성이 안 돼", "저작 대시보드", "초안 승인", "문제 어떻게 생성해", "새 스텝 만들어줘", "커리큘럼 추가"라고 할 때 트리거.
 ---
 
 # quiz-authoring — 문제 저작 파이프라인
@@ -8,7 +8,7 @@ description: Thumbs Up 문제 저작 파이프라인. 독립 저작 앱(https://
 웹 대시보드에서 문제를 만들고, **팀원 각자의 개인 AI CLI 구독**으로 실행한다. 공용 API 키로 토큰당 과금하지 않는 것이 이 구조의 존재 이유다.
 
 ```text
-저작 앱(기본 `https://thumbsup-authoring.vercel.app`) / ──POST /drafts/generate──▶ 서버: generation_job (QUEUED)
+저작 앱(기본 `https://authoring-thumbsup.vercel.app`) / ──POST /drafts/generate──▶ 서버: generation_job (QUEUED)
 브리지(팀원 노트북) ──3초 폴링──▶ RUNNING, {prompt, outputSchema} 수령
      ├─ 개인 AI CLI 구독으로 헤드리스 실행
      ├─ POST .../logs   ──▶ job_log → SSE → 대시보드 터미널
@@ -98,7 +98,7 @@ role 없이 발급된 과거 토큰은 `JwtTokenProvider.DEFAULT_ROLE = "USER"`�
 
 - `apps/authoring/.env.local`에 **`NEXT_PUBLIC_API_URL=http://localhost:8080`** — 없으면 기본값이 **운영 API**라 로컬 화면으로 운영 문제를 승인하게 된다
 - 브리지 `pnpm start` (대시보드 로그인 계정과 **같은 계정**으로 `pnpm start login`)
-- 브리지의 저작 앱 안내 URL은 `THUMBSUP_AUTHORING_URL`로 바꾼다(미설정 시 `https://thumbsup-authoring.vercel.app`)
+- 브리지의 저작 앱 안내 URL은 `THUMBSUP_AUTHORING_URL`로 바꾼다(미설정 시 `https://authoring-thumbsup.vercel.app`)
 
 로컬 admin은 `admin@thumbsup.local`로 가입 후 로그인하면 승격된다.
 

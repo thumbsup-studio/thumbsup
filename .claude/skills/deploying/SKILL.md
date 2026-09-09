@@ -19,8 +19,8 @@ Vercel에 GitHub Actions로 배포한다(사용자 앱 `web-deploy.yml`, 저작 
 
 - 프로덕션: `https://thumbsup-app.vercel.app`
 - 프리뷰: `https://*-thumbsup.vercel.app` (배포마다 서브도메인 랜덤)
-- 저작 프로덕션: `https://thumbsup-authoring.vercel.app`
-- 저작 프리뷰: `https://*-thumbsup-authoring.vercel.app` (허용할 CORS 패턴)
+- 저작 프로덕션: `https://authoring-thumbsup.vercel.app`
+- 저작 프리뷰: `https://thumbsup-authoring-*-thumbsup.vercel.app` (허용할 CORS 패턴)
 
 ## 시각 QA (soft gate)
 

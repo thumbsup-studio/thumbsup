@@ -2,7 +2,7 @@
 
 ADMIN 전용 웹 화면. 여기서 잡을 만들면 브리지가 집어가고([bridge.md](./bridge.md)), 결과 초안을 검수·승인하면 라이브에 반영된다.
 
-운영 주소는 `https://thumbsup-authoring.vercel.app`이다. 다른 배포를 쓰는 브리지는 `THUMBSUP_AUTHORING_URL`로 시작 안내 주소를 맞춘다.
+운영 주소는 `https://authoring-thumbsup.vercel.app`이다. 다른 배포를 쓰는 브리지는 `THUMBSUP_AUTHORING_URL`로 시작 안내 주소를 맞춘다.
 
 ## 화면 지도
 
