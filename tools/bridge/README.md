@@ -29,7 +29,7 @@ cd tools/bridge
 pnpm start
 ```
 
-서버 잡 큐를 주기적으로 폴링하다가 잡이 오면 설정된 CLI로 실행하고, 진행 로그를 서버로 배치 전송하며, 끝나면 결과(또는 실패 사유)를 제출합니다. 시작할 때 운영 저작 앱(`https://thumbsup-authoring.vercel.app`) 주소도 함께 출력합니다. 다른 배포를 쓸 때는 `THUMBSUP_AUTHORING_URL`로 바꿀 수 있습니다.
+서버 잡 큐를 주기적으로 폴링하다가 잡이 오면 설정된 CLI로 실행하고, 진행 로그를 서버로 배치 전송하며, 끝나면 결과(또는 실패 사유)를 제출합니다. 시작할 때 운영 저작 앱(`https://authoring-thumbsup.vercel.app`) 주소도 함께 출력합니다. 다른 배포를 쓸 때는 `THUMBSUP_AUTHORING_URL`로 바꿀 수 있습니다.
 
 ```bash
 THUMBSUP_AUTHORING_URL=https://authoring-preview.example.com pnpm start

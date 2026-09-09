@@ -8,7 +8,7 @@ export type BridgeConfig = { serverUrl: string; cli: BridgeCli; accessToken: str
 const BRIDGE_CLIS: readonly BridgeCli[] = ["CLAUDE", "CODEX", "GEMINI"];
 
 export const CONFIG_PATH = join(homedir(), ".thumbsup", "bridge.json");
-export const DEFAULT_AUTHORING_URL = "https://thumbsup-authoring.vercel.app";
+export const DEFAULT_AUTHORING_URL = "https://authoring-thumbsup.vercel.app";
 
 export function getAuthoringUrl(env: NodeJS.ProcessEnv = process.env): string {
   return (env.THUMBSUP_AUTHORING_URL?.trim() || DEFAULT_AUTHORING_URL).replace(/\/+$/, "");
