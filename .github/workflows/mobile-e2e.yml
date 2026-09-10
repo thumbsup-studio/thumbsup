@@ -108,20 +108,36 @@ jobs:
       - name: E2E 런타임 계정 값 생성
         run: |
           echo "E2E_EMAIL=maestro-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-android@thumbsup.invalid" >> "$GITHUB_ENV"
-          echo "E2E_PASSWORD=E2e-$(openssl rand -hex 16)!" >> "$GITHUB_ENV"
+          E2E_PASSWORD_VALUE="E2e-$(openssl rand -hex 16)!"
+          echo "::add-mask::$E2E_PASSWORD_VALUE"
+          echo "E2E_PASSWORD=$E2E_PASSWORD_VALUE" >> "$GITHUB_ENV"
       - name: 로컬 서버 기동
         run: |
           docker compose -f server/docker-compose.yml up -d mysql
           until docker compose -f server/docker-compose.yml exec -T mysql mysqladmin ping -h 127.0.0.1 -uthumbsup -pthumbsup-local --silent; do sleep 2; done
+          # local 프로파일은 application-local.yml에서 aws-parameterstore를 필수로 import한다.
+          # CI에는 AWS 자격증명이 없으므로 프로파일 파일을 로드하지 않는 이름(e2e)을 쓰고
+          # 필요한 값만 SPRING_APPLICATION_JSON으로 직접 주입한다. server/는 수정하지 않는다.
+          SERVER_JSON=$(JWT_SECRET="$(openssl rand -base64 48)" SWAGGER_PASSWORD="$(openssl rand -hex 16)" node -e '
+            const config = {
+              spring: {
+                datasource: {
+                  url: "jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8",
+                  username: "thumbsup",
+                  password: "thumbsup-local",
+                },
+              },
+              thumbsup: {
+                jwt: { secret: process.env.JWT_SECRET },
+                cors: { "allowed-origin-patterns": ["http://localhost:3000"] },
+                swagger: { "basic-auth": { username: "e2e", password: process.env.SWAGGER_PASSWORD } },
+              },
+            };
+            process.stdout.write(JSON.stringify(config));
+          ')
           cat > "$RUNNER_TEMP/server-e2e.env" <<ENV
-          SPRING_PROFILES_ACTIVE=local
-          SPRING_CONFIG_IMPORT=optional:file:/tmp/e2e-noop.properties
-          SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
-          SPRING_DATASOURCE_USERNAME=thumbsup
-          SPRING_DATASOURCE_PASSWORD=thumbsup-local
-          JWT_SECRET=$(openssl rand -base64 48)
-          SWAGGER_USERNAME=e2e
-          SWAGGER_PASSWORD=$(openssl rand -hex 16)
+          SPRING_PROFILES_ACTIVE=e2e
+          SPRING_APPLICATION_JSON=$SERVER_JSON
           ENV
           docker build -t thumbsup-server-e2e server
           docker run -d --name thumbsup-server-e2e --add-host host.docker.internal:host-gateway -p 8080:8080 --env-file "$RUNNER_TEMP/server-e2e.env" thumbsup-server-e2e
@@ -223,20 +239,36 @@ jobs:
       - name: E2E 런타임 계정 값 생성
         run: |
           echo "E2E_EMAIL=maestro-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-ios@thumbsup.invalid" >> "$GITHUB_ENV"
-          echo "E2E_PASSWORD=E2e-$(openssl rand -hex 16)!" >> "$GITHUB_ENV"
+          E2E_PASSWORD_VALUE="E2e-$(openssl rand -hex 16)!"
+          echo "::add-mask::$E2E_PASSWORD_VALUE"
+          echo "E2E_PASSWORD=$E2E_PASSWORD_VALUE" >> "$GITHUB_ENV"
       - name: 로컬 서버 기동
         run: |
           docker compose -f server/docker-compose.yml up -d mysql
           until docker compose -f server/docker-compose.yml exec -T mysql mysqladmin ping -h 127.0.0.1 -uthumbsup -pthumbsup-local --silent; do sleep 2; done
+          # local 프로파일은 application-local.yml에서 aws-parameterstore를 필수로 import한다.
+          # CI에는 AWS 자격증명이 없으므로 프로파일 파일을 로드하지 않는 이름(e2e)을 쓰고
+          # 필요한 값만 SPRING_APPLICATION_JSON으로 직접 주입한다. server/는 수정하지 않는다.
+          SERVER_JSON=$(JWT_SECRET="$(openssl rand -base64 48)" SWAGGER_PASSWORD="$(openssl rand -hex 16)" node -e '
+            const config = {
+              spring: {
+                datasource: {
+                  url: "jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8",
+                  username: "thumbsup",
+                  password: "thumbsup-local",
+                },
+              },
+              thumbsup: {
+                jwt: { secret: process.env.JWT_SECRET },
+                cors: { "allowed-origin-patterns": ["http://localhost:3000"] },
+                swagger: { "basic-auth": { username: "e2e", password: process.env.SWAGGER_PASSWORD } },
+              },
+            };
+            process.stdout.write(JSON.stringify(config));
+          ')
           cat > "$RUNNER_TEMP/server-e2e.env" <<ENV
-          SPRING_PROFILES_ACTIVE=local
-          SPRING_CONFIG_IMPORT=optional:file:/tmp/e2e-noop.properties
-          SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8
-          SPRING_DATASOURCE_USERNAME=thumbsup
-          SPRING_DATASOURCE_PASSWORD=thumbsup-local
-          JWT_SECRET=$(openssl rand -base64 48)
-          SWAGGER_USERNAME=e2e
-          SWAGGER_PASSWORD=$(openssl rand -hex 16)
+          SPRING_PROFILES_ACTIVE=e2e
+          SPRING_APPLICATION_JSON=$SERVER_JSON
           ENV
           docker build -t thumbsup-server-e2e server
           docker run -d --name thumbsup-server-e2e -p 8080:8080 --env-file "$RUNNER_TEMP/server-e2e.env" thumbsup-server-e2e
