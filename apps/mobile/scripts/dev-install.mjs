@@ -18,9 +18,8 @@ export function artifactUrl(baseUrl, platform) {
 }
 
 export function localFallback(platform) {
-  return platform === "android"
-    ? { command: "pnpm", args: ["exec", "expo", "run:android", "--no-bundler"] }
-    : null;
+  const target = platform === "android" ? "run:android" : "run:ios";
+  return { command: "pnpm", args: ["exec", "expo", target, "--no-bundler"] };
 }
 
 function installDownloaded(platform, directory) {
@@ -36,9 +35,9 @@ function installDownloaded(platform, directory) {
   return run("xcrun", ["simctl", "install", "booted", join(directory, app)], { stdio: "inherit" });
 }
 
-export function runExpoAndroid() {
+export function runExpoLocalBuild(fallback) {
   return new Promise((resolve) => {
-    const child = spawn("pnpm", ["exec", "expo", "run:android", "--no-bundler"], {
+    const child = spawn(fallback.command, fallback.args, {
       cwd: mobileDirectory,
       env: { ...process.env, CI: "1" },
       stdio: ["ignore", "pipe", "pipe"],
@@ -73,17 +72,8 @@ export async function main(argv = process.argv.slice(2), environment = process.e
   const baseUrl = environment.MOBILE_DEV_CLIENT_BASE_URL?.trim();
   if (!baseUrl) {
     const fallback = localFallback(platform);
-    if (!fallback) {
-      console.error("MOBILE_DEV_CLIENT_BASE_URL이 없어 iOS dev-client를 설치할 수 없습니다.");
-      console.error(
-        "현재 Xcode 26.0.1에서는 Expo SDK 57 네이티브 빌드가 실패합니다. Xcode 26.4 업그레이드 후 다시 확인하세요.",
-      );
-      console.error("그전에는 `pnpm exec expo start`와 Expo Go로 iOS 시뮬레이터를 검증하세요.");
-      process.exitCode = 1;
-      return;
-    }
-    console.log("MOBILE_DEV_CLIENT_BASE_URL 미설정: 로컬 Android dev 빌드로 대체합니다.");
-    process.exitCode = await runExpoAndroid();
+    console.log(`MOBILE_DEV_CLIENT_BASE_URL 미설정: 로컬 ${platform} dev 빌드로 대체합니다.`);
+    process.exitCode = await runExpoLocalBuild(fallback);
     return;
   }
 

@@ -16,11 +16,14 @@ describe("dev-install helpers", () => {
     );
   });
 
-  it("falls back to a local build only for Android", () => {
+  it("falls back to a local build on both platforms", () => {
     expect(localFallback("android")).toEqual({
       command: "pnpm",
       args: ["exec", "expo", "run:android", "--no-bundler"],
     });
-    expect(localFallback("ios")).toBeNull();
+    expect(localFallback("ios")).toEqual({
+      command: "pnpm",
+      args: ["exec", "expo", "run:ios", "--no-bundler"],
+    });
   });
 });

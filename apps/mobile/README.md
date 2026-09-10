@@ -22,7 +22,7 @@ pnpm dev:install android
 pnpm dev
 ```
 
-현재 Expo SDK 57은 Xcode 26.4 이상이 필요하다. 그보다 낮은 Xcode에서는 Expo Go로 JavaScript 화면을 확인하고, 네이티브 iOS 빌드는 지원 버전에서 다시 검증한다.
+Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4 이상이 필요하다. 설치된 버전은 `pnpm diagnose`의 `Xcode` 항목에서 확인한다. 요구 버전에 못 미치면 Expo Go로 JavaScript 화면을 확인하고, 네이티브 iOS 빌드는 지원 버전에서 다시 검증한다.
 
 ## 검증
 
