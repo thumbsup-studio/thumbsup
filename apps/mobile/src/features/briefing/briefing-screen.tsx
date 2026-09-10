@@ -175,6 +175,7 @@ export function BriefingScreenView({
 
         {blocks.length > 1 ? (
           <Pressable
+            accessibilityLabel={expanded ? "간단히 보기" : "자세히 읽기"}
             accessibilityRole="button"
             accessibilityState={{ expanded }}
             className="min-h-12 items-center justify-center self-center rounded-control bg-surface-muted px-5 py-3"

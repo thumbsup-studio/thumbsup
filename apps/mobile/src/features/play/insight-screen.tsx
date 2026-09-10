@@ -256,6 +256,17 @@ export function InsightScreenView({
               </Pressable>
             ) : null}
             <Pressable
+              accessibilityLabel={
+                context.review
+                  ? context.review.slot >= explanation.totalCount
+                    ? "복습 완료"
+                    : "다음 문제"
+                  : completion
+                    ? context.courseId
+                      ? "코스 목록으로"
+                      : "홈으로"
+                    : "다음 문제 풀기"
+              }
               accessibilityRole="button"
               className="min-h-12 items-center justify-center rounded-control bg-primary px-4"
               onPress={() => navigateNext(router, context, explanation)}

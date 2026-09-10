@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+name: Native - Android back
+tags: [mobile-native, android]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "시작하기"
+- assertVisible: "문제 풀기"
+- back
+- assertVisible: "최근 학습 코스"

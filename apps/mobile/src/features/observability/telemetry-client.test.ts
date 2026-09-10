@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from "vitest";
 import { TelemetryClient } from "./telemetry-client";
 import type { TelemetryPayload, TelemetryQueueStore } from "./types";
 
@@ -33,7 +34,7 @@ function queueStore(initial: TelemetryPayload[] = []): TelemetryQueueStore & {
 
 describe("TelemetryClient", () => {
   it("launch 이벤트를 종류별 엔드포인트로 보낸다", async () => {
-    const transport = jest.fn().mockResolvedValue(undefined);
+    const transport = vi.fn().mockResolvedValue(undefined);
     const store = queueStore();
     const client = new TelemetryClient("https://updates.example.com", store, transport);
 
@@ -49,7 +50,7 @@ describe("TelemetryClient", () => {
   it("전송 실패 이벤트를 큐에 넣고 연결 복구 시 한 번만 재시도한다", async () => {
     const event = payload();
     const store = queueStore();
-    const transport = jest.fn().mockRejectedValue(new Error("offline"));
+    const transport = vi.fn().mockRejectedValue(new Error("offline"));
     const client = new TelemetryClient("https://updates.example.com", store, transport);
 
     await expect(client.send(event)).resolves.toBeUndefined();
@@ -63,7 +64,7 @@ describe("TelemetryClient", () => {
   it("재시도에 성공한 큐 이벤트를 제거한다", async () => {
     const event = payload();
     const store = queueStore([event]);
-    const transport = jest.fn().mockResolvedValue(undefined);
+    const transport = vi.fn().mockResolvedValue(undefined);
     const client = new TelemetryClient("https://updates.example.com/", store, transport);
 
     await client.retryQueued();

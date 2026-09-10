@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: Route - history
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "히스토리, tab, 3 of 4"
+- extendedWaitUntil:
+    visible: "배운 개념"
+    timeout: 15000
+- assertVisible: "지식 그래프로 보기"

@@ -149,6 +149,7 @@ export function HistoryGraphView({
           {(["graph", "list"] as const).map((item) => (
             <Pressable
               key={item}
+              accessibilityLabel={item === "graph" ? "그래프 보기" : "목록 보기"}
               accessibilityRole="tab"
               accessibilityState={{ selected: mode === item }}
               className={`min-h-11 flex-1 items-center justify-center rounded-control ${

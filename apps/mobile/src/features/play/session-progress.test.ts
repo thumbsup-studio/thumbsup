@@ -1,9 +1,11 @@
-jest.mock("@react-native-async-storage/async-storage", () => ({
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@react-native-async-storage/async-storage", () => ({
   __esModule: true,
   default: {
-    getItem: jest.fn(),
-    removeItem: jest.fn(),
-    setItem: jest.fn(),
+    getItem: vi.fn(),
+    removeItem: vi.fn(),
+    setItem: vi.fn(),
   },
 }));
 
@@ -19,11 +21,11 @@ import {
 function createStorage(initial: Record<string, string> = {}): SessionStorage {
   const values = new Map(Object.entries(initial));
   return {
-    getItem: jest.fn(async (key) => values.get(key) ?? null),
-    removeItem: jest.fn(async (key) => {
+    getItem: vi.fn(async (key) => values.get(key) ?? null),
+    removeItem: vi.fn(async (key) => {
       values.delete(key);
     }),
-    setItem: jest.fn(async (key, value) => {
+    setItem: vi.fn(async (key, value) => {
       values.set(key, value);
     }),
   };

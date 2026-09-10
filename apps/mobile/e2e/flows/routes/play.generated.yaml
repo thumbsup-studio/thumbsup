@@ -1,0 +1,69 @@
+appId: ${APP_ID}
+name: Route - generated play path
+tags: [route, generated]
+env:
+  PLAY_PATH: ${PLAY_PATH || 'ox-correct'}
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "시작하기"
+- tapOn: "문제 풀기"
+- runFlow:
+    when:
+      true: ${PLAY_PATH == 'ox-correct'}
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: ox
+      ANSWER_MODE: correct
+      USE_HINT: "false"
+      ANSWER_SELECTOR: "O, 맞다"
+      ANSWER_TEXT: ""
+- runFlow:
+    when:
+      true: ${PLAY_PATH == 'ox-incorrect-hint'}
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: ox
+      ANSWER_MODE: incorrect
+      USE_HINT: "true"
+      ANSWER_SELECTOR: "X, 아니다"
+      ANSWER_TEXT: ""
+- runFlow:
+    when:
+      true: ${PLAY_PATH == 'choice-correct'}
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: multiple-choice
+      ANSWER_MODE: correct
+      USE_HINT: "false"
+      ANSWER_SELECTOR: "B. 경쟁 상태"
+      ANSWER_TEXT: ""
+- runFlow:
+    when:
+      true: ${PLAY_PATH == 'choice-incorrect-hint'}
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: multiple-choice
+      ANSWER_MODE: incorrect
+      USE_HINT: "true"
+      ANSWER_SELECTOR: "A. 데드락"
+      ANSWER_TEXT: ""
+- runFlow:
+    when:
+      true: ${PLAY_PATH == 'keyword-correct'}
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: keyword
+      ANSWER_MODE: correct
+      USE_HINT: "false"
+      ANSWER_SELECTOR: ""
+      ANSWER_TEXT: "임계 구역"
+- runFlow:
+    when:
+      true: ${PLAY_PATH == 'keyword-incorrect-hint'}
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: keyword
+      ANSWER_MODE: incorrect
+      USE_HINT: "true"
+      ANSWER_SELECTOR: ""
+      ANSWER_TEXT: "공유 자원"

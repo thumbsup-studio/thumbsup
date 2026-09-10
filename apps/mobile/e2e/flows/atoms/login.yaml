@@ -1,0 +1,23 @@
+appId: ${APP_ID}
+name: 로그인
+---
+- launchApp:
+    clearState: true
+- assertVisible: "로그인"
+- tapOn:
+    text: "이메일"
+    index: 1
+- inputText: ${E2E_EMAIL}
+- hideKeyboard
+- tapOn:
+    text: "비밀번호"
+    index: 1
+- inputText: ${E2E_PASSWORD}
+- hideKeyboard
+- tapOn: "로그인"
+- tapOn:
+    text: "지금 안 함"
+    optional: true
+- extendedWaitUntil:
+    visible: "최근 학습 코스"
+    timeout: 25000

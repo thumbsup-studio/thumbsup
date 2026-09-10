@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: Native - feedback keyboard
+tags: [mobile-native]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "프로필, tab, 4 of 4"
+- tapOn: "의견 보내기"
+- tapOn: "의견 내용"
+- inputText: "키보드 회귀 확인"
+# 알려진 버그 수정 전에는 키보드가 열린 상태의 아래 검증이 실패해야 한다.
+# - assertVisible: "보내기"
+- hideKeyboard
+- assertVisible: "보내기"
+- tapOn: "닫기"

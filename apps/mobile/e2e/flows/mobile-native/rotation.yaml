@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+name: Native - rotation checkpoint
+tags: [mobile-native, rotation]
+---
+- runFlow: ../atoms/login.yaml
+- runFlow: ../atoms/home-entry.yaml
+- assertVisible: "최근 학습 코스"
+- assertVisible: "홈, tab, 1 of 4"

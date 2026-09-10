@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+name: PR smoke - 로그인과 홈
+tags:
+  - smoke
+---
+- runFlow: atoms/login.yaml
+- runFlow: atoms/home-entry.yaml

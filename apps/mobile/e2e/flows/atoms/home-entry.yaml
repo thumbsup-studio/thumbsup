@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+name: 홈 진입
+---
+- assertVisible: "최근 학습 코스"
+- assertVisible: "연속 학습"
+- assertVisible: "홈, tab, 1 of 4"

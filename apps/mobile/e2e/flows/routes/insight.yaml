@@ -1,0 +1,16 @@
+appId: ${APP_ID}
+name: Route - insight
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "시작하기"
+- tapOn: "문제 풀기"
+- runFlow:
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: ox
+      ANSWER_MODE: correct
+      ANSWER_SELECTOR: "O, 맞다"
+      ANSWER_TEXT: ""
+      USE_HINT: "false"
+- assertVisible: "핵심 3줄"

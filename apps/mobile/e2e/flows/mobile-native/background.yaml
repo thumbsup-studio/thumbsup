@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: Native - background session restore
+tags: [mobile-native]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "프로필, tab, 4 of 4"
+- assertVisible: ${E2E_EMAIL}
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: ${E2E_EMAIL}
+    timeout: 20000
+- assertNotVisible: "로그인"

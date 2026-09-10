@@ -29,6 +29,7 @@ export function ScreenState({
       <Text className="text-center text-sm leading-5 text-ink-muted">{description}</Text>
       {onAction ? (
         <Pressable
+          accessibilityLabel={actionLabel}
           accessibilityRole="button"
           className="min-h-12 items-center justify-center rounded-control bg-primary px-5 py-3"
           onPress={onAction}

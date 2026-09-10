@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+name: Route - login
+tags: [route]
+---
+- launchApp:
+    clearState: true
+- assertVisible: "로그인"

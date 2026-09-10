@@ -1,0 +1,20 @@
+appId: ${APP_ID}
+name: Route - follow-up
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "시작하기"
+- tapOn: "문제 풀기"
+- runFlow:
+    file: ../atoms/play-one-question.yaml
+    env:
+      QUESTION_KIND: ox
+      ANSWER_MODE: correct
+      ANSWER_SELECTOR: "O, 맞다"
+      ANSWER_TEXT: ""
+      USE_HINT: "false"
+- tapOn: "꼬리 질문 보기"
+- extendedWaitUntil:
+    visible: "꼬리 질문"
+    timeout: 15000
+- assertVisible: "답 확인하기"

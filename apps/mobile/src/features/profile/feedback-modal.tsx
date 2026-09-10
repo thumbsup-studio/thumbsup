@@ -93,6 +93,7 @@ export function FeedbackModal({ open, onClose, onSubmit }: FeedbackModalProps) {
           </Text>
           <TextInput
             accessibilityLabel="의견 내용"
+            accessibilityRole="text"
             className="mt-5 min-h-40 rounded-control border border-border bg-surface p-4 text-base text-ink"
             editable={!sending}
             maxLength={MAX_LENGTH}

@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: Route - course
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "코스, tab, 2 of 4"
+- extendedWaitUntil:
+    visible: "원하는 코스를 선택해.*"
+    timeout: 15000
+- assertVisible: "코스 .*개"

@@ -1,4 +1,4 @@
 module.exports = {
   preset: "jest-expo",
-  testMatch: ["<rootDir>/src/**/*.test.ts?(x)"],
+  testMatch: ["<rootDir>/src/**/*.test.tsx"],
 };

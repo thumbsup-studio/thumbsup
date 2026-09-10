@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: Route - briefing
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "코스, tab, 2 of 4"
+- tapOn: ".*운영체제.*"
+- tapOn: ".*STEP 1.*"
+- extendedWaitUntil:
+    visible: "핵심 요약"
+    timeout: 15000
+- assertVisible: "문제 풀기"

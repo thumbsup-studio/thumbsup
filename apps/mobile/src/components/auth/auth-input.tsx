@@ -25,6 +25,7 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
           ref={ref}
           {...props}
           accessibilityLabel={label}
+          accessibilityRole="text"
           accessibilityHint={error}
           className="min-h-12 flex-1 text-base text-ink"
           secureTextEntry={password && !passwordVisible}

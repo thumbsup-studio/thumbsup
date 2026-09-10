@@ -6,6 +6,7 @@
   "scripts": {
     "bootstrap": "node ./scripts/setup.mjs",
     "build:graph": "node ./scripts/build-graph.mjs",
+    "check:a11y": "node ./scripts/check-a11y.mjs && node ./e2e/generators/play-path.mjs --check",
     "dev": "expo start --dev-client",
     "dev:install": "node ./scripts/dev-install.mjs",
     "diagnose": "node ./scripts/doctor.mjs",

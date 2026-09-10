@@ -1,0 +1,13 @@
+appId: ${APP_ID}
+name: 로그아웃
+---
+- tapOn: "프로필, tab, 4 of 4"
+- assertVisible: "프로필"
+- tapOn: "로그아웃"
+- assertVisible: "로그아웃할까요?"
+- tapOn:
+    text: "로그아웃"
+    index: 1
+- extendedWaitUntil:
+    visible: "로그인"
+    timeout: 15000

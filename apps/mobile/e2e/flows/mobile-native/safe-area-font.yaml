@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: Native - safe area and font loading
+tags: [mobile-native]
+---
+- runFlow: ../atoms/login.yaml
+- assertVisible: "최근 학습 코스"
+- assertVisible: "홈, tab, 1 of 4"
+- tapOn: "코스, tab, 2 of 4"
+- assertVisible: "원하는 코스를 선택해.*"
+- assertVisible: "코스, tab, 2 of 4"

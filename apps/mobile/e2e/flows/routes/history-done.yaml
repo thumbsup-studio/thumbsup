@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+name: Route - history done
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- openLink: ${APP_SCHEME}://history/done?step=1&topic=OS%20기초
+- assertVisible: "복습 완료"
+- assertVisible: "코스로 돌아가기"
+- assertVisible: "다시 풀기"
