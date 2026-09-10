@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } fr
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useApi } from "../../lib/api/api-provider";
+import { useDialogTelemetry } from "../observability/interaction";
 import { FeedbackModal } from "./feedback-modal";
 
 const SETTING_ITEMS = [
@@ -199,6 +200,7 @@ function LogoutModal({
   onConfirm(): void;
   open: boolean;
 }) {
+  useDialogTelemetry(open, "로그아웃 확인");
   return (
     <Modal
       animationType="fade"

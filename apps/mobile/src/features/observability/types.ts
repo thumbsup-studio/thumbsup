@@ -28,7 +28,23 @@ export interface EmergencyTelemetry extends TelemetryBase {
   isEmergencyLaunch: true;
 }
 
-export type TelemetryPayload = LaunchTelemetry | CrashTelemetry | EmergencyTelemetry;
+export interface InteractionTelemetry extends TelemetryBase {
+  type: "interaction";
+  /** tap: 접근성 라벨이 있는 컨트롤을 눌렀다. dialog: 다이얼로그·시트가 열렸다. */
+  action: "tap" | "dialog";
+  /** accessibilityRole 값. 라벨만으로는 무엇을 눌렀는지 구분되지 않는다. */
+  role: string;
+  /** accessibilityLabel을 정규화한 값. 개인정보는 마스킹한다. */
+  label: string;
+  /** expo-router 경로. 어느 화면에서 눌렀는지. */
+  screen: string;
+}
+
+export type TelemetryPayload =
+  | LaunchTelemetry
+  | CrashTelemetry
+  | EmergencyTelemetry
+  | InteractionTelemetry;
 
 export interface TelemetryQueueStore {
   read(): Promise<TelemetryPayload[]>;
