@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+name: Device only - real network transition
+tags: [device-only]
+---
+- launchApp:
+    clearState: false
+- assertVisible: "최근 학습 코스"
+- takeScreenshot: device-network-before-transition

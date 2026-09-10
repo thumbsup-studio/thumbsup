@@ -208,6 +208,7 @@ function KeywordInputs({
             </View>
             <TextInput
               accessibilityLabel={multiline ? "서술형 답안" : `핵심 키워드 ${slot}`}
+              accessibilityRole="text"
               autoCapitalize="none"
               autoCorrect={false}
               className={`rounded-control border border-border bg-surface px-4 py-3 text-base font-semibold text-ink ${multiline ? "min-h-28" : "min-h-12"}`}

@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { channelIndexUrl, parseChannelIndex } from "./channel-client";
 
 describe("PR 채널 목록", () => {

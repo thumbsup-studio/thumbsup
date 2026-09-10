@@ -223,6 +223,7 @@ export function FollowUpScreenView({
             {revealed ? (
               <>
                 <Pressable
+                  accessibilityLabel="해설로 돌아가기"
                   accessibilityRole="button"
                   className="min-h-12 items-center justify-center rounded-control bg-primary"
                   onPress={() => router.back()}
@@ -230,6 +231,9 @@ export function FollowUpScreenView({
                   <Text className="font-bold text-primary-fg">해설로 돌아가기</Text>
                 </Pressable>
                 <Pressable
+                  accessibilityLabel={
+                    isLastQuestion ? (context.courseId ? "코스 목록으로" : "홈으로") : "다음 문제로"
+                  }
                   accessibilityRole="button"
                   className="min-h-12 items-center justify-center rounded-control border border-border bg-surface"
                   onPress={() =>

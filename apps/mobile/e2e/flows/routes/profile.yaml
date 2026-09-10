@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: Route - profile
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "프로필, tab, 4 of 4"
+- extendedWaitUntil:
+    visible: "프로필"
+    timeout: 15000
+- assertVisible: ${E2E_EMAIL}
+- assertVisible: "의견 보내기"
+- assertVisible: "로그아웃"

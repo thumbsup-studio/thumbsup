@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: Route - signup validation
+tags: [route]
+---
+- launchApp:
+    clearState: true
+- tapOn: ".*회원가입"
+- assertVisible: "회원가입"
+- tapOn: "가입하기"
+- assertVisible: "입력값을 다시 확인해 주세요"

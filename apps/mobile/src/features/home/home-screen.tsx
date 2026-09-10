@@ -333,6 +333,7 @@ function CourseCarousel({
                 {course.durationLabel}
               </Text>
               <Pressable
+                accessibilityLabel={course.completed ? "복습하기" : "시작하기"}
                 accessibilityRole="button"
                 className="mt-auto min-h-12 flex-row items-center justify-center gap-2 rounded-control bg-surface px-4 py-3"
                 onPress={() => onOpen(course)}

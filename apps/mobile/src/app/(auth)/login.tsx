@@ -123,6 +123,7 @@ export default function LoginScreen() {
                 {["이용약관", "개인정보 처리방침", "도움말"].map((label) => (
                   <Pressable
                     key={label}
+                    accessibilityLabel={label}
                     accessibilityRole="link"
                     onPress={() => Alert.alert("알림", `${label}은 아직 준비 중이에요.`)}
                   >

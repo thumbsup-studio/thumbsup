@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: Native - iOS edge swipe back
+tags: [mobile-native, ios]
+---
+- runFlow: ../atoms/login.yaml
+- tapOn: "시작하기"
+- assertVisible: "문제 풀기"
+- swipe:
+    start: "2%, 50%"
+    end: "90%, 50%"
+    duration: 400
+- assertVisible: "최근 학습 코스"

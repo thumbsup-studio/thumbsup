@@ -1,36 +1,37 @@
 import * as SecureStore from "expo-secure-store";
 import * as Updates from "expo-updates";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-let mockEmergencyLaunch = false;
+const emergencyLaunch = vi.hoisted(() => ({ value: false }));
 
-jest.mock("expo-updates", () => ({
+vi.mock("expo-updates", () => ({
   get isEmergencyLaunch() {
-    return mockEmergencyLaunch;
+    return emergencyLaunch.value;
   },
-  setUpdateRequestHeadersOverride: jest.fn(),
-  checkForUpdateAsync: jest.fn(),
-  fetchUpdateAsync: jest.fn(),
-  reloadAsync: jest.fn(),
+  setUpdateRequestHeadersOverride: vi.fn(),
+  checkForUpdateAsync: vi.fn(),
+  fetchUpdateAsync: vi.fn(),
+  reloadAsync: vi.fn(),
 }));
-jest.mock("expo-secure-store", () => ({
-  getItemAsync: jest.fn(),
-  setItemAsync: jest.fn(),
-  deleteItemAsync: jest.fn(),
+vi.mock("expo-secure-store", () => ({
+  getItemAsync: vi.fn(),
+  setItemAsync: vi.fn(),
+  deleteItemAsync: vi.fn(),
 }));
 
 import { leavePr, recoverEmergencyLaunch, switchToPr } from "./channel-updates";
 
-const mockSetHeaders = jest.mocked(Updates.setUpdateRequestHeadersOverride);
-const mockCheck = jest.mocked(Updates.checkForUpdateAsync);
-const mockFetch = jest.mocked(Updates.fetchUpdateAsync);
-const mockReload = jest.mocked(Updates.reloadAsync);
-const mockSetItem = jest.mocked(SecureStore.setItemAsync);
-const mockDeleteItem = jest.mocked(SecureStore.deleteItemAsync);
+const mockSetHeaders = vi.mocked(Updates.setUpdateRequestHeadersOverride);
+const mockCheck = vi.mocked(Updates.checkForUpdateAsync);
+const mockFetch = vi.mocked(Updates.fetchUpdateAsync);
+const mockReload = vi.mocked(Updates.reloadAsync);
+const mockSetItem = vi.mocked(SecureStore.setItemAsync);
+const mockDeleteItem = vi.mocked(SecureStore.deleteItemAsync);
 
 describe("PR 채널 전환", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockEmergencyLaunch = false;
+    vi.clearAllMocks();
+    emergencyLaunch.value = false;
     mockCheck.mockResolvedValue({ isAvailable: true } as Awaited<
       ReturnType<typeof Updates.checkForUpdateAsync>
     >);
@@ -74,7 +75,7 @@ describe("PR 채널 전환", () => {
   });
 
   it("emergency launch를 감지하면 확인 실패에도 staging 헤더로 복구한다", async () => {
-    mockEmergencyLaunch = true;
+    emergencyLaunch.value = true;
     mockCheck.mockRejectedValueOnce(new Error("offline"));
 
     await expect(recoverEmergencyLaunch()).resolves.toBe(true);

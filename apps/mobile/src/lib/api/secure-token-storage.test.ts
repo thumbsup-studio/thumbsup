@@ -1,26 +1,27 @@
 import { createApiClient } from "@thumbsup/api";
 import * as SecureStore from "expo-secure-store";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, secureTokenStorage } from "./secure-token-storage";
 
-jest.mock("expo-secure-store", () => ({
-  getItemAsync: jest.fn(),
-  setItemAsync: jest.fn(() => Promise.resolve()),
-  deleteItemAsync: jest.fn(() => Promise.resolve()),
+vi.mock("expo-secure-store", () => ({
+  getItemAsync: vi.fn(),
+  setItemAsync: vi.fn(() => Promise.resolve()),
+  deleteItemAsync: vi.fn(() => Promise.resolve()),
 }));
 
-const mockedSecureStore = jest.mocked(SecureStore);
+const mockedSecureStore = vi.mocked(SecureStore);
 let stored: Record<string, string | undefined>;
 
 function response(status: number, code: string, data: unknown = null) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    json: jest.fn().mockResolvedValue({ code, message: code, data, meta: null }),
+    json: vi.fn().mockResolvedValue({ code, message: code, data, meta: null }),
   } as unknown as Response;
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   stored = {};
   mockedSecureStore.getItemAsync.mockImplementation((key) => Promise.resolve(stored[key] ?? null));
   mockedSecureStore.setItemAsync.mockImplementation((key, value) => {
@@ -55,7 +56,7 @@ describe("secureTokenStorage", () => {
   it("TOKEN_EXPIRED 응답을 받으면 SecureStore 토큰을 회전하고 원 요청을 재시도한다", async () => {
     stored[ACCESS_TOKEN_KEY] = "old-access";
     stored[REFRESH_TOKEN_KEY] = "old-refresh";
-    const fetchMock = jest
+    const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response(401, "TOKEN_EXPIRED"))
       .mockResolvedValueOnce(

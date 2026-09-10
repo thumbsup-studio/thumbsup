@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+flows:
+  - flows/smoke.yaml
+  - flows/routes/*.yaml
+  - flows/mobile-native/*.yaml
+excludeTags:
+  - device-only
+executionOrder:
+  continueOnFailure: false

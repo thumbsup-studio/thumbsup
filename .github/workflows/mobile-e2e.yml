@@ -1,0 +1,335 @@
+name: Mobile E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 실행할 플랫폼
+        required: true
+        default: both
+        type: choice
+        options: [android, ios, both]
+  schedule:
+    - cron: '0 18 * * *'
+  pull_request:
+    branches: [main]
+    types: [labeled, synchronize, opened, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.mode.outputs.full }}
+      run: ${{ steps.mode.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - 'apps/mobile/**'
+              - 'packages/**'
+              - 'biome.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - '.github/workflows/mobile-e2e.yml'
+      - name: 실행 범위 결정
+        id: mode
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HAS_E2E_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'e2e') }}
+          MOBILE_CHANGED: ${{ steps.filter.outputs.mobile }}
+        run: |
+          full=false
+          run=false
+          if [[ "$EVENT_NAME" != pull_request ]]; then
+            full=true
+            run=true
+          elif [[ "$HAS_E2E_LABEL" == true ]]; then
+            full=true
+            run=true
+          elif [[ "$MOBILE_CHANGED" == true ]]; then
+            run=true
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: changes
+    if: >-
+      needs.changes.outputs.run == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.platform == 'android' || inputs.platform == 'both')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP_ENV: staging
+      EAS_BUILD_PROFILE: staging
+      NODE_ENV: production
+      EXPO_PUBLIC_API_URL: http://10.0.2.2:8080
+      EXPO_PUBLIC_UPDATES_CHANNEL: staging
+      EXPO_PUBLIC_UPDATES_URL: https://updates.thumbsup.invalid
+      APP_ID: studio.thumbsup.staging
+      APP_SCHEME: thumbsup-staging
+      E2E_API_URL: http://localhost:8080
+      FULL_SUITE: ${{ needs.changes.outputs.full }}
+      MAESTRO_CLI_NO_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: E2E 런타임 계정 값 생성
+        run: |
+          echo "E2E_EMAIL=maestro-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-android@thumbsup.invalid" >> "$GITHUB_ENV"
+          E2E_PASSWORD_VALUE="E2e-$(openssl rand -hex 16)!"
+          echo "::add-mask::$E2E_PASSWORD_VALUE"
+          echo "E2E_PASSWORD=$E2E_PASSWORD_VALUE" >> "$GITHUB_ENV"
+      - name: 로컬 서버 기동
+        run: |
+          docker compose -f server/docker-compose.yml up -d mysql
+          until docker compose -f server/docker-compose.yml exec -T mysql mysqladmin ping -h 127.0.0.1 -uthumbsup -pthumbsup-local --silent; do sleep 2; done
+          # local 프로파일은 application-local.yml에서 aws-parameterstore를 필수로 import한다.
+          # CI에는 AWS 자격증명이 없으므로 프로파일 파일을 로드하지 않는 이름(e2e)을 쓰고
+          # 필요한 값만 SPRING_APPLICATION_JSON으로 직접 주입한다. server/는 수정하지 않는다.
+          SERVER_JSON=$(JWT_SECRET="$(openssl rand -base64 48)" SWAGGER_PASSWORD="$(openssl rand -hex 16)" node -e '
+            const config = {
+              spring: {
+                // spring-cloud-aws parameter-store starter가 클래스패스에 있으면
+                // 프로파일과 무관하게 SsmClient 빈을 만들려 한다. CI에는 자격증명도
+                // 리전도 없으므로 명시적으로 끈다.
+                cloud: { aws: { parameterstore: { enabled: false }, region: { static: "ap-northeast-2" } } },
+                datasource: {
+                  url: "jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8",
+                  username: "thumbsup",
+                  password: "thumbsup-local",
+                },
+              },
+              thumbsup: {
+                jwt: { secret: process.env.JWT_SECRET },
+                cors: { "allowed-origin-patterns": ["http://localhost:3000"] },
+                swagger: { "basic-auth": { username: "e2e", password: process.env.SWAGGER_PASSWORD } },
+              },
+            };
+            process.stdout.write(JSON.stringify(config));
+          ')
+          cat > "$RUNNER_TEMP/server-e2e.env" <<ENV
+          SPRING_PROFILES_ACTIVE=e2e
+          SPRING_APPLICATION_JSON=$SERVER_JSON
+          ENV
+          docker build -t thumbsup-server-e2e server
+          docker run -d --name thumbsup-server-e2e --add-host host.docker.internal:host-gateway -p 8080:8080 --env-file "$RUNNER_TEMP/server-e2e.env" thumbsup-server-e2e
+          for _ in {1..90}; do
+            if curl --fail --silent http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then exit 0; fi
+            sleep 2
+          done
+          docker logs thumbsup-server-e2e
+          exit 1
+      - name: E2E 계정 시드
+        run: node apps/mobile/e2e/scripts/seed-account.mjs
+      - name: Android staging release 빌드
+        run: |
+          pnpm --filter mobile exec expo prebuild --clean --platform android --no-install
+          cd apps/mobile/android
+          ./gradlew :app:assembleRelease --no-daemon
+      - name: Maestro 2.1.0 설치
+        env:
+          MAESTRO_VERSION: 2.1.0
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Android Maestro 실행
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          script: |
+            adb install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            mkdir -p artifacts/android/debug artifacts/android/screenshots artifacts/android/junit
+            flows=(apps/mobile/e2e/flows/smoke.yaml)
+            if [[ "$FULL_SUITE" == true ]]; then
+              flows=(apps/mobile/e2e/flows/routes/*.yaml apps/mobile/e2e/flows/mobile-native/back-android.yaml apps/mobile/e2e/flows/mobile-native/background.yaml apps/mobile/e2e/flows/mobile-native/keyboard.yaml apps/mobile/e2e/flows/mobile-native/offline-android.yaml apps/mobile/e2e/flows/mobile-native/safe-area-font.yaml)
+            fi
+            for flow in "${flows[@]}"; do
+              slug="$(basename "$flow" .yaml)"
+              export E2E_EMAIL="maestro-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-android-${slug}@thumbsup.invalid"
+              node apps/mobile/e2e/scripts/seed-account.mjs
+              maestro test -e APP_ID="$APP_ID" -e APP_SCHEME="$APP_SCHEME" -e E2E_EMAIL="$E2E_EMAIL" -e E2E_PASSWORD="$E2E_PASSWORD" -e PLAY_PATH=ox-correct \
+                --format junit --output "artifacts/android/junit/${slug}.xml" --debug-output artifacts/android/debug --test-output-dir artifacts/android/screenshots "$flow"
+            done
+            if [[ "$FULL_SUITE" == true ]]; then
+              E2E_PLATFORM=android node apps/mobile/e2e/scripts/run-rotation.mjs
+            fi
+      - name: Android E2E 리포트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-e2e-android-${{ github.run_number }}
+          path: artifacts/android
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios:
+    needs: changes
+    if: >-
+      needs.changes.outputs.run == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.platform == 'ios' || inputs.platform == 'both')
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_ENV: staging
+      EAS_BUILD_PROFILE: staging
+      NODE_ENV: production
+      EXPO_PUBLIC_API_URL: http://localhost:8080
+      EXPO_PUBLIC_UPDATES_CHANNEL: staging
+      EXPO_PUBLIC_UPDATES_URL: https://updates.thumbsup.invalid
+      APP_ID: studio.thumbsup.staging
+      APP_SCHEME: thumbsup-staging
+      E2E_API_URL: http://localhost:8080
+      FULL_SUITE: ${{ needs.changes.outputs.full }}
+      MAESTRO_CLI_NO_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.4'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.7'
+          bundler-cache: true
+          working-directory: apps/mobile
+      - name: macOS Docker 기동
+        uses: docker/setup-docker-action@v5
+        env:
+          LIMA_START_ARGS: --cpus 4 --memory 8
+      - name: 워크스페이스 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: E2E 런타임 계정 값 생성
+        run: |
+          echo "E2E_EMAIL=maestro-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-ios@thumbsup.invalid" >> "$GITHUB_ENV"
+          E2E_PASSWORD_VALUE="E2e-$(openssl rand -hex 16)!"
+          echo "::add-mask::$E2E_PASSWORD_VALUE"
+          echo "E2E_PASSWORD=$E2E_PASSWORD_VALUE" >> "$GITHUB_ENV"
+      - name: 로컬 서버 기동
+        run: |
+          docker compose -f server/docker-compose.yml up -d mysql
+          until docker compose -f server/docker-compose.yml exec -T mysql mysqladmin ping -h 127.0.0.1 -uthumbsup -pthumbsup-local --silent; do sleep 2; done
+          # local 프로파일은 application-local.yml에서 aws-parameterstore를 필수로 import한다.
+          # CI에는 AWS 자격증명이 없으므로 프로파일 파일을 로드하지 않는 이름(e2e)을 쓰고
+          # 필요한 값만 SPRING_APPLICATION_JSON으로 직접 주입한다. server/는 수정하지 않는다.
+          SERVER_JSON=$(JWT_SECRET="$(openssl rand -base64 48)" SWAGGER_PASSWORD="$(openssl rand -hex 16)" node -e '
+            const config = {
+              spring: {
+                // spring-cloud-aws parameter-store starter가 클래스패스에 있으면
+                // 프로파일과 무관하게 SsmClient 빈을 만들려 한다. CI에는 자격증명도
+                // 리전도 없으므로 명시적으로 끈다.
+                cloud: { aws: { parameterstore: { enabled: false }, region: { static: "ap-northeast-2" } } },
+                datasource: {
+                  url: "jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8",
+                  username: "thumbsup",
+                  password: "thumbsup-local",
+                },
+              },
+              thumbsup: {
+                jwt: { secret: process.env.JWT_SECRET },
+                cors: { "allowed-origin-patterns": ["http://localhost:3000"] },
+                swagger: { "basic-auth": { username: "e2e", password: process.env.SWAGGER_PASSWORD } },
+              },
+            };
+            process.stdout.write(JSON.stringify(config));
+          ')
+          cat > "$RUNNER_TEMP/server-e2e.env" <<ENV
+          SPRING_PROFILES_ACTIVE=e2e
+          SPRING_APPLICATION_JSON=$SERVER_JSON
+          ENV
+          docker build -t thumbsup-server-e2e server
+          docker run -d --name thumbsup-server-e2e -p 8080:8080 --env-file "$RUNNER_TEMP/server-e2e.env" thumbsup-server-e2e
+          for _ in {1..90}; do
+            if curl --fail --silent http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then exit 0; fi
+            sleep 2
+          done
+          docker logs thumbsup-server-e2e
+          exit 1
+      - name: E2E 계정 시드
+        run: node apps/mobile/e2e/scripts/seed-account.mjs
+      - name: iOS staging release 빌드
+        run: |
+          pnpm --filter mobile exec expo prebuild --clean --platform ios --no-install
+          bundle exec pod install --project-directory=apps/mobile/ios
+          xcodebuild build \
+            -workspace apps/mobile/ios/ThumbsUpStaging.xcworkspace \
+            -scheme ThumbsUpStaging \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/e2e-derived-data" \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Maestro 2.1.0 설치
+        env:
+          MAESTRO_VERSION: 2.1.0
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: iOS 시뮬레이터에서 Maestro 실행
+        run: |
+          device="$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')"
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" -b
+          app="$(find "$RUNNER_TEMP/e2e-derived-data/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' -print -quit)"
+          xcrun simctl install "$device" "$app"
+          mkdir -p artifacts/ios/debug artifacts/ios/screenshots artifacts/ios/junit
+          flows=(apps/mobile/e2e/flows/smoke.yaml)
+          if [[ "$FULL_SUITE" == true ]]; then
+            flows=(apps/mobile/e2e/flows/routes/*.yaml apps/mobile/e2e/flows/mobile-native/back-ios.yaml apps/mobile/e2e/flows/mobile-native/background.yaml apps/mobile/e2e/flows/mobile-native/keyboard.yaml apps/mobile/e2e/flows/mobile-native/safe-area-font.yaml)
+          fi
+          for flow in "${flows[@]}"; do
+            slug="$(basename "$flow" .yaml)"
+            export E2E_EMAIL="maestro-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-ios-${slug}@thumbsup.invalid"
+            node apps/mobile/e2e/scripts/seed-account.mjs
+            maestro --device "$device" test -e APP_ID="$APP_ID" -e APP_SCHEME="$APP_SCHEME" -e E2E_EMAIL="$E2E_EMAIL" -e E2E_PASSWORD="$E2E_PASSWORD" -e PLAY_PATH=ox-correct \
+              --format junit --output "artifacts/ios/junit/${slug}.xml" --debug-output artifacts/ios/debug --test-output-dir artifacts/ios/screenshots "$flow"
+          done
+      - name: iOS E2E 리포트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-e2e-ios-${{ github.run_number }}
+          path: artifacts/ios
+          if-no-files-found: warn
+          retention-days: 14

@@ -380,6 +380,9 @@ export function PlayScreenView({
             ) : null}
             <View className="flex-row gap-3">
               <Pressable
+                accessibilityLabel={
+                  isHintLoading ? "불러오는 중" : requestedHint ? "힌트 확인함" : "힌트 보기"
+                }
                 accessibilityRole="button"
                 accessibilityState={{
                   disabled: Boolean(requestedHint) || isSubmitting || hasUsedRetry,
@@ -393,6 +396,7 @@ export function PlayScreenView({
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityLabel={isSubmitting ? "채점 중" : "정답 확인"}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !submitEnabled }}
                 className={`min-h-12 flex-1 items-center justify-center rounded-control px-3 ${submitEnabled ? "bg-primary" : "bg-border"}`}

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "ox-correct",
+    "QUESTION_KIND": "ox",
+    "ANSWER_MODE": "correct",
+    "USE_HINT": "false",
+    "ANSWER_SELECTOR": "O, 맞다",
+    "ANSWER_TEXT": ""
+  },
+  {
+    "id": "ox-incorrect-hint",
+    "QUESTION_KIND": "ox",
+    "ANSWER_MODE": "incorrect",
+    "USE_HINT": "true",
+    "ANSWER_SELECTOR": "X, 아니다",
+    "ANSWER_TEXT": ""
+  },
+  {
+    "id": "choice-correct",
+    "QUESTION_KIND": "multiple-choice",
+    "ANSWER_MODE": "correct",
+    "USE_HINT": "false",
+    "ANSWER_SELECTOR": "B. 경쟁 상태",
+    "ANSWER_TEXT": ""
+  },
+  {
+    "id": "choice-incorrect-hint",
+    "QUESTION_KIND": "multiple-choice",
+    "ANSWER_MODE": "incorrect",
+    "USE_HINT": "true",
+    "ANSWER_SELECTOR": "A. 데드락",
+    "ANSWER_TEXT": ""
+  },
+  {
+    "id": "keyword-correct",
+    "QUESTION_KIND": "keyword",
+    "ANSWER_MODE": "correct",
+    "USE_HINT": "false",
+    "ANSWER_SELECTOR": "",
+    "ANSWER_TEXT": "임계 구역"
+  },
+  {
+    "id": "keyword-incorrect-hint",
+    "QUESTION_KIND": "keyword",
+    "ANSWER_MODE": "incorrect",
+    "USE_HINT": "true",
+    "ANSWER_SELECTOR": "",
+    "ANSWER_TEXT": "공유 자원"
+  }
+]

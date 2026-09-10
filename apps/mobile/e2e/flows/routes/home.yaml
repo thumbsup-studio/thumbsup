@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+name: Route - home
+tags: [route]
+---
+- runFlow: ../atoms/login.yaml
+- runFlow: ../atoms/home-entry.yaml

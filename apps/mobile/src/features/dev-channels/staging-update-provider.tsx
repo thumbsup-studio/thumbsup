@@ -105,6 +105,7 @@ export function StagingUpdateProvider({ children }: { children: ReactNode }) {
             <Text className="font-bold text-primary-fg">PR #{activePr} 실행 중</Text>
           </Pressable>
           <Pressable
+            accessibilityLabel={switching ? "복귀 중…" : "나가기"}
             accessibilityRole="button"
             className="rounded-control bg-surface px-4 py-2"
             disabled={switching}

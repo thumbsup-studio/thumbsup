@@ -1,0 +1,33 @@
+appId: ${APP_ID}
+name: 문제 한 개 풀이
+---
+- assertVisible: "정답 확인"
+- runFlow:
+    when:
+      true: ${USE_HINT == 'true'}
+    commands:
+      - tapOn: "힌트 보기"
+      - extendedWaitUntil:
+          visible: "힌트 확인함"
+          timeout: 15000
+- runFlow:
+    when:
+      true: ${QUESTION_KIND == 'ox'}
+    commands:
+      - tapOn: ${ANSWER_SELECTOR}
+- runFlow:
+    when:
+      true: ${QUESTION_KIND == 'multiple-choice'}
+    commands:
+      - tapOn: ${ANSWER_SELECTOR}
+- runFlow:
+    when:
+      true: ${QUESTION_KIND == 'keyword'}
+    commands:
+      - tapOn: "핵심 키워드 1"
+      - inputText: ${ANSWER_TEXT}
+      - hideKeyboard
+- tapOn: "정답 확인"
+- extendedWaitUntil:
+    visible: ".*(정답|오답).*"
+    timeout: 20000

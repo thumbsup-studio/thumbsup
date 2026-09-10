@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { isStagingBuild, isStagingEnvironment } from "./app-environment";
 
 describe("staging 환경 가드", () => {
