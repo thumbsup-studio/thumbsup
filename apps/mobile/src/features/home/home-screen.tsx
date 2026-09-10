@@ -11,6 +11,7 @@ import { ScreenLoading, ScreenState } from "../../components/screen-state";
 import { useApi } from "../../lib/api/api-provider";
 import { useConnectivity } from "../../lib/connectivity/connectivity-provider";
 import { useForegroundRefresh } from "../../lib/lifecycle/use-foreground-refresh";
+import { TrackedPressable } from "../observability/interaction";
 
 type HomeResponse = {
   streakDays: number;
@@ -332,7 +333,8 @@ function CourseCarousel({
                 {course.completed ? course.total : course.progress + 1}/{course.total} ·{" "}
                 {course.durationLabel}
               </Text>
-              <Pressable
+              <TrackedPressable
+                accessibilityLabel={course.completed ? "복습하기" : "시작하기"}
                 accessibilityRole="button"
                 className="mt-auto min-h-12 flex-row items-center justify-center gap-2 rounded-control bg-surface px-4 py-3"
                 onPress={() => onOpen(course)}
@@ -341,7 +343,7 @@ function CourseCarousel({
                   {course.completed ? "복습하기" : "시작하기"}
                 </Text>
                 <ChevronRightIcon color={tokens.color.primary} height={18} width={18} />
-              </Pressable>
+              </TrackedPressable>
             </View>
           </View>
         ))}

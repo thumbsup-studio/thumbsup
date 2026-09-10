@@ -11,6 +11,8 @@ import {
   View,
 } from "react-native";
 
+import { useDialogTelemetry } from "../observability/interaction";
+
 const MAX_LENGTH = 1000;
 
 type FeedbackModalProps = {
@@ -30,6 +32,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export function FeedbackModal({ open, onClose, onSubmit }: FeedbackModalProps) {
+  useDialogTelemetry(open, "의견 보내기");
   const inputRef = useRef<TextInput>(null);
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);

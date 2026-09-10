@@ -5,8 +5,15 @@ import * as Device from "expo-device";
 import Updates from "expo-updates/build/ExpoUpdates";
 import { Component, type ErrorInfo, type ReactNode, useEffect } from "react";
 import { Platform, Text, View } from "react-native";
+import { setInteractionReporter } from "./interaction";
 import { TelemetryClient } from "./telemetry-client";
-import type { CrashTelemetry, LaunchTelemetry, TelemetryBase, TelemetryPayload } from "./types";
+import type {
+  CrashTelemetry,
+  InteractionTelemetry,
+  LaunchTelemetry,
+  TelemetryBase,
+  TelemetryPayload,
+} from "./types";
 
 const QUEUE_KEY = "thumbsup.telemetry.queue.v1";
 const startedAt = globalThis.performance?.now?.() ?? Date.now();
@@ -71,6 +78,21 @@ async function reportEmergencyLaunch(): Promise<void> {
   emergencyReported = true;
   await client.send({ ...metadata(), type: "emergency", isEmergencyLaunch: true });
 }
+
+async function reportInteraction(
+  action: InteractionTelemetry["action"],
+  role: string,
+  label: string,
+  screen: string,
+): Promise<void> {
+  await client.send({ ...metadata(), type: "interaction", action, role, label, screen });
+}
+
+// 이 모듈이 로드되는 앱에서만 상호작용 수집이 켜진다. 화면 컴포넌트는 interaction.tsx만
+// 알면 되고, 무거운 네이티브 의존은 여기에 머문다.
+setInteractionReporter((action, role, label, screen) => {
+  void reportInteraction(action, role, label, screen).catch(() => undefined);
+});
 
 export async function reportCrash(error: Error, fatal: boolean): Promise<void> {
   const payload: CrashTelemetry = {

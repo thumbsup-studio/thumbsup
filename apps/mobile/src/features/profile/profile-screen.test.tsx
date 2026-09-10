@@ -6,6 +6,7 @@ import ProfileScreen from "./profile-screen";
 
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), replace: jest.fn() },
+  usePathname: () => "/(tabs)/profile",
 }));
 jest.mock("../../lib/api/api-provider", () => ({ useApi: jest.fn() }));
 
