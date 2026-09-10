@@ -36,7 +36,9 @@ MOBILE_DEV_CLIENT_BASE_URL=https://<아티팩트-호스트>/binaries/dev-client/
 
 iOS URL에는 압축을 풀었을 때 최상위에 `.app` 하나가 있는 ZIP이 필요하다. iOS 실기기 staging 배포는 TestFlight 내부 테스트를 사용한다.
 
-현재 이 머신의 Xcode는 26.0.1이다. Expo SDK 57의 `expo run:ios`가 컴파일 오류로 끝나므로 iOS 네이티브 빌드는 Xcode 26.4로 업그레이드한 뒤 다시 확인해야 한다. 그전에는 아래처럼 Expo Go를 사용한다.
+`MOBILE_DEV_CLIENT_BASE_URL`이 없으면 `dev:install`은 로컬 네이티브 빌드로 대체한다. Android는 `expo run:android`, iOS는 `expo run:ios`를 쓴다.
+
+Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4 이상이 필요하다. 특정 머신의 버전을 여기에 적지 않는다 — `pnpm diagnose`의 `Xcode` 항목으로 확인한다. 요구 버전에 못 미치면 아래처럼 Expo Go로 JavaScript 화면만 검증하고, 네이티브 빌드는 Xcode를 올린 뒤 다시 확인한다.
 
 ```bash
 cd apps/mobile

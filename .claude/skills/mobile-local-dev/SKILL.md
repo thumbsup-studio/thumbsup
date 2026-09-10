@@ -26,7 +26,7 @@ pnpm dev
 ## 자주 막히는 지점
 
 - `pnpm setup`과 `pnpm doctor`는 pnpm 10.11의 내장 명령과 충돌한다. 프로젝트 스크립트인 `pnpm bootstrap`과 `pnpm diagnose`를 사용한다. 특히 `pnpm setup`은 셸 설정을 바꾸므로 실행하지 않는다.
-- Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4가 필요하다. Xcode를 올리기 전에는 `cd apps/mobile && pnpm exec expo start`로 Expo Go를 사용한다.
+- Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4 이상이 필요하다. 설치된 버전은 `pnpm diagnose`의 `Xcode` 항목으로 확인하고, 특정 머신의 버전을 문서에 적지 않는다. 요구 버전에 못 미칠 때만 `cd apps/mobile && pnpm exec expo start`로 Expo Go를 쓴다.
 - Android 에뮬레이터에서 호스트에 접속할 때는 `localhost` 대신 `10.0.2.2`를 쓴다. Metro는 `http://10.0.2.2:8081`, 로컬 API는 `http://10.0.2.2:8080`으로 연결한다.
 - Metro의 기본 포트는 8081이다. 충돌이 의심되면 `lsof -nP -iTCP:8081 -sTCP:LISTEN`으로 점유 프로세스를 확인한다.
 - `.env.local`의 `EXPO_PUBLIC_API_URL`을 바꿨다면 Metro를 다시 시작한다.

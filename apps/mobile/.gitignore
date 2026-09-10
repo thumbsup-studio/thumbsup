@@ -10,3 +10,7 @@ expo-env.d.ts
 dist/
 ios/
 android/
+
+# Impeccable design skill (로컬 시험용 — 커밋 대상 아님)
+PRODUCT.md
+.impeccable/
