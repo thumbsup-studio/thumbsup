@@ -121,6 +121,10 @@ jobs:
           SERVER_JSON=$(JWT_SECRET="$(openssl rand -base64 48)" SWAGGER_PASSWORD="$(openssl rand -hex 16)" node -e '
             const config = {
               spring: {
+                // spring-cloud-aws parameter-store starter가 클래스패스에 있으면
+                // 프로파일과 무관하게 SsmClient 빈을 만들려 한다. CI에는 자격증명도
+                // 리전도 없으므로 명시적으로 끈다.
+                cloud: { aws: { parameterstore: { enabled: false }, region: { static: "ap-northeast-2" } } },
                 datasource: {
                   url: "jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8",
                   username: "thumbsup",
@@ -252,6 +256,10 @@ jobs:
           SERVER_JSON=$(JWT_SECRET="$(openssl rand -base64 48)" SWAGGER_PASSWORD="$(openssl rand -hex 16)" node -e '
             const config = {
               spring: {
+                // spring-cloud-aws parameter-store starter가 클래스패스에 있으면
+                // 프로파일과 무관하게 SsmClient 빈을 만들려 한다. CI에는 자격증명도
+                // 리전도 없으므로 명시적으로 끈다.
+                cloud: { aws: { parameterstore: { enabled: false }, region: { static: "ap-northeast-2" } } },
                 datasource: {
                   url: "jdbc:mysql://host.docker.internal:3306/thumbsup?serverTimezone=UTC&characterEncoding=UTF-8",
                   username: "thumbsup",
