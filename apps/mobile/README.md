@@ -4,12 +4,16 @@ Expo SDK 57과 expo-router로 구성한 모바일 앱 셸이다. 네이티브 �
 
 ## 준비
 
+앱이 처음 뜨는 머신이면 [로컬 개발 문서의 "준비물"](./docs/local-dev.md#준비물)부터 채운다. Android와 iOS 가운데 한쪽만 갖추면 된다.
+
 루트에서 환경을 준비하고 진단한다.
 
 ```bash
 pnpm bootstrap
-pnpm diagnose
+pnpm diagnose android   # 또는 pnpm diagnose ios
 ```
+
+플랫폼을 인자로 주면 그 플랫폼 도구만 필수로 판정한다. 인자가 없으면 두 플랫폼 중 한쪽이라도 완비됐는지 본다.
 
 `APP_ENV`에는 `development`, `staging`, `production` 가운데 하나를 지정한다. `EXPO_PUBLIC_API_URL`은 필수다. CloudFront 업데이트 도메인이 정해지면 `EXPO_PUBLIC_UPDATES_URL`도 설정하며, 그전에는 `app.config.ts`의 placeholder URL을 쓴다.
 
@@ -22,7 +26,7 @@ pnpm dev:install android
 pnpm dev
 ```
 
-Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4 이상이 필요하다. 설치된 버전은 `pnpm diagnose`의 `Xcode` 항목에서 확인한다. 요구 버전에 못 미치면 Expo Go로 JavaScript 화면을 확인하고, 네이티브 iOS 빌드는 지원 버전에서 다시 검증한다.
+Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4 이상이 필요하다. `pnpm diagnose ios`가 설치된 버전을 하한과 비교해 판정한다. 요구 버전에 못 미치면 Expo Go로 JavaScript 화면을 확인하고, 네이티브 iOS 빌드는 지원 버전에서 다시 검증한다.
 
 ## 검증
 
