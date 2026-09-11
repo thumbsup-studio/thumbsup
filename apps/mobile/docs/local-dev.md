@@ -75,6 +75,8 @@ pnpm dev
 
 Android만 쓸 계획이라면 Xcode가 없어도 `pnpm diagnose android`는 통과한다. 반대도 같다. 포트 8081과 `EXPO_PUBLIC_API_URL`은 어느 경우에도 필수다.
 
+포트 8081 검사는 **Metro가 이미 떠 있으면 통과한다.** 점유자가 Metro인지 `/status` 응답으로 확인하고, Metro가 아닌 프로세스가 물고 있을 때만 실패로 판정한다. 개발 중에 진단을 다시 돌려도 Metro를 내릴 필요가 없다.
+
 ## dev-client 설치
 
 dev-client 워크플로우가 S3에 배포되려면 `MOBILE_ARTIFACTS_BUCKET`과 `MOBILE_BINARY_PUBLISH_ROLE_ARN` 등록이 필요하다. `MOBILE_DEV_CLIENT_BASE_URL`이 아직 없다면 `pnpm dev:install android`는 `expo run:android`로 로컬 빌드를 만들어 설치한다.

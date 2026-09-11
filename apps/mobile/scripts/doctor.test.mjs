@@ -3,6 +3,7 @@ import {
   androidSdkPath,
   androidTool,
   apiReachable,
+  isMetroStatus,
   javaMajor,
   meetsVersion,
   parseEnvironment,
@@ -91,5 +92,19 @@ describe("meetsVersion", () => {
 
   it("fails when the version is unknown", () => {
     expect(meetsVersion(null, "26.4")).toBe(false);
+  });
+});
+
+describe("isMetroStatus", () => {
+  it("recognises a running Metro packager", () => {
+    expect(isMetroStatus("packager-status:running")).toBe(true);
+    expect(isMetroStatus("packager-status:running\n")).toBe(true);
+  });
+
+  it("rejects anything else holding the port", () => {
+    expect(isMetroStatus("")).toBe(false);
+    expect(isMetroStatus("<!doctype html>")).toBe(false);
+    expect(isMetroStatus("packager-status:stopped")).toBe(false);
+    expect(isMetroStatus(null)).toBe(false);
   });
 });

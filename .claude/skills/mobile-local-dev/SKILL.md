@@ -37,7 +37,7 @@ pnpm dev
 - Expo SDK 57의 iOS 네이티브 빌드에는 Xcode 26.4 이상이 필요하다. `pnpm diagnose ios`가 하한과 비교해 판정한다. 요구 버전에 못 미칠 때만 `cd apps/mobile && pnpm exec expo start`로 Expo Go를 쓴다.
 - 네이티브 의존성이나 `app.config.ts`가 바뀌면 dev-client를 다시 설치한다. JavaScript만 바뀌었으면 Metro 재시작으로 충분하다.
 - Android 에뮬레이터에서 호스트에 접속할 때는 `localhost` 대신 `10.0.2.2`를 쓴다. Metro는 `http://10.0.2.2:8081`, 로컬 API는 `http://10.0.2.2:8080`으로 연결한다.
-- Metro의 기본 포트는 8081이다. 충돌이 의심되면 `lsof -nP -iTCP:8081 -sTCP:LISTEN`으로 점유 프로세스를 확인한다.
+- Metro의 기본 포트는 8081이다. 진단은 점유자가 Metro면 통과시키고 다른 프로세스일 때만 실패시키므로, Metro를 띄운 채 다시 돌려도 된다. 충돌이 의심되면 `lsof -nP -iTCP:8081 -sTCP:LISTEN`으로 점유 프로세스를 확인한다.
 - `.env.local`의 `EXPO_PUBLIC_API_URL`을 바꿨다면 Metro를 다시 시작한다.
 
 ## 검증

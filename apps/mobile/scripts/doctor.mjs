@@ -75,6 +75,16 @@ export function meetsVersion(actual, minimum) {
   return true;
 }
 
+export function isMetroStatus(body) {
+  return typeof body === "string" && body.trim().startsWith("packager-status:running");
+}
+
+// Metro는 /status에 packager-status:running으로 응답한다. React Native 도구들이 쓰는 것과 같은 신호다.
+function metroListening() {
+  const probe = run("curl", ["--silent", "--max-time", "2", "http://127.0.0.1:8081/status"]);
+  return probe.status === 0 && isMetroStatus(probe.stdout);
+}
+
 export async function portAvailable(port) {
   return new Promise((resolve) => {
     const server = createServer();
@@ -194,12 +204,14 @@ export async function main(environment = process.env, argv = process.argv.slice(
   );
 
   // --- 공통 ---
+  // 포트가 비어 있거나, 점유자가 Metro 자신이면 통과한다. 개발 중에는 Metro가 떠 있는 게 정상이다.
   const metroFree = await portAvailable(8081);
+  const metroRunning = metroFree ? false : metroListening();
   check(
     "Metro 포트 8081",
-    metroFree,
-    metroFree ? "사용 가능" : "다른 프로세스가 사용 중",
-    "lsof -nP -iTCP:8081 -sTCP:LISTEN 으로 점유 프로세스를 확인한다. 이미 띄워 둔 Metro라면 그대로 두면 된다.",
+    metroFree || metroRunning,
+    metroFree ? "사용 가능" : metroRunning ? "Metro 실행 중" : "다른 프로세스가 사용 중",
+    "lsof -nP -iTCP:8081 -sTCP:LISTEN 으로 점유 프로세스를 확인하고 종료한 뒤 다시 실행한다.",
     "required",
   );
 
