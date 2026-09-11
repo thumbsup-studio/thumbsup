@@ -21,7 +21,7 @@ export default function ReviewSummaryScreen() {
       <View className="flex-1 items-center justify-center">
         <View
           accessibilityElementsHidden
-          className="size-20 items-center justify-center rounded-card bg-surface-muted"
+          className="size-20 items-center justify-center rounded-mobile-card bg-surface-muted"
           importantForAccessibility="no-hide-descendants"
         >
           <Text className="text-4xl text-success">✓</Text>
@@ -39,14 +39,14 @@ export default function ReviewSummaryScreen() {
       <View className="gap-3 pb-2">
         <Pressable
           accessibilityRole="button"
-          className="min-h-12 items-center justify-center rounded-control bg-primary px-5"
+          className="min-h-12 items-center justify-center rounded-mobile-control bg-primary px-5"
           onPress={() => router.replace("/(tabs)/course")}
         >
           <Text className="font-bold text-primary-fg">코스로 돌아가기</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          className="min-h-12 items-center justify-center rounded-control border border-border bg-surface px-5"
+          className="min-h-12 items-center justify-center rounded-mobile-control border border-border bg-surface px-5"
           onPress={() =>
             router.push({
               pathname: "/play",

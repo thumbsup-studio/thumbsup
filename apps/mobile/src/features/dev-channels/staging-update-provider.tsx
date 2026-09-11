@@ -93,7 +93,7 @@ export function StagingUpdateProvider({ children }: { children: ReactNode }) {
       {children}
       {activePr !== null ? (
         <View
-          className="absolute left-4 right-4 flex-row items-center justify-between rounded-card bg-ink px-4 py-3"
+          className="absolute left-4 right-4 flex-row items-center justify-between rounded-mobile-card bg-ink px-4 py-3"
           style={{ bottom: insets.bottom + 16 }}
         >
           <Pressable
@@ -106,7 +106,7 @@ export function StagingUpdateProvider({ children }: { children: ReactNode }) {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            className="rounded-control bg-surface px-4 py-2"
+            className="rounded-mobile-control bg-surface px-4 py-2"
             disabled={switching}
             onPress={() => void value.leave()}
           >

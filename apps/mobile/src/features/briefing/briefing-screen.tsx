@@ -145,7 +145,7 @@ export function BriefingScreenView({
     <SafeAreaView className="flex-1 bg-bg" edges={["top", "bottom", "left", "right"]}>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="flex-grow gap-5 px-4 py-6"
+        contentContainerClassName="flex-grow gap-5 px-5 py-6"
         keyboardDismissMode="on-drag"
       >
         <View>
@@ -157,13 +157,13 @@ export function BriefingScreenView({
           </Text>
         </View>
 
-        <View className="gap-4 rounded-card border border-border bg-surface p-5">
+        <View className="gap-4 rounded-mobile-card border border-border bg-surface p-5">
           <Text className="text-lg font-bold text-ink">핵심 요약</Text>
           <Text className="text-base leading-6 text-ink">{state.briefing.summary}</Text>
           <View accessibilityLabel="브리핑 상세 내용" className="gap-3" nativeID="briefing-content">
             {visibleBlocks.map((block) => (
               <View
-                className="rounded-control bg-surface-muted p-4"
+                className="rounded-mobile-control bg-surface-muted p-4"
                 key={`${block.displayOrder}-${block.heading}`}
               >
                 <Text className="font-bold text-ink">{block.heading}</Text>
@@ -177,7 +177,7 @@ export function BriefingScreenView({
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded }}
-            className="min-h-12 items-center justify-center self-center rounded-control bg-surface-muted px-5 py-3"
+            className="min-h-12 items-center justify-center self-center rounded-mobile-control bg-surface-muted px-5 py-3"
             onPress={() => setExpanded((current) => !current)}
           >
             <Text className="font-semibold text-ink">
@@ -188,7 +188,7 @@ export function BriefingScreenView({
 
         <Pressable
           accessibilityRole="button"
-          className="mt-auto min-h-12 items-center justify-center rounded-control bg-primary px-5 py-3"
+          className="mt-auto min-h-12 items-center justify-center rounded-mobile-control bg-primary px-5 py-3"
           onPress={() =>
             router.push({
               pathname: "/play",
@@ -209,7 +209,7 @@ export function BriefingScreenView({
 function StateShell({ children }: { children: React.ReactNode }) {
   return (
     <SafeAreaView
-      className="flex-1 justify-center bg-bg px-4"
+      className="flex-1 justify-center bg-bg px-5"
       edges={["top", "bottom", "left", "right"]}
     >
       {children}

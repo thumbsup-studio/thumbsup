@@ -77,7 +77,7 @@ export function GraphWebView({ data, html, onFailure, onNodePress }: GraphWebVie
   );
 
   return (
-    <View className="h-80 overflow-hidden rounded-card bg-graph-surface">
+    <View className="h-80 overflow-hidden rounded-mobile-card bg-graph-surface">
       {!ready ? (
         <View className="absolute inset-0 z-10 items-center justify-center">
           <Text className="text-sm font-semibold text-graph-fg-muted">

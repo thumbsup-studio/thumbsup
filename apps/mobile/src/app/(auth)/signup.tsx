@@ -111,7 +111,7 @@ export default function SignupScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
-          contentContainerClassName="flex-grow px-6 py-6"
+          contentContainerClassName="flex-grow px-5 py-6"
           keyboardShouldPersistTaps="handled"
         >
           <View className="mx-auto w-full max-w-sm">
@@ -125,7 +125,7 @@ export default function SignupScreen() {
             </Pressable>
             <View className="gap-8">
               <AuthBrand title="회원가입" subtitle="가입하고 CS 학습을 시작하세요." />
-              <View className="gap-5 rounded-card border border-border bg-surface p-6">
+              <View className="gap-5 rounded-mobile-card border border-border bg-surface p-5">
                 <AuthInput
                   label="이메일"
                   value={email}

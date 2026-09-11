@@ -15,7 +15,7 @@ export function AuthButton({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled: loading }}
-      className={`min-h-12 flex-row items-center justify-center gap-2 rounded-control bg-primary px-4 ${
+      className={`min-h-12 flex-row items-center justify-center gap-2 rounded-mobile-control bg-primary px-4 ${
         loading ? "opacity-60" : ""
       }`}
       disabled={loading}

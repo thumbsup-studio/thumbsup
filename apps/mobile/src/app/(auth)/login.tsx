@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -56,17 +55,14 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      <KeyboardAvoidingView className="flex-1" behavior="padding">
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-10"
+          contentContainerClassName="flex-grow justify-center px-5 py-6"
           keyboardShouldPersistTaps="handled"
         >
           <View className="mx-auto w-full max-w-sm gap-8">
             <AuthBrand title="Thumbs Up" subtitle="매일 한 문제, CS 감각이 쌓입니다." />
-            <View className="gap-5 rounded-card border border-border bg-surface p-6">
+            <View className="gap-5 rounded-mobile-card border border-border bg-surface p-5">
               <AuthInput
                 label="이메일"
                 value={email}
@@ -76,6 +72,7 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoComplete="email"
                 returnKeyType="next"
+                submitBehavior="submit"
                 placeholder="you@example.com"
                 onSubmitEditing={() => passwordRef.current?.focus()}
               />
@@ -103,12 +100,6 @@ export default function LoginScreen() {
               {errorMessage ? (
                 <AuthFeedback title="로그인에 실패했어요" description={errorMessage} />
               ) : null}
-              <AuthButton
-                label={errorMessage ? "다시 로그인" : "로그인"}
-                loadingLabel="로그인 중…"
-                loading={loading}
-                onPress={() => void submit()}
-              />
             </View>
             <View className="items-center gap-3">
               <Pressable accessibilityRole="link" onPress={() => router.push("/(auth)/signup")}>
@@ -133,6 +124,14 @@ export default function LoginScreen() {
             </View>
           </View>
         </ScrollView>
+        <View className="border-t border-border bg-bg px-5 py-3">
+          <AuthButton
+            label={errorMessage ? "다시 로그인" : "로그인"}
+            loadingLabel="로그인 중…"
+            loading={loading}
+            onPress={() => void submit()}
+          />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -22,7 +22,7 @@ export function ScreenState({
     <View
       accessibilityLiveRegion="polite"
       accessibilityRole={kind === "empty" ? "summary" : "alert"}
-      className="items-center gap-3 rounded-card border border-border bg-surface p-6"
+      className="items-center gap-3 rounded-mobile-card border border-border bg-surface p-5"
     >
       <Icon height={32} width={32} />
       <Text className="text-center text-xl font-bold text-ink">{title}</Text>
@@ -30,7 +30,7 @@ export function ScreenState({
       {onAction ? (
         <Pressable
           accessibilityRole="button"
-          className="min-h-12 items-center justify-center rounded-control bg-primary px-5 py-3"
+          className="min-h-12 items-center justify-center rounded-mobile-control bg-primary px-5 py-3"
           onPress={onAction}
         >
           <Text className="font-semibold text-primary-fg">{actionLabel}</Text>

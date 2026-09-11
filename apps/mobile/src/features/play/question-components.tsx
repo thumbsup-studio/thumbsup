@@ -39,12 +39,12 @@ export function ChoiceKeycap({
     : "border-border bg-surface";
 
   return (
-    <View className={`rounded-control pb-1 ${bottomClass}`}>
+    <View className={`rounded-mobile-control pb-1 ${bottomClass}`}>
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="radio"
         accessibilityState={{ checked: selected, disabled }}
-        className={`min-h-14 flex-row items-center rounded-control border px-4 py-3 ${faceClass}`}
+        className={`min-h-14 flex-row items-center rounded-mobile-control border px-4 py-3 ${faceClass}`}
         disabled={disabled}
         onPress={onPress}
         style={({ pressed }) => ({ transform: [{ translateY: pressed ? 4 : 0 }] })}
@@ -151,7 +151,7 @@ function CodeBlock({ code }: { code: string }) {
     <View
       accessible
       accessibilityLabel="문제 코드"
-      className="mb-4 rounded-control bg-graph-bg p-4"
+      className="mb-4 rounded-mobile-control bg-graph-bg p-4"
     >
       <Text className="font-mono text-sm leading-6 text-graph-fg">{code}</Text>
     </View>
@@ -210,7 +210,7 @@ function KeywordInputs({
               accessibilityLabel={multiline ? "서술형 답안" : `핵심 키워드 ${slot}`}
               autoCapitalize="none"
               autoCorrect={false}
-              className={`rounded-control border border-border bg-surface px-4 py-3 text-base font-semibold text-ink ${multiline ? "min-h-28" : "min-h-12"}`}
+              className={`rounded-mobile-control border border-border bg-surface px-4 py-3 text-base font-semibold text-ink ${multiline ? "min-h-28" : "min-h-12"}`}
               editable={!disabled}
               multiline={multiline}
               onChangeText={(value) => {

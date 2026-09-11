@@ -5,7 +5,7 @@ export function AuthBrand({ title, subtitle }: { title: string; subtitle: string
     <View className="items-center gap-3">
       <View
         accessible={false}
-        className="h-16 w-16 items-center justify-center rounded-control bg-primary"
+        className="h-16 w-16 items-center justify-center rounded-mobile-control bg-primary"
       >
         <Text className="text-3xl" accessibilityElementsHidden importantForAccessibility="no">
           👍

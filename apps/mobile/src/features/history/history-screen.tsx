@@ -82,7 +82,7 @@ export default function HistoryScreen() {
 
   if (state.status === "loading") {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-5">
         <ActivityIndicator accessibilityLabel="히스토리 불러오는 중" size="large" />
         <Text className="mt-3 text-sm text-ink-muted">배운 개념을 불러오는 중이에요.</Text>
       </SafeAreaView>
@@ -91,11 +91,11 @@ export default function HistoryScreen() {
 
   if (state.status === "error") {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-5">
         <View
           accessibilityLiveRegion="assertive"
           accessibilityRole="alert"
-          className="w-full max-w-sm rounded-card border border-danger bg-surface p-6"
+          className="w-full max-w-sm rounded-mobile-card border border-danger bg-surface p-5"
         >
           <Text accessibilityRole="header" className="text-xl font-bold text-ink">
             히스토리를 불러오지 못했어요
@@ -103,7 +103,7 @@ export default function HistoryScreen() {
           <Text className="mt-2 leading-6 text-ink-muted">{state.message}</Text>
           <Pressable
             accessibilityRole="button"
-            className="mt-5 min-h-12 items-center justify-center rounded-control bg-primary px-4"
+            className="mt-5 min-h-12 items-center justify-center rounded-mobile-control bg-primary px-4"
             onPress={() => void load()}
           >
             <Text className="font-bold text-primary-fg">다시 시도</Text>
@@ -114,9 +114,9 @@ export default function HistoryScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-bg" edges={["top", "left", "right"]}>
       <FlatList
-        contentContainerClassName="grow px-5 pb-8 pt-6"
+        contentContainerClassName="flex-grow px-5 pb-6 pt-6"
         data={state.nodes}
         keyExtractor={(node) => node.id}
         refreshControl={
@@ -133,7 +133,7 @@ export default function HistoryScreen() {
             </Text>
             <Pressable
               accessibilityRole="link"
-              className="mt-2 min-h-12 items-center justify-center rounded-control border border-border bg-surface px-4"
+              className="mt-2 min-h-12 items-center justify-center rounded-mobile-control border border-border bg-surface px-4"
               onPress={() => router.push("/history/graph")}
             >
               <Text className="font-semibold text-primary">지식 그래프로 보기</Text>
@@ -141,7 +141,7 @@ export default function HistoryScreen() {
           </View>
         }
         ListEmptyComponent={
-          <View className="mt-16 items-center rounded-card border border-border bg-surface p-7">
+          <View className="flex-1 items-center justify-center px-2 py-6">
             <Text accessibilityRole="header" className="text-xl font-bold text-ink">
               아직 배운 개념이 없어요
             </Text>
@@ -150,7 +150,7 @@ export default function HistoryScreen() {
             </Text>
             <Pressable
               accessibilityRole="button"
-              className="mt-5 min-h-12 w-full items-center justify-center rounded-control bg-primary px-4"
+              className="mt-5 min-h-12 w-full items-center justify-center rounded-mobile-control bg-primary px-4"
               onPress={() => router.push("/(tabs)")}
             >
               <Text className="font-bold text-primary-fg">학습하러 가기</Text>
@@ -160,7 +160,7 @@ export default function HistoryScreen() {
         renderItem={({ item }) => {
           const selected = item.id === selectedNodeId;
           return (
-            <View className="mb-3 overflow-hidden rounded-card border border-border bg-surface">
+            <View className="mb-3 overflow-hidden rounded-mobile-card border border-border bg-surface">
               <Pressable
                 accessibilityHint="개념 설명과 관련 스텝을 펼칩니다"
                 accessibilityRole="button"
@@ -207,7 +207,7 @@ function NodeDetails({ node }: { node: HistoryGraphNode }) {
             <Pressable
               accessibilityHint="이 스텝을 첫 문제부터 다시 풉니다"
               accessibilityRole="link"
-              className="min-h-12 flex-row items-center rounded-control bg-surface px-4 py-3"
+              className="min-h-12 flex-row items-center rounded-mobile-control bg-surface px-4 py-3"
               key={`${node.id}-${step.stepOrder}`}
               onPress={() =>
                 router.push({

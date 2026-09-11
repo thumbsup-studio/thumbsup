@@ -12,7 +12,6 @@ import {
   AccessibilityInfo,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -279,22 +278,21 @@ export function PlayScreenView({
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top", "bottom", "left", "right"]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior="padding" className="flex-1">
         <ScrollView
-          contentContainerClassName="flex-grow gap-4 px-4 py-5"
+          className="flex-1"
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="flex-grow gap-4 px-5 py-6"
           keyboardDismissMode="on-drag"
         >
-          <View className="rounded-card border border-border bg-surface p-4">
+          <View className="rounded-mobile-card border border-border bg-surface p-5">
             <View className="flex-row items-center gap-3">
               <Pressable
                 accessibilityLabel={
                   context.courseId || context.review ? "코스 목록으로 돌아가기" : "홈으로 돌아가기"
                 }
                 accessibilityRole="button"
-                className="size-11 items-center justify-center rounded-chip bg-surface-muted"
+                className="size-11 items-center justify-center rounded-mobile-control bg-surface-muted"
                 onPress={() =>
                   router.replace(context.courseId || context.review ? "/(tabs)/course" : "/(tabs)")
                 }
@@ -328,11 +326,11 @@ export function PlayScreenView({
             </View>
           </View>
 
-          <View className="flex-1 rounded-card border border-border bg-surface-muted p-5">
+          <View className="flex-1 rounded-mobile-card border border-border bg-surface-muted p-5">
             {retryHint ? (
               <View
                 accessibilityLiveRegion="polite"
-                className="mb-4 rounded-control bg-surface p-4"
+                className="mb-4 rounded-mobile-control bg-surface p-4"
               >
                 <Text className="font-semibold leading-6 text-ink">
                   오답이에요. 힌트를 보고 한 번 더 풀어 보세요.
@@ -351,7 +349,7 @@ export function PlayScreenView({
             {requestedHint ? (
               <View
                 accessibilityLiveRegion="polite"
-                className="mt-4 rounded-control bg-surface p-4"
+                className="mt-4 rounded-mobile-control bg-surface p-4"
               >
                 <Text className="text-xs font-bold text-ink-muted">힌트</Text>
                 <Text className="mt-2 font-semibold leading-6 text-ink">{requestedHint}</Text>
@@ -378,38 +376,36 @@ export function PlayScreenView({
                 {hintError ?? submitError}
               </Text>
             ) : null}
-            <View className="flex-row gap-3">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{
-                  disabled: Boolean(requestedHint) || isSubmitting || hasUsedRetry,
-                }}
-                className="min-h-12 flex-1 items-center justify-center rounded-control border border-border bg-surface px-3"
-                disabled={Boolean(requestedHint) || isSubmitting || hasUsedRetry}
-                onPress={onHint}
-              >
-                <Text className="font-semibold text-ink-muted">
-                  {isHintLoading ? "불러오는 중" : requestedHint ? "힌트 확인함" : "힌트 보기"}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !submitEnabled }}
-                className={`min-h-12 flex-1 items-center justify-center rounded-control px-3 ${submitEnabled ? "bg-primary" : "bg-border"}`}
-                disabled={!submitEnabled}
-                onPress={onSubmit}
-              >
-                <Text
-                  className={
-                    submitEnabled ? "font-bold text-primary-fg" : "font-bold text-ink-muted"
-                  }
-                >
-                  {isSubmitting ? "채점 중" : "정답 확인"}
-                </Text>
-              </Pressable>
-            </View>
           </View>
         </ScrollView>
+        <View className="flex-row gap-3 border-t border-border bg-bg px-5 py-3">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{
+              disabled: Boolean(requestedHint) || isSubmitting || hasUsedRetry,
+            }}
+            className="min-h-12 flex-1 items-center justify-center rounded-mobile-control border border-border bg-surface px-3"
+            disabled={Boolean(requestedHint) || isSubmitting || hasUsedRetry}
+            onPress={onHint}
+          >
+            <Text className="font-semibold text-ink-muted">
+              {isHintLoading ? "불러오는 중" : requestedHint ? "힌트 확인함" : "힌트 보기"}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !submitEnabled }}
+            className={`min-h-12 flex-1 items-center justify-center rounded-mobile-control px-3 ${submitEnabled ? "bg-primary" : "bg-border"}`}
+            disabled={!submitEnabled}
+            onPress={onSubmit}
+          >
+            <Text
+              className={submitEnabled ? "font-bold text-primary-fg" : "font-bold text-ink-muted"}
+            >
+              {isSubmitting ? "채점 중" : "정답 확인"}
+            </Text>
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

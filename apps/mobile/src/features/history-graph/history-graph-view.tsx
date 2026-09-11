@@ -28,7 +28,7 @@ function NodeCard({ node, selected }: { node: HistoryGraphNode; selected: boolea
     <View
       accessible
       accessibilityLabel={`${node.label}, ${node.learnedAt ? "학습 완료" : "학습 중"}`}
-      className={`rounded-control border p-4 ${
+      className={`rounded-mobile-control border p-4 ${
         selected ? "border-primary bg-surface" : "border-border bg-surface-muted"
       }`}
     >
@@ -126,32 +126,32 @@ export function HistoryGraphView({
         {feedback ? (
           <View
             accessibilityRole="alert"
-            className="rounded-control border border-border bg-surface p-4"
+            className="rounded-mobile-control border border-border bg-surface p-4"
           >
             <Text className="text-sm text-ink">{feedback}</Text>
           </View>
         ) : null}
 
         <View className="flex-row gap-3">
-          <View className="flex-1 rounded-control bg-surface p-4">
+          <View className="flex-1 rounded-mobile-control bg-surface p-4">
             <Text className="text-xs text-ink-muted">전체 개념</Text>
             <Text className="mt-1 text-2xl font-extrabold text-ink">
               {graph?.nodes.length ?? 0}
             </Text>
           </View>
-          <View className="flex-1 rounded-control bg-surface p-4">
+          <View className="flex-1 rounded-mobile-control bg-surface p-4">
             <Text className="text-xs text-ink-muted">학습 완료</Text>
             <Text className="mt-1 text-2xl font-extrabold text-success">{learnedCount}</Text>
           </View>
         </View>
 
-        <View className="flex-row rounded-control bg-surface-muted p-1">
+        <View className="flex-row rounded-mobile-control bg-surface-muted p-1">
           {(["graph", "list"] as const).map((item) => (
             <Pressable
               key={item}
               accessibilityRole="tab"
               accessibilityState={{ selected: mode === item }}
-              className={`min-h-11 flex-1 items-center justify-center rounded-control ${
+              className={`min-h-11 flex-1 items-center justify-center rounded-mobile-control ${
                 mode === item ? "bg-surface" : "bg-surface-muted"
               }`}
               onPress={() => setMode(item)}
@@ -192,7 +192,7 @@ export function HistoryGraphView({
             </View>
           )
         ) : (
-          <View className="items-center rounded-card border border-border bg-surface px-6 py-10">
+          <View className="items-center rounded-mobile-card border border-border bg-surface px-6 py-10">
             <Text className="text-lg font-bold text-ink">아직 연결된 개념이 없어요</Text>
             <Text className="mt-2 text-center text-sm text-ink-muted">
               문제를 풀면 학습한 개념이 이곳에 연결됩니다.
@@ -200,7 +200,7 @@ export function HistoryGraphView({
             {feedback ? (
               <Pressable
                 accessibilityRole="button"
-                className="mt-5 min-h-12 justify-center rounded-control bg-primary px-6"
+                className="mt-5 min-h-12 justify-center rounded-mobile-control bg-primary px-6"
                 onPress={() => void load()}
               >
                 <Text className="font-semibold text-primary-fg">다시 시도</Text>
