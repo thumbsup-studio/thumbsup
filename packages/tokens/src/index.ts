@@ -30,7 +30,14 @@ export const tokens = {
     "character-nose": "#3b2a20",
     "character-blush": "#f3b9ac",
   },
-  radius: { card: "2rem", control: "1rem", chip: "9999px" },
+  radius: {
+    card: "2rem",
+    control: "1rem",
+    chip: "9999px",
+    "mobile-card": "1rem",
+    "mobile-control": "0.75rem",
+    "mobile-dialog": "1.25rem",
+  },
   shadow: {
     card: "0 24px 60px rgba(15, 23, 42, 0.1)",
     hero: "0 24px 48px rgba(47, 99, 255, 0.24)",
@@ -76,3 +83,8 @@ export const keyframes = {
 } as const;
 
 export type ThumbsupTokens = typeof tokens;
+
+export const mobileTypography = {
+  homeTitle: { fontSize: 20, lineHeight: 28 },
+  badge: { fontSize: 12, lineHeight: 18 },
+} as const;

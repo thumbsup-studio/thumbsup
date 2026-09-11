@@ -30,7 +30,7 @@ export function ChannelCard({
   return (
     <Pressable
       accessibilityRole="button"
-      className={`rounded-card border bg-surface p-5 ${
+      className={`rounded-mobile-card border bg-surface p-5 ${
         compatible ? "border-border" : "border-danger"
       }`}
       disabled={disabled || !compatible}
@@ -42,7 +42,7 @@ export function ChannelCard({
           <Text className="mt-1 text-base font-semibold text-ink">{channel.title}</Text>
         </View>
         <View
-          className={`rounded-control px-3 py-1 ${compatible ? "bg-primary" : "bg-surface-muted"}`}
+          className={`rounded-mobile-control px-3 py-1 ${compatible ? "bg-primary" : "bg-surface-muted"}`}
         >
           <Text className={`text-xs font-bold ${compatible ? "text-primary-fg" : "text-danger"}`}>
             {compatible ? "호환됨" : "새 바이너리 필요"}
@@ -122,7 +122,7 @@ export default function ChannelListScreen() {
           </Text>
           <Pressable
             accessibilityRole="button"
-            className="rounded-control bg-primary px-5 py-3"
+            className="rounded-mobile-control bg-primary px-5 py-3"
             onPress={() => void load()}
           >
             <Text className="font-bold text-primary-fg">다시 시도</Text>

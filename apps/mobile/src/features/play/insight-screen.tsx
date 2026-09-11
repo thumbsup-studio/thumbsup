@@ -139,13 +139,13 @@ export function InsightScreenView({
         praise={celebration.praise}
         visible={celebration.tier === "confetti" || perfect}
       />
-      <ScrollView contentContainerClassName="gap-4 px-4 py-5">
-        <View className="rounded-card border border-border bg-surface p-4">
+      <ScrollView className="flex-1" contentContainerClassName="gap-4 px-5 py-6">
+        <View className="rounded-mobile-card border border-border bg-surface p-5">
           <View className="flex-row items-center gap-3">
             <Pressable
               accessibilityLabel={context.review ? "코스로 돌아가기" : "문제로 돌아가기"}
               accessibilityRole="button"
-              className="size-11 items-center justify-center rounded-chip bg-surface-muted"
+              className="size-11 items-center justify-center rounded-mobile-control bg-surface-muted"
               onPress={() => router.back()}
             >
               <Text className="text-2xl text-ink">‹</Text>
@@ -170,10 +170,10 @@ export function InsightScreenView({
           </Text>
         </View>
 
-        <View className="rounded-card border border-border bg-surface-muted p-5">
+        <View className="rounded-mobile-card border border-border bg-surface-muted p-5">
           <View
             accessibilityLiveRegion="polite"
-            className={`rounded-control p-4 ${context.correct ? "bg-success" : "bg-danger"}`}
+            className={`rounded-mobile-control p-4 ${context.correct ? "bg-success" : "bg-danger"}`}
           >
             <Text className="text-lg font-black text-primary-fg">{celebration.praise}</Text>
             {celebration.comboCount >= comboVisibleFrom ? (
@@ -190,7 +190,7 @@ export function InsightScreenView({
           </Text>
 
           {!context.correct ? (
-            <View className="mt-4 rounded-control border border-danger bg-surface p-4">
+            <View className="mt-4 rounded-mobile-control border border-danger bg-surface p-4">
               <Text className="mb-2 font-bold text-danger">왜 틀렸는지</Text>
               <AnnotatedParagraph
                 node={explanation.wrongAnswerExplanation}
@@ -202,7 +202,7 @@ export function InsightScreenView({
           <View className="mt-5 gap-3">
             <Text className="text-lg font-black text-ink">핵심 3줄</Text>
             {explanation.explanationSummary.map((item, index) => (
-              <View className="flex-row rounded-control bg-surface p-4" key={item.text}>
+              <View className="flex-row rounded-mobile-control bg-surface p-4" key={item.text}>
                 <Text className="mr-3 font-black text-primary">{index + 1}</Text>
                 <View className="flex-1">
                   <AnnotatedParagraph node={item} keywords={explanation.keywords} />
@@ -212,7 +212,7 @@ export function InsightScreenView({
           </View>
 
           {explanation.explanationExample ? (
-            <View className="mt-4 rounded-control bg-surface p-4">
+            <View className="mt-4 rounded-mobile-control bg-surface p-4">
               <Text className="mb-2 font-bold text-ink">실무에서는</Text>
               <AnnotatedParagraph
                 node={explanation.explanationExample}
@@ -222,7 +222,7 @@ export function InsightScreenView({
           ) : null}
 
           {completion ? (
-            <View className="mt-5 rounded-card border border-primary bg-surface p-5">
+            <View className="mt-5 rounded-mobile-card border border-primary bg-surface p-5">
               <Text className="text-lg font-black text-ink">한 세션을 완주했어요</Text>
               <Text className="mt-2 text-ink-muted">
                 {completion.answered === explanation.totalCount
@@ -231,50 +231,49 @@ export function InsightScreenView({
               </Text>
             </View>
           ) : null}
-
-          <View className="mt-6 gap-3">
-            {!context.review && primaryFollowUp ? (
-              <Pressable
-                accessibilityRole="button"
-                className="min-h-12 items-center justify-center rounded-control border border-primary bg-surface px-4"
-                onPress={() =>
-                  router.push({
-                    pathname: "/follow-up",
-                    params: {
-                      fq: String(primaryFollowUp.followUpQuestionId),
-                      quizId: String(context.quizId ?? ""),
-                      correct: String(context.correct),
-                      streak: String(context.correctStreak),
-                      ...(context.courseId ? { courseId: String(context.courseId) } : {}),
-                      current: String(explanation.currentNumber),
-                      total: String(explanation.totalCount),
-                    },
-                  })
-                }
-              >
-                <Text className="font-bold text-primary">꼬리 질문 보기</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-12 items-center justify-center rounded-control bg-primary px-4"
-              onPress={() => navigateNext(router, context, explanation)}
-            >
-              <Text className="font-bold text-primary-fg">
-                {context.review
-                  ? context.review.slot >= explanation.totalCount
-                    ? "복습 완료"
-                    : "다음 문제"
-                  : completion
-                    ? context.courseId
-                      ? "코스 목록으로"
-                      : "홈으로"
-                    : "다음 문제 풀기"}
-              </Text>
-            </Pressable>
-          </View>
         </View>
       </ScrollView>
+      <View className="gap-3 border-t border-border bg-bg px-5 py-3">
+        {!context.review && primaryFollowUp ? (
+          <Pressable
+            accessibilityRole="button"
+            className="min-h-12 items-center justify-center rounded-mobile-control border border-primary bg-surface px-4"
+            onPress={() =>
+              router.push({
+                pathname: "/follow-up",
+                params: {
+                  fq: String(primaryFollowUp.followUpQuestionId),
+                  quizId: String(context.quizId ?? ""),
+                  correct: String(context.correct),
+                  streak: String(context.correctStreak),
+                  ...(context.courseId ? { courseId: String(context.courseId) } : {}),
+                  current: String(explanation.currentNumber),
+                  total: String(explanation.totalCount),
+                },
+              })
+            }
+          >
+            <Text className="font-bold text-primary">꼬리 질문 보기</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          className="min-h-12 items-center justify-center rounded-mobile-control bg-primary px-4"
+          onPress={() => navigateNext(router, context, explanation)}
+        >
+          <Text className="font-bold text-primary-fg">
+            {context.review
+              ? context.review.slot >= explanation.totalCount
+                ? "복습 완료"
+                : "다음 문제"
+              : completion
+                ? context.courseId
+                  ? "코스 목록으로"
+                  : "홈으로"
+                : "다음 문제 풀기"}
+          </Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }

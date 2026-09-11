@@ -163,7 +163,7 @@ export class ObservabilityErrorBoundary extends Component<{ children: ReactNode 
   render() {
     if (this.state.failed) {
       return (
-        <View className="flex-1 items-center justify-center bg-bg px-6">
+        <View className="flex-1 items-center justify-center bg-bg px-5">
           <Text className="text-center text-base text-ink">앱을 여는 중 문제가 발생했어요.</Text>
         </View>
       );

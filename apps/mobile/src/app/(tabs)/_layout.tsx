@@ -1,8 +1,10 @@
 import { tokens } from "@thumbsup/tokens";
 import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CourseIcon, HistoryIcon, HomeIcon, UserIcon } from "../../components/icons";
 
 export default function TabsLayout() {
+  const { bottom } = useSafeAreaInsets();
   return (
     <Tabs
       backBehavior="history"
@@ -11,7 +13,11 @@ export default function TabsLayout() {
         tabBarActiveTintColor: tokens.color.primary,
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
-        tabBarStyle: { minHeight: 64, paddingBottom: 8, paddingTop: 6 },
+        tabBarStyle: {
+          height: 58 + Math.max(bottom, 8),
+          paddingBottom: Math.max(bottom, 8),
+          paddingTop: 6,
+        },
       }}
     >
       <Tabs.Screen

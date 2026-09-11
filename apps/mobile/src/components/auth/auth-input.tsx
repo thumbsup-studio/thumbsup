@@ -17,7 +17,7 @@ export const AuthInput = forwardRef<TextInput, AuthInputProps>(function AuthInpu
     <View className="gap-1.5">
       <Text className="text-sm font-semibold text-ink">{label}</Text>
       <View
-        className={`min-h-12 flex-row items-center rounded-control border bg-surface px-4 ${
+        className={`min-h-12 flex-row items-center rounded-mobile-control border bg-surface px-4 ${
           error ? "border-danger" : "border-border"
         }`}
       >

@@ -89,7 +89,7 @@ export default function ProfileScreen() {
 
   if (state.status === "loading") {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-5">
         <ActivityIndicator accessibilityLabel="프로필 불러오는 중" size="large" />
       </SafeAreaView>
     );
@@ -97,11 +97,11 @@ export default function ProfileScreen() {
 
   if (state.status === "error") {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-bg px-5">
         <View
           accessibilityLiveRegion="assertive"
           accessibilityRole="alert"
-          className="w-full max-w-sm rounded-card border border-danger bg-surface p-6"
+          className="w-full max-w-sm rounded-mobile-card border border-danger bg-surface p-5"
         >
           <Text accessibilityRole="header" className="text-xl font-bold text-ink">
             프로필을 불러오지 못했어요
@@ -109,7 +109,7 @@ export default function ProfileScreen() {
           <Text className="mt-2 leading-6 text-ink-muted">{state.message}</Text>
           <Pressable
             accessibilityRole="button"
-            className="mt-5 min-h-12 items-center justify-center rounded-control bg-primary px-4"
+            className="mt-5 min-h-12 items-center justify-center rounded-mobile-control bg-primary px-4"
             onPress={() => void load()}
           >
             <Text className="font-bold text-primary-fg">다시 시도</Text>
@@ -123,11 +123,11 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={["top"]}>
-      <ScrollView contentContainerClassName="grow gap-5 px-5 pb-8 pt-6">
+      <ScrollView contentContainerClassName="grow gap-5 px-5 pb-6 pt-6">
         <Text accessibilityRole="header" className="text-3xl font-extrabold text-ink">
           프로필
         </Text>
-        <View className="items-center rounded-card border border-border bg-surface p-6">
+        <View className="items-center rounded-mobile-card border border-border bg-surface p-5">
           <View
             accessibilityElementsHidden
             className="size-20 items-center justify-center rounded-chip bg-primary"
@@ -141,7 +141,7 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        <View className="overflow-hidden rounded-card border border-border bg-surface">
+        <View className="overflow-hidden rounded-mobile-card border border-border bg-surface">
           {SETTING_ITEMS.map((item) => (
             <Pressable
               accessibilityHint="준비 중인 기능입니다"
@@ -166,7 +166,7 @@ export default function ProfileScreen() {
 
         <Pressable
           accessibilityRole="button"
-          className="min-h-14 items-center justify-center rounded-control bg-danger px-5"
+          className="min-h-14 items-center justify-center rounded-mobile-control bg-danger px-5"
           onPress={() => setLogoutOpen(true)}
         >
           <Text className="font-bold text-primary-fg">로그아웃</Text>
@@ -209,7 +209,7 @@ function LogoutModal({
       visible={open}
     >
       <View accessibilityViewIsModal className="flex-1 items-center justify-center bg-ink/40 px-6">
-        <View className="w-full max-w-sm rounded-card bg-surface p-6">
+        <View className="w-full max-w-sm rounded-mobile-card bg-surface p-5">
           <Text accessibilityRole="header" className="text-center text-2xl font-extrabold text-ink">
             로그아웃할까요?
           </Text>
@@ -219,7 +219,7 @@ function LogoutModal({
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ busy: loading, disabled: loading }}
-            className="mt-6 min-h-12 flex-row items-center justify-center gap-2 rounded-control bg-danger px-5"
+            className="mt-6 min-h-12 flex-row items-center justify-center gap-2 rounded-mobile-control bg-danger px-5"
             disabled={loading}
             onPress={onConfirm}
           >
@@ -231,7 +231,7 @@ function LogoutModal({
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ disabled: loading }}
-            className="mt-3 min-h-12 items-center justify-center rounded-control border border-border px-5"
+            className="mt-3 min-h-12 items-center justify-center rounded-mobile-control border border-border px-5"
             disabled={loading}
             onPress={onCancel}
           >

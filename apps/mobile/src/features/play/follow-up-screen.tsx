@@ -126,13 +126,13 @@ export function FollowUpScreenView({
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
-      <ScrollView contentContainerClassName="flex-grow gap-4 px-4 py-5">
-        <View className="rounded-card border border-border bg-surface p-4">
+      <ScrollView className="flex-1" contentContainerClassName="flex-grow gap-4 px-5 py-6">
+        <View className="rounded-mobile-card border border-border bg-surface p-5">
           <View className="flex-row items-center gap-3">
             <Pressable
               accessibilityLabel="해설로 돌아가기"
               accessibilityRole="button"
-              className="size-11 items-center justify-center rounded-chip bg-surface-muted"
+              className="size-11 items-center justify-center rounded-mobile-control bg-surface-muted"
               onPress={() => router.back()}
             >
               <Text className="text-2xl text-ink">‹</Text>
@@ -164,15 +164,15 @@ export function FollowUpScreenView({
           </View>
         </View>
 
-        <View className="flex-1 rounded-card border border-border bg-surface-muted p-5">
-          <View className="rounded-card border border-primary bg-surface p-5">
+        <View className="flex-1 rounded-mobile-card border border-border bg-surface-muted p-5">
+          <View className="rounded-mobile-card border border-primary bg-surface p-5">
             <Text className="text-sm font-bold text-primary">꼬리 질문</Text>
             <Text accessibilityRole="header" className="mt-3 text-xl font-black leading-8 text-ink">
               {data.question}
             </Text>
           </View>
 
-          <View className="mt-3 rounded-card bg-surface p-5">
+          <View className="mt-3 rounded-mobile-card bg-surface p-5">
             <Text className="text-xs font-bold text-primary">한 줄 답</Text>
             {revealed ? (
               <View className="mt-3">
@@ -198,7 +198,7 @@ export function FollowUpScreenView({
             <Text className="font-bold text-ink">상세 정리</Text>
             {data.blocks.map((block) => (
               <View
-                className="rounded-control border border-border bg-surface p-4"
+                className="rounded-mobile-control border border-border bg-surface p-4"
                 key={`${block.label}-${block.content.text}`}
               >
                 <Text className="font-bold text-ink">{block.label}</Text>
@@ -218,68 +218,63 @@ export function FollowUpScreenView({
               </View>
             ))}
           </View>
-
-          <View className="mt-auto gap-3 pt-6">
-            {revealed ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center rounded-control bg-primary"
-                  onPress={() => router.back()}
-                >
-                  <Text className="font-bold text-primary-fg">해설로 돌아가기</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center rounded-control border border-border bg-surface"
-                  onPress={() =>
-                    router.replace(
-                      isLastQuestion
-                        ? context.courseId
-                          ? "/(tabs)/course"
-                          : "/(tabs)"
-                        : {
-                            pathname: "/play",
-                            params: context.courseId ? { courseId: String(context.courseId) } : {},
-                          },
-                    )
-                  }
-                >
-                  <Text className="font-bold text-ink">
-                    {isLastQuestion
-                      ? context.courseId
-                        ? "코스 목록으로"
-                        : "홈으로"
-                      : "다음 문제로"}
-                  </Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center rounded-control bg-primary"
-                  onPress={() => setRevealed(true)}
-                >
-                  <Text className="font-bold text-primary-fg">답 확인하기</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  className="min-h-12 items-center justify-center rounded-control border border-border bg-surface"
-                  onPress={() =>
-                    router.replace({
-                      pathname: "/play",
-                      params: context.courseId ? { courseId: String(context.courseId) } : {},
-                    })
-                  }
-                >
-                  <Text className="font-semibold text-ink-muted">이 질문 건너뛰기</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
         </View>
       </ScrollView>
+      <View className="gap-3 border-t border-border bg-bg px-5 py-3">
+        {revealed ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-12 items-center justify-center rounded-mobile-control bg-primary"
+              onPress={() => router.back()}
+            >
+              <Text className="font-bold text-primary-fg">해설로 돌아가기</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-12 items-center justify-center rounded-mobile-control border border-border bg-surface"
+              onPress={() =>
+                router.replace(
+                  isLastQuestion
+                    ? context.courseId
+                      ? "/(tabs)/course"
+                      : "/(tabs)"
+                    : {
+                        pathname: "/play",
+                        params: context.courseId ? { courseId: String(context.courseId) } : {},
+                      },
+                )
+              }
+            >
+              <Text className="font-bold text-ink">
+                {isLastQuestion ? (context.courseId ? "코스 목록으로" : "홈으로") : "다음 문제로"}
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-12 items-center justify-center rounded-mobile-control bg-primary"
+              onPress={() => setRevealed(true)}
+            >
+              <Text className="font-bold text-primary-fg">답 확인하기</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              className="min-h-12 items-center justify-center rounded-mobile-control border border-border bg-surface"
+              onPress={() =>
+                router.replace({
+                  pathname: "/play",
+                  params: context.courseId ? { courseId: String(context.courseId) } : {},
+                })
+              }
+            >
+              <Text className="font-semibold text-ink-muted">이 질문 건너뛰기</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
     </SafeAreaView>
   );
 }

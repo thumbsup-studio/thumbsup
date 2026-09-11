@@ -71,7 +71,7 @@ export function AnnotatedParagraph({
         visible={openKeyword !== null}
       >
         <View className="flex-1 items-center justify-center bg-ink px-5">
-          <View accessibilityViewIsModal className="w-full rounded-card bg-surface p-5">
+          <View accessibilityViewIsModal className="w-full rounded-mobile-card bg-surface p-5">
             <Text accessibilityRole="header" className="text-xl font-black text-ink">
               {openKeyword}
             </Text>
@@ -79,7 +79,7 @@ export function AnnotatedParagraph({
             <Pressable
               accessibilityLabel="키워드 설명 닫기"
               accessibilityRole="button"
-              className="mt-5 min-h-12 items-center justify-center rounded-control bg-primary"
+              className="mt-5 min-h-12 items-center justify-center rounded-mobile-control bg-primary"
               onPress={() => setOpenKeyword(null)}
             >
               <Text className="font-bold text-primary-fg">확인</Text>

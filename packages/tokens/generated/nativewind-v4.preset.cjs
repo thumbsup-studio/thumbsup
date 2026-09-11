@@ -36,7 +36,10 @@ module.exports = {
       "borderRadius": {
         "card": "2rem",
         "control": "1rem",
-        "chip": "9999px"
+        "chip": "9999px",
+        "mobile-card": "1rem",
+        "mobile-control": "0.75rem",
+        "mobile-dialog": "1.25rem"
       },
       "boxShadow": {
         "card": "0 24px 60px rgba(15, 23, 42, 0.1)",

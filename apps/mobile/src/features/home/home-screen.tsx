@@ -1,5 +1,5 @@
 import { ApiError, NetworkError } from "@thumbsup/api";
-import { tokens } from "@thumbsup/tokens";
+import { mobileTypography, tokens } from "@thumbsup/tokens";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
@@ -176,22 +176,30 @@ export function HomeScreenView({ onRetry, state }: { onRetry: () => void; state:
     <SafeAreaView className="flex-1 bg-bg" edges={["top", "left", "right"]}>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-5 px-4 py-6"
+        contentContainerClassName="gap-5 px-5 py-6"
         keyboardDismissMode="on-drag"
       >
-        <View className="flex-row items-start justify-between gap-4 rounded-card border border-border bg-surface p-5">
+        <View className="gap-3">
           <View className="min-w-0 flex-1">
-            <Text accessibilityRole="header" className="text-2xl font-semibold text-ink">
+            <Text
+              accessibilityRole="header"
+              className="font-semibold text-ink"
+              style={mobileTypography.homeTitle}
+            >
               {welcomeCopy()}
             </Text>
-            <Text className="mt-1 text-2xl font-semibold text-ink-muted">오늘도 이어가요.</Text>
+            <Text className="font-semibold text-ink-muted" style={mobileTypography.homeTitle}>
+              오늘도 이어가요.
+            </Text>
           </View>
           <View
             accessibilityLabel={`연속 학습 ${data.streakDays > 0 ? `${data.streakDays}일` : "오늘 시작"}`}
-            className="items-center rounded-card border border-border bg-surface-muted px-4 py-3"
+            className="self-start flex-row items-center gap-2 rounded-chip bg-surface-muted px-3 py-1.5"
           >
-            <Text className="text-xs font-medium text-ink-muted">연속 학습</Text>
-            <Text className="mt-1 text-base font-semibold text-ink">
+            <Text className="font-medium text-ink-muted" style={mobileTypography.badge}>
+              연속 학습
+            </Text>
+            <Text className="font-semibold text-primary" style={mobileTypography.badge}>
               {data.streakDays > 0 ? `${data.streakDays}일` : "오늘 시작"}
             </Text>
           </View>
@@ -236,7 +244,7 @@ export function HomeScreenView({ onRetry, state }: { onRetry: () => void; state:
 
 function StateShell({ children }: { children: React.ReactNode }) {
   return (
-    <SafeAreaView className="flex-1 justify-center bg-bg px-4" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 justify-center bg-bg px-5" edges={["top", "left", "right"]}>
       {children}
     </SafeAreaView>
   );
@@ -249,7 +257,7 @@ function MascotCard({ fullness, name }: MascotResponse) {
   return (
     <View
       accessibilityLabel={`캐릭터 ${name}, 포만감 ${clamped}%`}
-      className="items-center gap-2 rounded-card border border-border bg-surface p-6"
+      className="items-center gap-2 rounded-mobile-card border border-border bg-surface p-5"
     >
       <View className="h-36 w-36 items-center justify-center">
         <Svg
@@ -296,7 +304,7 @@ function CourseCarousel({
   onOpen: (course: HomeData["courses"][number]) => void;
 }) {
   const { width } = useWindowDimensions();
-  const cardWidth = Math.max(280, width - 32);
+  const cardWidth = Math.max(280, width - 40);
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -313,8 +321,8 @@ function CourseCarousel({
         showsHorizontalScrollIndicator={false}
       >
         {courses.map((course) => (
-          <View className="pr-3" key={course.courseId} style={{ width: cardWidth }}>
-            <View className="min-h-64 rounded-card bg-primary p-6">
+          <View key={course.courseId} style={{ width: cardWidth }}>
+            <View className="min-h-64 rounded-mobile-card bg-primary p-5">
               {course.completed ? (
                 <Text className="self-end rounded-chip bg-badge px-3 py-1 text-sm font-bold text-badge-fg">
                   완주
@@ -336,7 +344,7 @@ function CourseCarousel({
               <TrackedPressable
                 accessibilityLabel={course.completed ? "복습하기" : "시작하기"}
                 accessibilityRole="button"
-                className="mt-auto min-h-12 flex-row items-center justify-center gap-2 rounded-control bg-surface px-4 py-3"
+                className="mt-auto min-h-12 flex-row items-center justify-center gap-2 rounded-mobile-control bg-surface px-4 py-3"
                 onPress={() => onOpen(course)}
               >
                 <Text className="font-semibold text-primary">

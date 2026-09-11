@@ -2,7 +2,7 @@ import { ApiError, type CourseItem, type CourseStep, NetworkError } from "@thumb
 import { tokens } from "@thumbsup/tokens";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { LayoutAnimation, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ChevronRightIcon, LockIcon } from "../../components/icons";
@@ -10,6 +10,7 @@ import { ScreenLoading, ScreenState } from "../../components/screen-state";
 import { useApi } from "../../lib/api/api-provider";
 import { useConnectivity } from "../../lib/connectivity/connectivity-provider";
 import { useForegroundRefresh } from "../../lib/lifecycle/use-foreground-refresh";
+import { useReducedMotion } from "../play/use-reduced-motion";
 
 export type CourseViewState =
   | { status: "loading" }
@@ -100,6 +101,7 @@ export function CourseScreenView({
   state: CourseViewState;
 }) {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
 
   if (state.status === "loading") {
     return (
@@ -113,7 +115,7 @@ export function CourseScreenView({
     <SafeAreaView className="flex-1 bg-bg" edges={["top", "left", "right"]}>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="flex-grow gap-5 px-4 py-6"
+        contentContainerClassName="flex-grow gap-5 px-5 py-6"
         keyboardDismissMode="on-drag"
       >
         <View>
@@ -172,7 +174,11 @@ export function CourseScreenView({
                     });
                   }
                 }}
-                onToggle={() => onToggle(course.courseId)}
+                onToggle={() => {
+                  if (!reduceMotion)
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  onToggle(course.courseId);
+                }}
               />
             ))}
           </View>
@@ -196,7 +202,7 @@ function CourseCard({
   const completed =
     course.steps.length > 0 && course.steps.every((step) => step.state === "COMPLETED");
   return (
-    <View className="overflow-hidden rounded-card border border-border bg-surface">
+    <View className="overflow-hidden rounded-mobile-card border border-border bg-surface">
       <Pressable
         accessibilityHint="코스의 스텝 목록을 펼치거나 접습니다"
         accessibilityRole="button"
@@ -259,8 +265,8 @@ function StepRow({
       <View
         className={
           isLocked
-            ? "h-11 w-11 items-center justify-center rounded-chip bg-surface-muted"
-            : "h-11 w-11 items-center justify-center rounded-chip bg-primary"
+            ? "h-11 w-11 items-center justify-center rounded-mobile-control bg-surface-muted"
+            : "h-11 w-11 items-center justify-center rounded-mobile-control bg-primary"
         }
       >
         {isLocked ? (
