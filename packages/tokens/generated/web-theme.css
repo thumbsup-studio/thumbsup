@@ -32,6 +32,9 @@
   --radius-card: 2rem;
   --radius-control: 1rem;
   --radius-chip: 9999px;
+  --radius-mobile-card: 1rem;
+  --radius-mobile-control: 0.75rem;
+  --radius-mobile-dialog: 1.25rem;
   --shadow-card: 0 24px 60px rgba(15, 23, 42, 0.1);
   --shadow-hero: 0 24px 48px rgba(47, 99, 255, 0.24);
   --shadow-choice: 0 4px 0 var(--color-border);
