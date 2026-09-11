@@ -87,7 +87,7 @@ pnpm dev:install android
 
 ⚠️ **생성된 `android/`에서 `./gradlew`를 직접 부르지 않는다.** `app.config.ts`가 `APP_ENV`와 `EXPO_PUBLIC_API_URL`을 프로세스 환경변수에서 읽는데, `.env.local`을 읽어 넘겨주는 건 Expo CLI다. Gradle을 직접 호출하면 빌드 막바지의 `createDebugUpdatesResources` 단계에서 `[mobile config] APP_ENV must be development, staging, or production`으로 깨진다. Gradle에 익숙한 사람이 습관적으로 빠지는 함정이다. 꼭 직접 불러야 한다면 두 값을 셸에 내보낸 뒤 실행한다.
 
-첫 Android 로컬 빌드는 Gradle 배포본과 의존성을 모두 내려받으므로 오래 걸리고 디스크를 많이 쓴다. 캐시가 비어 있는 머신에서 `~/.gradle`이 수 GB까지 커진다. 두 번째 빌드부터는 캐시를 재사용해 훨씬 빠르다. NDK는 앱이 네이티브 소스를 직접 빌드하지 않으면 내려받지 않는다.
+첫 Android 로컬 빌드는 Gradle 배포본과 의존성을 모두 내려받으므로 오래 걸리고 디스크를 많이 쓴다. 캐시가 빈 상태에서 측정했을 때 `~/.gradle`이 약 4.7GB까지 커졌고 debug APK 자체도 약 270MB였다. 디스크를 6GB 이상 비워 두고 시작한다. 소요 시간은 머신에 따라 크게 달라지지만 십여 분을 잡는 게 안전하고, 두 번째 빌드부터는 캐시를 재사용해 훨씬 빠르다. NDK는 앱이 네이티브 소스를 직접 빌드하지 않으면 내려받지 않는다.
 
 S3 배포를 활성화한 뒤에는 `.env.local`이 아니라 명령을 실행하는 셸에 아티팩트 URL을 설정한다. URL은 `binaries/dev-client/<runtimeVersion>`까지 포함해야 한다. 스크립트가 그 아래의 `android/latest.apk` 또는 `ios/latest.zip`을 내려받아 설치한다.
 
