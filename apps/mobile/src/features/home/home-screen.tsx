@@ -321,7 +321,7 @@ function CourseCarousel({
         showsHorizontalScrollIndicator={false}
       >
         {courses.map((course) => (
-          <View className="pr-3" key={course.courseId} style={{ width: cardWidth }}>
+          <View key={course.courseId} style={{ width: cardWidth }}>
             <View className="min-h-64 rounded-mobile-card bg-primary p-5">
               {course.completed ? (
                 <Text className="self-end rounded-chip bg-badge px-3 py-1 text-sm font-bold text-badge-fg">
