@@ -1,5 +1,7 @@
 # 모바일 앱 작업 규약
 
+모바일 작업이 처음이라면 `mobile-onboarding` 스킬을 먼저 읽는다. 로컬 실행 절차는 `mobile-local-dev` 스킬이다.
+
 ## 개발 문서
 
 - [로컬 개발](./docs/local-dev.md): 환경 설정, dev-client 설치, 기기별 네트워크 연결
@@ -12,7 +14,7 @@
 | 명령 | 용도 |
 | --- | --- |
 | `pnpm bootstrap` | Node.js·pnpm·Watchman을 확인하고 의존성과 `.env.local`을 준비한다. |
-| `pnpm diagnose` | 네이티브 도구, 기기, 포트 8081, API 도달성을 진단한다. |
+| `pnpm diagnose [android\|ios]` | 네이티브 도구, 기기, 포트 8081, API 도달성을 진단한다. 플랫폼을 주면 그 플랫폼만 필수로 본다. |
 | `pnpm dev:install android` | 배포된 dev-client 또는 로컬 Android dev 빌드를 설치한다. |
 | `pnpm dev:install ios` | 배포된 iOS 시뮬레이터용 dev-client를 설치한다. |
 | `pnpm dev` | dev-client용 Metro를 실행한다. |
