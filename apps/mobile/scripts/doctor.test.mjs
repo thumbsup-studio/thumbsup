@@ -67,8 +67,8 @@ describe("javaMajor", () => {
 
 describe("xcodeVersion", () => {
   it("reads the version from xcodebuild output", () => {
-    expect(xcodeVersion("Xcode 26.6\nBuild version 17F113")).toBe("26.6");
-    expect(xcodeVersion("Xcode 16.2\nBuild version 16C5032a")).toBe("16.2");
+    expect(xcodeVersion("Xcode 26.4\nBuild version 17A100")).toBe("26.4");
+    expect(xcodeVersion("Xcode 16.2\nBuild version 16C100")).toBe("16.2");
   });
 
   it("returns null when xcodebuild produced nothing", () => {
