@@ -1,6 +1,6 @@
 # Thumbs Up 모노레포 — 에이전트 규약
 
-학습 앱 모노레포: `apps/web/`(Next.js 프론트) · `apps/authoring/`(저작 도구 — 예정) · `apps/mobile/`(React Native — 예정) · `packages/`(공용 패키지 — 예정) · `server/`(Spring Boot 백엔드)
+학습 앱 모노레포: `apps/web/`(Next.js 사용자 웹) · `apps/authoring/`(Next.js 문제 저작 도구) · `apps/mobile/`(Expo·React Native 앱) · `packages/`(공용 패키지 — `api`·`core`·`tokens`·`ui-web`) · `server/`(Spring Boot 백엔드) · `tools/`(개발 도구)
 
 ## 필수 규칙
 
@@ -10,6 +10,7 @@
 - PR 본문에 `Closes #이슈` 필수, Squash merge
 - `apps/web/` 작업 시: [`apps/web/CLAUDE.md`](./apps/web/CLAUDE.md) 규약 + **`next-best-practices` 스킬 필수 로드**
 - `apps/mobile/` 작업 시: [`apps/mobile/CLAUDE.md`](./apps/mobile/CLAUDE.md) 규약 + **`mobile-local-dev` 스킬 필수 로드**. 모바일이 처음이면 **`mobile-onboarding` 스킬을 먼저** 읽는다
+- `apps/authoring/` 작업 시: [`apps/authoring/CLAUDE.md`](./apps/authoring/CLAUDE.md) 규약 + **`next-best-practices` 스킬 필수 로드**. 문제 생성·브리지 작업은 **`quiz-authoring` 스킬**
 - 작업 완료 보고 전: **`verify-app` 스킬**로 게이트 통과 (app 변경 시)
 
 상세 규약: [CONTRIBUTING.md](./CONTRIBUTING.md)
