@@ -1,11 +1,13 @@
 ---
 name: frontend-api
-description: apps/web 프론트엔드에서 Thumbs Up 백엔드 API를 연동·소비하는 법. 응답 envelope 언랩, Bearer 토큰·TOKEN_EXPIRED 재발급 흐름, 에러 코드 분기, 현재 사용 가능한 엔드포인트, base URL·CORS·env 계획을 정리한다. 계약 정본(docs/api-standard·error-spec)은 링크로 참조. 사용자가 "API 어떻게 붙여", "엔드포인트 뭐 있어", "토큰 처리 어떻게 해"라고 할 때 트리거.
+description: 웹·모바일·저작 앱에서 Thumbs Up 백엔드 API를 연동·소비하는 법. 세 앱이 packages/api 한 벌을 공유하므로 규칙도 하나다. 응답 envelope 언랩, Bearer 토큰·TOKEN_EXPIRED 재발급 흐름, 에러 코드 분기, 현재 사용 가능한 엔드포인트, 플랫폼별로 다른 네 가지(토큰 저장·환경변수·폴백·import 경로)를 정리한다. 계약 정본(docs/api-standard·error-spec)은 링크로 참조. 사용자가 "API 어떻게 붙여", "엔드포인트 뭐 있어", "토큰 처리 어떻게 해"라고 할 때 트리거.
 ---
 
-# frontend-api — web API 연동
+# frontend-api — API 연동
 
-FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서** — 이 스킬은 소비 관점만 모은다.
+웹·모바일·저작 앱이 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서** — 이 스킬은 소비 관점만 모은다.
+
+세 앱은 `packages/api` **한 벌을 공유**한다. envelope 언랩·Bearer 부착·`TOKEN_EXPIRED` 재발급·커서 페이지네이션이 `packages/api/src/client.ts` 한 곳에 구현돼 있으므로 **소비 규칙은 플랫폼과 무관하게 같다.** 플랫폼마다 다른 것은 아래 네 가지뿐이다.
 
 ## 정본 (계약은 여기서 확인)
 
@@ -13,12 +15,25 @@ FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서*
 - 에러 코드 카탈로그·FE 처리 흐름: [`docs/error-spec.md`](../../../docs/error-spec.md)
 - 개별 엔드포인트 상세 스펙의 정본: Swagger UI `/swagger-ui.html` (Basic Auth 필요)
 
+## 플랫폼별로 다른 것 (이것만 다르다)
+
+| | `apps/web` · `apps/authoring` | `apps/mobile` |
+| --- | --- | --- |
+| 토큰 저장 | localStorage (동기) | `expo-secure-store` (**비동기**) |
+| 베이스 URL 환경변수 | `NEXT_PUBLIC_API_URL` | `EXPO_PUBLIC_API_URL` |
+| 미설정 시 | 운영 API로 폴백 | **시작 시점에 예외를 던진다** |
+| 데이터 요청 | `src/lib/api`에서 import | `useApi()`로 받은 `client` |
+| 로그인·회원가입·로그아웃 | 같은 클라이언트 메서드 | **`useApi()`의 래퍼**(`client`를 직접 부르지 않는다) |
+
+`packages/api/src/token-storage.ts`가 `MaybePromise<T>` 타입으로 동기·비동기 저장소를 모두 받기 때문에 한 클라이언트가 양쪽을 지원한다.
+
+⚠️ **모바일 인증은 `client`를 직접 부르면 안 된다.** `client.login()`은 토큰만 저장하는데, 모바일의 화면 전환은 `_layout.tsx`의 세션 상태 guard가 결정한다. `api-provider.tsx`의 `login`·`signup`·`logout` 래퍼가 토큰 저장에 더해 profile과 세션 상태까지 갱신하므로 **`useApi()`에서 꺼내 쓴다.** 401을 만난 화면이 `restoreSession()`으로 guard를 재평가시키는 것도 같은 이유다.
+
 ## 지금 상태 (작업 전 확인)
 
-- FE API 계층(fetch 래퍼·토큰 저장·refresh 인터셉터)은 **#1(로그인/회원가입)에서 `apps/web/src/lib/api`에 구축**됨(`client.ts`·`auth.ts`·`token-store.ts`·`errors.ts`). 새 API 소비는 이 계층을 재사용한다.
-- **토큰 저장 = localStorage** (#1에서 결정, 근거는 `token-store.ts` 주석). httpOnly cookie는 전체 BFF 프록시가 필요해 범위 밖 — 하드닝 단계에서 재검토.
 - 데이터 페칭 라이브러리 없음 → 순수 `fetch` 기반.
-- `NEXT_PUBLIC_API_URL` 미설정 시 클라이언트는 prod 백엔드(`https://thumbsup-api.duckdns.org`)로 폴백한다. 로컬 서버를 직접 띄우는 경우에만 `.env.local`에 `http://localhost:8080`을 설정한다.
+- **토큰 저장 = localStorage**(웹·저작 앱, #1에서 결정). httpOnly cookie는 전체 BFF 프록시가 필요해 범위 밖 — 하드닝 단계에서 재검토. 모바일은 SecureStore를 쓴다.
+- 웹·저작 앱은 환경변수 미설정 시 prod 백엔드(`https://thumbsup-api.duckdns.org`)로 폴백한다. 로컬 서버를 직접 띄우는 경우에만 `.env.local`에 `http://localhost:8080`을 설정한다.
 
 ## 베이스 URL·접속
 
@@ -37,7 +52,9 @@ FE가 서버 API를 소비하는 진입점. **계약의 정본은 아래 문서*
 | GET `/api/v1/notices` | Bearer | query `cursor?,size?(≤100)` → `{items:[...]}` + `meta` 커서 |
 | GET `/api/v1/notices/{id}` | Bearer | → notice 상세 |
 
-Quiz·User·소셜 로그인은 **미구현** — 새 엔드포인트는 Swagger로 존재부터 확인.
+위 표는 #1 시점 기준이고 **이미 낡았다.** 그 뒤 quiz·course·history·feedback·`/auth/me`가 구현돼 `packages/api`의 `createApiClient()`가 제공한다. 소셜 로그인은 아직 없다.
+
+**엔드포인트 존재 여부의 정본은 Swagger UI와 서버 컨트롤러 코드**이고, 소비 가능한 메서드의 정본은 `packages/api/src/index.ts`다. 이 표만 보고 "없다"고 단정하지 않는다.
 
 ## 소비 규칙 (핵심)
 
@@ -56,7 +73,7 @@ type ApiResponse<T> = { code: string; message: string; data: T | null; meta: Cur
 
 ## 아직 열린 항목
 
-- Server Component vs Client Component fetch 경계 (`next-best-practices` 참조).
+- Server Component vs Client Component fetch 경계 — 웹·저작 앱만 해당 (`next-best-practices` 참조).
 - 페칭 라이브러리(TanStack Query 등) 도입 여부.
 
 > 토큰 저장(localStorage)·fetch 래퍼·refresh 인터셉터는 #1에서 확정·구현됨(위 "지금 상태"). BFF+httpOnly cookie 이전은 하드닝 단계에서 별도 검토.
@@ -67,4 +84,4 @@ type ApiResponse<T> = { code: string; message: string; data: T | null; meta: Cur
 - 204/No-Content 기대 — 삭제도 200 + `data:null`.
 - offset 페이지네이션 가정 — 커서 방식만.
 - 로컬 서버가 필요하다고 가정하고 `localhost:8080`을 기본값으로 박아두기. local 서버 사용은 `.env.local` override로만 처리한다.
-- 기존 `src/lib/api` 계층을 우회한 임시 `fetch` 남발 — envelope 언랩·Bearer·refresh 재발급이 빠진다.
+- 공용 클라이언트 계층을 우회한 임시 `fetch` 남발 — envelope 언랩·Bearer·refresh 재발급이 빠진다. 모바일도 같다(`useApi()`의 `client`만 쓴다).
