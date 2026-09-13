@@ -9,7 +9,7 @@
 - 커밋 형식: `<type>(<scope>): <한국어 요약> (#이슈)` — scope: `web`|`authoring`|`mobile`|`infra`|`server`
 - PR 본문에 `Closes #이슈` 필수, Squash merge
 - `apps/web/` 작업 시: [`apps/web/CLAUDE.md`](./apps/web/CLAUDE.md) 규약 + **`next-best-practices` 스킬 필수 로드**
-- `apps/mobile/` 작업 시: [`apps/mobile/CLAUDE.md`](./apps/mobile/CLAUDE.md) 규약 + **`mobile-local-dev` 스킬 필수 로드**
+- `apps/mobile/` 작업 시: [`apps/mobile/CLAUDE.md`](./apps/mobile/CLAUDE.md) 규약 + **`mobile-local-dev` 스킬 필수 로드**. 모바일이 처음이면 **`mobile-onboarding` 스킬을 먼저** 읽는다
 - 작업 완료 보고 전: **`verify-app` 스킬**로 게이트 통과 (app 변경 시)
 
 상세 규약: [CONTRIBUTING.md](./CONTRIBUTING.md)
