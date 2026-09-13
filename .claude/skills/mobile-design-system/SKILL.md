@@ -1,6 +1,6 @@
 ---
 name: mobile-design-system
-description: apps/mobile UI(화면·스타일)를 만들거나 고칠 때 반드시 로드. NativeWind 토큰 사용 규칙, 모바일 전용 radius 토큰, 공용 컴포넌트가 없는 상황에서의 조립 방식, 접근성·터치 규칙을 다룬다. 웹용은 design-system 스킬이고 토큰 이름이 일부 다르다. 사용자가 "모바일 화면 만들어", "앱 스타일 바꿔", "RN 컴포넌트 추가"라고 할 때 트리거.
+description: apps/mobile UI(화면·스타일)를 만들거나 고칠 때 반드시 로드. NativeWind 토큰 사용 규칙, 모바일 전용 radius 토큰, 공용 컴포넌트가 없는 상황에서의 조립 방식, 접근성·터치 규칙을 다룬다. 웹용은 design-system 스킬이고 radius 값이 다르다. 사용자가 "모바일 화면 만들어", "앱 스타일 바꿔", "RN 컴포넌트 추가"라고 할 때 트리거.
 ---
 
 # mobile-design-system — 모바일 디자인 규약
@@ -20,18 +20,18 @@ packages/tokens/src/index.ts        ← 정본. 여기만 고친다
 
 `apps/mobile/src/global.css`의 Tailwind 지시문 3줄이 시작점이고 `src/app/_layout.tsx`가 이를 import한다. NativeWind는 `metro.config.js`와 `babel.config.js`에서 연결된다. 이 배선은 건드릴 일이 거의 없다.
 
-## radius 토큰이 웹과 다르다 — 제일 자주 틀리는 곳
+## radius는 모바일 전용 값을 쓴다
 
-색 토큰은 웹과 이름이 같지만 **radius는 모바일 전용 이름을 쓴다.**
+`packages/tokens`는 radius 여섯 개를 한 번에 내보내고 프리셋에도 전부 들어간다. 따라서 **웹 이름도 모바일에서 동작한다.** 그럼에도 모바일은 아래를 쓰는 것이 관례다. 같은 역할에 값이 다르기 때문이다.
 
-| 용도 | 웹 | 모바일 |
-| --- | --- | --- |
-| 카드 | `rounded-card` | **`rounded-mobile-card`** |
-| 버튼·입력 | `rounded-control` | **`rounded-mobile-control`** |
-| 다이얼로그 | — | **`rounded-mobile-dialog`** |
-| 칩 | `rounded-chip` | 없음 |
+| 용도 | 모바일에서 쓸 것 | 값 | 웹 이름 | 값 |
+| --- | --- | --- | --- | --- |
+| 카드 | `rounded-mobile-card` | 1rem | `rounded-card` | 2rem |
+| 버튼·입력 | `rounded-mobile-control` | 0.75rem | `rounded-control` | 1rem |
+| 다이얼로그 | `rounded-mobile-dialog` | 1.25rem | — | — |
+| 칩·원형 | `rounded-chip` | 9999px | `rounded-chip` | 같음 |
 
-웹 화면을 참고해 옮길 때 `rounded-card`를 그대로 쓰면 클래스가 적용되지 않는다. NativeWind는 모르는 클래스를 조용히 무시하므로 **에러 없이 스타일만 빠진다.**
+웹 화면을 참고해 옮길 때 `rounded-card`를 그대로 두면 **에러는 없지만 모서리가 모바일 기준보다 두 배로 둥글어진다.** 값이 달라지는 것이지 빠지는 것이 아니다. `rounded-chip`은 값이 같으므로 양쪽에서 그대로 쓴다.
 
 색은 공유된다. `bg-bg`·`bg-surface`·`bg-surface-muted`·`bg-primary`·`text-ink`·`text-ink-muted`·`text-primary`·`text-primary-fg`·`border-border`가 양쪽에서 같은 이름이다.
 
@@ -50,6 +50,7 @@ packages/tokens/src/index.ts        ← 정본. 여기만 고친다
 
 - `src/components/screen-state.tsx` — 로딩·에러·빈 상태·오프라인
 - `src/components/icons.tsx` — `react-native-svg` 아이콘
+- `src/components/placeholder-screen.tsx` — "준비 중" 화면
 
 `src/components/auth/`는 로그인·회원가입 전용이라 다른 화면에서 재사용하지 않는다.
 
@@ -58,7 +59,7 @@ packages/tokens/src/index.ts        ← 정본. 여기만 고친다
 ## React Native에서만 신경 쓸 것
 
 - 문자열은 반드시 `<Text>` 안에 있어야 한다. 맨 문자열을 `<View>`에 두면 런타임 에러다.
-- **CSS 상속이 없다.** 부모에 글자색을 줘도 자식 `Text`에 안 내려간다. `Text`마다 색 클래스를 붙인다.
+- **`View`에서 `Text`로 스타일이 상속되지 않는다.** 부모 `View`에 글자색을 줘도 자식 `Text`에 안 내려가므로 `Text`마다 색 클래스를 붙인다. 예외는 `Text` 안의 `Text`로, 여기서는 제한적으로 상속된다.
 - flex 기본 방향이 세로다. 가로 배치는 `flex-row`를 명시한다.
 - 스크롤이 자동이 아니다. `ScrollView`로 감싸고 긴 목록은 `FlatList`를 쓴다. 패딩·간격은 `className`이 아니라 `contentContainerClassName`에 넣는다.
 - `SafeAreaView`의 `edges`로 노치·홈 인디케이터를 피한다. 탭바가 가리는 화면은 `edges={["top"]}`처럼 아래를 뺀다.
@@ -66,7 +67,7 @@ packages/tokens/src/index.ts        ← 정본. 여기만 고친다
 
 ## 접근성
 
-- 터치 타깃 최소 44px. 기존 코드는 `min-h-12`로 맞춘다.
+- 터치 타깃 최소 44px. ⚠️ **`min-h-12`는 44px가 아니라 42px다.** NativeWind의 네이티브 `rem` 기본값이 14라서 `3rem`이 42로 계산된다(`apps/mobile/metro.config.js`에 override 없음). 기존 코드 다수가 `min-h-12`를 쓰므로 그대로 따르되, 44를 보장해야 하는 자리는 패딩을 포함한 실제 높이를 확인하거나 `hitSlop`으로 넓힌다.
 - 본문 대비 4.5:1 이상. 색만으로 상태를 구분하지 않는다.
 - **`Pressable`에 `accessibilityRole`을 반드시 붙인다.** 스크린리더뿐 아니라 테스트가 이 prop으로 요소를 찾으므로 빼면 테스트가 깨진다.
 
@@ -82,3 +83,5 @@ grep -rnE "\b[a-z][a-z-]*-\[[^]]+\]" apps/mobile/src --include="*.tsx"
 ```
 
 둘 다 0건이어야 한다. 현재 main이 0건이므로 늘어났다면 이번 변경에서 생긴 것이다.
+
+이 grep은 완전하지 않다. 첫 식은 4·8자리 hex(`#abcd`)를 놓치고 둘째는 arbitrary property(`[width:40px]`)와 `.ts` 파일을 놓친다. 0건이 곧 위반 없음은 아니다. 자동 게이트는 #414에서 다룬다.

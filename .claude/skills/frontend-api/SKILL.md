@@ -22,9 +22,12 @@ description: 웹·모바일·저작 앱에서 Thumbs Up 백엔드 API를 연동�
 | 토큰 저장 | localStorage (동기) | `expo-secure-store` (**비동기**) |
 | 베이스 URL 환경변수 | `NEXT_PUBLIC_API_URL` | `EXPO_PUBLIC_API_URL` |
 | 미설정 시 | 운영 API로 폴백 | **시작 시점에 예외를 던진다** |
-| 화면에서 쓰는 법 | `src/lib/api`에서 import | `useApi()`로 받은 `client` |
+| 데이터 요청 | `src/lib/api`에서 import | `useApi()`로 받은 `client` |
+| 로그인·회원가입·로그아웃 | 같은 클라이언트 메서드 | **`useApi()`의 래퍼**(`client`를 직접 부르지 않는다) |
 
 `packages/api/src/token-storage.ts`가 `MaybePromise<T>` 타입으로 동기·비동기 저장소를 모두 받기 때문에 한 클라이언트가 양쪽을 지원한다.
+
+⚠️ **모바일 인증은 `client`를 직접 부르면 안 된다.** `client.login()`은 토큰만 저장하는데, 모바일의 화면 전환은 `_layout.tsx`의 세션 상태 guard가 결정한다. `api-provider.tsx`의 `login`·`signup`·`logout` 래퍼가 토큰 저장에 더해 profile과 세션 상태까지 갱신하므로 **`useApi()`에서 꺼내 쓴다.** 401을 만난 화면이 `restoreSession()`으로 guard를 재평가시키는 것도 같은 이유다.
 
 ## 지금 상태 (작업 전 확인)
 
@@ -49,7 +52,9 @@ description: 웹·모바일·저작 앱에서 Thumbs Up 백엔드 API를 연동�
 | GET `/api/v1/notices` | Bearer | query `cursor?,size?(≤100)` → `{items:[...]}` + `meta` 커서 |
 | GET `/api/v1/notices/{id}` | Bearer | → notice 상세 |
 
-Quiz·User·소셜 로그인은 **미구현** — 새 엔드포인트는 Swagger로 존재부터 확인.
+위 표는 #1 시점 기준이고 **이미 낡았다.** 그 뒤 quiz·course·history·feedback·`/auth/me`가 구현돼 `packages/api`의 `createApiClient()`가 제공한다. 소셜 로그인은 아직 없다.
+
+**엔드포인트 존재 여부의 정본은 Swagger UI와 서버 컨트롤러 코드**이고, 소비 가능한 메서드의 정본은 `packages/api/src/index.ts`다. 이 표만 보고 "없다"고 단정하지 않는다.
 
 ## 소비 규칙 (핵심)
 

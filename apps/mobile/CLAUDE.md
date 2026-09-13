@@ -24,6 +24,6 @@
 - Expo SDK와 React Native 버전은 `package.json`에 정확히 고정한다. SDK를 올린 뒤에는 `npx expo install --check`와 `npx expo-doctor`를 함께 실행한다.
 - `APP_ENV`와 `EXPO_PUBLIC_API_URL`을 반드시 설정한다. staging·production 빌드의 업데이트 채널은 `APP_ENV`와 일치해야 한다.
 - `ios/`와 `android/`는 CNG 산출물이므로 커밋하지 않는다. 네이티브 설정은 Expo config plugin으로 관리한다.
-- 스타일은 NativeWind와 `@thumbsup/tokens/nativewind-v4` 프리셋을 사용한다. `#111111` 같은 원시 색상값을 스타일에 직접 쓰지 않는다. 새로 필요한 색은 `@thumbsup/tokens`에 추가한 뒤 토큰으로 참조한다. **radius는 모바일 전용 토큰(`rounded-mobile-card`·`rounded-mobile-control`·`rounded-mobile-dialog`)을 쓴다** — 웹의 `rounded-card`는 모바일에서 적용되지 않는다. 상세는 `mobile-design-system` 스킬.
+- 스타일은 NativeWind와 `@thumbsup/tokens/nativewind-v4` 프리셋을 사용한다. `#111111` 같은 원시 색상값을 스타일에 직접 쓰지 않는다. 새로 필요한 색은 `@thumbsup/tokens`에 추가한 뒤 토큰으로 참조한다. **radius는 모바일 전용 토큰(`rounded-mobile-card`·`rounded-mobile-control`·`rounded-mobile-dialog`)을 쓴다** — 웹 이름도 동작하지만 값이 달라 모서리가 어긋난다. 상세는 `mobile-design-system` 스킬.
 - 라우트는 `src/app` 아래 expo-router 파일 규칙을 따른다. 앱 루트의 `SafeAreaProvider`와 splash 수명 주기를 유지한다.
 - 작업을 마치기 전에 `pnpm --filter mobile typecheck`, `lint`, `test`, `prebuild:check`, `npx expo-doctor`를 실행한다.

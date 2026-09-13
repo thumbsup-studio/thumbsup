@@ -81,7 +81,7 @@ pnpm dev
 - **`EXPO_PUBLIC_API_URL`이 없으면 앱이 시작 시점에 예외를 던진다.** 웹처럼 기본값 폴백이 없다. 처음 앱을 띄울 때 제일 먼저 만나는 에러가 보통 이것이다.
 - **인증 게이트는 래퍼 컴포넌트가 아니라 라우터가 한다.** `src/app/_layout.tsx`의 `<Stack.Protected guard={...}>`가 세션 상태에 따라 화면 묶음 자체를 바꾼다. 세션은 3상태(`restoring`·`authenticated`·`unauthenticated`)이고 `restoring` 동안 스피너가 뜬다.
 - **범용 `Button`·`Card`·`Input` 공용 컴포넌트가 모바일엔 없다.** `packages/ui-web`은 이름 그대로 웹 전용이라 못 쓴다. 있는 건 `src/components/screen-state.tsx`(로딩·에러·빈 상태)와 `icons.tsx`뿐이고, 나머지는 화면마다 NativeWind 클래스를 인라인으로 쓴다.
-- **색 토큰 이름은 웹과 같지만 radius는 다르다.** 모바일은 `rounded-mobile-card`·`rounded-mobile-control`을 쓴다. 웹의 `rounded-card`를 그대로 옮기면 NativeWind가 조용히 무시해 스타일만 빠진다. 상세는 `mobile-design-system` 스킬.
+- **색 토큰 이름은 웹과 같지만 radius는 모바일 전용 값을 쓴다.** 모바일은 `rounded-mobile-card`·`rounded-mobile-control`이다. 웹 이름도 동작하기는 하지만 값이 두 배라 모서리가 어긋난다. 상세는 `mobile-design-system` 스킬.
 
 ## React Native가 첫 React일 때 걸리는 것
 
