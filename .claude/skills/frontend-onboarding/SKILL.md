@@ -54,8 +54,8 @@ pnpm storybook   # http://localhost:6006 — 공통 컴포넌트 카탈로그(�
 |---|---|
 | `apps/mobile/` 작업을 맡았을 때 | `mobile-onboarding` (먼저) → `mobile-local-dev` (필수) |
 | Next.js 코드를 만지는 모든 작업 | `next-best-practices` (필수) |
-| UI·스타일·컴포넌트 | `design-system` (필수) — 토큰·`components/ui`·스토리 규칙 |
-| API 연동·소비 | `frontend-api` (필수) — envelope·토큰·에러 분기 |
+| UI·스타일·컴포넌트 | `design-system` (필수) — 토큰·`components/ui`·스토리 규칙. 모바일은 `mobile-design-system` |
+| API 연동·소비 | `frontend-api` (필수) — envelope·토큰·에러 분기. 세 앱 공통 |
 | 완료 보고 전 | `verify-app` — typecheck→lint→build→check:design |
 | UI 변경 후 자가 점검 | `visual-qa` |
 | FE e2e용 로컬 서버가 필요할 때 | `thumbsup-local-server` |

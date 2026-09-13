@@ -80,7 +80,8 @@ pnpm dev
 - **토큰은 `expo-secure-store`에 저장된다.** 웹의 localStorage와 달리 비동기다.
 - **`EXPO_PUBLIC_API_URL`이 없으면 앱이 시작 시점에 예외를 던진다.** 웹처럼 기본값 폴백이 없다. 처음 앱을 띄울 때 제일 먼저 만나는 에러가 보통 이것이다.
 - **인증 게이트는 래퍼 컴포넌트가 아니라 라우터가 한다.** `src/app/_layout.tsx`의 `<Stack.Protected guard={...}>`가 세션 상태에 따라 화면 묶음 자체를 바꾼다. 세션은 3상태(`restoring`·`authenticated`·`unauthenticated`)이고 `restoring` 동안 스피너가 뜬다.
-- **범용 `Button`·`Card`·`Input` 공용 컴포넌트가 모바일엔 없다.** `packages/ui-web`은 이름 그대로 웹 전용이라 못 쓴다. 있는 건 `src/components/screen-state.tsx`(로딩·에러·빈 상태)와 `icons.tsx`뿐이고, 나머지는 화면마다 NativeWind 클래스를 인라인으로 쓴다. 토큰 클래스명(`bg-primary`, `text-ink` 등)은 웹과 같다.
+- **범용 `Button`·`Card`·`Input` 공용 컴포넌트가 모바일엔 없다.** `packages/ui-web`은 이름 그대로 웹 전용이라 못 쓴다. 있는 건 `src/components/screen-state.tsx`(로딩·에러·빈 상태)와 `icons.tsx`뿐이고, 나머지는 화면마다 NativeWind 클래스를 인라인으로 쓴다.
+- **색 토큰 이름은 웹과 같지만 radius는 다르다.** 모바일은 `rounded-mobile-card`·`rounded-mobile-control`을 쓴다. 웹의 `rounded-card`를 그대로 옮기면 NativeWind가 조용히 무시해 스타일만 빠진다. 상세는 `mobile-design-system` 스킬.
 
 ## React Native가 첫 React일 때 걸리는 것
 
@@ -121,11 +122,15 @@ pnpm dev
 | 상황 | 로드할 스킬 |
 | --- | --- |
 | 앱을 띄우거나 로컬 환경이 막힐 때 | `mobile-local-dev` (필수) |
+| UI·스타일 작업 | `mobile-design-system` (필수) — 토큰·radius 차이·접근성 |
+| API 연동·소비 | `frontend-api` (필수) — 세 앱 공통 계약 |
 | 완료 보고 전 | `verify-app` — typecheck→lint→test→prebuild:check |
 | 로컬 서버가 필요할 때 | `thumbsup-local-server` |
 | `apps/web` 작업으로 옮겨갈 때 | `frontend-onboarding` |
 
-`frontend-api`·`design-system`·`visual-qa`·`next-best-practices`는 **web 전용이라 모바일에 적용하지 않는다.** 모바일 스타일 규칙의 정본은 `apps/mobile/CLAUDE.md`다.
+`design-system`·`visual-qa`·`next-best-practices`는 **web·저작 앱 전용이라 모바일에 적용하지 않는다.** 모바일 스타일은 `mobile-design-system` 스킬과 `apps/mobile/CLAUDE.md`가 정본이다.
+
+`frontend-api`는 **모바일에도 적용된다.** 세 앱이 `packages/api` 한 벌을 공유하므로 소비 규칙이 같고, 플랫폼별로 다른 네 가지는 그 스킬의 표에 있다.
 
 ## 막힐 때
 

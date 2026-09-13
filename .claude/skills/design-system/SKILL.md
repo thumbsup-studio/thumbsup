@@ -1,11 +1,13 @@
 ---
 name: design-system
-description: web UI(화면·컴포넌트·스타일)를 만들거나 고칠 때 반드시 로드. 디자인 토큰·공통 컴포넌트 사용 규칙과 하네스를 강제한다. 사용자가 "화면 만들어", "컴포넌트 추가", "스타일 바꿔"라고 할 때도 트리거.
+description: apps/web·apps/authoring UI(화면·컴포넌트·스타일)를 만들거나 고칠 때 반드시 로드. 모바일은 토큰 이름과 컴포넌트 사정이 달라 mobile-design-system 스킬을 쓴다. 디자인 토큰·공통 컴포넌트 사용 규칙과 하네스를 강제한다. 사용자가 "화면 만들어", "컴포넌트 추가", "스타일 바꿔"라고 할 때도 트리거.
 ---
 
 # design-system — 떰즈업 디자인 규약
 
-UI 작업 전 이 규칙을 따른다. 상세는 `apps/web/DESIGN.md`, 토큰은 `apps/web/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
+`apps/web`과 `apps/authoring`의 UI 작업 전 이 규칙을 따른다. 상세는 `apps/web/DESIGN.md`, 토큰은 `apps/web/src/app/globals.css`, 카탈로그는 `pnpm storybook`.
+
+> **모바일은 이 스킬을 쓰지 않는다.** radius 토큰 이름이 다르고 범용 컴포넌트가 없다 — `mobile-design-system` 스킬을 읽는다.
 
 ## 화면 구현 시 레퍼런스 (먼저 확인)
 화면(로그인·회원가입·지식그래프 등)을 만들 땐 **레퍼런스 HTML을 먼저 연다.**
