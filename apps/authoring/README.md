@@ -11,13 +11,13 @@ pnpm install
 pnpm dev        # http://localhost:3000
 ```
 
-`apps/web`도 3000번을 쓰므로 동시에 띄우려면 한쪽에 `pnpm dev -- -p 3001`처럼 포트를 지정한다.
+`apps/web`도 3000번을 쓰므로 동시에 띄우려면 한쪽에 `pnpm dev -- -p 3001`처럼 포트를 지정한다. 단 **로컬 API 서버는 `http://localhost:3000`만 CORS로 허용한다**(`server/src/main/resources/application-local.yml`). 로컬 서버에 붙일 앱을 3000번에 두거나, 다른 포트를 쓰려면 서버의 허용 목록을 먼저 늘린다.
 
 ## 환경변수
 
 - `NEXT_PUBLIC_API_URL`: API 베이스 URL. **미설정 시 운영 API(`https://thumbsup-api.duckdns.org`)로 붙는다.**
 
-⚠️ 저작 앱의 승인은 **즉시 라이브에 반영되고 되돌리는 API가 없다.** 로컬에서 개발할 때는 `.env.local`에 `NEXT_PUBLIC_API_URL=http://localhost:8080`을 반드시 넣는다. 안 넣으면 로컬 화면으로 운영 문제를 승인하게 된다. 로컬 서버 기동은 `thumbsup-local-server` 스킬을 참고한다.
+⚠️ 저작 앱의 승인은 **되돌리는 API가 없다.** `NEW`·`IMPROVE` draft는 승인 즉시 라이브에 반영되고, `OUTLINE_STEP`은 별도 발행 단계에서 반영된다. 로컬에서 개발할 때는 `.env.local`에 `NEXT_PUBLIC_API_URL=http://localhost:8080`을 반드시 넣는다. 안 넣으면 로컬 화면으로 운영 문제를 승인하게 된다. 로컬 서버 기동은 `thumbsup-local-server` 스킬을 참고한다.
 
 설정 예시는 [`.env.example`](./.env.example)에 있다.
 
