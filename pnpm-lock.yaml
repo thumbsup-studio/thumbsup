@@ -17,9 +17,6 @@ importers:
       '@thumbsup/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@thumbsup/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@thumbsup/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
