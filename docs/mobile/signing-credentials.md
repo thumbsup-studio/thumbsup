@@ -27,7 +27,7 @@ Repository settings의 Actions secrets and variables에 아래 값을 등록한�
 | Secret | `MOBILE_ASC_API_KEY_P8_BASE64` | App Store Connect P8 private key의 base64 |
 | Variable | `MOBILE_APPLE_TEAM_ID` | Apple Developer Team ID |
 | Variable | `MOBILE_ARTIFACTS_BUCKET` | 모바일 바이너리 S3 버킷 이름 |
-| Variable | `MOBILE_BINARY_PUBLISH_ROLE_ARN` | `binaries/*`에만 쓸 수 있는 GitHub OIDC IAM role ARN |
+| Variable | `MOBILE_NONPROD_ROLE_ARN` | CDK 스택이 만드는 `thumbsup-mobile-nonprod` 역할 ARN. PR 번들·staging OTA·`binaries/*` 업로드에 공용 |
 | Variable | `MOBILE_UPDATES_URL` | 배포된 Expo Updates HTTPS base URL. 미설정 시 통신 불가 placeholder 사용 |
 
 자격증명이 빠지면 Android staging은 debug 서명 APK를 `unsigned` artifact로만 남기고 S3 업로드를 생략한다. iOS staging은 시뮬레이터 ZIP으로 대체하고 TestFlight 업로드를 생략한다. S3 변수 두 개가 없으면 GitHub artifact까지만 만든다.
@@ -66,5 +66,5 @@ P12나 profile을 잃으면 Apple Developer에서 유효한 인증서·profile�
 ## 접근 통제와 점검
 
 - GitHub Actions의 secret 읽기 권한, Apple Developer의 Certificates 권한, App Store Connect API key 발급 권한, Google Cloud key 관리자 권한을 최소 인원에게만 준다.
-- `MOBILE_BINARY_PUBLISH_ROLE_ARN`의 신뢰 정책은 이 레포의 허용된 ref와 두 모바일 워크플로우로 제한하고, 정책은 대상 버킷의 `binaries/*` 쓰기만 허용한다.
+- `MOBILE_NONPROD_ROLE_ARN`의 신뢰 정책은 이 레포의 `main` ref와 staging Environment 두 개로 제한하고, 정책은 `updates/pr-*`·`updates/staging/*`·`binaries/*`와 채널 인덱스만 허용한다. production prefix는 별도 역할이다.
 - 분기마다 만료일, 마지막 성공 빌드, 백업 복구 가능 여부, 퇴사자 권한 회수를 확인한다. 노출이 의심되면 해당 key를 즉시 폐기하고 새 값으로 교체한 뒤 Actions 로그와 S3 변경 이력을 점검한다.

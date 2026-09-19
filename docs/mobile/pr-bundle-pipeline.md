@@ -1,6 +1,6 @@
 # 모바일 PR 번들 publish 파이프라인
 
-PR 코드를 AWS 권한과 분리해 staging 업데이트를 배포하는 절차다. IAM 역할과 GitHub Environment는 저장소 밖의 보안 설정이므로 이 PR에서 만들지 않는다. 아래 정책을 검토한 뒤 관리자가 직접 적용해야 한다.
+PR 코드를 AWS 권한과 분리해 staging 업데이트를 배포하는 절차다. S3 버킷과 GitHub OIDC 역할은 `tools/updates-server`의 CDK 스택이 함께 만들고, GitHub Environment는 저장소 설정에서 만든다.
 
 ## 동작 흐름
 
@@ -10,7 +10,7 @@ PR 코드를 AWS 권한과 분리해 staging 업데이트를 배포하는 절차
 4. publish 스크립트는 artifact의 PR 번호와 commit을 신뢰된 `workflow_run` payload와 대조한다. asset을 `updates/pr-<번호>/<commit>/`에 먼저 올리고 `metadata.json`을 해당 prefix에서 마지막으로 올린 다음 `channels/index.json`에 채널을 등록한다.
 5. `channels/index.json`은 현재 ETag를 `If-Match`로 보내 갱신한다. 다른 PR이 먼저 썼다면 새 index를 다시 읽어 최대 6번 재시도하므로 lost update가 발생하지 않는다. 최초 파일 생성도 `If-None-Match: *`를 사용한다.
 6. publish가 끝나면 봇이 기존 안내 코멘트를 찾아 갱신하거나 새로 작성한다. 딥링크는 `thumbsup-staging://pr/<번호>`다.
-7. PR이 닫히면 `Mobile PR Bundle Cleanup`이 index에서 `pr-<번호>` 채널을 먼저 내리고 해당 update prefix를 삭제한다. 권한이 있는 workflow 정의는 PR merge ref가 아니라 기본 브랜치에서 읽어야 하므로 이벤트는 `pull_request_target: closed`를 사용하고 PR 코드는 체크아웃하지 않는다. 삭제 권한은 publish 역할과 분리한다. 버전이 남더라도 S3 lifecycle이 PR update의 현재·이전 버전을 30일 뒤 만료시킨다.
+7. PR이 닫히면 `Mobile PR Bundle Cleanup`이 index에서 `pr-<번호>` 채널을 먼저 내리고 해당 update prefix를 삭제한다. 권한이 있는 workflow 정의는 PR merge ref가 아니라 기본 브랜치에서 읽어야 하므로 이벤트는 `pull_request_target: closed`를 사용하고 PR 코드는 체크아웃하지 않는다. 버전이 남더라도 S3 lifecycle이 PR update의 현재·이전 버전을 30일 뒤 만료시킨다.
 
 동일 PR의 publish와 cleanup은 모두 `pr-publish-<번호>` concurrency group을 쓴다. 새 push가 들어오면 이전 publish는 취소되고, cleanup은 실행 중인 publish가 끝난 뒤 시작한다.
 
@@ -23,138 +23,30 @@ PR에서 체크아웃한 코드는 export와 GitHub artifact 업로드만 할 �
 - export metadata의 경로가 절대 경로나 `..`를 포함하지 않는가
 - 실제 업로드 키가 `updates/pr-<번호>/<commit>/` 아래에만 생기는가
 
-S3 정책도 같은 경계를 강제한다. publish 역할은 PR prefix와 `channels/index.json`만 읽거나 쓸 수 있고, production·binary prefix 및 삭제 작업에는 접근하지 못한다. cleanup 역할은 PR prefix 삭제와 index 갱신만 허용한다. 버킷 전체 목록 조회도 `updates/pr-*` prefix 조건으로 제한한다.
+S3 정책도 같은 경계를 강제한다. publish와 cleanup이 쓰는 `thumbsup-mobile-nonprod` 역할은 `updates/pr-*`·`updates/staging/*`·`binaries/*`와 `channels/index.json`만 다룰 수 있고 삭제는 `updates/pr-*`에서만 허용된다. production prefix는 승인자가 있는 `mobile-production` Environment에서만 빌릴 수 있는 `thumbsup-mobile-production` 역할이 맡는다. 버킷 목록 조회도 nonprod prefix 조건으로 제한한다.
 
-## 관리자가 만들어야 할 AWS 역할
+## AWS 역할
 
-OIDC provider `token.actions.githubusercontent.com`은 기존 계정 설정을 재사용한다. 아래 예시는 현재 계정 `819743217770`, 저장소 ID `1289852286`, 버킷 `thumbsup-mobile-artifacts`를 기준으로 작성했다.
+역할은 손으로 만들지 않는다. `ThumbsupUpdatesServer` 스택(`tools/updates-server/lib/updates-server-stack.ts`)이 기존 GitHub OIDC provider `token.actions.githubusercontent.com`을 재사용해 역할 두 개를 만들고 ARN을 출력한다.
 
-### publish 역할
+| 역할 | 빌리는 조건(`sub`) | 허용 |
+| --- | --- | --- |
+| `thumbsup-mobile-nonprod` | Environment `mobile-staging-publish`·`mobile-staging-cleanup`, `main` ref | `channels/index.json` 읽기·쓰기, `updates/pr-*`·`updates/staging/*`·`binaries/*` 쓰기, `binaries/*` 읽기, `updates/pr-*` 삭제, nonprod prefix 목록 |
+| `thumbsup-mobile-production` | Environment `mobile-production` | `channels/index.json` 읽기·쓰기, `updates/staging/*`·`binaries/staging/*` 읽기, `updates/production/*` 쓰기, `updates/staging/*` 목록 |
 
-역할 이름은 `thumbsup-mobile-staging-publish`로 만든다. 권한 정책은 다음과 같다.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "ReadChannelIndexForConditionalWrite",
-      "Effect": "Allow",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::thumbsup-mobile-artifacts/channels/index.json"
-    },
-    {
-      "Sid": "PublishPullRequestUpdates",
-      "Effect": "Allow",
-      "Action": "s3:PutObject",
-      "Resource": [
-        "arn:aws:s3:::thumbsup-mobile-artifacts/updates/pr-*",
-        "arn:aws:s3:::thumbsup-mobile-artifacts/channels/index.json"
-      ]
-    }
-  ]
-}
-```
-
-trust policy는 Environment subject뿐 아니라 저장소 ID, workflow 이름, `main` ref를 함께 확인한다.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::819743217770:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:thumbsup-studio/thumbsup:environment:mobile-staging-publish",
-          "token.actions.githubusercontent.com:repository_id": "1289852286",
-          "token.actions.githubusercontent.com:workflow": "Mobile PR Bundle Publish",
-          "token.actions.githubusercontent.com:ref": "refs/heads/main"
-        }
-      }
-    }
-  ]
-}
-```
-
-### cleanup 역할
-
-삭제 권한을 publish에서 떼어 내기 위해 `thumbsup-mobile-staging-cleanup` 역할을 별도로 만든다.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "ReadAndUpdateChannelIndex",
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": "arn:aws:s3:::thumbsup-mobile-artifacts/channels/index.json"
-    },
-    {
-      "Sid": "ListPullRequestUpdatesOnly",
-      "Effect": "Allow",
-      "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::thumbsup-mobile-artifacts",
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": "updates/pr-*"
-        }
-      }
-    },
-    {
-      "Sid": "DeletePullRequestUpdatesOnly",
-      "Effect": "Allow",
-      "Action": "s3:DeleteObject",
-      "Resource": "arn:aws:s3:::thumbsup-mobile-artifacts/updates/pr-*"
-    }
-  ]
-}
-```
-
-cleanup 역할의 trust policy는 publish와 같은 구조에서 Environment와 workflow만 바꾼다.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::819743217770:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:thumbsup-studio/thumbsup:environment:mobile-staging-cleanup",
-          "token.actions.githubusercontent.com:repository_id": "1289852286",
-          "token.actions.githubusercontent.com:workflow": "Mobile PR Bundle Cleanup",
-          "token.actions.githubusercontent.com:ref": "refs/heads/main"
-        }
-      }
-    }
-  ]
-}
-```
-
-`job_workflow_ref`는 reusable workflow를 특정할 때 유용하다. 이번 구성은 reusable workflow가 아니다. 기존 server 배포도 같은 GitHub OIDC provider를 사용하므로 저장소 전체 subject customization은 하지 않는다. AWS가 지원하는 `environment` 기반 `sub`, `workflow`, `ref`, 변경되지 않는 `repository_id`를 함께 제한한다. 나중에 reusable workflow로 옮긴다면 기존 OIDC 역할의 trust policy를 함께 이관하는 별도 작업에서 `job_workflow_ref`를 포함한 custom subject를 검토한다.
+두 역할 모두 `aud=sts.amazonaws.com`과 저장소 ID를 함께 검사한다. `job_workflow_ref`는 reusable workflow를 특정할 때 유용하지만 이번 구성은 reusable workflow가 아니므로 쓰지 않는다. 정책을 바꾸려면 스택과 `test/stack.test.ts`를 함께 고치고 `cdk diff`를 확인한 뒤 배포한다.
 
 ## GitHub Environment 설정
 
 저장소 Settings → Environments에서 다음 두 Environment를 만든다.
 
-| Environment | 변수 | 값 |
+| 변수 | 값 | 범위 |
 | --- | --- | --- |
-| `mobile-staging-publish` | `MOBILE_ARTIFACTS_BUCKET` | `thumbsup-mobile-artifacts` |
-| `mobile-staging-publish` | `MOBILE_STAGING_PUBLISH_ROLE_ARN` | `arn:aws:iam::819743217770:role/thumbsup-mobile-staging-publish` |
-| `mobile-staging-cleanup` | `MOBILE_ARTIFACTS_BUCKET` | `thumbsup-mobile-artifacts` |
-| `mobile-staging-cleanup` | `MOBILE_STAGING_CLEANUP_ROLE_ARN` | `arn:aws:iam::819743217770:role/thumbsup-mobile-staging-cleanup` |
+| `MOBILE_ARTIFACTS_BUCKET` | 스택 출력 `ArtifactsBucketName` (`thumbsup-mobile-artifacts`) | 저장소 Variables |
+| `MOBILE_NONPROD_ROLE_ARN` | 스택 출력 `NonprodRoleArn` | 저장소 Variables |
+| `MOBILE_PRODUCTION_ROLE_ARN` | 스택 출력 `ProductionRoleArn` | 저장소 Variables |
+
+publish와 cleanup은 각각 `mobile-staging-publish`·`mobile-staging-cleanup` Environment에서 실행되며 역할은 둘 다 `MOBILE_NONPROD_ROLE_ARN`이다.
 
 두 Environment 모두 deployment branch를 `main`만 허용하도록 설정한다. 같은 저장소의 PR은 자동 publish하고 fork PR은 workflow 조건에서 제외하므로 required reviewer는 두지 않는다. 관리자 승인 없이 Environment나 Actions workflow를 바꾸지 못하도록 `main` 브랜치 보호와 CODEOWNERS를 유지한다. 조직 정책상 매 publish마다 승인이 필요하면 `mobile-staging-publish`에 required reviewer를 추가하되, cleanup에는 추가하지 않아야 닫힌 PR이 자동으로 정리된다.
 

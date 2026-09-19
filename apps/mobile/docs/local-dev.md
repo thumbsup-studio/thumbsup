@@ -79,7 +79,7 @@ Android만 쓸 계획이라면 Xcode가 없어도 `pnpm diagnose android`는 통
 
 ## dev-client 설치
 
-dev-client 워크플로우가 S3에 배포되려면 `MOBILE_ARTIFACTS_BUCKET`과 `MOBILE_BINARY_PUBLISH_ROLE_ARN` 등록이 필요하다. `MOBILE_DEV_CLIENT_BASE_URL`이 아직 없다면 `pnpm dev:install android`는 `expo run:android`로 로컬 빌드를 만들어 설치한다.
+dev-client 워크플로우가 S3에 배포되려면 `MOBILE_ARTIFACTS_BUCKET`과 `MOBILE_NONPROD_ROLE_ARN` 등록이 필요하다. `MOBILE_DEV_CLIENT_BASE_URL`이 아직 없다면 `pnpm dev:install android`는 `expo run:android`로 로컬 빌드를 만들어 설치한다.
 
 ```bash
 pnpm dev:install android

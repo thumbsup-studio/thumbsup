@@ -173,9 +173,105 @@ export class UpdatesServerStack extends Stack {
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
     });
 
+    // GitHub Actions가 OIDC로 빌리는 역할 두 개. 승인자가 있는 production만 분리한다.
+    const githubRepository = 'thumbsup-studio/thumbsup';
+    const githubRepositoryId = '1289852286';
+    const githubProvider = iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(
+      this,
+      'GitHubOidcProvider',
+      Stack.of(this).formatArn({
+        service: 'iam',
+        region: '',
+        resource: 'oidc-provider',
+        resourceName: 'token.actions.githubusercontent.com',
+      }),
+    );
+    const githubPrincipal = (subjects: string[]): iam.WebIdentityPrincipal =>
+      new iam.WebIdentityPrincipal(githubProvider.openIdConnectProviderArn, {
+        StringEquals: {
+          'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+          'token.actions.githubusercontent.com:repository_id': githubRepositoryId,
+          'token.actions.githubusercontent.com:sub': subjects,
+        },
+      });
+
+    const nonprodRole = new iam.Role(this, 'GitHubNonprodRole', {
+      roleName: 'thumbsup-mobile-nonprod',
+      description: 'PR 번들 publish·cleanup, staging OTA, 바이너리 업로드용 GitHub Actions 역할',
+      maxSessionDuration: Duration.hours(1),
+      assumedBy: githubPrincipal([
+        `repo:${githubRepository}:environment:mobile-staging-publish`,
+        `repo:${githubRepository}:environment:mobile-staging-cleanup`,
+        `repo:${githubRepository}:ref:refs/heads/main`,
+      ]),
+    });
+    nonprodRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ChannelIndexReadWrite',
+      actions: ['s3:GetObject', 's3:PutObject'],
+      resources: [artifacts.arnForObjects('channels/index.json')],
+    }));
+    nonprodRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'PublishNonprodUpdatesAndBinaries',
+      actions: ['s3:PutObject'],
+      resources: [
+        artifacts.arnForObjects('updates/pr-*'),
+        artifacts.arnForObjects('updates/staging/*'),
+        artifacts.arnForObjects('binaries/*'),
+      ],
+    }));
+    nonprodRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ReadBinaries',
+      actions: ['s3:GetObject'],
+      resources: [artifacts.arnForObjects('binaries/*')],
+    }));
+    nonprodRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'DeletePullRequestUpdatesOnly',
+      actions: ['s3:DeleteObject'],
+      resources: [artifacts.arnForObjects('updates/pr-*')],
+    }));
+    nonprodRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ListNonprodPrefixesOnly',
+      actions: ['s3:ListBucket'],
+      resources: [artifacts.bucketArn],
+      conditions: { StringLike: { 's3:prefix': ['updates/pr-*', 'updates/staging/*'] } },
+    }));
+
+    const productionRole = new iam.Role(this, 'GitHubProductionRole', {
+      roleName: 'thumbsup-mobile-production',
+      description: 'RC 검증과 production OTA 승격·롤백용 GitHub Actions 역할',
+      maxSessionDuration: Duration.hours(1),
+      assumedBy: githubPrincipal([`repo:${githubRepository}:environment:mobile-production`]),
+    });
+    productionRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ChannelIndexReadWrite',
+      actions: ['s3:GetObject', 's3:PutObject'],
+      resources: [artifacts.arnForObjects('channels/index.json')],
+    }));
+    productionRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ReadVerifiedStagingArtifacts',
+      actions: ['s3:GetObject'],
+      resources: [
+        artifacts.arnForObjects('updates/staging/*'),
+        artifacts.arnForObjects('binaries/staging/*'),
+      ],
+    }));
+    productionRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'PromoteToProduction',
+      actions: ['s3:PutObject'],
+      resources: [artifacts.arnForObjects('updates/production/*')],
+    }));
+    productionRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ListStagingUpdatesOnly',
+      actions: ['s3:ListBucket'],
+      resources: [artifacts.bucketArn],
+      conditions: { StringLike: { 's3:prefix': 'updates/staging/*' } },
+    }));
+
     new CfnOutput(this, 'ArtifactsBucketName', { value: artifacts.bucketName });
     new CfnOutput(this, 'UpdatesBaseUrl', {
       value: `https://${distribution.distributionDomainName}`,
     });
+    new CfnOutput(this, 'NonprodRoleArn', { value: nonprodRole.roleArn });
+    new CfnOutput(this, 'ProductionRoleArn', { value: productionRole.roleArn });
   }
 }

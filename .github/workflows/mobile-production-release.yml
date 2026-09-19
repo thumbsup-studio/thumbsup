@@ -156,7 +156,7 @@ jobs:
           done
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_PRODUCTION_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_PRODUCTION_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: 검증된 RC 객체 다운로드
         run: |
@@ -239,7 +239,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_PRODUCTION_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_PRODUCTION_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: staging OTA를 production으로 승격
         env:

@@ -99,4 +99,43 @@ describe('UpdatesServerStack', () => {
     expect(write).toMatchObject({ Action: 's3:PutObject', Effect: 'Allow' });
     expect(JSON.stringify(write?.Resource)).toContain('telemetry/*');
   });
+  it('creates two GitHub OIDC roles scoped to nonprod and production prefixes', () => {
+    const roles = template().findResources('AWS::IAM::Role');
+    const byName = (name: string) =>
+      Object.values(roles).find((role: any) => role.Properties?.RoleName === name) as any;
+    const nonprod = byName('thumbsup-mobile-nonprod');
+    const production = byName('thumbsup-mobile-production');
+    expect(nonprod).toBeDefined();
+    expect(production).toBeDefined();
+
+    const trust = (role: any) => role.Properties.AssumeRolePolicyDocument.Statement[0];
+    expect(trust(nonprod).Action).toBe('sts:AssumeRoleWithWebIdentity');
+    expect(trust(nonprod).Condition.StringEquals['token.actions.githubusercontent.com:sub']).toEqual([
+      'repo:thumbsup-studio/thumbsup:environment:mobile-staging-publish',
+      'repo:thumbsup-studio/thumbsup:environment:mobile-staging-cleanup',
+      'repo:thumbsup-studio/thumbsup:ref:refs/heads/main',
+    ]);
+    expect(trust(production).Condition.StringEquals['token.actions.githubusercontent.com:sub']).toEqual([
+      'repo:thumbsup-studio/thumbsup:environment:mobile-production',
+    ]);
+    expect(trust(production).Condition.StringEquals['token.actions.githubusercontent.com:aud']).toBe('sts.amazonaws.com');
+
+    const policies = Object.values(template().findResources('AWS::IAM::Policy')) as any[];
+    const policyFor = (roleLogicalId: string) =>
+      policies.find((policy) => JSON.stringify(policy.Properties.Roles).includes(roleLogicalId));
+    const nonprodStatements = policyFor('GitHubNonprodRole').Properties.PolicyDocument.Statement as any[];
+    const productionStatements = policyFor('GitHubProductionRole').Properties.PolicyDocument.Statement as any[];
+    const text = (statements: any[]) => JSON.stringify(statements);
+
+    expect(text(nonprodStatements)).toContain('updates/pr-*');
+    expect(text(nonprodStatements)).toContain('updates/staging/*');
+    expect(text(nonprodStatements)).toContain('binaries/*');
+    expect(text(nonprodStatements)).not.toContain('updates/production');
+    expect(nonprodStatements.find((s) => s.Sid === 'DeletePullRequestUpdatesOnly').Resource).toBeDefined();
+
+    expect(text(productionStatements)).toContain('updates/production/*');
+    expect(text(productionStatements)).not.toContain('updates/pr-');
+    expect(productionStatements.some((s) => JSON.stringify(s.Action).includes('DeleteObject'))).toBe(false);
+    expect(text(productionStatements)).not.toContain('ssm:');
+  });
 });
