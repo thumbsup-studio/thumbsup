@@ -1,0 +1,123 @@
+name: Mobile OTA Control
+
+# production OTA의 rollout 비율 변경과 롤백을 Actions에서 실행한다 (#418).
+# 모든 실행은 mobile-production Environment 승인을 거치며 기본값은 dry-run이다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: rollout = rollout 비율 변경 · rollback-to-update = 이전 updateId로 되돌림 · rollback-to-embedded = 내장 번들 kill switch
+        required: true
+        default: rollout
+        type: choice
+        options:
+          - rollout
+          - rollback-to-update
+          - rollback-to-embedded
+      update_id:
+        description: 대상 updateId(릴리즈 커밋 SHA 40자). rollout·rollback-to-update에 필요
+        required: false
+        type: string
+      runtime_version:
+        description: 대상 runtimeVersion(X.Y.Z). rollout 검증과 rollback-to-embedded에 필요
+        required: false
+        type: string
+      rollout_percentage:
+        description: rollout일 때 새 비율(0~100)
+        required: false
+        default: '25'
+        type: string
+      commit_time:
+        description: rollback-to-embedded일 때 이 시각 이전의 OTA를 무효화(ISO-8601). 비우면 지금
+        required: false
+        type: string
+      dry_run:
+        description: S3를 변경하지 않고 검증만 실행
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-production-release
+  cancel-in-progress: false
+
+jobs:
+  control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: mobile-production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
+      ACTION: ${{ inputs.action }}
+      UPDATE_ID: ${{ inputs.update_id }}
+      RUNTIME_VERSION: ${{ inputs.runtime_version }}
+      ROLLOUT_PERCENTAGE: ${{ inputs.rollout_percentage }}
+      COMMIT_TIME: ${{ inputs.commit_time }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: 입력 검증
+        run: |
+          if [[ -z "$ARTIFACTS_BUCKET" ]]; then
+            echo "MOBILE_ARTIFACTS_BUCKET Variable이 없습니다." >&2; exit 1
+          fi
+          if [[ "$ACTION" == rollout || "$ACTION" == rollback-to-update ]]; then
+            if [[ ! "$UPDATE_ID" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "update_id는 커밋 SHA 40자여야 합니다: $UPDATE_ID" >&2; exit 1
+            fi
+          fi
+          if [[ "$ACTION" == rollout || "$ACTION" == rollback-to-embedded ]]; then
+            if [[ ! "$RUNTIME_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "runtime_version은 X.Y.Z 형식이어야 합니다: $RUNTIME_VERSION" >&2; exit 1
+            fi
+          fi
+          if [[ "$ACTION" == rollout ]]; then
+            if [[ ! "$ROLLOUT_PERCENTAGE" =~ ^[0-9]+$ ]] || (( ROLLOUT_PERCENTAGE > 100 )); then
+              echo "rollout_percentage는 0~100 정수여야 합니다: $ROLLOUT_PERCENTAGE" >&2; exit 1
+            fi
+          fi
+          echo "action=$ACTION dry_run=$DRY_RUN"
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.MOBILE_PRODUCTION_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: production 채널 변경
+        run: |
+          dry_run=()
+          if [[ "$DRY_RUN" == true ]]; then dry_run+=(--dry-run); fi
+          case "$ACTION" in
+            rollout)
+              pnpm --filter updates-server updates -- promote \
+                --bucket "$ARTIFACTS_BUCKET" --from staging --update-id "$UPDATE_ID" \
+                --to production --runtime-version "$RUNTIME_VERSION" \
+                --rollout-percentage "$ROLLOUT_PERCENTAGE" "${dry_run[@]}"
+              ;;
+            rollback-to-update)
+              pnpm --filter updates-server updates -- rollback \
+                --bucket "$ARTIFACTS_BUCKET" --channel production --to "$UPDATE_ID" "${dry_run[@]}"
+              ;;
+            rollback-to-embedded)
+              commit_time=()
+              if [[ -n "$COMMIT_TIME" ]]; then commit_time+=(--commit-time "$COMMIT_TIME"); fi
+              pnpm --filter updates-server updates -- rollback \
+                --bucket "$ARTIFACTS_BUCKET" --channel production --to embedded \
+                --runtime-version "$RUNTIME_VERSION" "${commit_time[@]}" "${dry_run[@]}"
+              ;;
+          esac
