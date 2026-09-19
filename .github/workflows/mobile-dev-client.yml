@@ -2,8 +2,19 @@ name: Mobile Dev Client
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 1'
+  # dev-client 바이너리는 네이티브 결과가 바뀔 때만 달라지므로 그 경로가 main에 들어올 때만 빌드한다 (#417).
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/app.config.ts'
+      - 'apps/mobile/package.json'
+      - 'apps/mobile/Gemfile*'
+      - 'apps/mobile/plugins/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
+      - '.github/workflows/mobile-dev-client.yml'
 
 permissions:
   contents: read
