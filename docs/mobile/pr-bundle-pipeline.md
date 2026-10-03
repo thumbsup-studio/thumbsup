@@ -10,7 +10,7 @@ PR 코드를 AWS 권한과 분리해 staging 업데이트를 배포하는 절차
 4. publish 스크립트는 artifact의 PR 번호와 commit을 신뢰된 `workflow_run` payload와 대조한다. asset을 `updates/pr-<번호>/<commit>/`에 먼저 올리고 `metadata.json`을 해당 prefix에서 마지막으로 올린 다음 `channels/index.json`에 채널을 등록한다.
 5. `channels/index.json`은 현재 ETag를 `If-Match`로 보내 갱신한다. 다른 PR이 먼저 썼다면 새 index를 다시 읽어 최대 6번 재시도하므로 lost update가 발생하지 않는다. 최초 파일 생성도 `If-None-Match: *`를 사용한다.
 6. publish가 끝나면 봇이 기존 안내 코멘트를 찾아 갱신하거나 새로 작성한다. 딥링크는 `thumbsup-staging://pr/<번호>`다.
-7. PR이 닫히면 `Mobile PR Bundle Cleanup`이 index에서 `pr-<번호>` 채널을 먼저 내리고 해당 update prefix를 삭제한다. 권한이 있는 workflow 정의는 PR merge ref가 아니라 기본 브랜치에서 읽어야 하므로 이벤트는 `pull_request_target: closed`를 사용하고 PR 코드는 체크아웃하지 않는다. 삭제 권한은 publish 역할과 분리한다. 버전이 남더라도 S3 lifecycle이 PR update의 현재·이전 버전을 30일 뒤 만료시킨다.
+7. PR이 닫히면 `Mobile PR Bundle Cleanup`이 index에서 `pr-<번호>` 채널을 먼저 내리고 해당 update prefix를 삭제한다. 권한이 있는 workflow 정의는 PR merge ref가 아니라 기본 브랜치에서 읽어야 하므로 이벤트는 `pull_request_target: closed`를 사용하고 PR 코드는 체크아웃하지 않는다. 삭제 권한은 publish 역할과 분리한다. 버전이 남더라도 S3 lifecycle이 PR update의 현재·이전 버전을 14일 뒤 만료시킨다.
 
 동일 PR의 publish와 cleanup은 모두 `pr-publish-<번호>` concurrency group을 쓴다. 새 push가 들어오면 이전 publish는 취소되고, cleanup은 실행 중인 publish가 끝난 뒤 시작한다.
 

@@ -21,14 +21,14 @@ export class UpdatesServerStack extends Stack {
         {
           id: 'ExpirePullRequestUpdates',
           prefix: 'updates/pr-',
-          expiration: Duration.days(30),
-          noncurrentVersionExpiration: Duration.days(30),
+          expiration: Duration.days(14),
+          noncurrentVersionExpiration: Duration.days(14),
         },
         {
           id: 'ExpireTelemetry',
           prefix: 'telemetry/',
-          expiration: Duration.days(30),
-          noncurrentVersionExpiration: Duration.days(30),
+          expiration: Duration.days(14),
+          noncurrentVersionExpiration: Duration.days(14),
         },
       ],
       removalPolicy: RemovalPolicy.RETAIN,
