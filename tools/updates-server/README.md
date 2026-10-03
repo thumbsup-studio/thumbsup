@@ -94,6 +94,8 @@ pnpm --filter updates-server local-server \
 
 이 PR에서는 synth까지만 검증한다. 실제 AWS 리소스를 만들거나 바꾸는 `cdk deploy`는 사용자가 비용과 변경 사항을 확인한 뒤 실행해야 한다.
 
+배포 전 해당 리전의 Lambda 미예약 동시 실행 가능량이 최소 16개인지 확인한다. 이 스택은 manifest에 5개, telemetry에 1개를 예약한다. 이 계정의 배포 오류에서는 다른 함수용으로 최소 10개를 남기도록 요구했다. 현재 계정 한도가 부족하면 예약 설정을 제거해 배포하지 말고 동시 실행 한도 상향을 요청한다. 예약 동시 실행 설정 자체는 추가 과금되지 않는다.
+
 ```bash
 pnpm install --frozen-lockfile
 pnpm --filter updates-server typecheck

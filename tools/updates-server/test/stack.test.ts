@@ -47,7 +47,7 @@ describe('UpdatesServerStack', () => {
     });
   });
 
-  it('uses Node.js 22 Lambdas without reserved concurrency and IAM-authenticated URLs', () => {
+  it('isolates manifest capacity and caps telemetry with reserved concurrency', () => {
     const synthesized = template();
     synthesized.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs22.x',
@@ -56,9 +56,10 @@ describe('UpdatesServerStack', () => {
     synthesized.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'AWS_IAM' });
     const functions = synthesized.findResources('AWS::Lambda::Function');
     expect(Object.keys(functions)).toHaveLength(2);
-    for (const resource of Object.values(functions)) {
-      expect(resource.Properties).not.toHaveProperty('ReservedConcurrentExecutions');
-    }
+    const manifest = Object.entries(functions).find(([id]) => id.startsWith('ManifestHandler'))?.[1];
+    const telemetry = Object.entries(functions).find(([id]) => id.startsWith('TelemetryHandler'))?.[1];
+    expect(manifest?.Properties.ReservedConcurrentExecutions).toBe(5);
+    expect(telemetry?.Properties.ReservedConcurrentExecutions).toBe(1);
   });
 
   it('routes only manifest requests to Lambda and makes update assets immutable', () => {
