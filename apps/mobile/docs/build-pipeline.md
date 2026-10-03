@@ -11,7 +11,7 @@
 | PR 번들 게시 | `.github/workflows/mobile-pr-publish.yml` | 성공한 빌드 artifact를 신뢰된 main 코드로 검증해 S3 PR 채널에 게시하고 딥링크 코멘트 작성 | 구현됨, 인프라 미배포로 운영 불가 |
 | PR 번들 정리 | `.github/workflows/mobile-pr-cleanup.yml` | PR 종료 시 채널 인덱스를 먼저 제거하고 S3 객체 삭제 | 구현됨, 인프라 미배포로 운영 불가 |
 | Staging 바이너리 | `.github/workflows/mobile-staging-binary.yml` | 네이티브 지문 변경 시 Android release APK와 iOS TestFlight archive 생성 | 구현됨, 자격증명·인프라 미등록 시 대체 artifact만 생성 |
-| Dev-client | `.github/workflows/mobile-dev-client.yml` | 매주 또는 수동으로 Android debug APK와 iOS 시뮬레이터 ZIP 생성 | 구현됨, 인프라 미등록 시 GitHub artifact만 생성 |
+| Dev-client | `.github/workflows/mobile-dev-client.yml` | main에 네이티브 관련 경로가 들어오거나 수동 실행 시 Android debug APK와 iOS 시뮬레이터 ZIP 생성 | 구현됨, 인프라 미등록 시 GitHub artifact만 생성 |
 | 업데이트 서버 CI | `.github/workflows/updates-server-ci.yml` | Lambda·CloudFront CDK와 manifest 서버를 검사 | 구현됨 |
 | 업데이트 서버 | `tools/updates-server/` | S3 채널 인덱스에서 호환 번들을 찾아 Expo Updates manifest 제공 | 코드 구현됨, AWS 미배포 |
 
@@ -39,7 +39,7 @@ publish와 cleanup은 PR 코드를 AWS 권한으로 실행하지 않는다. main
 
 배포용 Android Secrets가 모두 있으면 release APK를 만들고 `binaries/staging/<runtimeVersion>/android/app.apk`에 올린다. Secrets가 없으면 debug 서명 APK를 `unsigned` GitHub artifact로만 남긴다. iOS 배포 자격증명이 있으면 App Store archive와 IPA를 만들고 App Store Connect API key까지 있을 때 TestFlight에 업로드한다. 자격증명이 없으면 서명하지 않은 시뮬레이터 앱 ZIP을 artifact로 만든다.
 
-`Mobile Dev Client`는 매주 월요일 00:00 UTC와 수동 실행으로 development 프로필을 빌드한다. Android 결과는 `android/latest.apk`, iOS 결과는 최상위 `.app`을 담은 `ios/latest.zip`이다. S3 Variables가 있으면 다음 위치에 업로드한다.
+`Mobile Dev Client`는 Staging Binary와 같은 네이티브 경로(`app.config.ts`, `package.json`, lockfile, config plugin 등)가 main에 push될 때와 수동 실행으로 development 프로필을 빌드한다. JS만 바뀐 커밋에서는 돌지 않는다. Android 결과는 `android/latest.apk`, iOS 결과는 최상위 `.app`을 담은 `ios/latest.zip`이다. S3 Variables가 있으면 다음 위치에 업로드한다.
 
 ```text
 binaries/dev-client/<runtimeVersion>/android/latest.apk
