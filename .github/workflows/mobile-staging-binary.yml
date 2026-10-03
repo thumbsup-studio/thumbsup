@@ -82,16 +82,16 @@ jobs:
       value: ${{ steps.reserve.outputs.value }}
     steps:
       - name: AWS 바이너리 역할 위임
-        if: vars.MOBILE_ARTIFACTS_BUCKET != '' && vars.MOBILE_BINARY_PUBLISH_ROLE_ARN != ''
+        if: vars.MOBILE_ARTIFACTS_BUCKET != '' && vars.MOBILE_NONPROD_ROLE_ARN != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: 단조 증가 build number 예약
         id: reserve
         env:
           ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
-          BINARY_ROLE_ARN: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          BINARY_ROLE_ARN: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
         run: |
           candidate=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
           if [[ -n "$ARTIFACTS_BUCKET" && -n "$BINARY_ROLE_ARN" ]]; then
@@ -129,7 +129,7 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.MOBILE_ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.MOBILE_ANDROID_KEY_PASSWORD }}
       ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
-      BINARY_ROLE_ARN: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+      BINARY_ROLE_ARN: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -166,7 +166,7 @@ jobs:
             echo "s3=true" >> "$GITHUB_OUTPUT"
           else
             echo "s3=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_BINARY_PUBLISH_ROLE_ARN 변수가 없습니다."
+            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_NONPROD_ROLE_ARN 변수가 없습니다."
           fi
       - name: Android release APK 빌드
         if: steps.settings.outputs.signing == 'true'
@@ -223,7 +223,7 @@ jobs:
         if: steps.settings.outputs.s3 == 'true' && steps.settings.outputs.signing == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: Android staging APK를 S3에 배포
         if: steps.settings.outputs.s3 == 'true' && steps.settings.outputs.signing == 'true'
@@ -550,7 +550,7 @@ jobs:
       - name: AWS 바이너리 배포 역할 위임
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: Android RC와 staging OTA를 S3에 배포
         env:
@@ -712,7 +712,7 @@ jobs:
       - name: AWS 바이너리 배포 역할 위임
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: iOS RC를 S3에 배포
         env:

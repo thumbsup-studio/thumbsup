@@ -19,7 +19,7 @@ env:
   MOBILE_BUILD_NUMBER: ${{ github.run_number }}
   EXPO_PUBLIC_API_URL: http://localhost:8080
   ARTIFACTS_BUCKET: ${{ vars.MOBILE_ARTIFACTS_BUCKET }}
-  BINARY_ROLE_ARN: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+  BINARY_ROLE_ARN: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
 
 jobs:
   android:
@@ -81,13 +81,13 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_BINARY_PUBLISH_ROLE_ARN 변수가 없습니다."
+            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_NONPROD_ROLE_ARN 변수가 없습니다."
           fi
       - name: AWS 바이너리 배포 역할 위임
         if: steps.s3.outputs.enabled == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: Android dev-client를 S3에 배포
         if: steps.s3.outputs.enabled == 'true'
@@ -172,13 +172,13 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_BINARY_PUBLISH_ROLE_ARN 변수가 없습니다."
+            echo "::notice title=S3 배포 생략::MOBILE_ARTIFACTS_BUCKET 또는 MOBILE_NONPROD_ROLE_ARN 변수가 없습니다."
           fi
       - name: AWS 바이너리 배포 역할 위임
         if: steps.s3.outputs.enabled == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.MOBILE_BINARY_PUBLISH_ROLE_ARN }}
+          role-to-assume: ${{ vars.MOBILE_NONPROD_ROLE_ARN }}
           aws-region: ap-northeast-2
       - name: iOS dev-client를 S3에 배포
         if: steps.s3.outputs.enabled == 'true'

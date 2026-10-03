@@ -111,7 +111,7 @@ pnpm --filter updates-server exec cdk deploy --app "tsx bin/updates-server.ts"
 
 코드 서명을 쓰려면 `/thumbsup/prod/updates-signing-private-key` SecureString 파라미터에 RSA private key PEM을 넣는다. Lambda에는 파라미터 하나를 읽는 권한만 있다. 클라이언트 인증서와 key ID `main` 설정은 함께 배포해야 한다. 서명을 요구한 요청에서 키가 없으면 400을 반환한다.
 
-배포 출력의 `UpdatesBaseUrl` 뒤에 `/api/manifest`를 붙여 Expo 앱의 업데이트 URL로 설정한다. 아티팩트를 먼저 업로드하고 `channels/index.json`을 마지막에 교체해야 한다. 그래야 클라이언트가 업로드 중인 업데이트를 읽지 않는다.
+배포 출력의 `UpdatesBaseUrl` 뒤에 `/api/manifest`를 붙여 Expo 앱의 업데이트 URL로 설정한다. 스택은 GitHub Actions용 OIDC 역할 `thumbsup-mobile-nonprod`·`thumbsup-mobile-production`도 함께 만들며, 출력 `NonprodRoleArn`·`ProductionRoleArn`을 GitHub Variables `MOBILE_NONPROD_ROLE_ARN`·`MOBILE_PRODUCTION_ROLE_ARN`에 넣는다. 기존 OIDC provider `token.actions.githubusercontent.com`이 계정에 있어야 한다. 아티팩트를 먼저 업로드하고 `channels/index.json`을 마지막에 교체해야 한다. 그래야 클라이언트가 업로드 중인 업데이트를 읽지 않는다.
 
 ## 예상 비용
 

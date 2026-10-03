@@ -57,7 +57,7 @@ binaries/dev-client/<runtimeVersion>/ios/metadata.json
 | 항목 | 상태 |
 | --- | --- |
 | Apple·Android 배포 자격증명과 GitHub Secrets 등록 | 사용자 작업 필요 |
-| `MOBILE_ARTIFACTS_BUCKET`·`MOBILE_BINARY_PUBLISH_ROLE_ARN` 등록 | 사용자 작업 필요 |
+| `MOBILE_ARTIFACTS_BUCKET`·`MOBILE_NONPROD_ROLE_ARN` 등록 | 사용자 작업 필요 |
 | production 서명 빌드·스토어 배포 | 후속 이슈 필요 |
 | 업데이트 서버 AWS 배포와 실제 `MOBILE_UPDATES_URL` 등록 | 인프라 후속 작업 |
 

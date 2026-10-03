@@ -69,6 +69,6 @@ pnpm --filter updates-server updates -- rollback \
 
 ## 관리자가 준비할 값
 
-GitHub Environment `mobile-production`에는 승인자와 main/tag 배포 제한을 둔다. Variables에는 `MOBILE_ARTIFACTS_BUCKET`, `MOBILE_BINARY_PUBLISH_ROLE_ARN`, `MOBILE_PRODUCTION_PUBLISH_ROLE_ARN`, `MOBILE_UPDATES_URL`, `MOBILE_APPLE_TEAM_ID`를 등록한다.
+GitHub Environment `mobile-production`에는 승인자와 main/tag 배포 제한을 둔다. Variables에는 `MOBILE_ARTIFACTS_BUCKET`, `MOBILE_NONPROD_ROLE_ARN`, `MOBILE_PRODUCTION_ROLE_ARN`, `MOBILE_UPDATES_URL`, `MOBILE_APPLE_TEAM_ID`를 등록한다. 두 역할 ARN은 `ThumbsupUpdatesServer` 스택의 `NonprodRoleArn`·`ProductionRoleArn` 출력값이다.
 
-Secrets에는 production Android keystore 4종(`MOBILE_PRODUCTION_ANDROID_*`), production iOS 인증서와 provisioning profile 3종(`MOBILE_PRODUCTION_IOS_*`), App Store Connect API key 3종(`MOBILE_ASC_*`), `MOBILE_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64`, `MOBILE_UPDATES_CODE_SIGNING_CERTIFICATE_BASE64`를 등록한다. AWS 관리자는 SSM의 `/thumbsup/prod/updates-signing-private-key`와 최소 권한 IAM 역할을 만들고, 스토어 관리자는 앱 레코드·내부 테스트 그룹·심사 정보를 준비한다.
+Secrets에는 production Android keystore 4종(`MOBILE_PRODUCTION_ANDROID_*`), production iOS 인증서와 provisioning profile 3종(`MOBILE_PRODUCTION_IOS_*`), App Store Connect API key 3종(`MOBILE_ASC_*`), `MOBILE_GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64`, `MOBILE_UPDATES_CODE_SIGNING_CERTIFICATE_BASE64`를 등록한다. AWS 관리자는 `cdk deploy`로 스택(버킷·Lambda·CloudFront·IAM 역할 2개)을 배포하고 SSM의 `/thumbsup/prod/updates-signing-private-key`를 등록하며, 스토어 관리자는 앱 레코드·내부 테스트 그룹·심사 정보를 준비한다.
