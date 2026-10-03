@@ -97,7 +97,6 @@ export class UpdatesServerStack extends Stack {
       handler: 'handler',
       timeout: Duration.seconds(10),
       memorySize: 256,
-      reservedConcurrentExecutions: 5,
       bundling: {
         minify: true,
         sourceMap: true,

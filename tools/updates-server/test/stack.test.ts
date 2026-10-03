@@ -47,17 +47,18 @@ describe('UpdatesServerStack', () => {
     });
   });
 
-  it('uses a Node.js 22 Lambda and IAM-authenticated function URL', () => {
+  it('uses Node.js 22 Lambdas without reserved concurrency and IAM-authenticated URLs', () => {
     const synthesized = template();
     synthesized.hasResourceProperties('AWS::Lambda::Function', {
       Runtime: 'nodejs22.x',
       Environment: { Variables: { ARTIFACTS_BUCKET: Match.anyValue() } },
     });
     synthesized.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'AWS_IAM' });
-    synthesized.hasResourceProperties('AWS::Lambda::Function', {
-      ReservedConcurrentExecutions: 5,
-      Environment: { Variables: { ARTIFACTS_BUCKET: Match.anyValue() } },
-    });
+    const functions = synthesized.findResources('AWS::Lambda::Function');
+    expect(Object.keys(functions)).toHaveLength(2);
+    for (const resource of Object.values(functions)) {
+      expect(resource.Properties).not.toHaveProperty('ReservedConcurrentExecutions');
+    }
   });
 
   it('routes only manifest requests to Lambda and makes update assets immutable', () => {
