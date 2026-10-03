@@ -40,7 +40,7 @@ pnpm --filter updates-server updates -- promote \
   --runtime-version <X.Y.Z> --rollout-percentage 10 --dry-run
 ```
 
-dry-run은 source index, metadata, runtimeVersion, 복사 대상만 확인하고 S3를 바꾸지 않는다. 실제 실행에서는 `--dry-run`을 뺀다. `rolloutPercentage`는 0부터 100까지 지정하며, 이상이 없으면 같은 updateId를 25, 50, 100 순으로 다시 승격한다. 서버는 처음 접속한 클라이언트에 무작위 `expo-client-id`를 `expo-server-defined-headers`로 내려준다. Expo Updates는 이후 요청에 같은 값을 보낸다. 서버는 이 ID의 SHA-256 버킷으로 새 업데이트와 직전 100% 업데이트를 나눈다. 같은 설치는 재실행해도 같은 그룹에 남는다.
+dry-run은 source index, metadata, runtimeVersion, 복사 대상만 확인하고 S3를 바꾸지 않는다. 실제 실행에서는 `--dry-run`을 뺀다. `rolloutPercentage`는 0부터 100까지 지정하며, 이상이 없으면 같은 updateId를 25, 50, 100 순으로 다시 승격한다. 비율 변경은 로컬 CLI 대신 Actions의 `Mobile OTA Control`(action=`rollout`)로 실행한다. `mobile-production` Environment 승인을 거치고 기본값이 dry-run이라 먼저 결과를 본 뒤 `dry_run=false`로 다시 실행한다. 서버는 처음 접속한 클라이언트에 무작위 `expo-client-id`를 `expo-server-defined-headers`로 내려준다. Expo Updates는 이후 요청에 같은 값을 보낸다. 서버는 이 ID의 SHA-256 버킷으로 새 업데이트와 직전 100% 업데이트를 나눈다. 같은 설치는 재실행해도 같은 그룹에 남는다.
 
 production 앱에는 공개 코드 서명 인증서가 반드시 들어간다. manifest 서버도 production 요청에 `expo-expect-signature`가 없으면 거부하고, SSM SecureString `/thumbsup/prod/updates-signing-private-key`의 private key로 manifest와 rollback directive를 서명한다. private key 원문은 GitHub Secrets나 저장소에 넣지 않는다.
 
@@ -54,7 +54,7 @@ pnpm --filter updates-server updates -- rollback \
   --channel production --to <previous-update-id> --dry-run
 ```
 
-dry-run 결과와 대상 runtimeVersion을 확인한 뒤 옵션을 빼고 실행한다. 선택한 기존 updateId가 새 포인터가 되며 asset은 복사하거나 다시 빌드하지 않는다.
+dry-run 결과와 대상 runtimeVersion을 확인한 뒤 옵션을 빼고 실행한다. 선택한 기존 updateId가 새 포인터가 되며 asset은 복사하거나 다시 빌드하지 않는다. Actions에서는 `Mobile OTA Control`의 action=`rollback-to-update`가 같은 명령을 실행한다.
 
 직전 OTA도 안전하지 않거나 서버가 특정 runtimeVersion의 OTA를 모두 막아야 하면 내장 번들 kill switch를 쓴다.
 
@@ -65,7 +65,7 @@ pnpm --filter updates-server updates -- rollback \
   --commit-time <ISO-8601> --dry-run
 ```
 
-실행하면 manifest handler가 Expo Updates 프로토콜 v1의 `rollBackToEmbedded` directive를 서명해 반환한다. 복구 뒤에는 원인, 영향 runtimeVersion, 시작·종료 시각, 선택한 updateId를 장애 기록에 남긴다. 네이티브 결함은 OTA로 해결하지 말고 스토어 긴급 빌드를 새 build number로 제출한다.
+Actions에서는 action=`rollback-to-embedded`에 `runtime_version`을 넣어 실행한다. 실행하면 manifest handler가 Expo Updates 프로토콜 v1의 `rollBackToEmbedded` directive를 서명해 반환한다. 복구 뒤에는 원인, 영향 runtimeVersion, 시작·종료 시각, 선택한 updateId를 장애 기록에 남긴다. 네이티브 결함은 OTA로 해결하지 말고 스토어 긴급 빌드를 새 build number로 제출한다.
 
 ## 관리자가 준비할 값
 
